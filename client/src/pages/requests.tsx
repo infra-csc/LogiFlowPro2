@@ -45,8 +45,8 @@ export default function Requests() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Material Requests</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage event material requisitions by area</p>
+          <h1 className="text-2xl font-semibold text-foreground">Requisição de Materiais</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie requisições de materiais por área</p>
         </div>
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-request">
           <Plus className="h-4 w-4 mr-2" />

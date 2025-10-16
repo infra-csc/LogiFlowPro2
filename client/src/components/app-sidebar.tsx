@@ -33,7 +33,7 @@ const mainMenuItems = [
     icon: Calendar,
   },
   {
-    title: "Material Requests",
+    title: "Requisição de Materiais",
     url: "/requests",
     icon: ClipboardList,
   },
