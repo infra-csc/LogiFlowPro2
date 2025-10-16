@@ -1,0 +1,221 @@
+Você é um Product Designer + Arquiteto de Software sênior. Sua missão: desenhar um web app de logística de eventos, desktop-first, responsivo e moderno, com paleta azul escuro, azul claro, rosa e roxo. Foque em usabilidade operacional (galpão, conferência, planejamento), confiabilidade de estoque e rastreabilidade ponta a ponta.
+
+1) Objetivo do sistema
+- Formalizar pedidos de materiais por área de cada evento.
+- Definir e fazer cumprir prazo limite para alterações (cutoff) garantindo tempo hábil para locação de itens faltantes.
+- Agrupar estruturas modulares (ex.: palcos, estandes, backdrops, pórticos) e “explodir” automaticamente em itens (BOM) para picking e conferência.
+- Acompanhar carregamento dos caminhões x necessidade do evento, com alertas de faltantes, excessos e itens errados.
+- Logística reversa: registrar retornos, confrontar com o esperado, marcar avarias, perdas e bloquear itens até reparo.
+- Registrar o que foi carregado em qual caminhão (suporte a múltiplos veículos por evento).
+- Operar sempre sob o “guarda-chuva” do evento (listas-mestras de materiais por evento; transportes são sublistas).
+- Orquestrar muitos eventos simultâneos com um módulo de Necessidade x Estoque projetado por data, considerando retornos.
+- Manter um módulo de estoque robusto: entradas/saídas de locados e comprados, perdas, avarias, compras.
+- Cada produto deve ter proprietário (próprio, locado, terceiro).
+
+2) Público e papéis (perfis e necessidades)
+- Planejamento/Operações: cria prazos, agenda docas/caminhões, resolve conflitos de estoque, aprova pedidos, controla transporte.
+- Cenografia/Áreas solicitantes: abrem e ajustam pedidos, selecionam estruturas (kits) e parâmetros (ex.: palco 10x8, altura).
+- Galpão/Expedição (picking e conferência): carrega, confere, escaneia, recebe alertas de faltantes/errados/excesso.
+- Conferente: valida carregamento/retorno, registra divergências e avarias, tira fotos.
+- Motorista: visualiza cargas por viagem, check-in/out na doca, status de rota (opcional).
+- Estoque/Patrimônio: inventários, avarias, manutenção, perdas, entradas/saídas (locados/comprados).
+- Financeiro (opcional): custos de locação, perdas, compras integradas.
+- Cliente/Comercial (opcional leitura): status do evento e de logística.
+
+3) Branding, UI e Acessibilidade
+- Paleta:
+  - Azul escuro (primário): #0F172A (ou #0B132B) — backgrounds, app bar, botões principais.
+  - Azul claro (secundário): #38BDF8 — destaques, bordas ativas, estados de foco.
+  - Rosa (accent 1): #EC4899 — alertas suaves, indicadores de estado de alteração.
+  - Roxo (accent 2): #8B5CF6 — tags de status, chips, progresso.
+  - Neutros: Cinza-900 #111827, 700 #374151, 500 #6B7280, 100 #F3F4F6.
+  - Estados: Sucesso #10B981, Atenção #F59E0B, Erro #EF4444, Info #3B82F6.
+- Estilo: moderno, limpo, alto contraste (WCAG AA/AAA), foco em tabelas produtivas, painéis laterais editáveis, modais apenas quando imprescindíveis.
+- Componentes-chave: data table densa com filtros salvos, chips de status coloridos, barras de progresso por evento/veículo, stepper de fluxos, checklists de picking, scanner (código de barras/QR/RFID), timeline por data.
+- Desktop-first, mas responsivo para tablets na doca (conferência).
+- Atalhos de teclado para operações comuns (enter para confirmar, espaço para marcar item, F para filtrar, etc).
+- Estados vazios úteis, feedbacks claros, desfazer quando possível, e logs/auditoria visíveis.
+
+4) Módulos e Funcionalidades
+A) Planejamento
+- Pedidos das áreas: criação, edição e aprovação por evento/área, com anexos (plantas, PDFs).
+- Cutoff: configurar prazo limite por evento e por área (ex.: cenografia até D-3 18:00). Após cutoff: bloqueio de edição; exceções pedem justificativa e aprovação.
+- Necessidade x Estoque (time-phased): visão por dia/turno do que precisa x estoque projetado (considerando reservas, saídas, retornos, avarias e manutenção).
+- Agendamento de carregamento/descarregamento: janelas de doca, capacidade (número de caminhões simultâneos), restrições e conflitos.
+- Planejamento por veículo: criar viagens, capacidade (peso/volume/dimensões), rota, motorista e horários.
+
+B) Entrada e Saída (Operação)
+- Picking list do evento: gerada a partir da lista-mestra (explosão de kits), consolidada por SKU e por localização no estoque.
+- “Explosão” de kits/estruturas: seleção do projeto (ex.: Palco 10x8, altura 1,0 m) gera itens (praticáveis, pés, parafusos, cintas, box truss por módulo, etc) com fórmulas.
+- Conferência de carregamento por veículo: escanear/confirmar item, alertas de faltantes, errados e excesso, auditoria e foto se necessário.
+- Carregamento multi-veículo: cada item pertence à lista-mestra do evento, mas é alocado em sublistas por caminhão; visão “faltantes do evento”.
+- Retorno (logística reversa): confronto do esperado x retornado por evento/veículo; divergências (faltou, sobrou, trocado), registrar avarias e perdas, bloquear itens avariados.
+- Entradas/saídas de locados e comprados: datas, comprovantes, contratos, proprietário, devolução prevista.
+
+C) Estoque
+- Inventário: inventário cíclico por zona, contagem por unidade/caixa/conjunto, reconciliação.
+- Situação atual e projetada: disponível, reservado, carregado, em uso, em trânsito, retornado, avariado, em reparo, inutilizado, perdido.
+- Manutenção: OS de reparo, prazos, custos e liberação de bloqueio.
+- Política de substituição: itens alternativos compatíveis (ex.: parafuso M10 pode substituir M12 com adaptador? configuração).
+
+D) Cadastros
+- Projetos/Agrupamentos (kits): modelos parametrizáveis (ex.: Palco [Largura, Profundidade, Altura], fórmulas de BOM).
+- Peças (produtos): SKU, código de barras/RFID, proprietário (próprio/locado/terceiro), unidade de medida, peso, dimensões, série/lote (se aplicável), mínimos, localização, compatibilidades, foto.
+- Eventos: nome, cliente, local, datas de montagem/operação/desmontagem, janelas de doca, responsáveis, anexos.
+- Doca: número de baias, janelas, restrições.
+- Tipos de veículos: capacidades (peso/volume/dimensões), tipo de carroceria, altura de piso, necessidade de rampa/elevador.
+- Motoristas: CNH/categorias, telefone, disponibilidade, terceiros/agregados.
+
+5) Fluxos críticos (passo a passo)
+- Fluxo 1: Pedido de material por área
+  1. Área abre pedido no evento, seleciona estruturas e/ou peças avulsas.
+  2. Se estrutura: escolhe kit e parâmetros (ex.: palco 8x6 m, altura 1,0 m).
+  3. Sistema explode em itens (BOM) e agrega ao pedido.
+  4. Planejamento revisa e aprova; sistema aplica reservas projetadas.
+  5. Até o cutoff, equipe pode ajustar; após cutoff, alterações exigem justificativa e aprovação com impacto em estoque e transporte.
+- Fluxo 2: Necessidade x Estoque projetado (múltiplos eventos)
+  1. Motor considera janelas de tempo (dia/turno/hora) com: estoque inicial + retornos previstos - saídas planejadas - bloqueios (avaria/manutenção).
+  2. Mostra conflitos e sugestões: alocar retorno tardio, substituir por item alternativo, locar adicional, ajustar janelas.
+- Fluxo 3: Carregamento por caminhão
+  1. Planejamento cria viagens (veículo, motorista, janela de doca).
+  2. Picking lista itens por prioridade de carregamento.
+  3. Conferente escaneia/valida; alertas se item não pertence ao evento ou está em excesso.
+  4. Painel mostra progresso por veículo e faltantes do evento.
+- Fluxo 4: Retorno e avarias
+  1. Na descarga, sistema espera itens conforme lista; divergências geram ocorrências.
+  2. Avarias: registrar, fotografar, bloquear (status “em reparo” ou “inutilizado”) até liberação.
+  3. Fechamento do evento: reconciliação final e relatório.
+
+6) Regras de negócio e validações
+- Cutoff:
+  - Configurável por evento e por área.
+  - Após cutoff: pedido bloqueado; exceções exigem justificativa, aprovação e notificação ao Planejamento e Galpão.
+  - Alterações após início do picking geram “Delta Picking” com chamados claros.
+- Explosão de kits:
+  - Fórmulas por parâmetro (ex.: praticáveis = ceil((Largura/2m)*(Profundidade/2m)); pés = praticáveis * 4; parafusos = praticáveis * 8; cintas por treliça; truss por perímetro/intervalo).
+  - Permitir overrides manuais com auditoria e justificativa.
+- Reserva e alocação:
+  - Reserva no momento da aprovação do pedido; prioridade configurável (ex.: data de aprovação, criticidade do evento).
+  - Alocação em picking bloqueia outro uso no mesmo período.
+- Conferência:
+  - Item escaneado que não está na lista gera alerta vermelho (não permitir sem autorização).
+  - Excesso gera alerta amarelo (requer confirmação); faltantes ficam em painel persistente.
+- Retorno:
+  - Confronto estrito item a item; permite substituição com justificativa.
+  - Itens avariados saem do “disponível” e entram em “em reparo” ou “inutilizado”.
+- Propriedade:
+  - Cada item deve ter proprietário; itens “locados” exigem contrato de locação e prazos; bloqueio se extrapolar devolução.
+- Capacidade do veículo/docas:
+  - Não permitir agendamento acima da capacidade física configurada; indicar colisões de janelas de doca.
+- Auditoria:
+  - Toda alteração relevante gera log: quem, quando, o que antes/depois, motivo.
+
+7) Modelo de dados (alto nível, entidades e campos essenciais)
+- Evento: id, nome, cliente, local, datas (montagem/operação/desmontagem), responsáveis, cutoff por área, anexos, status.
+- PedidoÁrea: id, evento_id, área (cenografia, iluminação, etc), status (rascunho/aprovação/aprovado/bloqueado), justificativas, anexos.
+- KitProjeto: id, nome, parâmetros (ex.: largura, profundidade, altura), regras de BOM (fórmulas).
+- BOMLinha: id, kit_id, produto_id, fórmula_quantidade, unidade.
+- Produto: id, SKU, nome, proprietário (próprio/locado/terceiro), unidade, peso, dimensões, série/lote?, código de barras/RFID, localização, foto, alternativos[], mínimo, status_estoque.
+- EstoqueMov: id, produto_id, tipo (reserva/saída/retorno/avaria/perda/compra/locação_in/locação_out/reparo_in/reparo_out), quantidade, data_hora, referência (evento, pedido, viagem, contrato), observação.
+- Reserva: id, produto_id, evento_id, quantidade, janela_tempo_início/fim, prioridade.
+- Viagem: id, evento_id, veículo_id, motorista_id, doca_id, janela_início/fim, status.
+- ViagemItem: id, viagem_id, produto_id, quantidade_planejada, quantidade_carregada, quantidade_retornada, divergências.
+- VeículoTipo: id, nome, peso_max, volume_max, dimensões_internas, altura_piso, observações.
+- Veículo: id, placa, tipo_id, proprietário, ativo.
+- Motorista: id, nome, CNH, categoria, contato, disponibilidade.
+- Doca: id, nome, capacidade_simultânea, janelas, restrições.
+- ManutençãoOS: id, produto_id, tipo (reparo/inspeção), data_abertura/fechamento, custo, status.
+- ContratoLocação: id, fornecedor, número, data_início/fim, itens[], anexos.
+- Usuário e Papel: id, nome, e-mail, papel (admin, planejamento, cenografia, galpão, conferente, motorista, estoque, financeiro), permissões.
+
+8) Estados e rótulos (tags visuais)
+- PedidoÁrea: Rascunho, Em aprovação, Aprovado, Bloqueado por cutoff, Em picking, Parcialmente carregado, Carregado, Em trânsito, Em uso, Em desmontagem, Retorno em andamento, Conferência de retorno, Concluído.
+- Produto/Estoque: Disponível, Reservado, Carregado, Em trânsito, Em uso, Retornado, Avariado, Em reparo, Inutilizado, Perdido.
+- Viagem: Planejada, Em carregamento, Carregada, Em trânsito, Na doca destino, Em descarga, Finalizada.
+
+9) Dashboards e KPIs (desktop-first)
+- Hoje/Amanhã: eventos por status, janelas de doca, viagens por hora, itens críticos (estoque < necessidade).
+- Conflitos de estoque: lista ordenada por severidade e sugestões (substituir, locar, ajustar retorno).
+- Carregamento por evento: barras de progresso por caminhão e por categoria (truss, praticáveis, ferragens).
+- Avarias e perdas: tendência, itens críticos, impacto em disponibilidade futura.
+- KPIs: OTIF (on-time in-full) de carregamentos, taxa de divergência no retorno, tempo médio de conferência, lead-time de reposição/locação.
+
+10) Listas e Relatórios essenciais
+- Picking list por evento/viagem (com localização no estoque e foto do item).
+- Divergências (faltantes, excessos, errados) por viagem/evento.
+- Inventário (cíclico e total) e ajustes.
+- Locação: entradas/saídas futuras, contratos e prazos.
+- Disponibilidade projetada por data/turno.
+- Utilização de docas e veículos.
+- Avarias/perdas por categoria e custo.
+
+11) Algoritmos e lógica
+- Projeção de estoque (time-phased):
+  DisponívelProjetado(t) = DisponívelAtual + ΣRetornos(≤t) - ΣSaídas(≤t) - ΣBloqueios(≤t).
+- Explosão de kits (exemplo palco):
+  praticaveis = ceil((largura/2) * (profundidade/2))
+  pes = praticaveis * 4
+  parafusos = praticaveis * 8
+  truss_metros = perímetro(largura, profundidade) / módulo_truss
+  cintas = ceil(truss_metros / 3)
+  Permitir fórmulas por parâmetro e arredondamentos configuráveis.
+- Distribuição multi-veículo:
+  - Objetivo: minimizar viagens e respeitar capacidade (peso/volume).
+  - Heurística: best-fit decrescente por peso/volume; permitir ajustes manuais com alerta de capacidade.
+- Alertas:
+  - Faltantes no carregamento: vermelho; ação “locar/alternativo/adiar”.
+  - Item errado: bloqueia confirmação; precisa autorização de supervisor.
+  - Excesso: amarelo; permite com justificativa.
+
+12) Permissões e segurança
+- Matriz por papel (CRUD em módulos; alterar após cutoff; autorizar excessos/itens errados).
+- Logs de auditoria por item/viagem/pedido/evento.
+- Anexos com antivírus e versionamento.
+- PII mínima para motoristas; LGPD: bases legais para contatos, retenção configurável.
+
+13) Qualidade, performance e confiabilidade
+- Operações de conferência devem ser offline-tolerant (PWA opcional) com sincronização posterior.
+- Filas para projeção e conflitos de estoque (event-driven) evitando travar o UI.
+- Travas otimistas com resolução de conflitos (ex.: dois conferentes no mesmo item).
+- Testes de carga para 100+ eventos simultâneos, 10k+ SKUs.
+
+14) Integrações (opcionais)
+- ERP/Financeiro (custos, compras, locações).
+- Calendário (agendamento de docas/viagens).
+- Mensageria (e-mail/WhatsApp/Slack) para avisos de cutoff e divergências.
+- Leitores de código de barras/QR/RFID.
+- Telemetria/GPS do veículo (status de trânsito).
+
+15) Entregáveis de design/engenharia
+- Fluxos e user journeys por papel.
+- Mapa de navegação e IA de conteúdo.
+- Wireframes de: Dashboard, Eventos, Pedido por área, Explosão de kit, Necessidade x Estoque, Agendamento de doca/viagens, Picking, Conferência por veículo, Retorno, Avarias, Inventário, Cadastros.
+- Component library com tokens de cor (azul escuro, azul claro, rosa, roxo), estados e chips.
+- Esquema de dados (ERD) e APIs (CRUDs + endpoints de projeção e explosão de kit).
+- Protótipo navegável desktop-first.
+
+16) Requisitos de usabilidade
+- Tabelas com:
+  - Filtros avançados e salvos.
+  - Edição inline e painéis laterais.
+  - Colunas: status com chips, quantidades planejadas/carregadas/retornadas, localização, proprietário, divergências.
+- Stepper claro por fluxo (Pedido > Aprovação > Cutoff > Picking > Carregamento > Trânsito > Retorno > Fechamento).
+- Pesquisa global por SKU, evento, placa, motorista.
+
+17) Critérios de aceite (exemplos)
+- Não é possível editar pedidos após cutoff sem justificativa + aprovação.
+- Explosão de um “Palco 10x8x1m” gera BOM consistente com as fórmulas definidas.
+- Ao carregar um item errado, o sistema bloqueia e notifica o supervisor.
+- Dashboard “Necessidade x Estoque” evidencia conflitos por data e sugere resolução.
+- Retorno com avarias bloqueia item e abre OS de manutenção automaticamente.
+
+18) Dados de exemplo (para protótipo)
+- Evento: “Feira Tech Expo”, montagem 12-13/11, operação 14-16/11, desmontagem 17/11.
+- Kit: “Palco Modular Q30” [L=10, P=8, H=1].
+- Produtos: praticavel 2x1m (próprio), pé de praticável 1m (próprio), parafuso M10 (comprado), truss Q30 3m (próprio), cinta de estaiamento (terceiro), backdrop tecido 8m (locado).
+- Viaturas: Toco (6t, 28m³), Truck (10t, 45m³).
+- Doca: 3 baias, janelas de 1h, 08:00–18:00.
+
+Saída esperada desta IA:
+- Arquitetura de informação, fluxos por papel, wireframes-chave, tokens de design, exemplo de explosão de kit com fórmulas, modelo de dados, APIs principais, e um plano de iteração (MVP e evoluções).
+- Justifique decisões de UX com foco em operação rápida de galpão e confiabilidade de estoque.
