@@ -186,58 +186,97 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               <FormField
                 control={form.control}
                 name="setupDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Setup Date *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="datetime-local"
-                        value={field.value ? format(new Date(field.value), "yyyy-MM-dd'T'HH:mm") : ""}
-                        onChange={(e) => field.onChange(new Date(e.target.value))}
-                        data-testid="input-setup-date"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const formatDateValue = (val: any) => {
+                    if (!val) return "";
+                    try {
+                      const date = val instanceof Date ? val : new Date(val);
+                      if (isNaN(date.getTime())) return "";
+                      return format(date, "yyyy-MM-dd'T'HH:mm");
+                    } catch {
+                      return "";
+                    }
+                  };
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Setup Date *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="datetime-local"
+                          value={formatDateValue(field.value)}
+                          onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                          data-testid="input-setup-date"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="eventDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Event Date *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="datetime-local"
-                        value={field.value ? format(new Date(field.value), "yyyy-MM-dd'T'HH:mm") : ""}
-                        onChange={(e) => field.onChange(new Date(e.target.value))}
-                        data-testid="input-event-date"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const formatDateValue = (val: any) => {
+                    if (!val) return "";
+                    try {
+                      const date = val instanceof Date ? val : new Date(val);
+                      if (isNaN(date.getTime())) return "";
+                      return format(date, "yyyy-MM-dd'T'HH:mm");
+                    } catch {
+                      return "";
+                    }
+                  };
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Event Date *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="datetime-local"
+                          value={formatDateValue(field.value)}
+                          onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                          data-testid="input-event-date"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="teardownDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Teardown Date *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="datetime-local"
-                        value={field.value ? format(new Date(field.value), "yyyy-MM-dd'T'HH:mm") : ""}
-                        onChange={(e) => field.onChange(new Date(e.target.value))}
-                        data-testid="input-teardown-date"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const formatDateValue = (val: any) => {
+                    if (!val) return "";
+                    try {
+                      const date = val instanceof Date ? val : new Date(val);
+                      if (isNaN(date.getTime())) return "";
+                      return format(date, "yyyy-MM-dd'T'HH:mm");
+                    } catch {
+                      return "";
+                    }
+                  };
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Teardown Date *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="datetime-local"
+                          value={formatDateValue(field.value)}
+                          onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                          data-testid="input-teardown-date"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
 

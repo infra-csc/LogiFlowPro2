@@ -75,11 +75,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/events", async (req, res) => {
     try {
+      console.log("Received event data:", JSON.stringify(req.body, null, 2));
       const data = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(data);
       res.status(201).json(event);
     } catch (error) {
-      res.status(400).json({ error: "Invalid event data" });
+      console.error("Event validation error:", error);
+      res.status(400).json({ error: "Invalid event data", details: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 

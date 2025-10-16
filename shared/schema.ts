@@ -372,7 +372,11 @@ export const docksRelations = relations(docks, ({ many }) => ({
 }));
 
 // Zod schemas for validation
-export const insertEventSchema = createInsertSchema(events).omit({
+export const insertEventSchema = createInsertSchema(events, {
+  setupDate: z.coerce.date(),
+  eventDate: z.coerce.date(),
+  teardownDate: z.coerce.date(),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true
