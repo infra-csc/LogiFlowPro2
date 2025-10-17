@@ -270,7 +270,24 @@ export class DatabaseStorage implements IStorage {
 
   // Request Items
   async getRequestItems(requestId: string): Promise<RequestItem[]> {
-    return await db.select().from(requestItems).where(eq(requestItems.requestId, requestId));
+    const items = await db
+      .select({
+        id: requestItems.id,
+        requestId: requestItems.requestId,
+        productId: requestItems.productId,
+        kitId: requestItems.kitId,
+        quantity: requestItems.quantity,
+        kitParameters: requestItems.kitParameters,
+        notes: requestItems.notes,
+        product: products,
+        kit: kits,
+      })
+      .from(requestItems)
+      .leftJoin(products, eq(requestItems.productId, products.id))
+      .leftJoin(kits, eq(requestItems.kitId, kits.id))
+      .where(eq(requestItems.requestId, requestId));
+    
+    return items as any;
   }
 
   async createRequestItem(item: InsertRequestItem): Promise<RequestItem> {
