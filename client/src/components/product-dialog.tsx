@@ -126,6 +126,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
   const handleGetUploadParameters = async () => {
     const response: any = await apiRequest("POST", "/api/objects/upload", {});
+    console.log("Upload parameters response:", response);
+    console.log("Upload URL:", response.uploadURL);
     return {
       method: "PUT" as const,
       url: response.uploadURL,
