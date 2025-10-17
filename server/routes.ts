@@ -684,10 +684,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      
-      console.log("Final uploadURL being sent to frontend:", uploadURL);
-      console.log("uploadURL length:", uploadURL?.length);
-      
       res.json({ uploadURL });
     } catch (error) {
       console.error("Error getting upload URL:", error);
