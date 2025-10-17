@@ -207,7 +207,7 @@ export const materialRequests = pgTable("material_requests", {
 export const requestItems = pgTable("request_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   requestId: varchar("request_id").notNull().references(() => materialRequests.id, { onDelete: "cascade" }),
-  productId: varchar("product_id").notNull().references(() => products.id),
+  productId: varchar("product_id").references(() => products.id),
   quantity: integer("quantity").notNull(),
   kitId: varchar("kit_id").references(() => kits.id),
   kitParameters: jsonb("kit_parameters"),
@@ -490,7 +490,10 @@ export const insertMaterialRequestSchema = createInsertSchema(materialRequests).
 
 export const insertRequestItemSchema = createInsertSchema(requestItems).omit({
   id: true
-});
+}).refine(
+  (data) => data.productId || data.kitId,
+  { message: "Deve fornecer productId ou kitId" }
+);
 
 export const insertVehicleSchema = createInsertSchema(vehicles).omit({
   id: true,
