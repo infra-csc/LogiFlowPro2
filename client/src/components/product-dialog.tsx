@@ -196,6 +196,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       currentStock: formData.currentStock || 0,
     };
 
+    console.log("Submitting product data:", submitData);
+
     if (product) {
       updateMutation.mutate(submitData);
     } else {
@@ -285,8 +287,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 id="weight"
                 type="number"
                 step="0.01"
-                value={formData.weight?.toString() || ""}
-                onChange={(e) => setFormData({ ...formData, weight: e.target.value ? parseFloat(e.target.value) : undefined })}
+                value={formData.weight || ""}
+                onChange={(e) => setFormData({ ...formData, weight: e.target.value || undefined })}
                 placeholder="0.00"
                 data-testid="input-weight"
               />
