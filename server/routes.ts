@@ -345,6 +345,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Request Approvals
+  app.post("/api/requests/:id/approve-all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { comments } = req.body;
+      const userName = req.user?.name || "Unknown";
+      
+      await storage.approveRequestAll(req.params.id, userName, comments);
+      res.json({ message: "Request approved successfully" });
+    } catch (error) {
+      console.error("Error approving request:", error);
+      res.status(500).json({ error: "Failed to approve request" });
+    }
+  });
+
+  app.post("/api/requests/:id/approve-partial", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { itemApprovals, comments } = req.body;
+      const userName = req.user?.name || "Unknown";
+      
+      await storage.approveRequestPartial(req.params.id, userName, itemApprovals, comments);
+      res.json({ message: "Request processed successfully" });
+    } catch (error) {
+      console.error("Error processing request:", error);
+      res.status(500).json({ error: "Failed to process request" });
+    }
+  });
+
+  app.post("/api/requests/:id/reject-all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { reason } = req.body;
+      const userName = req.user?.name || "Unknown";
+      
+      await storage.rejectRequestAll(req.params.id, userName, reason);
+      res.json({ message: "Request rejected successfully" });
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      res.status(500).json({ error: "Failed to reject request" });
+    }
+  });
+
   // Vehicles
   app.get("/api/vehicles", async (req, res) => {
     try {

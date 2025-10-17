@@ -96,6 +96,11 @@ export interface IStorage {
   createRequestItem(item: InsertRequestItem): Promise<RequestItem>;
   deleteRequestItem(id: string): Promise<void>;
   deleteMaterialRequest(id: string): Promise<void>;
+  
+  // Request Approvals
+  approveRequestAll(requestId: string, approverName: string, comments?: string): Promise<void>;
+  approveRequestPartial(requestId: string, approverName: string, itemApprovals: Array<{itemId: string, status: string, approvedQuantity?: number, rejectionReason?: string}>, comments?: string): Promise<void>;
+  rejectRequestAll(requestId: string, approverName: string, reason: string): Promise<void>;
 
   // Vehicles
   getVehicles(): Promise<Vehicle[]>;
@@ -350,6 +355,107 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMaterialRequest(id: string): Promise<void> {
     await db.delete(materialRequests).where(eq(materialRequests.id, id));
+  }
+
+  // Request Approvals
+  async approveRequestAll(requestId: string, approverName: string, comments?: string): Promise<void> {
+    // Get all items for this request
+    const items = await db.select().from(requestItems).where(eq(requestItems.requestId, requestId));
+    
+    // Approve all items
+    for (const item of items) {
+      await db
+        .update(requestItems)
+        .set({
+          approvalStatus: "approved",
+          approvedQuantity: item.quantity,
+          rejectionReason: null,
+        })
+        .where(eq(requestItems.id, item.id));
+    }
+    
+    // Update the request itself
+    await db
+      .update(materialRequests)
+      .set({
+        status: "approved",
+        approvedBy: approverName,
+        approvedAt: new Date(),
+        notes: comments ? `${comments}\n---\nAprovação completa` : "Aprovação completa",
+      })
+      .where(eq(materialRequests.id, requestId));
+  }
+
+  async approveRequestPartial(
+    requestId: string,
+    approverName: string,
+    itemApprovals: Array<{itemId: string, status: string, approvedQuantity?: number, rejectionReason?: string}>,
+    comments?: string
+  ): Promise<void> {
+    // Update each item based on approvals
+    for (const approval of itemApprovals) {
+      await db
+        .update(requestItems)
+        .set({
+          approvalStatus: approval.status as any,
+          approvedQuantity: approval.approvedQuantity,
+          rejectionReason: approval.rejectionReason || null,
+        })
+        .where(eq(requestItems.id, approval.itemId));
+    }
+    
+    // Check if all items are approved or rejected
+    const items = await db.select().from(requestItems).where(eq(requestItems.requestId, requestId));
+    const hasApproved = items.some(i => i.approvalStatus === "approved");
+    const allRejected = items.every(i => i.approvalStatus === "rejected");
+    
+    let requestStatus: string;
+    if (allRejected) {
+      requestStatus = "rejected";
+    } else if (hasApproved) {
+      requestStatus = "approved";
+    } else {
+      requestStatus = "pending_approval";
+    }
+    
+    // Update the request
+    await db
+      .update(materialRequests)
+      .set({
+        status: requestStatus as any,
+        approvedBy: approverName,
+        approvedAt: new Date(),
+        notes: comments ? `${comments}\n---\nAprovação parcial` : "Aprovação parcial",
+      })
+      .where(eq(materialRequests.id, requestId));
+  }
+
+  async rejectRequestAll(requestId: string, approverName: string, reason: string): Promise<void> {
+    // Get all items for this request
+    const items = await db.select().from(requestItems).where(eq(requestItems.requestId, requestId));
+    
+    // Reject all items
+    for (const item of items) {
+      await db
+        .update(requestItems)
+        .set({
+          approvalStatus: "rejected",
+          approvedQuantity: 0,
+          rejectionReason: reason,
+        })
+        .where(eq(requestItems.id, item.id));
+    }
+    
+    // Update the request itself
+    await db
+      .update(materialRequests)
+      .set({
+        status: "rejected",
+        approvedBy: approverName,
+        approvedAt: new Date(),
+        rejectionReason: reason,
+      })
+      .where(eq(materialRequests.id, requestId));
   }
 
   // Vehicles
