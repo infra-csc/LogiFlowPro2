@@ -22,8 +22,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Kit, InsertKit, Product, BomLine } from "@shared/schema";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 interface KitDialogProps {
   open: boolean;
@@ -49,6 +51,7 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
 
   const [parameters, setParameters] = useState<Parameter[]>(kit?.parameters || []);
   const [bomLines, setBomLines] = useState<Array<{ productId: string; quantityFormula: string; notes?: string }>>([]);
+  const [imageUrl, setImageUrl] = useState<string | null>(kit?.imageUrl || null);
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -59,17 +62,92 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
     enabled: !!kit?.id,
   });
 
+  const handleGetUploadParameters = async () => {
+    const response: any = await apiRequest("POST", "/api/objects/upload", {});
+    return {
+      method: "PUT" as const,
+      url: response.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadedFile = result.successful[0];
+      const uploadURL = uploadedFile.uploadURL as string;
+
+      if (!kit?.id) {
+        // If creating a new kit, just store the URL to be used after creation
+        setImageUrl(uploadURL || null);
+        toast({ description: "Imagem carregada com sucesso" });
+        return;
+      }
+
+      // If editing, update the kit image immediately
+      try {
+        const response: any = await apiRequest("PUT", `/api/kits/${kit.id}/image`, {
+          imageUrl: uploadURL,
+        });
+        // Use the normalized object path from the response
+        setImageUrl(response.objectPath || uploadURL);
+        queryClient.invalidateQueries({ queryKey: ["/api/kits"] });
+        toast({ description: "Imagem atualizada com sucesso" });
+      } catch (error) {
+        toast({ description: "Erro ao atualizar imagem", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (kit?.id) {
+      // If editing, update the kit to remove the image
+      try {
+        await apiRequest("PATCH", `/api/kits/${kit.id}`, {
+          imageUrl: null,
+        });
+        setImageUrl(null);
+        queryClient.invalidateQueries({ queryKey: ["/api/kits"] });
+        toast({ description: "Imagem removida com sucesso" });
+      } catch (error) {
+        toast({ description: "Erro ao remover imagem", variant: "destructive" });
+      }
+    } else {
+      // If creating, just clear the local state
+      setImageUrl(null);
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: { kit: InsertKit; bomLines: Array<{ productId: string; quantityFormula: string; notes?: string }> }) => {
-      return apiRequest("POST", "/api/kits", data);
+      const kit: any = await apiRequest("POST", "/api/kits", data);
+      
+      // If there's an image URL from upload, set it with proper ACL
+      if (imageUrl && kit.id) {
+        try {
+          const imageResponse: any = await apiRequest("PUT", `/api/kits/${kit.id}/image`, {
+            imageUrl: imageUrl,
+          });
+          // Update local state with the normalized object path
+          if (imageResponse.objectPath) {
+            setImageUrl(imageResponse.objectPath);
+          }
+        } catch (error) {
+          console.error("Failed to set kit image:", error);
+          toast({ 
+            description: "Kit criado, mas houve erro ao processar a imagem", 
+            variant: "destructive" 
+          });
+        }
+      }
+      
+      return kit;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/kits"] });
-      toast({ description: "Kit created successfully" });
+      toast({ description: "Kit criado com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to create kit", variant: "destructive" });
+      toast({ description: "Erro ao criar kit", variant: "destructive" });
     },
   });
 
@@ -163,12 +241,45 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                value={formData.description}
+                value={formData.description || ""}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Kit description..."
                 rows={2}
                 data-testid="input-kit-description"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Imagem do Kit</Label>
+              {imageUrl ? (
+                <div className="relative">
+                  <img 
+                    src={imageUrl} 
+                    alt="Kit preview" 
+                    className="w-full h-48 object-cover rounded-md"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2"
+                    data-testid="button-remove-image"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <ObjectUploader
+                  onGetUploadParameters={handleGetUploadParameters}
+                  onComplete={handleUploadComplete}
+                  buttonClassName="w-full"
+                  buttonVariant="outline"
+                >
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Adicionar Imagem
+                </ObjectUploader>
+              )}
             </div>
           </div>
 

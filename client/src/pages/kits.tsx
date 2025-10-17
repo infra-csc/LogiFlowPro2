@@ -70,14 +70,23 @@ export default function Kits() {
           {kits.map((kit) => (
             <Card 
               key={kit.id}
-              className="hover-elevate cursor-pointer"
+              className="hover-elevate cursor-pointer overflow-hidden"
               onClick={() => handleEdit(kit)}
               data-testid={`card-kit-${kit.id}`}
             >
+              {kit.imageUrl && (
+                <div className="aspect-video w-full bg-muted relative">
+                  <img 
+                    src={kit.imageUrl} 
+                    alt={kit.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Boxes className="h-5 w-5" />
+                    {!kit.imageUrl && <Boxes className="h-5 w-5" />}
                     {kit.name}
                   </CardTitle>
                   <Button
