@@ -169,3 +169,54 @@ Preferred communication style: Simple, everyday language.
 - PostgreSQL-backed session store for distributed session management
 - Session secret from environment variable
 - No password exposure in API responses (omitted from User type in responses)
+
+### Material Request Item Management Implementation
+
+**Simplified Request Creation Flow**:
+- Material request creation now requires only 2 fields: Event selection and Request name (free text)
+- `requestedBy` auto-filled from logged user
+- Status automatically set to "draft"
+- Request name field replaced predefined area list for more flexibility
+
+**Request Details & Item Management** (`client/src/pages/request-details.tsx`):
+- New dedicated page at `/requests/:id` for viewing and editing request details
+- Status-based access control: only "draft" status requests can be edited
+- Action buttons (visible only in draft status):
+  - **Excluir**: Delete entire request with confirmation dialog
+  - **Submeter para Aprovação**: Submit request for approval (disabled if no items added)
+- Item list with automatic display of product/kit details, quantities, and units
+- Remove item functionality (per-item delete button in draft status)
+
+**Add Item Dialog** (`client/src/components/add-item-dialog.tsx`):
+- Tabbed interface for adding Products or Kits
+- Product tab: dropdown selection with SKU display, quantity input
+- Kit tab: kit selection dropdown, quantity input with future parameter support
+- Items saved automatically upon addition (no separate save action needed)
+- Form validation: requires selection and positive quantity
+
+**Backend API Endpoints** (`server/routes.ts`):
+- `GET /api/requests/:id/items`: Fetch all items for a request
+- `POST /api/requests/:id/items`: Add item to request (requestId forced from path param for security)
+- `DELETE /api/request-items/:id`: Remove item from request
+- `DELETE /api/requests/:id`: Delete entire request (cascades to items)
+
+**Storage Layer** (`server/storage.ts`):
+- Added `deleteRequestItem(id)`: Remove individual request item
+- Added `deleteMaterialRequest(id)`: Delete request and cascade to items
+
+**Request Lifecycle**:
+1. **Draft**: Editable, can add/remove items, can delete, can submit
+2. **Pending Approval**: Read-only, no editing allowed
+3. Future states: Approved, Cutoff Locked, etc.
+
+**UX & Portuguese Localization**:
+- "Adicionar Material" button and dialog
+- "Submeter para Aprovação" action
+- Toast notifications: "Item adicionado", "Item removido", "Enviado para aprovação", "Requisição excluída"
+- Automatic item save (no manual "Salvar Rascunho" needed)
+
+**Navigation Flow**:
+- `/requests` → List all requests
+- Click request card → Navigate to `/requests/:id` for details
+- Add items, then submit for approval
+- Status change disables editing and hides action buttons

@@ -12,6 +12,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Events from "@/pages/events";
 import Requests from "@/pages/requests";
+import RequestDetails from "@/pages/request-details";
 import Inventory from "@/pages/inventory";
 import Trips from "@/pages/trips";
 import Returns from "@/pages/returns";
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/events" component={Events} />
+      <ProtectedRoute path="/requests/:id" component={RequestDetails} />
       <ProtectedRoute path="/requests" component={Requests} />
       <ProtectedRoute path="/inventory" component={Inventory} />
       <ProtectedRoute path="/trips" component={Trips} />

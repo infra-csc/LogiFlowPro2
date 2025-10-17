@@ -291,6 +291,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/requests/:id", async (req, res) => {
+    try {
+      await storage.deleteMaterialRequest(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete request" });
+    }
+  });
+
+  // Request Items
+  app.get("/api/requests/:id/items", async (req, res) => {
+    try {
+      const items = await storage.getRequestItems(req.params.id);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch request items" });
+    }
+  });
+
+  app.post("/api/requests/:id/items", async (req, res) => {
+    try {
+      const data = insertRequestItemSchema.parse(req.body);
+      // Force requestId to match the URL parameter
+      const item = await storage.createRequestItem({
+        ...data,
+        requestId: req.params.id
+      });
+      res.status(201).json(item);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid item data" });
+    }
+  });
+
+  app.delete("/api/request-items/:id", async (req, res) => {
+    try {
+      await storage.deleteRequestItem(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete item" });
+    }
+  });
+
   // Vehicles
   app.get("/api/vehicles", async (req, res) => {
     try {

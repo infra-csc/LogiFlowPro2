@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Plus, ClipboardList } from "lucide-react";
 import { useState } from "react";
@@ -13,6 +14,7 @@ interface RequestWithEvent extends MaterialRequest {
 }
 
 export default function Requests() {
+  const [, navigate] = useLocation();
   const [showDialog, setShowDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<MaterialRequest | undefined>();
 
@@ -21,8 +23,7 @@ export default function Requests() {
   });
 
   const handleEdit = (request: MaterialRequest) => {
-    setSelectedRequest(request);
-    setShowDialog(true);
+    navigate(`/requests/${request.id}`);
   };
 
   const handleClose = () => {
