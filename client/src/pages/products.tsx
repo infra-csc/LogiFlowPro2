@@ -101,17 +101,26 @@ export default function Products() {
           {filteredProducts.map((product) => (
             <Card 
               key={product.id}
-              className="hover-elevate cursor-pointer"
+              className="hover-elevate cursor-pointer overflow-hidden"
               onClick={() => handleEdit(product)}
               data-testid={`card-product-${product.id}`}
             >
+              {product.imageUrl && (
+                <div className="aspect-video w-full bg-muted relative">
+                  <img 
+                    src={product.imageUrl} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate">{product.name}</h3>
                     <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
                   </div>
-                  <Package className="h-5 w-5 text-muted-foreground ml-2" />
+                  {!product.imageUrl && <Package className="h-5 w-5 text-muted-foreground ml-2" />}
                 </div>
                 
                 <div className="space-y-2">
