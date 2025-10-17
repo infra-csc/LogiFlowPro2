@@ -27,6 +27,7 @@ export const requestStatusEnum = pgEnum("request_status", [
   "draft",
   "pending_approval",
   "approved",
+  "rejected",
   "cutoff_locked",
   "in_picking",
   "partially_loaded",
@@ -35,6 +36,12 @@ export const requestStatusEnum = pgEnum("request_status", [
   "in_use",
   "return_pending",
   "completed"
+]);
+
+export const itemApprovalStatusEnum = pgEnum("item_approval_status", [
+  "pending",
+  "approved",
+  "rejected"
 ]);
 
 export const tripStatusEnum = pgEnum("trip_status", [
@@ -199,6 +206,7 @@ export const materialRequests = pgTable("material_requests", {
   submittedAt: timestamp("submitted_at"),
   approvedBy: text("approved_by"),
   approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
   cutoffTime: timestamp("cutoff_time"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
@@ -210,6 +218,9 @@ export const requestItems = pgTable("request_items", {
   requestId: varchar("request_id").notNull().references(() => materialRequests.id, { onDelete: "cascade" }),
   productId: varchar("product_id").references(() => products.id),
   quantity: integer("quantity").notNull(),
+  approvalStatus: itemApprovalStatusEnum("approval_status").notNull().default("pending"),
+  approvedQuantity: integer("approved_quantity"),
+  rejectionReason: text("rejection_reason"),
   kitId: varchar("kit_id").references(() => kits.id),
   kitParameters: jsonb("kit_parameters"),
   notes: text("notes")
