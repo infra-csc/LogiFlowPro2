@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
 - **Material Request Management**: Simplified request creation, dedicated details page (`/requests/:id`), status-based access control (draft, pending approval), item list management with product/kit addition, automatic item saving, request submission workflow.
 - **Request Status & User Info**: `submittedAt` timestamp for requests, requester's name displayed, date formatting (`dd/MM/yyyy, HH:mm`), dynamic UI based on request status.
 - **Product & Kit Image Upload**: Integration with Replit Object Storage (Google Cloud Storage), presigned PUT URLs for client-side uploads via Uppy, backend endpoints for image upload/serving/normalization, public ACL for images, image preview and removal, consistent image display across product/kit cards with fallbacks.
+- **Product & Kit Edit Dialogs**: useEffect hooks reset form state when dialogs open or entities change, ensuring all fields pre-fill correctly on edit. Product dialog handles numeric fields (weight, stock) properly. Kit dialog includes dynamic field (Unit for number type, Options for select type) that converts between CSV strings and arrays. Both dialogs tested with e2e playwright tests.
 
 ## External Dependencies
 
