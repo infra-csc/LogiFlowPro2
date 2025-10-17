@@ -22,6 +22,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Product, InsertProduct } from "@shared/schema";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
+import { ImageIcon, Trash2 } from "lucide-react";
 
 interface ProductDialogProps {
   open: boolean;
@@ -32,6 +35,7 @@ interface ProductDialogProps {
 export function ProductDialog({ open, onOpenChange, product }: ProductDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [imageUrl, setImageUrl] = useState<string | null>(product?.imageUrl || null);
   const [formData, setFormData] = useState<Partial<InsertProduct>>({
     sku: product?.sku || "",
     name: product?.name || "",
@@ -48,16 +52,37 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertProduct) => {
-      return apiRequest("POST", "/api/products", data);
+      const product: any = await apiRequest("POST", "/api/products", data);
+      
+      // If there's an image URL from upload, set it with proper ACL
+      if (imageUrl && product.id) {
+        try {
+          const imageResponse: any = await apiRequest("PUT", `/api/products/${product.id}/image`, {
+            imageUrl: imageUrl,
+          });
+          // Update local state with the normalized object path
+          if (imageResponse.objectPath) {
+            setImageUrl(imageResponse.objectPath);
+          }
+        } catch (error) {
+          console.error("Failed to set product image:", error);
+          toast({ 
+            description: "Produto criado, mas houve erro ao processar a imagem", 
+            variant: "destructive" 
+          });
+        }
+      }
+      
+      return product;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({ description: "Product created successfully" });
+      toast({ description: "Produto criado com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to create product", variant: "destructive" });
+      toast({ description: "Erro ao criar produto", variant: "destructive" });
     },
   });
 
@@ -75,11 +100,65 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleGetUploadParameters = async () => {
+    const response: any = await apiRequest("POST", "/api/objects/upload", {});
+    return {
+      method: "PUT" as const,
+      url: response.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadedFile = result.successful[0];
+      const uploadURL = uploadedFile.uploadURL as string;
+
+      if (!product?.id) {
+        // If creating a new product, just store the URL to be used after creation
+        setImageUrl(uploadURL || null);
+        toast({ description: "Imagem carregada com sucesso" });
+        return;
+      }
+
+      // If editing, update the product image immediately
+      try {
+        const response: any = await apiRequest("PUT", `/api/products/${product.id}/image`, {
+          imageUrl: uploadURL,
+        });
+        // Use the normalized object path from the response
+        setImageUrl(response.objectPath || uploadURL);
+        queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+        toast({ description: "Imagem atualizada com sucesso" });
+      } catch (error) {
+        toast({ description: "Erro ao atualizar imagem", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (product?.id) {
+      // If editing, update the product to remove the image
+      try {
+        await apiRequest("PATCH", `/api/products/${product.id}`, {
+          imageUrl: null,
+        });
+        setImageUrl(null);
+        queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+        toast({ description: "Imagem removida com sucesso" });
+      } catch (error) {
+        toast({ description: "Erro ao remover imagem", variant: "destructive" });
+      }
+    } else {
+      // If creating, just clear the local state
+      setImageUrl(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.sku || !formData.name) {
-      toast({ description: "Please fill in required fields", variant: "destructive" });
+      toast({ description: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
     }
 
@@ -140,12 +219,12 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Descrição</Label>
             <Textarea
               id="description"
-              value={formData.description}
+              value={formData.description || ""}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Product description..."
+              placeholder="Descrição do produto..."
               rows={2}
               data-testid="input-description"
             />
@@ -181,12 +260,12 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="weight">Weight (kg)</Label>
+              <Label htmlFor="weight">Peso (kg)</Label>
               <Input
                 id="weight"
                 type="number"
                 step="0.01"
-                value={formData.weight || ""}
+                value={formData.weight?.toString() || ""}
                 onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                 placeholder="0.00"
                 data-testid="input-weight"
@@ -196,23 +275,23 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="barcode">Barcode</Label>
+              <Label htmlFor="barcode">Código de Barras</Label>
               <Input
                 id="barcode"
-                value={formData.barcode}
+                value={formData.barcode || ""}
                 onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                placeholder="Barcode/QR code"
+                placeholder="Código de barras/QR code"
                 data-testid="input-barcode"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="location">Localização</Label>
               <Input
                 id="location"
-                value={formData.location}
+                value={formData.location || ""}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Warehouse zone"
+                placeholder="Zona do armazém"
                 data-testid="input-location"
               />
             </div>
@@ -220,7 +299,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="currentStock">Current Stock</Label>
+              <Label htmlFor="currentStock">Estoque Atual</Label>
               <Input
                 id="currentStock"
                 type="number"
@@ -231,7 +310,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="minimumStock">Minimum Stock</Label>
+              <Label htmlFor="minimumStock">Estoque Mínimo</Label>
               <Input
                 id="minimumStock"
                 type="number"
@@ -239,6 +318,44 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 onChange={(e) => setFormData({ ...formData, minimumStock: parseInt(e.target.value) || 0 })}
                 data-testid="input-minimum-stock"
               />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Imagem do Produto</Label>
+            <div className="flex items-center gap-3">
+              {imageUrl ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="relative h-20 w-20 border rounded-md overflow-hidden">
+                    <img 
+                      src={imageUrl} 
+                      alt="Product preview" 
+                      className="h-full w-full object-cover"
+                      data-testid="img-product-preview"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={handleRemoveImage}
+                    data-testid="button-remove-image"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <ObjectUploader
+                  maxNumberOfFiles={1}
+                  maxFileSize={10485760}
+                  onGetUploadParameters={handleGetUploadParameters}
+                  onComplete={handleUploadComplete}
+                  buttonVariant="outline"
+                >
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Enviar Imagem
+                </ObjectUploader>
+              )}
             </div>
           </div>
 
