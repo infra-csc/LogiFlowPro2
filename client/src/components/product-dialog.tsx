@@ -53,10 +53,6 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
   // Reset form data when dialog opens or product changes
   useEffect(() => {
     if (open) {
-      console.log("ProductDialog: Loading product data", { 
-        productId: product?.id, 
-        imageUrl: product?.imageUrl 
-      });
       setFormData({
         sku: product?.sku || "",
         name: product?.name || "",
@@ -150,7 +146,6 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         const response: any = await apiRequest("PUT", `/api/products/${product.id}/image`, {
           imageUrl: uploadURL,
         });
-        console.log("Image upload response:", response);
         // Use the normalized object path from the response
         setImageUrl(response.objectPath || uploadURL);
         queryClient.invalidateQueries({ queryKey: ["/api/products"] });

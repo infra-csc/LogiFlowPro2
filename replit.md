@@ -28,6 +28,11 @@ Preferred communication style: Simple, everyday language.
 - **Product & Kit Image Upload**: Integration with Replit Object Storage (Google Cloud Storage), presigned PUT URLs for client-side uploads via Uppy, backend endpoints for image upload/serving/normalization, public ACL for images, image preview and removal, consistent image display across product/kit cards with fallbacks.
 - **Product & Kit Edit Dialogs**: useEffect hooks reset form state when dialogs open or entities change, ensuring all fields pre-fill correctly on edit. Product dialog handles numeric fields (weight, stock) properly. Kit dialog includes dynamic field (Unit for number type, Options for select type) that converts between CSV strings and arrays. Both dialogs tested with e2e playwright tests.
 
+### Critical Bug Fixes & Learnings
+- **apiRequest Response Handling** (Fixed Oct 17, 2025): The `apiRequest` function in `client/src/lib/queryClient.ts` returns a `Response` object, NOT parsed JSON. Must call `.json()` before accessing response data. Fixed in product-dialog.tsx and kit-dialog.tsx where upload parameter retrieval was failing with "Cannot upload to an undefined URL" because `response.uploadURL` was undefined - should be `(await response.json()).uploadURL`.
+- **HTML Entity Decoding in Signed URLs**: Replit sidecar returns presigned URLs with HTML entities (`&amp;` instead of `&`). These are decoded server-side using `.replace(/&amp;/g, '&')` before sending to frontend.
+- **Cache Synchronization Pattern**: After image uploads, parent pages (products.tsx, kits.tsx) use useEffect to monitor query data changes and update selected entity state, ensuring UI reflects backend updates immediately.
+
 ## External Dependencies
 
 - **Database**: Neon Serverless PostgreSQL, Drizzle Kit.

@@ -22,11 +22,6 @@ export default function Products() {
     if (selectedProduct?.id && products) {
       const updatedProduct = products.find(p => p.id === selectedProduct.id);
       if (updatedProduct) {
-        console.log("Products page: Syncing selectedProduct with cache", {
-          productId: selectedProduct.id,
-          oldImageUrl: selectedProduct.imageUrl,
-          newImageUrl: updatedProduct.imageUrl
-        });
         setSelectedProduct(updatedProduct);
       }
     }
