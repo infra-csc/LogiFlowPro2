@@ -1,25 +1,43 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, ClipboardList } from "lucide-react";
-import { useState } from "react";
+import { Plus, ClipboardList, Filter } from "lucide-react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
-import type { MaterialRequest, Event } from "@shared/schema";
+import type { MaterialRequest as BaseMaterialRequest, Event } from "@shared/schema";
 import { RequestDialog } from "@/components/request-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-interface RequestWithEvent extends MaterialRequest {
+type MaterialRequest = BaseMaterialRequest & {
   event?: Event;
-}
+  requestedByUser?: {
+    id: string;
+    name: string;
+    username: string;
+  };
+};
 
 export default function Requests() {
   const [, navigate] = useLocation();
   const [showDialog, setShowDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<MaterialRequest | undefined>();
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [eventFilter, setEventFilter] = useState<string>("all");
 
-  const { data: requests, isLoading } = useQuery<RequestWithEvent[]>({
+  const { data: requests, isLoading } = useQuery<MaterialRequest[]>({
     queryKey: ["/api/requests"],
+  });
+
+  const { data: events } = useQuery<Event[]>({
+    queryKey: ["/api/events"],
   });
 
   const handleEdit = (request: MaterialRequest) => {
@@ -30,6 +48,17 @@ export default function Requests() {
     setSelectedRequest(undefined);
     setShowDialog(false);
   };
+
+  // Filtrar requisições
+  const filteredRequests = useMemo(() => {
+    if (!requests) return [];
+    
+    return requests.filter((request) => {
+      const matchesStatus = statusFilter === "all" || request.status === statusFilter;
+      const matchesEvent = eventFilter === "all" || request.eventId === eventFilter;
+      return matchesStatus && matchesEvent;
+    });
+  }, [requests, statusFilter, eventFilter]);
 
   if (isLoading) {
     return (
@@ -55,6 +84,53 @@ export default function Requests() {
         </Button>
       </div>
 
+      {/* Filtros */}
+      {requests && requests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              <CardTitle className="text-base">Filtros</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-sm font-medium mb-2 block">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger data-testid="select-status-filter">
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    <SelectItem value="draft">Rascunho</SelectItem>
+                    <SelectItem value="pending_approval">Pendente</SelectItem>
+                    <SelectItem value="approved">Aprovado</SelectItem>
+                    <SelectItem value="cutoff_locked">Bloqueado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-sm font-medium mb-2 block">Evento</label>
+                <Select value={eventFilter} onValueChange={setEventFilter}>
+                  <SelectTrigger data-testid="select-event-filter">
+                    <SelectValue placeholder="Todos os eventos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os eventos</SelectItem>
+                    {events?.map((event) => (
+                      <SelectItem key={event.id} value={event.id}>
+                        {event.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {!requests || requests.length === 0 ? (
         <Card>
           <CardContent className="py-12">
@@ -69,9 +145,19 @@ export default function Requests() {
             </div>
           </CardContent>
         </Card>
+      ) : filteredRequests.length === 0 ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              <ClipboardList className="h-16 w-16 mx-auto text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-medium">Nenhuma requisição encontrada</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Ajuste os filtros para ver mais requisições</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
-          {requests.map((request) => (
+          {filteredRequests.map((request) => (
             <Card 
               key={request.id}
               className="hover-elevate cursor-pointer"
@@ -79,13 +165,16 @@ export default function Requests() {
               data-testid={`card-request-${request.id}`}
             >
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-base font-medium">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base font-medium truncate">
                       {request.area}
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground mt-1 truncate">
                       {request.event?.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1" data-testid={`text-requester-${request.id}`}>
+                      Solicitado por: {request.requestedByUser?.name || "Usuário não encontrado"}
                     </p>
                   </div>
                   <StatusBadge status={request.status} />
