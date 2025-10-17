@@ -45,6 +45,7 @@ type MaterialRequest = {
   area: string;
   status: string;
   requestedBy: string;
+  submittedAt?: string;
   approvedBy?: string;
   approvedAt?: string;
   cutoffTime?: string;
@@ -55,6 +56,11 @@ type MaterialRequest = {
     name: string;
     client: string;
     eventDate: string;
+  };
+  requestedByUser?: {
+    id: string;
+    name: string;
+    username: string;
   };
 };
 
@@ -215,6 +221,47 @@ export default function RequestDetails() {
           )}
         </div>
       </div>
+
+      {/* Request Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Informações da Requisição</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Solicitado por:</span>
+            <span className="text-sm font-medium" data-testid="text-requested-by">
+              {request.requestedByUser?.name || "Usuário não encontrado"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Data de criação:</span>
+            <span className="text-sm font-medium" data-testid="text-created-at">
+              {new Date(request.createdAt).toLocaleDateString('pt-BR', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
+          </div>
+          {request.submittedAt && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Submetido em:</span>
+              <span className="text-sm font-medium" data-testid="text-submitted-at">
+                {new Date(request.submittedAt).toLocaleDateString('pt-BR', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Items List */}
       <Card>
