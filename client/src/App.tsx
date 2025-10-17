@@ -22,6 +22,8 @@ import Config from "@/pages/config";
 import AuthPage from "@/pages/auth-page";
 import UsersPage from "@/pages/users";
 import RolesPage from "@/pages/roles";
+import Approvals from "@/pages/approvals";
+import ApprovalDetail from "@/pages/approval-detail";
 
 function Router() {
   return (
@@ -29,6 +31,8 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/events" component={Events} />
+      <ProtectedRoute path="/approvals/:id" component={ApprovalDetail} />
+      <ProtectedRoute path="/approvals" component={Approvals} />
       <ProtectedRoute path="/requests/:id" component={RequestDetails} />
       <ProtectedRoute path="/requests" component={Requests} />
       <ProtectedRoute path="/inventory" component={Inventory} />

@@ -14,7 +14,8 @@ import {
   UserCog,
   Dock as DockIcon,
   ChevronDown,
-  LogOut
+  LogOut,
+  CheckSquare
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -44,6 +45,11 @@ const mainMenuItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Aprovações",
+    url: "/approvals",
+    icon: CheckSquare,
   },
   {
     title: "Requisição de Materiais",
