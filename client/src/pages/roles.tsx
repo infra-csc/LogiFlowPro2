@@ -372,6 +372,34 @@ function RolePermissionsDialog({
     return existing ? existing[field] : false;
   };
 
+  // Check if all permissions have a specific field enabled
+  const areAllChecked = (field: "canView" | "canCreate" | "canEdit" | "canDelete"): boolean => {
+    if (permissions.length === 0) return false;
+    return permissions.every((permission) => getPermissionValue(permission.id, field));
+  };
+
+  // Toggle all permissions for a specific field
+  const handleToggleAll = (field: "canView" | "canCreate" | "canEdit" | "canDelete") => {
+    const newValue = !areAllChecked(field);
+    permissions.forEach((permission) => {
+      const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permission.id);
+      const current = existing || {
+        canView: false,
+        canCreate: false,
+        canEdit: false,
+        canDelete: false,
+      };
+
+      updatePermissionMutation.mutate({
+        permissionId: permission.id,
+        canView: field === "canView" ? newValue : current.canView,
+        canCreate: field === "canCreate" ? newValue : current.canCreate,
+        canEdit: field === "canEdit" ? newValue : current.canEdit,
+        canDelete: field === "canDelete" ? newValue : current.canDelete,
+      });
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl">
@@ -387,10 +415,46 @@ function RolePermissionsDialog({
             <TableHeader>
               <TableRow>
                 <TableHead>Página</TableHead>
-                <TableHead className="text-center">Visualizar</TableHead>
-                <TableHead className="text-center">Criar</TableHead>
-                <TableHead className="text-center">Editar</TableHead>
-                <TableHead className="text-center">Excluir</TableHead>
+                <TableHead className="text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Visualizar</span>
+                    <Checkbox
+                      checked={areAllChecked("canView")}
+                      onCheckedChange={() => handleToggleAll("canView")}
+                      data-testid="checkbox-select-all-view"
+                    />
+                  </div>
+                </TableHead>
+                <TableHead className="text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Criar</span>
+                    <Checkbox
+                      checked={areAllChecked("canCreate")}
+                      onCheckedChange={() => handleToggleAll("canCreate")}
+                      data-testid="checkbox-select-all-create"
+                    />
+                  </div>
+                </TableHead>
+                <TableHead className="text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Editar</span>
+                    <Checkbox
+                      checked={areAllChecked("canEdit")}
+                      onCheckedChange={() => handleToggleAll("canEdit")}
+                      data-testid="checkbox-select-all-edit"
+                    />
+                  </div>
+                </TableHead>
+                <TableHead className="text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Excluir</span>
+                    <Checkbox
+                      checked={areAllChecked("canDelete")}
+                      onCheckedChange={() => handleToggleAll("canDelete")}
+                      data-testid="checkbox-select-all-delete"
+                    />
+                  </div>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
