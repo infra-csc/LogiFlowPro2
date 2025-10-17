@@ -196,6 +196,7 @@ export const materialRequests = pgTable("material_requests", {
   area: text("area").notNull(),
   status: requestStatusEnum("status").notNull().default("draft"),
   requestedBy: text("requested_by").notNull(),
+  submittedAt: timestamp("submitted_at"),
   approvedBy: text("approved_by"),
   approvedAt: timestamp("approved_at"),
   cutoffTime: timestamp("cutoff_time"),
@@ -484,6 +485,7 @@ export const insertProductSchema = createInsertSchema(products).omit({
 export const insertMaterialRequestSchema = createInsertSchema(materialRequests).omit({
   id: true,
   createdAt: true,
+  submittedAt: true,
   approvedBy: true,
   approvedAt: true
 });

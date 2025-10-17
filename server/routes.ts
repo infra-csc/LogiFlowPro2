@@ -284,7 +284,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/requests/:id", async (req, res) => {
     try {
       const data = insertMaterialRequestSchema.partial().parse(req.body);
-      const request = await storage.updateMaterialRequest(req.params.id, data);
+      
+      // If status is being changed to pending_approval, set submittedAt
+      const updateData = { ...data };
+      if (data.status === "pending_approval" && !data.submittedAt) {
+        updateData.submittedAt = new Date();
+      }
+      
+      const request = await storage.updateMaterialRequest(req.params.id, updateData);
       res.json(request);
     } catch (error) {
       res.status(400).json({ error: "Invalid request data" });
