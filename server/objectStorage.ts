@@ -275,6 +275,14 @@ async function signObjectURL({
     );
   }
 
-  const { signed_url: signedURL } = await response.json();
+  const responseData = await response.json();
+  console.log("Signed URL response:", responseData);
+  
+  const { signed_url: signedURL } = responseData;
+  if (!signedURL) {
+    console.error("No signed_url in response:", responseData);
+    throw new Error("No signed URL returned from Replit sidecar");
+  }
+  
   return signedURL;
 }
