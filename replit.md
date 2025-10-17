@@ -220,3 +220,33 @@ Preferred communication style: Simple, everyday language.
 - Click request card → Navigate to `/requests/:id` for details
 - Add items, then submit for approval
 - Status change disables editing and hides action buttons
+
+### Request Status Tracking and User Information Display (October 17, 2025)
+
+**Schema Enhancements**:
+- Added `submittedAt` field to `material_requests` table to track when requests are submitted for approval
+- Modified `productId` in `request_items` to be nullable (allows kit-only items)
+- Added validation: at least one of productId or kitId must be present
+
+**Backend Improvements**:
+- `getMaterialRequest` and `getMaterialRequests` now perform LEFT JOIN with `users` table
+- Returns `requestedByUser` object containing: id, name, username
+- PATCH `/api/requests/:id` automatically sets `submittedAt` timestamp when status changes to "pending_approval"
+- POST `/api/requests/:id/items` enforces requestId from path parameter for security
+
+**Critical Bug Fix**:
+- **Request Dialog** (`client/src/components/request-dialog.tsx`): Changed line 86 from `requestedBy: user?.name` to `requestedBy: user?.id`
+- This ensures JOIN with users table works correctly (previously stored names instead of IDs)
+- Migrated existing records to use user IDs instead of names
+
+**UI Enhancements**:
+- Added "Informações da Requisição" card in request details page showing:
+  - **Solicitado por**: Displays requester's name from `requestedByUser.name`
+  - **Data de criação**: Request creation date/time formatted in pt-BR
+  - **Submetido em**: Submission date/time (appears only when request is submitted)
+- All dates formatted with: `dd/MM/yyyy, HH:mm` (Brazilian Portuguese format)
+
+**Status Flow**:
+1. Request created → status: "draft", submittedAt: null
+2. User submits → status: "pending_approval", submittedAt: auto-set to current timestamp
+3. UI dynamically shows/hides "Submetido em" based on submittedAt presence
