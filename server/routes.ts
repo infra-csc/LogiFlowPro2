@@ -22,6 +22,11 @@ import {
   insertUserRoleSchema,
   insertRolePermissionSchema,
 } from "@shared/schema";
+import {
+  ObjectStorageService,
+  ObjectNotFoundError,
+} from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 
 async function initializeDefaultPermissions() {
   try {
@@ -666,6 +671,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.sendStatus(204);
     } catch (error) {
       res.status(500).json({ error: "Failed to remove role permission" });
+    }
+  });
+
+  // Object Storage - From blueprint: javascript_object_storage
+  // Get presigned upload URL
+  app.post("/api/objects/upload", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Serve private objects (with ACL check)
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        req.path,
+      );
+      
+      // Get user ID for ACL check
+      const userId = req.user?.id;
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+        requestedPermission: ObjectPermission.READ,
+      });
+      
+      if (!canAccess) {
+        return res.sendStatus(401);
+      }
+      
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error accessing object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  // Update product image
+  app.put("/api/products/:id/image", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    if (!req.body.imageUrl) {
+      return res.status(400).json({ error: "imageUrl is required" });
+    }
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const userId = req.user?.id || "system";
+      
+      // Set ACL policy (public visibility for product images)
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.imageUrl,
+        {
+          owner: userId,
+          visibility: "public",
+        },
+      );
+
+      // Update product with image URL
+      const product = await storage.updateProduct(req.params.id, {
+        imageUrl: objectPath,
+      });
+
+      res.status(200).json({ objectPath, product });
+    } catch (error) {
+      console.error("Error setting product image:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update kit image
+  app.put("/api/kits/:id/image", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    if (!req.body.imageUrl) {
+      return res.status(400).json({ error: "imageUrl is required" });
+    }
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const userId = req.user?.id || "system";
+      
+      // Set ACL policy (public visibility for kit images)
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.imageUrl,
+        {
+          owner: userId,
+          visibility: "public",
+        },
+      );
+
+      // Update kit with image URL
+      const kit = await storage.updateKit(req.params.id, {
+        imageUrl: objectPath,
+      });
+
+      res.status(200).json({ objectPath, kit });
+    } catch (error) {
+      console.error("Error setting kit image:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
