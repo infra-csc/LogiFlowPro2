@@ -126,11 +126,12 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
   const handleGetUploadParameters = async () => {
     const response: any = await apiRequest("POST", "/api/objects/upload", {});
-    console.log("Upload parameters response:", response);
-    console.log("Upload URL:", response.uploadURL);
+    const data = await response.json();
+    console.log("Upload parameters response:", data);
+    console.log("Upload URL:", data.uploadURL);
     return {
       method: "PUT" as const,
-      url: response.uploadURL,
+      url: data.uploadURL,
     };
   };
 

@@ -78,9 +78,10 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
 
   const handleGetUploadParameters = async () => {
     const response: any = await apiRequest("POST", "/api/objects/upload", {});
+    const data = await response.json();
     return {
       method: "PUT" as const,
-      url: response.uploadURL,
+      url: data.uploadURL,
     };
   };
 
