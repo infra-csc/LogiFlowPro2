@@ -196,8 +196,6 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       currentStock: formData.currentStock || 0,
     };
 
-    console.log("Submitting product data:", submitData);
-
     if (product) {
       updateMutation.mutate(submitData);
     } else {
