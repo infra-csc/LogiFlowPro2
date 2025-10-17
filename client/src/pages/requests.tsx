@@ -46,7 +46,7 @@ export default function Requests() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Requisição de Materiais</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie requisições de materiais por área</p>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie requisições de materiais para eventos</p>
         </div>
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-request">
           <Plus className="h-4 w-4 mr-2" />
@@ -69,7 +69,7 @@ export default function Requests() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {requests.map((request) => (
             <Card 
               key={request.id}
@@ -78,41 +78,18 @@ export default function Requests() {
               data-testid={`card-request-${request.id}`}
             >
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">
-                    {request.event?.name} - {request.area}
-                  </CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-base font-medium">
+                      {request.area}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {request.event?.name}
+                    </p>
+                  </div>
                   <StatusBadge status={request.status} />
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Requested By</p>
-                    <p className="text-sm font-medium">{request.requestedBy}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Created</p>
-                    <p className="text-sm font-medium">
-                      {format(new Date(request.createdAt), "MMM dd, yyyy")}
-                    </p>
-                  </div>
-                  {request.approvedBy && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Approved By</p>
-                      <p className="text-sm font-medium">{request.approvedBy}</p>
-                    </div>
-                  )}
-                  {request.cutoffTime && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Cutoff</p>
-                      <p className="text-sm font-medium">
-                        {format(new Date(request.cutoffTime), "MMM dd, HH:mm")}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
             </Card>
           ))}
         </div>

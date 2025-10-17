@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -21,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import type { MaterialRequest, InsertMaterialRequest, Event } from "@shared/schema";
-import { format } from "date-fns";
 
 interface RequestDialogProps {
   open: boolean;
@@ -30,27 +29,13 @@ interface RequestDialogProps {
   request?: MaterialRequest;
 }
 
-const AREAS = [
-  "Scenography",
-  "Lighting",
-  "Sound",
-  "Video",
-  "Stage",
-  "Catering",
-  "Registration",
-  "General"
-];
-
 export function RequestDialog({ open, onOpenChange, request }: RequestDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState<Partial<InsertMaterialRequest>>({
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
     eventId: request?.eventId || "",
     area: request?.area || "",
-    status: request?.status || "draft",
-    requestedBy: request?.requestedBy || "",
-    cutoffTime: request?.cutoffTime ? format(new Date(request.cutoffTime), "yyyy-MM-dd'T'HH:mm") : "",
-    notes: request?.notes || "",
   });
 
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
@@ -61,11 +46,11 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      toast({ description: "Request created successfully" });
+      toast({ description: "Requisição criada com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to create request", variant: "destructive" });
+      toast({ description: "Erro ao criar requisição", variant: "destructive" });
     },
   });
 
@@ -75,29 +60,27 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      toast({ description: "Request updated successfully" });
+      toast({ description: "Requisição atualizada com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to update request", variant: "destructive" });
+      toast({ description: "Erro ao atualizar requisição", variant: "destructive" });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.eventId || !formData.area || !formData.requestedBy) {
-      toast({ description: "Please fill in all required fields", variant: "destructive" });
+    if (!formData.eventId || !formData.area) {
+      toast({ description: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
 
     const submitData: InsertMaterialRequest = {
       eventId: formData.eventId,
       area: formData.area,
-      status: formData.status as any || "draft",
-      requestedBy: formData.requestedBy,
-      cutoffTime: formData.cutoffTime ? new Date(formData.cutoffTime) : undefined,
-      notes: formData.notes,
+      status: "draft",
+      requestedBy: user?.name || "Sistema",
     };
 
     if (request) {
@@ -109,23 +92,23 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{request ? "Edit Request" : "New Material Request"}</DialogTitle>
+          <DialogTitle>{request ? "Editar Requisição" : "Nova Requisição"}</DialogTitle>
           <DialogDescription>
-            {request ? "Update material request details" : "Create a material request for an event"}
+            {request ? "Atualize os dados da requisição" : "Crie uma requisição de materiais"}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="eventId">Event *</Label>
+            <Label htmlFor="eventId">Evento *</Label>
             <Select 
               value={formData.eventId}
               onValueChange={(value) => setFormData({ ...formData, eventId: value })}
             >
               <SelectTrigger data-testid="select-event">
-                <SelectValue placeholder="Select event" />
+                <SelectValue placeholder="Selecione o evento" />
               </SelectTrigger>
               <SelectContent>
                 {events?.map((event) => (
@@ -137,91 +120,27 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="area">Area *</Label>
-              <Select 
-                value={formData.area}
-                onValueChange={(value) => setFormData({ ...formData, area: value })}
-              >
-                <SelectTrigger data-testid="select-area">
-                  <SelectValue placeholder="Select area" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AREAS.map((area) => (
-                    <SelectItem key={area} value={area}>
-                      {area}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="requestedBy">Requested By *</Label>
-              <Input
-                id="requestedBy"
-                value={formData.requestedBy}
-                onChange={(e) => setFormData({ ...formData, requestedBy: e.target.value })}
-                placeholder="Name"
-                data-testid="input-requested-by"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="cutoffTime">Cutoff Time</Label>
-              <Input
-                id="cutoffTime"
-                type="datetime-local"
-                value={formData.cutoffTime}
-                onChange={(e) => setFormData({ ...formData, cutoffTime: e.target.value })}
-                data-testid="input-cutoff-time"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select 
-                value={formData.status as string}
-                onValueChange={(value) => setFormData({ ...formData, status: value as any })}
-              >
-                <SelectTrigger data-testid="select-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending_approval">Pending Approval</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="cutoff_locked">Cutoff Locked</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Additional notes..."
-              rows={3}
-              data-testid="input-notes"
+            <Label htmlFor="area">Nome da Requisição *</Label>
+            <Input
+              id="area"
+              value={formData.area}
+              onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+              placeholder="Ex: Cenografia Palco Principal"
+              data-testid="input-area"
             />
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-request">
+              Cancelar
             </Button>
             <Button 
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
               data-testid="button-submit-request"
             >
-              {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : (request ? "Update" : "Create")}
+              {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (request ? "Atualizar" : "Criar")}
             </Button>
           </DialogFooter>
         </form>
