@@ -286,8 +286,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertMaterialRequestSchema.partial().parse(req.body);
       
       // If status is being changed to pending_approval, set submittedAt
-      const updateData = { ...data };
-      if (data.status === "pending_approval" && !data.submittedAt) {
+      const updateData: any = { ...data };
+      if (data.status === "pending_approval") {
         updateData.submittedAt = new Date();
       }
       

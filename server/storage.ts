@@ -250,12 +250,61 @@ export class DatabaseStorage implements IStorage {
 
   // Material Requests
   async getMaterialRequests(): Promise<MaterialRequest[]> {
-    return await db.select().from(materialRequests).orderBy(desc(materialRequests.createdAt));
+    const requests = await db
+      .select({
+        id: materialRequests.id,
+        eventId: materialRequests.eventId,
+        area: materialRequests.area,
+        status: materialRequests.status,
+        requestedBy: materialRequests.requestedBy,
+        submittedAt: materialRequests.submittedAt,
+        approvedBy: materialRequests.approvedBy,
+        approvedAt: materialRequests.approvedAt,
+        cutoffTime: materialRequests.cutoffTime,
+        notes: materialRequests.notes,
+        createdAt: materialRequests.createdAt,
+        event: events,
+        requestedByUser: {
+          id: users.id,
+          name: users.name,
+          username: users.username
+        }
+      })
+      .from(materialRequests)
+      .leftJoin(events, eq(materialRequests.eventId, events.id))
+      .leftJoin(users, eq(materialRequests.requestedBy, users.id))
+      .orderBy(desc(materialRequests.createdAt));
+    
+    return requests as any;
   }
 
   async getMaterialRequest(id: string): Promise<MaterialRequest | undefined> {
-    const [request] = await db.select().from(materialRequests).where(eq(materialRequests.id, id));
-    return request || undefined;
+    const [request] = await db
+      .select({
+        id: materialRequests.id,
+        eventId: materialRequests.eventId,
+        area: materialRequests.area,
+        status: materialRequests.status,
+        requestedBy: materialRequests.requestedBy,
+        submittedAt: materialRequests.submittedAt,
+        approvedBy: materialRequests.approvedBy,
+        approvedAt: materialRequests.approvedAt,
+        cutoffTime: materialRequests.cutoffTime,
+        notes: materialRequests.notes,
+        createdAt: materialRequests.createdAt,
+        event: events,
+        requestedByUser: {
+          id: users.id,
+          name: users.name,
+          username: users.username
+        }
+      })
+      .from(materialRequests)
+      .leftJoin(events, eq(materialRequests.eventId, events.id))
+      .leftJoin(users, eq(materialRequests.requestedBy, users.id))
+      .where(eq(materialRequests.id, id));
+    
+    return request as any || undefined;
   }
 
   async createMaterialRequest(request: InsertMaterialRequest): Promise<MaterialRequest> {
