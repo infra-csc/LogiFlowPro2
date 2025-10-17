@@ -28,11 +28,6 @@ const mainMenuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Eventos",
-    url: "/events",
-    icon: Calendar,
-  },
-  {
     title: "Requisição de Materiais",
     url: "/requests",
     icon: ClipboardList,
@@ -55,6 +50,11 @@ const mainMenuItems = [
 ];
 
 const catalogItems = [
+  {
+    title: "Eventos",
+    url: "/events",
+    icon: Calendar,
+  },
   {
     title: "Produtos",
     url: "/products",
