@@ -80,7 +80,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
       eventId: formData.eventId,
       area: formData.area,
       status: "draft",
-      requestedBy: user?.name || "Sistema",
+      requestedBy: user?.id || "sistema",
     };
 
     if (request) {
