@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Boxes, Settings } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Kit } from "@shared/schema";
 import { KitDialog } from "@/components/kit-dialog";
@@ -14,6 +14,16 @@ export default function Kits() {
   const { data: kits, isLoading } = useQuery<Kit[]>({
     queryKey: ["/api/kits"],
   });
+
+  // Sync selectedKit with latest data from cache
+  useEffect(() => {
+    if (selectedKit?.id && kits) {
+      const updatedKit = kits.find(k => k.id === selectedKit.id);
+      if (updatedKit) {
+        setSelectedKit(updatedKit);
+      }
+    }
+  }, [kits, selectedKit?.id]);
 
   const handleEdit = (kit: Kit) => {
     setSelectedKit(kit);

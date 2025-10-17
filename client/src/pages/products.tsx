@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Package, Search } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,21 @@ export default function Products() {
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+
+  // Sync selectedProduct with latest data from cache
+  useEffect(() => {
+    if (selectedProduct?.id && products) {
+      const updatedProduct = products.find(p => p.id === selectedProduct.id);
+      if (updatedProduct) {
+        console.log("Products page: Syncing selectedProduct with cache", {
+          productId: selectedProduct.id,
+          oldImageUrl: selectedProduct.imageUrl,
+          newImageUrl: updatedProduct.imageUrl
+        });
+        setSelectedProduct(updatedProduct);
+      }
+    }
+  }, [products, selectedProduct?.id]);
 
   const filteredProducts = products?.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) ||
