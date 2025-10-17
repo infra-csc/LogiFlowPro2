@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Events from "@/pages/events";
@@ -16,19 +18,28 @@ import Returns from "@/pages/returns";
 import Products from "@/pages/products";
 import Kits from "@/pages/kits";
 import Config from "@/pages/config";
+import AuthPage from "@/pages/auth-page";
+import UsersPage from "@/pages/users";
+import RolesPage from "@/pages/roles";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/events" component={Events} />
-      <Route path="/requests" component={Requests} />
-      <Route path="/inventory" component={Inventory} />
-      <Route path="/trips" component={Trips} />
-      <Route path="/returns" component={Returns} />
-      <Route path="/products" component={Products} />
-      <Route path="/kits" component={Kits} />
-      <Route path="/config" component={Config} />
+      <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/" component={Dashboard} />
+      <ProtectedRoute path="/events" component={Events} />
+      <ProtectedRoute path="/requests" component={Requests} />
+      <ProtectedRoute path="/inventory" component={Inventory} />
+      <ProtectedRoute path="/trips" component={Trips} />
+      <ProtectedRoute path="/returns" component={Returns} />
+      <ProtectedRoute path="/products" component={Products} />
+      <ProtectedRoute path="/kits" component={Kits} />
+      <ProtectedRoute path="/config" component={Config} />
+      <ProtectedRoute path="/config/users" component={UsersPage} />
+      <ProtectedRoute path="/config/roles" component={RolesPage} />
+      <ProtectedRoute path="/config/vehicles" component={Config} />
+      <ProtectedRoute path="/config/drivers" component={Config} />
+      <ProtectedRoute path="/config/docks" component={Config} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -43,25 +54,27 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <header className="flex items-center justify-between p-4 border-b border-border bg-card">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <div className="text-sm text-muted-foreground">
-                    Gestão de Logística de Eventos
-                  </div>
-                </header>
-                <main className="flex-1 overflow-y-auto bg-background">
-                  <Router />
-                </main>
+        <AuthProvider>
+          <TooltipProvider>
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <header className="flex items-center justify-between p-4 border-b border-border bg-card">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <div className="text-sm text-muted-foreground">
+                      Gestão de Logística de Eventos
+                    </div>
+                  </header>
+                  <main className="flex-1 overflow-y-auto bg-background">
+                    <Router />
+                  </main>
+                </div>
               </div>
-            </div>
-          </SidebarProvider>
-          <Toaster />
-        </TooltipProvider>
+            </SidebarProvider>
+            <Toaster />
+          </TooltipProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

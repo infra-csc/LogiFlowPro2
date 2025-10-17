@@ -1,0 +1,452 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Role, Permission, RolePermission } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Shield, Settings } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+
+const roleSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  description: z.string().optional(),
+});
+
+type RoleFormData = z.infer<typeof roleSchema>;
+
+export default function RolesPage() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const { toast } = useToast();
+
+  const { data: roles = [], isLoading } = useQuery<Role[]>({
+    queryKey: ["/api/roles"],
+  });
+
+  const { data: permissions = [] } = useQuery<Permission[]>({
+    queryKey: ["/api/permissions"],
+  });
+
+  const form = useForm<RoleFormData>({
+    resolver: zodResolver(roleSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: RoleFormData) => {
+      const res = await apiRequest("POST", "/api/roles", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
+      setIsDialogOpen(false);
+      form.reset();
+      toast({
+        title: "Papel criado",
+        description: "O papel foi criado com sucesso.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao criar papel",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/roles/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
+      toast({
+        title: "Papel excluído",
+        description: "O papel foi excluído com sucesso.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao excluir papel",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (data: RoleFormData) => {
+    createMutation.mutate(data);
+  };
+
+  const handleDelete = (role: Role) => {
+    if (confirm(`Tem certeza que deseja excluir o papel "${role.name}"?`)) {
+      deleteMutation.mutate(role.id);
+    }
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Papéis e Permissões</h1>
+          <p className="text-muted-foreground">Gerencie papéis e permissões do sistema</p>
+        </div>
+        <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-role">
+          <Shield className="mr-2 h-4 w-4" />
+          Novo Papel
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Papéis</CardTitle>
+          <CardDescription>
+            Todos os papéis cadastrados no sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center">
+                    Carregando...
+                  </TableCell>
+                </TableRow>
+              ) : roles.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    Nenhum papel encontrado
+                  </TableCell>
+                </TableRow>
+              ) : (
+                roles.map((role) => (
+                  <TableRow key={role.id} data-testid={`row-role-${role.id}`}>
+                    <TableCell className="font-medium">{role.name}</TableCell>
+                    <TableCell>{role.description || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRole(role);
+                            setIsPermissionsDialogOpen(true);
+                          }}
+                          data-testid={`button-manage-permissions-${role.id}`}
+                        >
+                          <Settings className="mr-2 h-3 w-3" />
+                          Permissões
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(role)}
+                          data-testid={`button-delete-role-${role.id}`}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Create Role Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Papel</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para criar um novo papel
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ex: Administrador" data-testid="input-role-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Descrição do papel..."
+                        data-testid="input-role-description"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  data-testid="button-cancel-role"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  data-testid="button-submit-role"
+                >
+                  {createMutation.isPending ? "Criando..." : "Criar Papel"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Permissions Dialog */}
+      {selectedRole && (
+        <RolePermissionsDialog
+          role={selectedRole}
+          permissions={permissions}
+          isOpen={isPermissionsDialogOpen}
+          onClose={() => {
+            setIsPermissionsDialogOpen(false);
+            setSelectedRole(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Role Permissions Dialog Component
+function RolePermissionsDialog({
+  role,
+  permissions,
+  isOpen,
+  onClose,
+}: {
+  role: Role;
+  permissions: Permission[];
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const { data: rolePermissions = [] } = useQuery<RolePermission[]>({
+    queryKey: ["/api/roles", role.id, "permissions"],
+    enabled: isOpen,
+  });
+
+  const updatePermissionMutation = useMutation({
+    mutationFn: async ({
+      permissionId,
+      canView,
+      canCreate,
+      canEdit,
+      canDelete,
+    }: {
+      permissionId: string;
+      canView: boolean;
+      canCreate: boolean;
+      canEdit: boolean;
+      canDelete: boolean;
+    }) => {
+      // Find existing role permission
+      const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permissionId);
+
+      if (existing) {
+        // Update existing
+        const res = await apiRequest("PATCH", `/api/role-permissions/${existing.id}`, {
+          canView,
+          canCreate,
+          canEdit,
+          canDelete,
+        });
+        return await res.json();
+      } else {
+        // Create new
+        const res = await apiRequest("POST", `/api/roles/${role.id}/permissions`, {
+          permissionId,
+          canView,
+          canCreate,
+          canEdit,
+          canDelete,
+        });
+        return await res.json();
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/roles", role.id, "permissions"] });
+    },
+  });
+
+  const handlePermissionChange = (
+    permissionId: string,
+    field: "canView" | "canCreate" | "canEdit" | "canDelete",
+    value: boolean
+  ) => {
+    const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permissionId);
+    const current = existing || {
+      canView: false,
+      canCreate: false,
+      canEdit: false,
+      canDelete: false,
+    };
+
+    updatePermissionMutation.mutate({
+      permissionId,
+      canView: field === "canView" ? value : current.canView,
+      canCreate: field === "canCreate" ? value : current.canCreate,
+      canEdit: field === "canEdit" ? value : current.canEdit,
+      canDelete: field === "canDelete" ? value : current.canDelete,
+    });
+  };
+
+  const getPermissionValue = (
+    permissionId: string,
+    field: "canView" | "canCreate" | "canEdit" | "canDelete"
+  ): boolean => {
+    const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permissionId);
+    return existing ? existing[field] : false;
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Gerenciar Permissões - {role.name}</DialogTitle>
+          <DialogDescription>
+            Configure as permissões para cada página do sistema
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 max-h-[500px] overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Página</TableHead>
+                <TableHead className="text-center">Visualizar</TableHead>
+                <TableHead className="text-center">Criar</TableHead>
+                <TableHead className="text-center">Editar</TableHead>
+                <TableHead className="text-center">Excluir</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {permissions.map((permission) => (
+                <TableRow key={permission.id}>
+                  <TableCell className="font-medium">
+                    {permission.displayName}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Checkbox
+                      checked={getPermissionValue(permission.id, "canView")}
+                      onCheckedChange={(value) =>
+                        handlePermissionChange(permission.id, "canView", value as boolean)
+                      }
+                      data-testid={`checkbox-view-${permission.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Checkbox
+                      checked={getPermissionValue(permission.id, "canCreate")}
+                      onCheckedChange={(value) =>
+                        handlePermissionChange(permission.id, "canCreate", value as boolean)
+                      }
+                      data-testid={`checkbox-create-${permission.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Checkbox
+                      checked={getPermissionValue(permission.id, "canEdit")}
+                      onCheckedChange={(value) =>
+                        handlePermissionChange(permission.id, "canEdit", value as boolean)
+                      }
+                      data-testid={`checkbox-edit-${permission.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Checkbox
+                      checked={getPermissionValue(permission.id, "canDelete")}
+                      onCheckedChange={(value) =>
+                        handlePermissionChange(permission.id, "canDelete", value as boolean)
+                      }
+                      data-testid={`checkbox-delete-${permission.id}`}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={onClose} data-testid="button-close-permissions">
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

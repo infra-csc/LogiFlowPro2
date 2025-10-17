@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth } from "./auth";
 import {
   insertEventSchema,
   insertKitSchema,
@@ -15,9 +16,59 @@ import {
   insertTripItemSchema,
   insertInventoryMovementSchema,
   insertReturnSchema,
+  insertUserSchema,
+  insertRoleSchema,
+  insertPermissionSchema,
+  insertUserRoleSchema,
+  insertRolePermissionSchema,
 } from "@shared/schema";
 
+async function initializeDefaultPermissions() {
+  try {
+    const permissions = await storage.getPermissions();
+    
+    // Define default permissions for each page
+    const defaultPermissions = [
+      { page: "dashboard", displayName: "Dashboard" },
+      { page: "events", displayName: "Eventos" },
+      { page: "requests", displayName: "Requisição de Materiais" },
+      { page: "inventory", displayName: "Estoque" },
+      { page: "trips", displayName: "Planejamento de Viagens" },
+      { page: "returns", displayName: "Devoluções" },
+      { page: "products", displayName: "Produtos" },
+      { page: "kits", displayName: "Kits & BOM" },
+      { page: "config_users", displayName: "Usuários" },
+      { page: "config_roles", displayName: "Papéis e Permissões" },
+      { page: "config_vehicles", displayName: "Veículos" },
+      { page: "config_drivers", displayName: "Motoristas" },
+      { page: "config_docks", displayName: "Docas" },
+    ];
+
+    // Create missing permissions
+    for (const perm of defaultPermissions) {
+      const exists = permissions.find((p) => p.page === perm.page);
+      if (!exists) {
+        await storage.createPermission({
+          page: perm.page,
+          displayName: perm.displayName,
+          canView: false,
+          canCreate: false,
+          canEdit: false,
+          canDelete: false,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error initializing default permissions:", error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication first
+  setupAuth(app);
+
+  // Initialize default permissions
+  await initializeDefaultPermissions();
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
@@ -359,6 +410,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(returnItem);
     } catch (error) {
       res.status(400).json({ error: "Invalid return data" });
+    }
+  });
+
+  // Users
+  app.get("/api/users", async (req, res) => {
+    try {
+      const users = await storage.getUsers();
+      // Remove passwords from response
+      const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.get("/api/users/:id", async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  app.post("/api/users", async (req, res) => {
+    try {
+      const data = insertUserSchema.parse(req.body);
+      // Hash password before storing
+      const { hashPassword } = await import("./auth");
+      const hashedPassword = await hashPassword(data.password);
+      const user = await storage.createUser({ ...data, password: hashedPassword });
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid user data" });
+    }
+  });
+
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const data = insertUserSchema.partial().parse(req.body);
+      // Hash password if it's being updated
+      if (data.password) {
+        const { hashPassword } = await import("./auth");
+        data.password = await hashPassword(data.password);
+      }
+      const user = await storage.updateUser(req.params.id, data);
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid user data" });
+    }
+  });
+
+  // Roles
+  app.get("/api/roles", async (req, res) => {
+    try {
+      const roles = await storage.getRoles();
+      res.json(roles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch roles" });
+    }
+  });
+
+  app.get("/api/roles/:id", async (req, res) => {
+    try {
+      const role = await storage.getRole(req.params.id);
+      if (!role) {
+        return res.status(404).json({ error: "Role not found" });
+      }
+      res.json(role);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch role" });
+    }
+  });
+
+  app.post("/api/roles", async (req, res) => {
+    try {
+      const data = insertRoleSchema.parse(req.body);
+      const role = await storage.createRole(data);
+      res.status(201).json(role);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid role data" });
+    }
+  });
+
+  app.patch("/api/roles/:id", async (req, res) => {
+    try {
+      const data = insertRoleSchema.partial().parse(req.body);
+      const role = await storage.updateRole(req.params.id, data);
+      res.json(role);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid role data" });
+    }
+  });
+
+  app.delete("/api/roles/:id", async (req, res) => {
+    try {
+      await storage.deleteRole(req.params.id);
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete role" });
+    }
+  });
+
+  // Permissions
+  app.get("/api/permissions", async (req, res) => {
+    try {
+      const permissions = await storage.getPermissions();
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch permissions" });
+    }
+  });
+
+  app.post("/api/permissions", async (req, res) => {
+    try {
+      const data = insertPermissionSchema.parse(req.body);
+      const permission = await storage.createPermission(data);
+      res.status(201).json(permission);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid permission data" });
+    }
+  });
+
+  // User Roles
+  app.get("/api/users/:userId/roles", async (req, res) => {
+    try {
+      const userRoles = await storage.getUserRoles(req.params.userId);
+      res.json(userRoles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user roles" });
+    }
+  });
+
+  app.post("/api/users/:userId/roles", async (req, res) => {
+    try {
+      const data = insertUserRoleSchema.parse({
+        userId: req.params.userId,
+        roleId: req.body.roleId
+      });
+      const userRole = await storage.assignUserRole(data);
+      res.status(201).json(userRole);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid user role data" });
+    }
+  });
+
+  app.delete("/api/users/:userId/roles/:roleId", async (req, res) => {
+    try {
+      await storage.removeUserRole(req.params.userId, req.params.roleId);
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove user role" });
+    }
+  });
+
+  // Role Permissions
+  app.get("/api/roles/:roleId/permissions", async (req, res) => {
+    try {
+      const rolePermissions = await storage.getRolePermissions(req.params.roleId);
+      res.json(rolePermissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch role permissions" });
+    }
+  });
+
+  app.post("/api/roles/:roleId/permissions", async (req, res) => {
+    try {
+      const data = insertRolePermissionSchema.parse({
+        roleId: req.params.roleId,
+        permissionId: req.body.permissionId,
+        canView: req.body.canView,
+        canCreate: req.body.canCreate,
+        canEdit: req.body.canEdit,
+        canDelete: req.body.canDelete
+      });
+      const rolePermission = await storage.assignRolePermission(data);
+      res.status(201).json(rolePermission);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid role permission data" });
+    }
+  });
+
+  app.patch("/api/role-permissions/:id", async (req, res) => {
+    try {
+      const data = insertRolePermissionSchema.partial().parse(req.body);
+      const rolePermission = await storage.updateRolePermission(req.params.id, data);
+      res.json(rolePermission);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid role permission data" });
+    }
+  });
+
+  app.delete("/api/roles/:roleId/permissions/:permissionId", async (req, res) => {
+    try {
+      await storage.removeRolePermission(req.params.roleId, req.params.permissionId);
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove role permission" });
     }
   });
 
