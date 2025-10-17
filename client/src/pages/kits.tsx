@@ -30,7 +30,7 @@ export default function Kits() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading kits...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando kits...</p>
         </div>
       </div>
     );
@@ -41,11 +41,11 @@ export default function Kits() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Kits & BOM</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage parametric structures and bill of materials</p>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie estruturas paramétricas e lista de materiais</p>
         </div>
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-kit">
           <Plus className="h-4 w-4 mr-2" />
-          Create Kit
+          Criar Kit
         </Button>
       </div>
 
@@ -54,13 +54,13 @@ export default function Kits() {
           <CardContent className="py-12">
             <div className="text-center">
               <Boxes className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">No kits yet</h3>
+              <h3 className="mt-4 text-lg font-medium">Nenhum kit ainda</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Create parametric kits that auto-generate bills of materials
+                Crie kits paramétricos que geram automaticamente listas de materiais
               </p>
               <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-kit">
                 <Plus className="h-4 w-4 mr-2" />
-                Create Kit
+                Criar Kit
               </Button>
             </div>
           </CardContent>

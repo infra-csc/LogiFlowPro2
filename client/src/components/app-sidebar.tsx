@@ -28,7 +28,7 @@ const mainMenuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Events",
+    title: "Eventos",
     url: "/events",
     icon: Calendar,
   },
@@ -38,17 +38,17 @@ const mainMenuItems = [
     icon: ClipboardList,
   },
   {
-    title: "Inventory",
+    title: "Estoque",
     url: "/inventory",
     icon: Warehouse,
   },
   {
-    title: "Trip Planning",
+    title: "Planejamento de Viagens",
     url: "/trips",
     icon: Truck,
   },
   {
-    title: "Returns",
+    title: "Devoluções",
     url: "/returns",
     icon: RotateCcw,
   },
@@ -56,7 +56,7 @@ const mainMenuItems = [
 
 const catalogItems = [
   {
-    title: "Products",
+    title: "Produtos",
     url: "/products",
     icon: Package,
   },
@@ -66,7 +66,7 @@ const catalogItems = [
     icon: Boxes,
   },
   {
-    title: "Configuration",
+    title: "Configuração",
     url: "/config",
     icon: Settings,
   },
@@ -84,7 +84,7 @@ export function AppSidebar() {
         </div>
         
         <SidebarGroup>
-          <SidebarGroupLabel>Operations</SidebarGroupLabel>
+          <SidebarGroupLabel>Operações</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainMenuItems.map((item) => (
@@ -106,7 +106,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Catalog</SidebarGroupLabel>
+          <SidebarGroupLabel>Catálogo</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {catalogItems.map((item) => (

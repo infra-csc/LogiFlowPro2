@@ -12,24 +12,24 @@ export default function Config() {
 
   const sections = [
     {
-      title: "Vehicles",
+      title: "Veículos",
       icon: Truck,
       count: vehicles?.length || 0,
-      description: "Manage fleet vehicles",
+      description: "Gerencie a frota de veículos",
       testId: "vehicles-section"
     },
     {
-      title: "Drivers",
+      title: "Motoristas",
       icon: User,
       count: drivers?.length || 0,
-      description: "Manage driver roster",
+      description: "Gerencie o cadastro de motoristas",
       testId: "drivers-section"
     },
     {
-      title: "Docks",
+      title: "Docas",
       icon: WarehouseIcon,
       count: docks?.length || 0,
-      description: "Configure loading docks",
+      description: "Configure docas de carregamento",
       testId: "docks-section"
     },
   ];
@@ -37,8 +37,8 @@ export default function Config() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Configuration</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage system settings and resources</p>
+        <h1 className="text-2xl font-semibold text-foreground">Configuração</h1>
+        <p className="text-sm text-muted-foreground mt-1">Gerencie configurações e recursos do sistema</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -67,12 +67,12 @@ export default function Config() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            System Settings
+            Configurações do Sistema
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Configuration options for cutoff times, notifications, and system preferences will be available here.
+            Opções de configuração para horários de corte, notificações e preferências do sistema estarão disponíveis aqui.
           </p>
         </CardContent>
       </Card>

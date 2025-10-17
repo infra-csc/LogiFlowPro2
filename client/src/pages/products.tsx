@@ -46,7 +46,7 @@ export default function Products() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading products...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando produtos...</p>
         </div>
       </div>
     );
@@ -56,19 +56,19 @@ export default function Products() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Products Catalog</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage inventory items and materials</p>
+          <h1 className="text-2xl font-semibold text-foreground">Catálogo de Produtos</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie itens de estoque e materiais</p>
         </div>
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-product">
           <Plus className="h-4 w-4 mr-2" />
-          Add Product
+          Adicionar Produto
         </Button>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search products by name or SKU..."
+          placeholder="Buscar produtos por nome ou SKU..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -82,15 +82,15 @@ export default function Products() {
             <div className="text-center">
               <Package className="h-16 w-16 mx-auto text-muted-foreground/50" />
               <h3 className="mt-4 text-lg font-medium">
-                {search ? "No products found" : "No products yet"}
+                {search ? "Nenhum produto encontrado" : "Nenhum produto ainda"}
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                {search ? "Try adjusting your search" : "Start by adding your first product"}
+                {search ? "Tente ajustar sua busca" : "Comece adicionando seu primeiro produto"}
               </p>
               {!search && (
                 <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-add-first-product">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Product
+                  Adicionar Produto
                 </Button>
               )}
             </div>

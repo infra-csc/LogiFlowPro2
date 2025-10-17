@@ -35,7 +35,7 @@ export default function Requests() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading requests...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando requisições...</p>
         </div>
       </div>
     );
@@ -50,7 +50,7 @@ export default function Requests() {
         </div>
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-request">
           <Plus className="h-4 w-4 mr-2" />
-          New Request
+          Nova Requisição
         </Button>
       </div>
 
@@ -59,11 +59,11 @@ export default function Requests() {
           <CardContent className="py-12">
             <div className="text-center">
               <ClipboardList className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">No requests yet</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Create material requests for your events</p>
+              <h3 className="mt-4 text-lg font-medium">Nenhuma requisição ainda</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Crie requisições de materiais para seus eventos</p>
               <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-request">
                 <Plus className="h-4 w-4 mr-2" />
-                New Request
+                Nova Requisição
               </Button>
             </div>
           </CardContent>

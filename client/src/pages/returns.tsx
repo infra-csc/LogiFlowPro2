@@ -20,7 +20,7 @@ export default function Returns() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading returns...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando devoluções...</p>
         </div>
       </div>
     );
@@ -29,8 +29,8 @@ export default function Returns() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Returns & Damages</h1>
-        <p className="text-sm text-muted-foreground mt-1">Track item returns and damage reports</p>
+        <h1 className="text-2xl font-semibold text-foreground">Devoluções e Avarias</h1>
+        <p className="text-sm text-muted-foreground mt-1">Acompanhe devoluções e relatórios de danos</p>
       </div>
 
       {!returns || returns.length === 0 ? (
@@ -38,8 +38,8 @@ export default function Returns() {
           <CardContent className="py-12">
             <div className="text-center">
               <RotateCcw className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">No returns recorded</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Returns will appear here when trips are completed</p>
+              <h3 className="mt-4 text-lg font-medium">Nenhuma devolução registrada</h3>
+              <p className="mt-2 text-sm text-muted-foreground">As devoluções aparecerão aqui quando as viagens forem concluídas</p>
             </div>
           </CardContent>
         </Card>
@@ -71,11 +71,11 @@ export default function Returns() {
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-xs text-muted-foreground">Expected</p>
+                          <p className="text-xs text-muted-foreground">Esperado</p>
                           <p className="text-sm font-medium">{returnItem.expectedQuantity}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Returned</p>
+                          <p className="text-xs text-muted-foreground">Devolvido</p>
                           <p className={`text-sm font-medium ${
                             hasDiscrepancy ? 'text-chart-5' : 'text-chart-4'
                           }`}>
@@ -84,7 +84,7 @@ export default function Returns() {
                         </div>
                         {hasDamage && (
                           <div>
-                            <p className="text-xs text-muted-foreground">Damaged</p>
+                            <p className="text-xs text-muted-foreground">Avariado</p>
                             <p className="text-sm font-medium text-destructive">
                               {returnItem.damagedQuantity}
                             </p>
@@ -92,7 +92,7 @@ export default function Returns() {
                         )}
                         {hasLoss && (
                           <div>
-                            <p className="text-xs text-muted-foreground">Lost</p>
+                            <p className="text-xs text-muted-foreground">Perdido</p>
                             <p className="text-sm font-medium text-destructive">
                               {returnItem.lostQuantity}
                             </p>

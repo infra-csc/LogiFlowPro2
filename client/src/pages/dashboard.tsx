@@ -34,7 +34,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading dashboard...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando dashboard...</p>
         </div>
       </div>
     );
@@ -42,34 +42,34 @@ export default function Dashboard() {
 
   const statCards = [
     {
-      title: "Active Events",
+      title: "Eventos Ativos",
       value: stats?.activeEvents || 0,
       icon: Calendar,
-      description: "Events in progress",
+      description: "Em andamento",
       color: "text-chart-1",
       testId: "stat-active-events"
     },
     {
-      title: "Upcoming Trips",
+      title: "Viagens Próximas",
       value: stats?.upcomingTrips || 0,
       icon: Truck,
-      description: "Next 7 days",
+      description: "Próximos 7 dias",
       color: "text-chart-2",
       testId: "stat-upcoming-trips"
     },
     {
-      title: "Low Stock Items",
+      title: "Itens com Estoque Baixo",
       value: stats?.lowStockItems || 0,
       icon: Package,
-      description: "Below minimum",
+      description: "Abaixo do mínimo",
       color: "text-chart-5",
       testId: "stat-low-stock"
     },
     {
-      title: "Conflicts",
+      title: "Conflitos",
       value: stats?.conflictsCount || 0,
       icon: AlertTriangle,
-      description: "Requires attention",
+      description: "Requer atenção",
       color: "text-destructive",
       testId: "stat-conflicts"
     },
@@ -78,8 +78,8 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Operations Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monitor events, inventory, and logistics operations</p>
+        <h1 className="text-2xl font-semibold text-foreground">Dashboard de Operações</h1>
+        <p className="text-sm text-muted-foreground mt-1">Monitore eventos, estoque e operações logísticas</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -102,17 +102,17 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Recent Events
+              Eventos Recentes
             </CardTitle>
-            <CardDescription>Latest event activity</CardDescription>
+            <CardDescription>Atividade mais recente</CardDescription>
           </CardHeader>
           <CardContent>
             {!recentEvents || recentEvents.length === 0 ? (
               <div className="text-center py-8">
                 <Box className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                <p className="mt-4 text-sm text-muted-foreground">No recent events</p>
+                <p className="mt-4 text-sm text-muted-foreground">Nenhum evento recente</p>
                 <Button asChild variant="outline" size="sm" className="mt-4" data-testid="button-create-event">
-                  <Link href="/events">Create Event</Link>
+                  <Link href="/events">Criar Evento</Link>
                 </Button>
               </div>
             ) : (

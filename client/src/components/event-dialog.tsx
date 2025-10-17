@@ -95,11 +95,11 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/recent-events"] });
-      toast({ description: "Event created successfully" });
+      toast({ description: "Evento criado com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to create event", variant: "destructive" });
+      toast({ description: "Falha ao criar evento", variant: "destructive" });
     },
   });
 
@@ -110,11 +110,11 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/recent-events"] });
-      toast({ description: "Event updated successfully" });
+      toast({ description: "Evento atualizado com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to update event", variant: "destructive" });
+      toast({ description: "Falha ao atualizar evento", variant: "destructive" });
     },
   });
 
@@ -130,9 +130,9 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{event ? "Edit Event" : "Create Event"}</DialogTitle>
+          <DialogTitle>{event ? "Editar Evento" : "Criar Evento"}</DialogTitle>
           <DialogDescription>
-            {event ? "Update event details and logistics" : "Set up a new event with dates and logistics"}
+            {event ? "Atualize os detalhes e logística do evento" : "Configure um novo evento com datas e logística"}
           </DialogDescription>
         </DialogHeader>
 
@@ -144,9 +144,9 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Event Name *</FormLabel>
+                    <FormLabel>Nome do Evento *</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Tech Expo 2024" data-testid="input-event-name" />
+                      <Input {...field} placeholder="Expo Tech 2024" data-testid="input-event-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -158,9 +158,9 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                 name="client"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Client *</FormLabel>
+                    <FormLabel>Cliente *</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Client name" data-testid="input-client" />
+                      <Input {...field} placeholder="Nome do cliente" data-testid="input-client" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -173,9 +173,9 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location *</FormLabel>
+                  <FormLabel>Local *</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Convention Center, Hall A" data-testid="input-location" />
+                    <Input {...field} placeholder="Centro de Convenções, Pavilhão A" data-testid="input-location" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -200,7 +200,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                   
                   return (
                     <FormItem>
-                      <FormLabel>Setup Date *</FormLabel>
+                      <FormLabel>Data de Montagem *</FormLabel>
                       <FormControl>
                         <Input
                           type="datetime-local"
@@ -232,7 +232,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                   
                   return (
                     <FormItem>
-                      <FormLabel>Event Date *</FormLabel>
+                      <FormLabel>Data do Evento *</FormLabel>
                       <FormControl>
                         <Input
                           type="datetime-local"
@@ -264,7 +264,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                   
                   return (
                     <FormItem>
-                      <FormLabel>Teardown Date *</FormLabel>
+                      <FormLabel>Data de Desmontagem *</FormLabel>
                       <FormControl>
                         <Input
                           type="datetime-local"
@@ -293,11 +293,11 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="planning">Planning</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="planning">Planejamento</SelectItem>
+                      <SelectItem value="approved">Aprovado</SelectItem>
+                      <SelectItem value="in_progress">Em Andamento</SelectItem>
+                      <SelectItem value="completed">Concluído</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -310,12 +310,12 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>Observações</FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
                       value={field.value || ""}
-                      placeholder="Additional event details..."
+                      placeholder="Detalhes adicionais do evento..."
                       rows={3}
                       data-testid="input-notes"
                     />
@@ -327,14 +327,14 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel">
-                Cancel
+                Cancelar
               </Button>
               <Button 
                 type="submit"
                 disabled={createMutation.isPending || updateMutation.isPending}
                 data-testid="button-submit-event"
               >
-                {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : (event ? "Update" : "Create")}
+                {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (event ? "Atualizar" : "Criar")}
               </Button>
             </DialogFooter>
           </form>

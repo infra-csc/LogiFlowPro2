@@ -14,7 +14,7 @@ export default function Inventory() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading inventory...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando estoque...</p>
         </div>
       </div>
     );
@@ -28,19 +28,19 @@ export default function Inventory() {
 
   const stats = [
     {
-      title: "Total Stock",
+      title: "Estoque Total",
       value: totalItems,
       icon: Warehouse,
       color: "text-chart-1",
     },
     {
-      title: "Available Items",
+      title: "Itens Disponíveis",
       value: availableItems,
       icon: Package,
       color: "text-chart-4",
     },
     {
-      title: "Low Stock Alerts",
+      title: "Alertas de Estoque Baixo",
       value: lowStockItems,
       icon: TrendingDown,
       color: "text-chart-5",
@@ -50,8 +50,8 @@ export default function Inventory() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Inventory Management</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monitor stock levels and availability</p>
+        <h1 className="text-2xl font-semibold text-foreground">Gestão de Estoque</h1>
+        <p className="text-sm text-muted-foreground mt-1">Monitore níveis de estoque e disponibilidade</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -72,13 +72,13 @@ export default function Inventory() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Stock Levels</CardTitle>
+          <CardTitle>Níveis de Estoque</CardTitle>
         </CardHeader>
         <CardContent>
           {!products || products.length === 0 ? (
             <div className="text-center py-8">
               <Package className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="mt-4 text-sm text-muted-foreground">No products in inventory</p>
+              <p className="mt-4 text-sm text-muted-foreground">Nenhum produto no estoque</p>
             </div>
           ) : (
             <div className="space-y-4">

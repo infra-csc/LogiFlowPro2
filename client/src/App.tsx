@@ -51,7 +51,7 @@ export default function App() {
                 <header className="flex items-center justify-between p-4 border-b border-border bg-card">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
                   <div className="text-sm text-muted-foreground">
-                    Event Logistics Management
+                    Gestão de Logística de Eventos
                   </div>
                 </header>
                 <main className="flex-1 overflow-y-auto bg-background">

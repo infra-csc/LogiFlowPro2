@@ -31,7 +31,7 @@ export default function Events() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading events...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando eventos...</p>
         </div>
       </div>
     );
@@ -41,12 +41,12 @@ export default function Events() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Events</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage event schedules and logistics</p>
+          <h1 className="text-2xl font-semibold text-foreground">Eventos</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie cronogramas e logística de eventos</p>
         </div>
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-event">
           <Plus className="h-4 w-4 mr-2" />
-          Create Event
+          Criar Evento
         </Button>
       </div>
 
@@ -55,11 +55,11 @@ export default function Events() {
           <CardContent className="py-12">
             <div className="text-center">
               <Calendar className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">No events yet</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Get started by creating your first event</p>
+              <h3 className="mt-4 text-lg font-medium">Nenhum evento ainda</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Comece criando seu primeiro evento</p>
               <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-event">
                 <Plus className="h-4 w-4 mr-2" />
-                Create Event
+                Criar Evento
               </Button>
             </div>
           </CardContent>

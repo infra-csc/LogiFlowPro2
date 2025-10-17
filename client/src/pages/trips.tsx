@@ -38,7 +38,7 @@ export default function Trips() {
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Loading trips...</p>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando viagens...</p>
         </div>
       </div>
     );
@@ -48,12 +48,12 @@ export default function Trips() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Trip Planning</h1>
-          <p className="text-sm text-muted-foreground mt-1">Schedule and manage vehicle logistics</p>
+          <h1 className="text-2xl font-semibold text-foreground">Planejamento de Viagens</h1>
+          <p className="text-sm text-muted-foreground mt-1">Agende e gerencie a logística de veículos</p>
         </div>
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-trip">
           <Plus className="h-4 w-4 mr-2" />
-          Plan Trip
+          Planejar Viagem
         </Button>
       </div>
 
@@ -62,11 +62,11 @@ export default function Trips() {
           <CardContent className="py-12">
             <div className="text-center">
               <Truck className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">No trips scheduled</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Start planning transportation for your events</p>
+              <h3 className="mt-4 text-lg font-medium">Nenhuma viagem agendada</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Comece a planejar o transporte para seus eventos</p>
               <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-plan-first-trip">
                 <Plus className="h-4 w-4 mr-2" />
-                Plan Trip
+                Planejar Viagem
               </Button>
             </div>
           </CardContent>
@@ -92,15 +92,15 @@ export default function Trips() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground">Vehicle</p>
+                    <p className="text-xs text-muted-foreground">Veículo</p>
                     <p className="text-sm font-medium">{trip.vehicle?.plate || "—"}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Driver</p>
+                    <p className="text-xs text-muted-foreground">Motorista</p>
                     <p className="text-sm font-medium">{trip.driver?.name || "—"}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Scheduled Start</p>
+                    <p className="text-xs text-muted-foreground">Início Agendado</p>
                     <p className="text-sm font-medium">
                       {format(new Date(trip.scheduledStart), "MMM dd, HH:mm")}
                     </p>
