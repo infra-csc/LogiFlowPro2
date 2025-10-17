@@ -335,12 +335,18 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
                       </Select>
                     </div>
                     <div className="col-span-3">
-                      <Label>Unit</Label>
+                      <Label>{param.type === "select" ? "Options" : "Unit"}</Label>
                       <Input
-                        value={param.unit || ""}
-                        onChange={(e) => updateParameter(index, "unit", e.target.value)}
-                        placeholder="m, kg, etc."
-                        data-testid={`input-param-unit-${index}`}
+                        value={param.type === "select" ? (param.options?.join(",") || "") : (param.unit || "")}
+                        onChange={(e) => {
+                          if (param.type === "select") {
+                            updateParameter(index, "options", e.target.value.split(",").map(s => s.trim()).filter(Boolean));
+                          } else {
+                            updateParameter(index, "unit", e.target.value);
+                          }
+                        }}
+                        placeholder={param.type === "select" ? "Option1,Option2,Option3" : "m, kg, etc."}
+                        data-testid={`input-param-${param.type === "select" ? "options" : "unit"}-${index}`}
                       />
                     </div>
                     <div className="col-span-2">
