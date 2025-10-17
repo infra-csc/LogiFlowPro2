@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,20 +35,40 @@ interface ProductDialogProps {
 export function ProductDialog({ open, onOpenChange, product }: ProductDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [imageUrl, setImageUrl] = useState<string | null>(product?.imageUrl || null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<InsertProduct>>({
-    sku: product?.sku || "",
-    name: product?.name || "",
-    description: product?.description || "",
-    ownership: product?.ownership || "owned",
-    unit: product?.unit || "unit",
-    weight: product?.weight || undefined,
-    dimensions: product?.dimensions || "",
-    barcode: product?.barcode || "",
-    location: product?.location || "",
-    minimumStock: product?.minimumStock || 0,
-    currentStock: product?.currentStock || 0,
+    sku: "",
+    name: "",
+    description: "",
+    ownership: "owned",
+    unit: "unit",
+    weight: undefined,
+    dimensions: "",
+    barcode: "",
+    location: "",
+    minimumStock: 0,
+    currentStock: 0,
   });
+
+  // Reset form data when dialog opens or product changes
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        sku: product?.sku || "",
+        name: product?.name || "",
+        description: product?.description || "",
+        ownership: product?.ownership || "owned",
+        unit: product?.unit || "unit",
+        weight: product?.weight || undefined,
+        dimensions: product?.dimensions || "",
+        barcode: product?.barcode || "",
+        location: product?.location || "",
+        minimumStock: product?.minimumStock || 0,
+        currentStock: product?.currentStock || 0,
+      });
+      setImageUrl(product?.imageUrl || null);
+    }
+  }, [open, product]);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertProduct) => {
