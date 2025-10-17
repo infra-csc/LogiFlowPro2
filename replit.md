@@ -110,10 +110,62 @@ Preferred communication style: Simple, everyday language.
 - class-variance-authority for variant-based component APIs
 - clsx + tailwind-merge for conditional class composition
 
-**Session Management**
-- connect-pg-simple for PostgreSQL-backed session store (dependency present, implementation pending)
+**Authentication & Authorization**
+- Passport.js with local strategy for username/password authentication
+- express-session with connect-pg-simple for PostgreSQL-backed session store
+- bcrypt for secure password hashing (SALT_ROUNDS: 10)
+- Role-based access control (RBAC) with granular page-level permissions
+- Session-based authentication (no JWT tokens)
 
 **Type Safety**
 - TypeScript strict mode enabled
 - Path aliases (@/, @shared/, @assets/) for clean imports
 - Shared types between client and server via @shared namespace
+
+## Recent Changes (October 17, 2025)
+
+### Authentication & Authorization System Implementation
+
+**Schema Changes** (`shared/schema.ts`):
+- Added `users` table: id (varchar UUID), username (unique), password (hashed), name, email, active (boolean), timestamps
+- Added `roles` table: id (varchar UUID), name (unique), description, timestamps
+- Added `permissions` table: id (varchar UUID), page (varchar), canView/canCreate/canEdit/canDelete (boolean)
+- Added `userRoles` junction table for many-to-many user-role relationships
+- Added `rolePermissions` junction table for many-to-many role-permission relationships
+- All tables include Drizzle relations for ORM query optimization
+
+**Backend Implementation**:
+- `server/auth.ts`: Passport.js configuration with local strategy, bcrypt password hashing, session serialization/deserialization
+- `server/storage.ts`: Added CRUD methods for users, roles, permissions, user-role assignments, and role-permission assignments
+- `server/routes.ts`: 
+  - Authentication routes: `/api/register`, `/api/login`, `/api/logout`, `/api/user`
+  - User management routes: GET/POST `/api/users`, GET/PATCH `/api/users/:id`, GET/POST/DELETE `/api/users/:id/roles`
+  - Role management routes: GET/POST `/api/roles`, DELETE `/api/roles/:id`, GET/POST/DELETE `/api/roles/:id/permissions`
+  - Permission routes: GET/POST `/api/permissions`
+- Automatic initialization of default permissions for all system pages on server startup
+
+**Frontend Implementation**:
+- `client/src/hooks/use-auth.tsx`: AuthProvider and useAuth hook for authentication state management
+- `client/src/lib/protected-route.tsx`: ProtectedRoute component for route protection with automatic redirect to `/auth`
+- `client/src/pages/auth-page.tsx`: Tabbed login/registration page with complete Portuguese localization
+- `client/src/pages/users.tsx`: User management interface with list view, create/edit dialogs, activate/deactivate toggle, role assignment
+- `client/src/pages/roles.tsx`: Role management interface with list view, create/delete actions, per-page permission configuration
+- `client/src/components/app-sidebar.tsx`: 
+  - Collapsible "Configuração" submenu with Users, Roles & Permissions, Vehicles, Drivers, Docks
+  - User display with name/username in sidebar footer
+  - Logout button in sidebar footer
+  - Moved "Eventos" to "Catálogo" section for better organization
+- `client/src/App.tsx`: All routes wrapped in ProtectedRoute except `/auth`, AuthProvider integration
+
+**Language & UX**:
+- Complete Portuguese localization for authentication flows
+- Brazilian Portuguese field labels and messages throughout
+- User-friendly error messages and success notifications
+- Tab-based interface for login vs. registration to reduce cognitive load
+
+**Security Features**:
+- Passwords hashed with bcrypt (10 salt rounds) before storage
+- Session cookies with httpOnly flag
+- PostgreSQL-backed session store for distributed session management
+- Session secret from environment variable
+- No password exposure in API responses (omitted from User type in responses)
