@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,14 +44,14 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<InsertKit>>({
-    name: kit?.name || "",
-    description: kit?.description || "",
-    parameters: kit?.parameters || [],
+    name: "",
+    description: "",
+    parameters: [],
   });
 
-  const [parameters, setParameters] = useState<Parameter[]>(kit?.parameters || []);
+  const [parameters, setParameters] = useState<Parameter[]>([]);
   const [bomLines, setBomLines] = useState<Array<{ productId: string; quantityFormula: string; notes?: string }>>([]);
-  const [imageUrl, setImageUrl] = useState<string | null>(kit?.imageUrl || null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -61,6 +61,20 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
     queryKey: ["/api/kits", kit?.id, "bom"],
     enabled: !!kit?.id,
   });
+
+  // Reset form data when dialog opens or kit changes
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        name: kit?.name || "",
+        description: kit?.description || "",
+        parameters: kit?.parameters || [],
+      });
+      setParameters(kit?.parameters || []);
+      setBomLines([]);
+      setImageUrl(kit?.imageUrl || null);
+    }
+  }, [open, kit]);
 
   const handleGetUploadParameters = async () => {
     const response: any = await apiRequest("POST", "/api/objects/upload", {});
