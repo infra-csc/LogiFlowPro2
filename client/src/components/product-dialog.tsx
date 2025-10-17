@@ -286,7 +286,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 type="number"
                 step="0.01"
                 value={formData.weight?.toString() || ""}
-                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, weight: e.target.value ? parseFloat(e.target.value) : undefined })}
                 placeholder="0.00"
                 data-testid="input-weight"
               />
