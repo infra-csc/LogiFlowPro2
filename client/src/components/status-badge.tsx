@@ -17,6 +17,7 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   
   // Request statuses
   draft: { color: "bg-muted text-muted-foreground", label: "Rascunho" },
+  ready: { color: "bg-chart-4 text-white", label: "Pronta" },
   pending_approval: { color: "bg-chart-5 text-white", label: "Pendente Aprovação" },
   pending: { color: "bg-chart-5 text-white", label: "Pendente" },
   rejected: { color: "bg-destructive text-destructive-foreground", label: "Rejeitado" },

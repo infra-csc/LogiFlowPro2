@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Package, Calendar, FileText } from "lucide-react";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
@@ -14,6 +15,7 @@ interface LoadingOrderWithRelations extends LoadingOrder {
 }
 
 export default function LoadingOrders() {
+  const [, navigate] = useLocation();
   const [showDialog, setShowDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<LoadingOrder | undefined>();
 
@@ -75,7 +77,7 @@ export default function LoadingOrders() {
             <Card 
               key={order.id}
               className="hover-elevate cursor-pointer"
-              onClick={() => handleEdit(order)}
+              onClick={() => navigate(`/loading-orders/${order.id}`)}
               data-testid={`card-loading-order-${order.id}`}
             >
               <CardHeader>
