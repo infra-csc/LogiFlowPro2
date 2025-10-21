@@ -1,11 +1,13 @@
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, FileText, Calendar } from "lucide-react";
+import { ArrowLeft, Package, FileText, Calendar, CheckCircle, XCircle } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { LoadingOrder, Event, MaterialRequest } from "@shared/schema";
 
 type LoadingOrderItem = {
@@ -33,6 +35,7 @@ type LoadingOrderWithRelations = LoadingOrder & {
 export default function LoadingOrderDetails() {
   const { id } = useParams();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
 
   const { data: order, isLoading: orderLoading } = useQuery<LoadingOrderWithRelations>({
     queryKey: [`/api/loading-orders/${id}`],
@@ -47,6 +50,48 @@ export default function LoadingOrderDetails() {
   const { data: requests = [] } = useQuery<MaterialRequest[]>({
     queryKey: [`/api/loading-orders/${id}/requests`],
     enabled: !!id,
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/loading-orders/${id}/approve`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/loading-orders/${id}`] });
+      toast({
+        title: "Ordem aprovada",
+        description: "A ordem de carregamento foi aprovada para carga.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao aprovar",
+        description: "Não foi possível aprovar a ordem de carregamento.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disapproveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/loading-orders/${id}/disapprove`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/loading-orders/${id}`] });
+      toast({
+        title: "Ordem desaprovada",
+        description: "A ordem de carregamento voltou para rascunho.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao desaprovar",
+        description: "Não foi possível desaprovar a ordem de carregamento.",
+        variant: "destructive",
+      });
+    },
   });
 
   if (orderLoading) {
@@ -87,8 +132,29 @@ export default function LoadingOrderDetails() {
             {order.event?.name || "Evento não encontrado"}
           </p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
           <StatusBadge status={order.status} />
+          {order.status === "ready" && (
+            <Button
+              onClick={() => approveMutation.mutate()}
+              disabled={approveMutation.isPending}
+              data-testid="button-approve"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Aprovar para Carga
+            </Button>
+          )}
+          {order.status === "approved" && (
+            <Button
+              variant="outline"
+              onClick={() => disapproveMutation.mutate()}
+              disabled={disapproveMutation.isPending}
+              data-testid="button-disapprove"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Desaprovar
+            </Button>
+          )}
         </div>
       </div>
 

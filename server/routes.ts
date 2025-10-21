@@ -603,6 +603,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/loading-orders/:id/approve", async (req, res) => {
+    try {
+      const order = await storage.getLoadingOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Loading order not found" });
+      }
+      
+      if (order.status !== "ready") {
+        return res.status(400).json({ error: "Only ready orders can be approved" });
+      }
+
+      const approved = await storage.approveLoadingOrder(req.params.id);
+      res.json(approved);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to approve loading order" });
+    }
+  });
+
+  app.post("/api/loading-orders/:id/disapprove", async (req, res) => {
+    try {
+      const order = await storage.getLoadingOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Loading order not found" });
+      }
+      
+      if (order.status !== "approved") {
+        return res.status(400).json({ error: "Only approved orders can be disapproved" });
+      }
+
+      const disapproved = await storage.disapproveLoadingOrder(req.params.id);
+      res.json(disapproved);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to disapprove loading order" });
+    }
+  });
+
   // Returns
   app.get("/api/returns", async (req, res) => {
     try {

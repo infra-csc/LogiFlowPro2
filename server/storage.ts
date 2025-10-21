@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import {
@@ -597,6 +597,24 @@ export class DatabaseStorage implements IStorage {
 
   async updateLoadingOrder(id: string, order: Partial<InsertLoadingOrder>): Promise<LoadingOrder> {
     const [updated] = await db.update(loadingOrders).set(order).where(eq(loadingOrders.id, id)).returning();
+    return updated;
+  }
+
+  async approveLoadingOrder(id: string): Promise<LoadingOrder> {
+    const [updated] = await db
+      .update(loadingOrders)
+      .set({ status: "approved", updatedAt: sql`now()` })
+      .where(eq(loadingOrders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async disapproveLoadingOrder(id: string): Promise<LoadingOrder> {
+    const [updated] = await db
+      .update(loadingOrders)
+      .set({ status: "draft", updatedAt: sql`now()` })
+      .where(eq(loadingOrders.id, id))
+      .returning();
     return updated;
   }
 
