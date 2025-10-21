@@ -9,36 +9,38 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<string, { color: string; label: string }> = {
   // Event statuses
-  planning: { color: "bg-chart-2 text-white", label: "Planning" },
-  approved: { color: "bg-chart-4 text-white", label: "Approved" },
-  in_progress: { color: "bg-primary text-primary-foreground", label: "In Progress" },
-  completed: { color: "bg-chart-4 text-white", label: "Completed" },
-  cancelled: { color: "bg-destructive text-destructive-foreground", label: "Cancelled" },
+  planning: { color: "bg-chart-2 text-white", label: "Planejamento" },
+  approved: { color: "bg-chart-4 text-white", label: "Aprovado" },
+  in_progress: { color: "bg-primary text-primary-foreground", label: "Em Andamento" },
+  completed: { color: "bg-chart-4 text-white", label: "Concluído" },
+  cancelled: { color: "bg-destructive text-destructive-foreground", label: "Cancelado" },
   
   // Request statuses
-  draft: { color: "bg-muted text-muted-foreground", label: "Draft" },
-  pending_approval: { color: "bg-chart-5 text-white", label: "Pending Approval" },
-  cutoff_locked: { color: "bg-chart-3 text-white", label: "Cutoff Locked" },
-  in_picking: { color: "bg-chart-2 text-white", label: "In Picking" },
-  partially_loaded: { color: "bg-chart-5 text-white", label: "Partially Loaded" },
-  loaded: { color: "bg-chart-4 text-white", label: "Loaded" },
-  in_transit: { color: "bg-primary text-primary-foreground", label: "In Transit" },
-  in_use: { color: "bg-chart-2 text-white", label: "In Use" },
-  return_pending: { color: "bg-chart-5 text-white", label: "Return Pending" },
+  draft: { color: "bg-muted text-muted-foreground", label: "Rascunho" },
+  pending_approval: { color: "bg-chart-5 text-white", label: "Pendente Aprovação" },
+  pending: { color: "bg-chart-5 text-white", label: "Pendente" },
+  rejected: { color: "bg-destructive text-destructive-foreground", label: "Rejeitado" },
+  cutoff_locked: { color: "bg-chart-3 text-white", label: "Bloqueado" },
+  in_picking: { color: "bg-chart-2 text-white", label: "Em Separação" },
+  partially_loaded: { color: "bg-chart-5 text-white", label: "Parcialmente Carregado" },
+  loaded: { color: "bg-chart-4 text-white", label: "Carregado" },
+  in_transit: { color: "bg-primary text-primary-foreground", label: "Em Trânsito" },
+  in_use: { color: "bg-chart-2 text-white", label: "Em Uso" },
+  return_pending: { color: "bg-chart-5 text-white", label: "Retorno Pendente" },
   
   // Trip statuses
-  planned: { color: "bg-chart-2 text-white", label: "Planned" },
-  loading: { color: "bg-chart-5 text-white", label: "Loading" },
-  at_destination: { color: "bg-chart-2 text-white", label: "At Destination" },
-  unloading: { color: "bg-chart-5 text-white", label: "Unloading" },
+  planned: { color: "bg-chart-2 text-white", label: "Planejado" },
+  loading: { color: "bg-chart-5 text-white", label: "Carregando" },
+  at_destination: { color: "bg-chart-2 text-white", label: "No Destino" },
+  unloading: { color: "bg-chart-5 text-white", label: "Descarregando" },
   
   // Product statuses
-  available: { color: "bg-chart-4 text-white", label: "Available" },
-  reserved: { color: "bg-chart-2 text-white", label: "Reserved" },
-  damaged: { color: "bg-destructive text-destructive-foreground", label: "Damaged" },
-  in_repair: { color: "bg-chart-5 text-white", label: "In Repair" },
-  unusable: { color: "bg-muted text-muted-foreground", label: "Unusable" },
-  lost: { color: "bg-destructive text-destructive-foreground", label: "Lost" },
+  available: { color: "bg-chart-4 text-white", label: "Disponível" },
+  reserved: { color: "bg-chart-2 text-white", label: "Reservado" },
+  damaged: { color: "bg-destructive text-destructive-foreground", label: "Danificado" },
+  in_repair: { color: "bg-chart-5 text-white", label: "Em Reparo" },
+  unusable: { color: "bg-muted text-muted-foreground", label: "Inutilizável" },
+  lost: { color: "bg-destructive text-destructive-foreground", label: "Perdido" },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

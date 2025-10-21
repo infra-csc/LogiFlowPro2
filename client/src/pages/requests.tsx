@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import type { MaterialRequest as BaseMaterialRequest, Event } from "@shared/schema";
 import { RequestDialog } from "@/components/request-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Select,
   SelectContent,
@@ -32,6 +33,8 @@ export default function Requests() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [eventFilter, setEventFilter] = useState<string>("all");
 
+  const { user } = useAuth();
+
   const { data: requests, isLoading } = useQuery<MaterialRequest[]>({
     queryKey: ["/api/requests"],
   });
@@ -49,16 +52,21 @@ export default function Requests() {
     setShowDialog(false);
   };
 
-  // Filtrar requisições
+  // Filtrar requisições - sempre mostra apenas requisições do próprio usuário
   const filteredRequests = useMemo(() => {
-    if (!requests) return [];
+    if (!requests || !user) return [];
     
     return requests.filter((request) => {
+      // Mostra apenas requisições do próprio usuário
+      if (request.requestedBy !== user.id) {
+        return false;
+      }
+      
       const matchesStatus = statusFilter === "all" || request.status === statusFilter;
       const matchesEvent = eventFilter === "all" || request.eventId === eventFilter;
       return matchesStatus && matchesEvent;
     });
-  }, [requests, statusFilter, eventFilter]);
+  }, [requests, statusFilter, eventFilter, user]);
 
   if (isLoading) {
     return (
@@ -150,8 +158,22 @@ export default function Requests() {
           <CardContent className="py-12">
             <div className="text-center">
               <ClipboardList className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">Nenhuma requisição encontrada</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Ajuste os filtros para ver mais requisições</p>
+              <h3 className="mt-4 text-lg font-medium">
+                {statusFilter === "all" && eventFilter === "all" 
+                  ? "Você não possui requisições" 
+                  : "Nenhuma requisição encontrada"}
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {statusFilter === "all" && eventFilter === "all"
+                  ? "Crie sua primeira requisição de materiais"
+                  : "Ajuste os filtros para ver mais requisições"}
+              </p>
+              {statusFilter === "all" && eventFilter === "all" && (
+                <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-request">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Requisição
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -176,6 +198,16 @@ export default function Requests() {
                     <p className="text-xs text-muted-foreground mt-1" data-testid={`text-requester-${request.id}`}>
                       Solicitado por: {request.requestedByUser?.name || "Usuário não encontrado"}
                     </p>
+                    {request.status === "approved" && request.approvedAt && (
+                      <p className="text-xs text-chart-4 mt-1">
+                        Aprovado em {format(new Date(request.approvedAt), "dd/MM/yyyy 'às' HH:mm")}
+                      </p>
+                    )}
+                    {request.status === "rejected" && request.approvedAt && (
+                      <p className="text-xs text-destructive mt-1">
+                        Rejeitado em {format(new Date(request.approvedAt), "dd/MM/yyyy 'às' HH:mm")}
+                      </p>
+                    )}
                   </div>
                   <StatusBadge status={request.status} />
                 </div>

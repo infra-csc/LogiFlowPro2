@@ -2,7 +2,6 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Trash2, Send } from "lucide-react";
 import { useState } from "react";
 import {
@@ -18,12 +17,16 @@ import {
 import { AddItemDialog } from "@/components/add-item-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { StatusBadge as SharedStatusBadge } from "@/components/status-badge";
 
 type RequestItem = {
   id: string;
   requestId: string;
   productId: string;
   quantity: number;
+  approvalStatus: string;
+  approvedQuantity?: number;
+  rejectionReason?: string;
   kitId?: string;
   kitParameters?: any;
   notes?: string;
@@ -64,17 +67,6 @@ type MaterialRequest = {
   };
 };
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const variants: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    draft: { label: "Rascunho", variant: "secondary" },
-    pending_approval: { label: "Pendente", variant: "outline" },
-    approved: { label: "Aprovado", variant: "default" },
-    cutoff_locked: { label: "Bloqueado", variant: "destructive" }
-  };
-
-  const config = variants[status] || { label: status, variant: "outline" };
-  return <Badge variant={config.variant} data-testid={`badge-status-${status}`}>{config.label}</Badge>;
-};
 
 export default function RequestDetails() {
   const { id } = useParams();
@@ -195,7 +187,7 @@ export default function RequestDetails() {
             <h1 className="text-2xl font-semibold text-foreground">{request.area}</h1>
             <p className="text-sm text-muted-foreground mt-1">{request.event?.name}</p>
           </div>
-          <StatusBadge status={request.status} />
+          <SharedStatusBadge status={request.status} />
         </div>
 
         <div className="flex gap-2">
@@ -293,37 +285,51 @@ export default function RequestDetails() {
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-3 border rounded-md"
+                  className="border rounded-md p-3"
                   data-testid={`item-${item.id}`}
                 >
-                  <div className="flex-1">
-                    <div className="font-medium">
-                      {item.kit ? item.kit.name : item.product?.name}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {item.kit ? "Kit" : item.product?.sku}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="font-medium">{item.quantity}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {item.product?.unit || "unid"}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        {item.kit ? item.kit.name : item.product?.name}
                       </div>
+                      <div className="text-sm text-muted-foreground">
+                        {item.kit ? "Kit" : item.product?.sku} • 
+                        {item.approvalStatus === "approved" ? (
+                          <span className="font-medium text-chart-4">
+                            {" "}Aprovado: {item.approvedQuantity} de {item.quantity} {item.product?.unit || "unid"}
+                          </span>
+                        ) : item.approvalStatus === "rejected" ? (
+                          <span className="font-medium text-destructive">
+                            {" "}Rejeitado: {item.quantity} {item.product?.unit || "unid"}
+                          </span>
+                        ) : (
+                          <span> Quantidade: {item.quantity} {item.product?.unit || "unid"}</span>
+                        )}
+                      </div>
+                      {item.approvalStatus === "rejected" && item.rejectionReason && (
+                        <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-sm">
+                          <p className="font-medium text-destructive">Motivo da rejeição:</p>
+                          <p className="text-destructive/90 mt-1">{item.rejectionReason}</p>
+                        </div>
+                      )}
                     </div>
-                    {canEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteItemMutation.mutate(item.id);
-                        }}
-                        data-testid={`button-remove-item-${item.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {!canEdit && item.approvalStatus && <SharedStatusBadge status={item.approvalStatus} />}
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteItemMutation.mutate(item.id);
+                          }}
+                          data-testid={`button-remove-item-${item.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
