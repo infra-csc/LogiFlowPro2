@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import type { LoadingOrder, Event } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
+import { LoadingOrderDialog } from "@/components/loading-order-dialog";
 
 interface LoadingOrderWithRelations extends LoadingOrder {
   event?: Event;
@@ -137,6 +138,15 @@ export default function LoadingOrders() {
           ))}
         </div>
       )}
+
+      <LoadingOrderDialog
+        open={showDialog}
+        onOpenChange={(open) => {
+          setShowDialog(open);
+          if (!open) handleClose();
+        }}
+        order={selectedOrder}
+      />
     </div>
   );
 }
