@@ -14,6 +14,7 @@ import {
   insertDockSchema,
   insertTripSchema,
   insertTripItemSchema,
+  insertLoadingOrderSchema,
   insertInventoryMovementSchema,
   insertReturnSchema,
   insertUserSchema,
@@ -513,6 +514,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(trip);
     } catch (error) {
       res.status(400).json({ error: "Invalid trip data" });
+    }
+  });
+
+  // Loading Orders
+  app.get("/api/loading-orders", async (req, res) => {
+    try {
+      const orders = await storage.getLoadingOrders();
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch loading orders" });
+    }
+  });
+
+  app.get("/api/loading-orders/:id", async (req, res) => {
+    try {
+      const order = await storage.getLoadingOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Loading order not found" });
+      }
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch loading order" });
+    }
+  });
+
+  app.get("/api/loading-orders/:id/requests", async (req, res) => {
+    try {
+      const requests = await storage.getLoadingOrderRequests(req.params.id);
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch loading order requests" });
+    }
+  });
+
+  app.get("/api/loading-orders/:id/items", async (req, res) => {
+    try {
+      const items = await storage.getLoadingOrderItems(req.params.id);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch loading order items" });
+    }
+  });
+
+  app.post("/api/loading-orders", async (req, res) => {
+    try {
+      const { consolidateLoadingOrderItems } = await import("./loadingOrderUtils");
+      
+      const orderData = insertLoadingOrderSchema.parse(req.body);
+      const requestIds: string[] = req.body.requestIds || [];
+
+      const order = await storage.createLoadingOrder(orderData);
+
+      for (const requestId of requestIds) {
+        await storage.createLoadingOrderRequest({
+          loadingOrderId: order.id,
+          requestId
+        });
+      }
+
+      const consolidatedItems = await consolidateLoadingOrderItems(requestIds, storage);
+
+      for (const item of consolidatedItems) {
+        await storage.createLoadingOrderItem({
+          loadingOrderId: order.id,
+          productId: item.productId,
+          consolidatedQuantity: item.consolidatedQuantity,
+          sourceRequests: item.sourceRequests,
+          pickedQuantity: 0,
+          loadedQuantity: 0
+        });
+      }
+
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Error creating loading order:", error);
+      res.status(400).json({ error: "Invalid loading order data" });
+    }
+  });
+
+  app.patch("/api/loading-orders/:id", async (req, res) => {
+    try {
+      const data = insertLoadingOrderSchema.partial().parse(req.body);
+      const order = await storage.updateLoadingOrder(req.params.id, data);
+      res.json(order);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid loading order data" });
     }
   });
 
