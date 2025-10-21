@@ -15,6 +15,8 @@ import {
   insertTripSchema,
   insertTripItemSchema,
   insertLoadingOrderSchema,
+  insertMovementSchema,
+  insertMovementItemSchema,
   insertInventoryMovementSchema,
   insertReturnSchema,
   insertUserSchema,
@@ -636,6 +638,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(disapproved);
     } catch (error) {
       res.status(500).json({ error: "Failed to disapprove loading order" });
+    }
+  });
+
+  // Movements
+  app.get("/api/movements", async (req, res) => {
+    try {
+      const movements = await storage.getMovements();
+      res.json(movements);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch movements" });
+    }
+  });
+
+  app.get("/api/movements/:id", async (req, res) => {
+    try {
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) {
+        return res.status(404).json({ error: "Movement not found" });
+      }
+      res.json(movement);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch movement" });
+    }
+  });
+
+  app.get("/api/movements/:id/items", async (req, res) => {
+    try {
+      const items = await storage.getMovementItems(req.params.id);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch movement items" });
+    }
+  });
+
+  app.post("/api/movements", async (req, res) => {
+    try {
+      const data = insertMovementSchema.parse(req.body);
+      const movement = await storage.createMovement(data);
+      res.status(201).json(movement);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid movement data" });
+    }
+  });
+
+  app.patch("/api/movements/:id", async (req, res) => {
+    try {
+      const data = insertMovementSchema.partial().parse(req.body);
+      const movement = await storage.updateMovement(req.params.id, data);
+      res.json(movement);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid movement data" });
+    }
+  });
+
+  app.post("/api/movements/:id/items", async (req, res) => {
+    try {
+      const data = insertMovementItemSchema.parse(req.body);
+      const item = await storage.createMovementItem(data);
+      res.status(201).json(item);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid movement item data" });
     }
   });
 

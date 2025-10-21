@@ -73,6 +73,11 @@ const mainMenuItems = [
     icon: FileStack,
   },
   {
+    title: "Carga e Descarga",
+    url: "/movements",
+    icon: FileStack,
+  },
+  {
     title: "Devoluções",
     url: "/returns",
     icon: RotateCcw,

@@ -17,6 +17,8 @@ import {
   loadingOrders,
   loadingOrderRequests,
   loadingOrderItems,
+  movements,
+  movementItems,
   inventoryMovements,
   returns,
   auditLogs,
@@ -53,6 +55,10 @@ import {
   type InsertLoadingOrderRequest,
   type LoadingOrderItem,
   type InsertLoadingOrderItem,
+  type Movement,
+  type InsertMovement,
+  type MovementItem,
+  type InsertMovementItem,
   type InventoryMovement,
   type InsertInventoryMovement,
   type Return,
@@ -145,6 +151,8 @@ export interface IStorage {
   getLoadingOrder(id: string): Promise<LoadingOrder | undefined>;
   createLoadingOrder(order: InsertLoadingOrder): Promise<LoadingOrder>;
   updateLoadingOrder(id: string, order: Partial<InsertLoadingOrder>): Promise<LoadingOrder>;
+  approveLoadingOrder(id: string): Promise<LoadingOrder>;
+  disapproveLoadingOrder(id: string): Promise<LoadingOrder>;
 
   // Loading Order Requests (junction table)
   getLoadingOrderRequests(loadingOrderId: string): Promise<LoadingOrderRequest[]>;
@@ -154,6 +162,16 @@ export interface IStorage {
   getLoadingOrderItems(loadingOrderId: string): Promise<LoadingOrderItem[]>;
   createLoadingOrderItem(item: InsertLoadingOrderItem): Promise<LoadingOrderItem>;
   deleteLoadingOrderItems(loadingOrderId: string): Promise<void>;
+
+  // Movements
+  getMovements(): Promise<Movement[]>;
+  getMovement(id: string): Promise<Movement | undefined>;
+  createMovement(movement: InsertMovement): Promise<Movement>;
+  updateMovement(id: string, movement: Partial<InsertMovement>): Promise<Movement>;
+
+  // Movement Items
+  getMovementItems(movementId: string): Promise<MovementItem[]>;
+  createMovementItem(item: InsertMovementItem): Promise<MovementItem>;
 
   // Inventory Movements
   getInventoryMovements(): Promise<InventoryMovement[]>;
@@ -655,6 +673,36 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLoadingOrderItems(loadingOrderId: string): Promise<void> {
     await db.delete(loadingOrderItems).where(eq(loadingOrderItems.loadingOrderId, loadingOrderId));
+  }
+
+  // Movements
+  async getMovements(): Promise<Movement[]> {
+    return await db.select().from(movements).orderBy(desc(movements.createdAt));
+  }
+
+  async getMovement(id: string): Promise<Movement | undefined> {
+    const [movement] = await db.select().from(movements).where(eq(movements.id, id));
+    return movement || undefined;
+  }
+
+  async createMovement(movement: InsertMovement): Promise<Movement> {
+    const [created] = await db.insert(movements).values(movement).returning();
+    return created;
+  }
+
+  async updateMovement(id: string, movement: Partial<InsertMovement>): Promise<Movement> {
+    const [updated] = await db.update(movements).set({...movement, updatedAt: sql`now()`}).where(eq(movements.id, id)).returning();
+    return updated;
+  }
+
+  // Movement Items
+  async getMovementItems(movementId: string): Promise<MovementItem[]> {
+    return await db.select().from(movementItems).where(eq(movementItems.movementId, movementId));
+  }
+
+  async createMovementItem(item: InsertMovementItem): Promise<MovementItem> {
+    const [created] = await db.insert(movementItems).values(item).returning();
+    return created;
   }
 
   // Inventory Movements
