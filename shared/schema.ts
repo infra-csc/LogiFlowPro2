@@ -721,6 +721,8 @@ export const insertLoadingOrderItemSchema = createInsertSchema(loadingOrderItems
 
 export const insertMovementSchema = createInsertSchema(movements).omit({
   id: true,
+  movementNumber: true,
+  createdBy: true,
   createdAt: true,
   updatedAt: true,
   startedAt: true,

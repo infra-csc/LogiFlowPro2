@@ -198,7 +198,6 @@ export function MovementDialog({ children }: MovementDialogProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma</SelectItem>
                       {approvedOrders.map((order) => (
                         <SelectItem key={order.id} value={order.id}>
                           {order.orderNumber}

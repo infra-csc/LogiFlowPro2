@@ -687,10 +687,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const movement = await storage.createMovement(data);
+      // Generate movement number (MVT-YYYYMMDD-XXX)
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const existingToday = await db.select().from(movements)
+        .where(sql`${movements.movementNumber} LIKE ${`MVT-${dateStr}-%`}`)
+        .execute();
+      const sequence = String(existingToday.length + 1).padStart(3, '0');
+      const movementNumber = `MVT-${dateStr}-${sequence}`;
+      
+      // Get current user
+      const createdBy = req.user?.name || "System";
+      
+      const movement = await storage.createMovement({
+        ...data,
+        movementNumber,
+        createdBy,
+      });
       res.status(201).json(movement);
     } catch (error) {
-      res.status(400).json({ error: "Invalid movement data" });
+      console.error("Movement creation error:", error);
+      res.status(400).json({ error: "Invalid movement data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
