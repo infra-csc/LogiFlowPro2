@@ -422,14 +422,15 @@ export default function ApprovalDetail() {
                                   type="number"
                                   min="0"
                                   max={item.quantity}
-                                  value={approval?.approvedQuantity || item.quantity}
-                                  onChange={(e) =>
+                                  value={approval?.approvedQuantity ?? item.quantity}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? 0 : Number(e.target.value);
                                     handleApprovalChange(
                                       item.id,
                                       "approvedQuantity",
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
+                                      val
+                                    );
+                                  }}
                                   className="w-32"
                                   data-testid={`input-quantity-${item.id}`}
                                 />
