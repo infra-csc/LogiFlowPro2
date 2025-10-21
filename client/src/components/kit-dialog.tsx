@@ -247,212 +247,215 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col gap-0 p-0">
+        <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle>{kit ? "Edit Kit" : "Create Kit"}</DialogTitle>
           <DialogDescription>
             {kit ? "Update kit configuration and BOM formulas" : "Define a parametric kit with automatic BOM generation"}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Kit Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Modular Stage 10x8"
-                data-testid="input-kit-name"
-              />
-            </div>
+        <div className="flex-1 overflow-y-auto px-6">
+          <form id="kit-form" onSubmit={handleSubmit} className="space-y-6 pb-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Kit Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Modular Stage 10x8"
+                  data-testid="input-kit-name"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description || ""}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Kit description..."
-                rows={2}
-                data-testid="input-kit-description"
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description || ""}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Kit description..."
+                  rows={2}
+                  data-testid="input-kit-description"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>Imagem do Kit</Label>
-              {imageUrl ? (
-                <div className="relative">
-                  <img 
-                    src={imageUrl} 
-                    alt="Kit preview" 
-                    className="w-full h-48 object-cover rounded-md"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleRemoveImage}
-                    className="absolute top-2 right-2"
-                    data-testid="button-remove-image"
+              <div className="space-y-2">
+                <Label>Imagem do Kit</Label>
+                {imageUrl ? (
+                  <div className="relative">
+                    <img 
+                      src={imageUrl} 
+                      alt="Kit preview" 
+                      className="w-full h-48 object-cover rounded-md"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleRemoveImage}
+                      className="absolute top-2 right-2"
+                      data-testid="button-remove-image"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <ObjectUploader
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete}
+                    buttonClassName="w-full"
+                    buttonVariant="outline"
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <ObjectUploader
-                  onGetUploadParameters={handleGetUploadParameters}
-                  onComplete={handleUploadComplete}
-                  buttonClassName="w-full"
-                  buttonVariant="outline"
-                >
-                  <ImageIcon className="h-4 w-4 mr-2" />
-                  Adicionar Imagem
-                </ObjectUploader>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Parameters *</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addParameter} data-testid="button-add-parameter">
-                <Plus className="h-4 w-4 mr-1" />
-                Add Parameter
-              </Button>
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Adicionar Imagem
+                  </ObjectUploader>
+                )}
+              </div>
             </div>
 
-            {parameters.map((param, index) => (
-              <Card key={index}>
-                <CardContent className="pt-4">
-                  <div className="grid grid-cols-12 gap-3 items-end">
-                    <div className="col-span-4">
-                      <Label>Name</Label>
-                      <Input
-                        value={param.name}
-                        onChange={(e) => updateParameter(index, "name", e.target.value)}
-                        placeholder="Width, Height, etc."
-                        data-testid={`input-param-name-${index}`}
-                      />
-                    </div>
-                    <div className="col-span-3">
-                      <Label>Type</Label>
-                      <Select
-                        value={param.type}
-                        onValueChange={(value) => updateParameter(index, "type", value)}
-                      >
-                        <SelectTrigger data-testid={`select-param-type-${index}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="number">Number</SelectItem>
-                          <SelectItem value="select">Select</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-3">
-                      <Label>{param.type === "select" ? "Options" : "Unit"}</Label>
-                      <Input
-                        value={param.type === "select" ? (param.options?.join(",") || "") : (param.unit || "")}
-                        onChange={(e) => {
-                          if (param.type === "select") {
-                            updateParameter(index, "options", e.target.value.split(",").map(s => s.trim()).filter(Boolean));
-                          } else {
-                            updateParameter(index, "unit", e.target.value);
-                          }
-                        }}
-                        placeholder={param.type === "select" ? "Option1,Option2,Option3" : "m, kg, etc."}
-                        data-testid={`input-param-${param.type === "select" ? "options" : "unit"}-${index}`}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeParameter(index)}
-                        data-testid={`button-remove-param-${index}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Parameters *</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addParameter} data-testid="button-add-parameter">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Parameter
+                </Button>
+              </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>BOM Lines</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addBomLine} data-testid="button-add-bom-line">
-                <Plus className="h-4 w-4 mr-1" />
-                Add BOM Line
-              </Button>
+              {parameters.map((param, index) => (
+                <Card key={index}>
+                  <CardContent className="pt-4">
+                    <div className="grid grid-cols-12 gap-3 items-end">
+                      <div className="col-span-4">
+                        <Label>Name</Label>
+                        <Input
+                          value={param.name}
+                          onChange={(e) => updateParameter(index, "name", e.target.value)}
+                          placeholder="Width, Height, etc."
+                          data-testid={`input-param-name-${index}`}
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <Label>Type</Label>
+                        <Select
+                          value={param.type}
+                          onValueChange={(value) => updateParameter(index, "type", value)}
+                        >
+                          <SelectTrigger data-testid={`select-param-type-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="number">Number</SelectItem>
+                            <SelectItem value="select">Select</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-3">
+                        <Label>{param.type === "select" ? "Options" : "Unit"}</Label>
+                        <Input
+                          value={param.type === "select" ? (param.options?.join(",") || "") : (param.unit || "")}
+                          onChange={(e) => {
+                            if (param.type === "select") {
+                              updateParameter(index, "options", e.target.value.split(",").map(s => s.trim()).filter(Boolean));
+                            } else {
+                              updateParameter(index, "unit", e.target.value);
+                            }
+                          }}
+                          placeholder={param.type === "select" ? "Option1,Option2,Option3" : "m, kg, etc."}
+                          data-testid={`input-param-${param.type === "select" ? "options" : "unit"}-${index}`}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeParameter(index)}
+                          data-testid={`button-remove-param-${index}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
-            {bomLines.map((line, index) => (
-              <Card key={index}>
-                <CardContent className="pt-4">
-                  <div className="grid grid-cols-12 gap-3 items-end">
-                    <div className="col-span-5">
-                      <Label>Product</Label>
-                      <Select
-                        value={line.productId}
-                        onValueChange={(value) => updateBomLine(index, "productId", value)}
-                      >
-                        <SelectTrigger data-testid={`select-bom-product-${index}`}>
-                          <SelectValue placeholder="Select product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products?.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.sku})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-5">
-                      <Label>Quantity Formula</Label>
-                      <Input
-                        value={line.quantityFormula}
-                        onChange={(e) => updateBomLine(index, "quantityFormula", e.target.value)}
-                        placeholder="width * height / 2"
-                        data-testid={`input-bom-formula-${index}`}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeBomLine(index)}
-                        data-testid={`button-remove-bom-${index}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>BOM Lines</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addBomLine} data-testid="button-add-bom-line">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add BOM Line
+                </Button>
+              </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-              data-testid="button-submit-kit"
-            >
-              {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : (kit ? "Update" : "Create")}
-            </Button>
-          </DialogFooter>
-        </form>
+              {bomLines.map((line, index) => (
+                <Card key={index}>
+                  <CardContent className="pt-4">
+                    <div className="grid grid-cols-12 gap-3 items-end">
+                      <div className="col-span-5">
+                        <Label>Product</Label>
+                        <Select
+                          value={line.productId}
+                          onValueChange={(value) => updateBomLine(index, "productId", value)}
+                        >
+                          <SelectTrigger data-testid={`select-bom-product-${index}`}>
+                            <SelectValue placeholder="Select product" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {products?.map((product) => (
+                              <SelectItem key={product.id} value={product.id}>
+                                {product.name} ({product.sku})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-5">
+                        <Label>Quantity Formula</Label>
+                        <Input
+                          value={line.quantityFormula}
+                          onChange={(e) => updateBomLine(index, "quantityFormula", e.target.value)}
+                          placeholder="width * height / 2"
+                          data-testid={`input-bom-formula-${index}`}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeBomLine(index)}
+                          data-testid={`button-remove-bom-${index}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </form>
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button 
+            type="submit"
+            form="kit-form"
+            disabled={createMutation.isPending || updateMutation.isPending}
+            data-testid="button-submit-kit"
+          >
+            {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : (kit ? "Update" : "Create")}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
