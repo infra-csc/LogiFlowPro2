@@ -18,6 +18,7 @@ import Trips from "@/pages/trips";
 import LoadingOrders from "@/pages/loading-orders";
 import LoadingOrderDetails from "@/pages/loading-order-details";
 import Movements from "@/pages/movements";
+import MovementDetails from "@/pages/movement-details";
 import Returns from "@/pages/returns";
 import Products from "@/pages/products";
 import Kits from "@/pages/kits";
@@ -42,6 +43,7 @@ function Router() {
       <ProtectedRoute path="/trips" component={Trips} />
       <ProtectedRoute path="/loading-orders/:id" component={LoadingOrderDetails} />
       <ProtectedRoute path="/loading-orders" component={LoadingOrders} />
+      <ProtectedRoute path="/movements/:id" component={MovementDetails} />
       <ProtectedRoute path="/movements" component={Movements} />
       <ProtectedRoute path="/returns" component={Returns} />
       <ProtectedRoute path="/products" component={Products} />

@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
+import { MovementDialog } from "@/components/movement-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Movement, LoadingOrder, Event, Dock } from "@shared/schema";
 
 type MovementWithRelations = Movement & {
@@ -61,9 +64,32 @@ const formatDuration = (minutes?: number | null) => {
 export default function Movements() {
   const [, navigate] = useLocation();
   const [filter] = useState("all");
+  const { toast } = useToast();
 
   const { data: movements = [], isLoading } = useQuery<MovementWithRelations[]>({
     queryKey: ["/api/movements"],
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/movements/${id}`, { status });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update status");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements"] });
+      toast({ title: "Status atualizado" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -85,10 +111,12 @@ export default function Movements() {
             Gerencie movimentações operacionais do armazém
           </p>
         </div>
-        <Button data-testid="button-new-movement">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Movimentação
-        </Button>
+        <MovementDialog>
+          <Button data-testid="button-new-movement">
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Movimentação
+          </Button>
+        </MovementDialog>
       </div>
 
       {/* Filtros */}
@@ -159,6 +187,8 @@ export default function Movements() {
                     {movement.status === "created" && (
                       <Button
                         size="sm"
+                        onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "in_progress" })}
+                        disabled={updateStatusMutation.isPending}
                         data-testid={`button-start-${movement.id}`}
                       >
                         <PlayCircle className="h-4 w-4 mr-1" />
@@ -170,6 +200,8 @@ export default function Movements() {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "paused" })}
+                          disabled={updateStatusMutation.isPending}
                           data-testid={`button-pause-${movement.id}`}
                         >
                           <PauseCircle className="h-4 w-4 mr-1" />
@@ -177,6 +209,8 @@ export default function Movements() {
                         </Button>
                         <Button
                           size="sm"
+                          onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "completed" })}
+                          disabled={updateStatusMutation.isPending}
                           data-testid={`button-finish-${movement.id}`}
                         >
                           <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -187,6 +221,8 @@ export default function Movements() {
                     {movement.status === "paused" && (
                       <Button
                         size="sm"
+                        onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "in_progress" })}
+                        disabled={updateStatusMutation.isPending}
                         data-testid={`button-continue-${movement.id}`}
                       >
                         <PlayCircle className="h-4 w-4 mr-1" />

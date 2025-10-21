@@ -675,6 +675,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/movements", async (req, res) => {
     try {
       const data = insertMovementSchema.parse(req.body);
+      
+      // Validate loading order if provided
+      if (data.loadingOrderId) {
+        const order = await storage.getLoadingOrder(data.loadingOrderId);
+        if (!order) {
+          return res.status(404).json({ error: "Loading order not found" });
+        }
+        if (order.status !== "approved" && order.status !== "in_progress") {
+          return res.status(400).json({ error: "Loading order must be approved" });
+        }
+      }
+      
       const movement = await storage.createMovement(data);
       res.status(201).json(movement);
     } catch (error) {
@@ -684,9 +696,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/movements/:id", async (req, res) => {
     try {
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) {
+        return res.status(404).json({ error: "Movement not found" });
+      }
+
       const data = insertMovementSchema.partial().parse(req.body);
-      const movement = await storage.updateMovement(req.params.id, data);
-      res.json(movement);
+      
+      // Validate status transitions
+      if (data.status && data.status !== movement.status) {
+        const validTransitions: Record<string, string[]> = {
+          created: ["in_progress", "cancelled"],
+          in_progress: ["paused", "completed", "cancelled"],
+          paused: ["in_progress", "cancelled"],
+          completed: [],
+          cancelled: [],
+        };
+
+        const allowedStatuses = validTransitions[movement.status] || [];
+        if (!allowedStatuses.includes(data.status)) {
+          return res.status(400).json({
+            error: `Cannot transition from ${movement.status} to ${data.status}`,
+          });
+        }
+
+        // Set timestamps based on status
+        if (data.status === "in_progress" && !movement.actualStartTime) {
+          data.actualStartTime = new Date();
+        }
+        if (data.status === "completed") {
+          data.actualEndTime = new Date();
+        }
+      }
+      
+      const updated = await storage.updateMovement(req.params.id, data);
+      res.json(updated);
     } catch (error) {
       res.status(400).json({ error: "Invalid movement data" });
     }
@@ -694,8 +738,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/movements/:id/items", async (req, res) => {
     try {
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) {
+        return res.status(404).json({ error: "Movement not found" });
+      }
+      
+      // Only allow adding items if movement is in progress
+      if (movement.status !== "in_progress") {
+        return res.status(400).json({
+          error: "Items can only be added to movements in progress",
+        });
+      }
+
       const data = insertMovementItemSchema.parse(req.body);
-      const item = await storage.createMovementItem(data);
+      
+      // Enforce movementId matches the URL parameter to prevent data integrity violations
+      if (data.movementId && data.movementId !== req.params.id) {
+        return res.status(400).json({
+          error: "Movement ID in body must match the URL parameter",
+        });
+      }
+      
+      // Override movementId to ensure it matches the URL param
+      const itemData = { ...data, movementId: req.params.id };
+      const item = await storage.createMovementItem(itemData);
       res.status(201).json(item);
     } catch (error) {
       res.status(400).json({ error: "Invalid movement item data" });
