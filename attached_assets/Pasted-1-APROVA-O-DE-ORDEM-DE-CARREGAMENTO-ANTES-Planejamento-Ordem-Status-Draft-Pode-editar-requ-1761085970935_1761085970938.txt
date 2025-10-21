@@ -1,0 +1,124 @@
+1. APROVAÇÃO DE ORDEM DE CARREGAMENTO
+ANTES (Planejamento):
+Ordem Status: "Draft" → Pode editar requisições
+
+AÇÃO: Botão "Aprovar para Carga"
+↓
+DEPOIS (Operacional):
+Ordem Status: "Aprovada" → Bloqueada para edição
+- Só pode ser alterada se "Desaprovar" (volta para Draft)
+- Aparece na lista de ordens disponíveis na área operacional
+2. PÁGINA CARGA E DESCARGA - ESTRUTURA
+Tela Principal: Lista de Movimentações
+┌─────────────────────────────────────────────────────────────┐
+│ 🚛 CARGA E DESCARGA                    [➕ Nova Movimentação]│
+├─────────────────────────────────────────────────────────────┤
+│ Filtros: [Hoje ▼] [Todas ▼] [Doca ▼]                       │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 🟢 MOV-001 | Saída Evento CDE-SP | Truck ABC-1234       │ │
+│ │ Ordem: ORD-045 | Doca D01 | ⏱️ 2h 15min                 │ │
+│ │ [▶️ Continuar] [⏸️ Pausar] [✅ Finalizar] [👁️ Detalhes]  │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 🟡 MOV-002 | Retorno Evento CDE-RJ | Van DEF-5678        │ │
+│ │ Ordem: - | Doca D02 | ⏸️ Pausada                        │ │
+│ │ [▶️ Continuar] [⏸️ Pausar] [✅ Finalizar] [👁️ Detalhes]  │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+Modal: Nova Movimentação
+┌─────────────────────────────────────────────────────────────┐
+│ ➕ NOVA MOVIMENTAÇÃO                                [❌]     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ 📝 Nome da Movimentação                                     │
+│ [Saída Evento CDE-SP - Doca D01                          ] │
+│                                                             │
+│ 🔄 Tipo de Movimentação                                     │
+│ [Saída para Evento        ▼]                               │
+│ • Saída para Evento                                         │
+│ • Retorno de Evento                                         │
+│ • Entrada Produto Comprado                                  │
+│ • Entrada Produto Locado                                    │
+│ • Devolução Produto Locado                                  │
+│ • Transferência Interna                                     │
+│ • Ajuste de Inventário                                      │
+│                                                             │
+│ 📋 Ordem de Carregamento (Opcional)                         │
+│ [ORD-045 - CDE São Paulo 2025           ▼]                 │
+│                                                             │
+│ 🚛 Placa do Veículo                                         │
+│ [ABC-1234                                               ]   │
+│                                                             │
+│ 🚪 Doca                                                     │
+│ [D01 ▼]                                                     │
+│                                                             │
+│ [🚀 Iniciar Movimentação]                                   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+3. TELA DE MOVIMENTAÇÃO (Interface Operacional)
+Layout Principal
+┌─────────────────────────────────────────────────────────────┐
+│ ← MOV-001: Saída Evento CDE-SP                              │
+│ Ordem: ORD-045 | Truck ABC-1234 | Doca D01                 │
+│ ⏱️ 2h 15min | Status: 🟢 Em Andamento                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ ┌─────────────────┬─────────────────────────────────────────┐ │
+│ │ 🔍 BUSCAR ITEM  │ 📋 ITENS DA ORDEM (se aplicável)       │ │
+│ │                 │                                         │ │
+│ │ [____________]  │ ┌─────────────────────────────────────┐ │ │
+│ │ 🔍 Buscar       │ │ ✅ BTQ30_2000 (20/20)              │ │ │
+│ │                 │ │ ⚠️ BTQ30_3000 (5/8)               │ │ │
+│ │ 📱 Scanner      │ │ ❌ PRAT_2X1 (0/15)                │ │ │
+│ │                 │ │ ✅ CABO_10M (50/50)               │ │ │
+│ │                 │ └─────────────────────────────────────┘ │ │
+│ │                 │ [📊 Ver Progresso Completo]            │ │
+│ └─────────────────┴─────────────────────────────────────────┘ │
+│                                                             │
+│ 🎯 ITEM SELECIONADO                                         │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ BTQ30_3000 - Box Truss Q30 3000mm                      │ │
+│ │ Estoque Atual: 25 un | Localização: A1-B-04            │ │
+│ │                                                         │ │
+│ │ Quantidade: [____5____] un                              │ │
+│ │                                                         │ │
+│ │ ┌─────┬─────┬─────┬─────┐                               │ │
+│ │ │ -10 │ -1  │ +1  │ +10 │                               │ │
+│ │ └─────┴─────┴─────┴─────┘                               │ │
+│ │                                                         │ │
+│ │ [✅ CONFIRMAR SAÍDA] [❌ Cancelar]                       │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ 📊 RESUMO DA MOVIMENTAÇÃO                                   │
+│ Itens processados: 156 | Valor total: R$ 45.780,00         │
+│                                                             │
+│ [⏸️ PAUSAR] [✅ FINALIZAR MOVIMENTAÇÃO] [📊 Relatório]      │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+4. REGRAS DE NEGÓCIO SUGERIDAS
+Estados da Ordem de Carregamento:
+Draft → Aprovada → Em Execução → Finalizada
+  ↑        ↓
+Desaprovada ←
+Estados da Movimentação:
+Criada → Em Andamento → Pausada → Finalizada
+                    ↗     ↓
+                   ←─────←
+Validações Importantes:
+Estoque: Não permitir saída > estoque disponível
+Ordem: Alertar quando item não está na ordem (mas permitir)
+Quantidade: Validar números positivos
+Finalização: Exigir confirmação para finalizar
+5. MELHORIAS SUGERIDAS
+Usabilidade Operacional:
+Atalhos de teclado: F1=Buscar, F2=Scanner, Enter=Confirmar
+Fonte grande: 18px+ para números e textos principais
+Cores semafóricas: Verde=OK, Amarelo=Atenção, Vermelho=Problema
+Feedback sonoro: Beep de confirmação, alerta de erro
+Funcionalidades Extras:
+Scanner QR/Barcode: Integração com câmera
+Histórico: Últimos itens movimentados
+Observações: Campo livre para anotações
+Fotos: Anexar evidências quando necessário

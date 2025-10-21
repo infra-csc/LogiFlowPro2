@@ -57,7 +57,26 @@ export const tripStatusEnum = pgEnum("trip_status", [
 export const loadingOrderStatusEnum = pgEnum("loading_order_status", [
   "draft",
   "ready",
+  "approved",
   "in_progress",
+  "completed",
+  "cancelled"
+]);
+
+export const movementTypeEnum = pgEnum("movement_type", [
+  "outbound_event",
+  "inbound_event", 
+  "inbound_purchase",
+  "inbound_rental",
+  "outbound_rental_return",
+  "internal_transfer",
+  "inventory_adjustment"
+]);
+
+export const movementStatusEnum = pgEnum("movement_status", [
+  "created",
+  "in_progress",
+  "paused",
   "completed",
   "cancelled"
 ]);
@@ -337,6 +356,39 @@ export const loadingOrderItems = pgTable("loading_order_items", {
   notes: text("notes")
 });
 
+// Warehouse Movements table (Carga e Descarga)
+export const movements = pgTable("movements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  movementNumber: text("movement_number").notNull().unique(),
+  name: text("name").notNull(),
+  type: movementTypeEnum("type").notNull(),
+  status: movementStatusEnum("status").notNull().default("created"),
+  loadingOrderId: varchar("loading_order_id").references(() => loadingOrders.id),
+  eventId: varchar("event_id").references(() => events.id),
+  vehiclePlate: text("vehicle_plate"),
+  dockId: varchar("dock_id").references(() => docks.id),
+  startedAt: timestamp("started_at"),
+  pausedAt: timestamp("paused_at"),
+  completedAt: timestamp("completed_at"),
+  totalDuration: integer("total_duration"), // em minutos
+  createdBy: text("created_by").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
+// Movement Items table
+export const movementItems = pgTable("movement_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  movementId: varchar("movement_id").notNull().references(() => movements.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  quantity: integer("quantity").notNull(),
+  scanned: boolean("scanned").default(false),
+  location: text("location"),
+  notes: text("notes"),
+  processedAt: timestamp("processed_at").notNull().default(sql`now()`)
+});
+
 // Inventory Movements table
 export const inventoryMovements = pgTable("inventory_movements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -507,6 +559,33 @@ export const loadingOrderItemsRelations = relations(loadingOrderItems, ({ one })
   })
 }));
 
+export const movementsRelations = relations(movements, ({ one, many }) => ({
+  loadingOrder: one(loadingOrders, {
+    fields: [movements.loadingOrderId],
+    references: [loadingOrders.id]
+  }),
+  event: one(events, {
+    fields: [movements.eventId],
+    references: [events.id]
+  }),
+  dock: one(docks, {
+    fields: [movements.dockId],
+    references: [docks.id]
+  }),
+  items: many(movementItems)
+}));
+
+export const movementItemsRelations = relations(movementItems, ({ one }) => ({
+  movement: one(movements, {
+    fields: [movementItems.movementId],
+    references: [movements.id]
+  }),
+  product: one(products, {
+    fields: [movementItems.productId],
+    references: [products.id]
+  })
+}));
+
 export const vehiclesRelations = relations(vehicles, ({ many }) => ({
   trips: many(trips)
 }));
@@ -640,6 +719,21 @@ export const insertLoadingOrderItemSchema = createInsertSchema(loadingOrderItems
   id: true
 });
 
+export const insertMovementSchema = createInsertSchema(movements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  pausedAt: true,
+  completedAt: true,
+  totalDuration: true
+});
+
+export const insertMovementItemSchema = createInsertSchema(movementItems).omit({
+  id: true,
+  processedAt: true
+});
+
 export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements).omit({
   id: true,
   createdAt: true
@@ -721,6 +815,12 @@ export type InsertLoadingOrderRequest = z.infer<typeof insertLoadingOrderRequest
 
 export type LoadingOrderItem = typeof loadingOrderItems.$inferSelect;
 export type InsertLoadingOrderItem = z.infer<typeof insertLoadingOrderItemSchema>;
+
+export type Movement = typeof movements.$inferSelect;
+export type InsertMovement = z.infer<typeof insertMovementSchema>;
+
+export type MovementItem = typeof movementItems.$inferSelect;
+export type InsertMovementItem = z.infer<typeof insertMovementItemSchema>;
 
 export type InventoryMovement = typeof inventoryMovements.$inferSelect;
 export type InsertInventoryMovement = z.infer<typeof insertInventoryMovementSchema>;
