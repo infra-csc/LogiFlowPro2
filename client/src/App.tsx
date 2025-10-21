@@ -15,6 +15,7 @@ import Requests from "@/pages/requests";
 import RequestDetails from "@/pages/request-details";
 import Inventory from "@/pages/inventory";
 import Trips from "@/pages/trips";
+import LoadingOrders from "@/pages/loading-orders";
 import Returns from "@/pages/returns";
 import Products from "@/pages/products";
 import Kits from "@/pages/kits";
@@ -37,6 +38,7 @@ function Router() {
       <ProtectedRoute path="/requests" component={Requests} />
       <ProtectedRoute path="/inventory" component={Inventory} />
       <ProtectedRoute path="/trips" component={Trips} />
+      <ProtectedRoute path="/loading-orders" component={LoadingOrders} />
       <ProtectedRoute path="/returns" component={Returns} />
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/kits" component={Kits} />

@@ -5,6 +5,7 @@ import {
   Boxes, 
   ClipboardList, 
   Truck, 
+  FileStack,
   RotateCcw,
   Settings,
   Warehouse,
@@ -65,6 +66,11 @@ const mainMenuItems = [
     title: "Planejamento de Viagens",
     url: "/trips",
     icon: Truck,
+  },
+  {
+    title: "Ordens de Carregamento",
+    url: "/loading-orders",
+    icon: FileStack,
   },
   {
     title: "Devoluções",
