@@ -14,6 +14,9 @@ import {
   docks,
   trips,
   tripItems,
+  loadingOrders,
+  loadingOrderRequests,
+  loadingOrderItems,
   inventoryMovements,
   returns,
   auditLogs,
@@ -44,6 +47,12 @@ import {
   type InsertTrip,
   type TripItem,
   type InsertTripItem,
+  type LoadingOrder,
+  type InsertLoadingOrder,
+  type LoadingOrderRequest,
+  type InsertLoadingOrderRequest,
+  type LoadingOrderItem,
+  type InsertLoadingOrderItem,
   type InventoryMovement,
   type InsertInventoryMovement,
   type Return,
@@ -130,6 +139,21 @@ export interface IStorage {
   // Trip Items
   getTripItems(tripId: string): Promise<TripItem[]>;
   createTripItem(item: InsertTripItem): Promise<TripItem>;
+
+  // Loading Orders
+  getLoadingOrders(): Promise<LoadingOrder[]>;
+  getLoadingOrder(id: string): Promise<LoadingOrder | undefined>;
+  createLoadingOrder(order: InsertLoadingOrder): Promise<LoadingOrder>;
+  updateLoadingOrder(id: string, order: Partial<InsertLoadingOrder>): Promise<LoadingOrder>;
+
+  // Loading Order Requests (junction table)
+  getLoadingOrderRequests(loadingOrderId: string): Promise<LoadingOrderRequest[]>;
+  createLoadingOrderRequest(relation: InsertLoadingOrderRequest): Promise<LoadingOrderRequest>;
+
+  // Loading Order Items
+  getLoadingOrderItems(loadingOrderId: string): Promise<LoadingOrderItem[]>;
+  createLoadingOrderItem(item: InsertLoadingOrderItem): Promise<LoadingOrderItem>;
+  deleteLoadingOrderItems(loadingOrderId: string): Promise<void>;
 
   // Inventory Movements
   getInventoryMovements(): Promise<InventoryMovement[]>;
@@ -554,6 +578,50 @@ export class DatabaseStorage implements IStorage {
   async createTripItem(item: InsertTripItem): Promise<TripItem> {
     const [created] = await db.insert(tripItems).values(item).returning();
     return created;
+  }
+
+  // Loading Orders
+  async getLoadingOrders(): Promise<LoadingOrder[]> {
+    return await db.select().from(loadingOrders).orderBy(desc(loadingOrders.createdAt));
+  }
+
+  async getLoadingOrder(id: string): Promise<LoadingOrder | undefined> {
+    const [order] = await db.select().from(loadingOrders).where(eq(loadingOrders.id, id));
+    return order || undefined;
+  }
+
+  async createLoadingOrder(order: InsertLoadingOrder): Promise<LoadingOrder> {
+    const [created] = await db.insert(loadingOrders).values(order).returning();
+    return created;
+  }
+
+  async updateLoadingOrder(id: string, order: Partial<InsertLoadingOrder>): Promise<LoadingOrder> {
+    const [updated] = await db.update(loadingOrders).set(order).where(eq(loadingOrders.id, id)).returning();
+    return updated;
+  }
+
+  // Loading Order Requests (junction table)
+  async getLoadingOrderRequests(loadingOrderId: string): Promise<LoadingOrderRequest[]> {
+    return await db.select().from(loadingOrderRequests).where(eq(loadingOrderRequests.loadingOrderId, loadingOrderId));
+  }
+
+  async createLoadingOrderRequest(relation: InsertLoadingOrderRequest): Promise<LoadingOrderRequest> {
+    const [created] = await db.insert(loadingOrderRequests).values(relation).returning();
+    return created;
+  }
+
+  // Loading Order Items
+  async getLoadingOrderItems(loadingOrderId: string): Promise<LoadingOrderItem[]> {
+    return await db.select().from(loadingOrderItems).where(eq(loadingOrderItems.loadingOrderId, loadingOrderId));
+  }
+
+  async createLoadingOrderItem(item: InsertLoadingOrderItem): Promise<LoadingOrderItem> {
+    const [created] = await db.insert(loadingOrderItems).values(item as any).returning();
+    return created;
+  }
+
+  async deleteLoadingOrderItems(loadingOrderId: string): Promise<void> {
+    await db.delete(loadingOrderItems).where(eq(loadingOrderItems.loadingOrderId, loadingOrderId));
   }
 
   // Inventory Movements
