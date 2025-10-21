@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Clock, ChevronRight } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle2, XCircle, Clock, ChevronRight, Filter, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -48,14 +50,52 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 export default function Approvals() {
   const [, navigate] = useLocation();
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [eventFilter, setEventFilter] = useState<string>("all");
+  const [requesterFilter, setRequesterFilter] = useState<string>("all");
 
   const { data: requests = [], isLoading } = useQuery<MaterialRequest[]>({
     queryKey: ["/api/requests"],
   });
 
+  // Extract unique values for filters
+  const uniqueEvents = useMemo(() => {
+    const events = requests
+      .map(r => r.event)
+      .filter((e): e is NonNullable<typeof e> => !!e);
+    const uniqueMap = new Map(events.map(e => [e.id, e]));
+    return Array.from(uniqueMap.values());
+  }, [requests]);
+
+  const uniqueRequesters = useMemo(() => {
+    const requesters = requests
+      .map(r => r.requestedByUser)
+      .filter((u): u is NonNullable<typeof u> => !!u);
+    const uniqueMap = new Map(requesters.map(u => [u.id, u]));
+    return Array.from(uniqueMap.values());
+  }, [requests]);
+
+  // Apply filters
+  const filteredRequests = useMemo(() => {
+    return requests.filter(r => {
+      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (eventFilter !== "all" && r.eventId !== eventFilter) return false;
+      if (requesterFilter !== "all" && r.requestedBy !== requesterFilter) return false;
+      return true;
+    });
+  }, [requests, statusFilter, eventFilter, requesterFilter]);
+
+  const hasActiveFilters = statusFilter !== "all" || eventFilter !== "all" || requesterFilter !== "all";
+
+  const clearFilters = () => {
+    setStatusFilter("all");
+    setEventFilter("all");
+    setRequesterFilter("all");
+  };
+
   // Filter only pending approval requests
-  const pendingRequests = requests.filter(r => r.status === "pending_approval");
-  const processedRequests = requests
+  const pendingRequests = filteredRequests.filter(r => r.status === "pending_approval");
+  const processedRequests = filteredRequests
     .filter(r => r.status === "approved" || r.status === "rejected")
     .sort((a, b) => {
       const dateA = a.approvedAt ? new Date(a.approvedAt).getTime() : 0;
@@ -79,6 +119,81 @@ export default function Approvals() {
           Gerencie aprovações de requisições de materiais
         </p>
       </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              <CardTitle>Filtros</CardTitle>
+            </div>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                data-testid="button-clear-filters"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Limpar Filtros
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Status</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger data-testid="select-status-filter">
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="pending_approval">Pendente Aprovação</SelectItem>
+                  <SelectItem value="approved">Aprovado</SelectItem>
+                  <SelectItem value="rejected">Rejeitado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Evento</label>
+              <Select value={eventFilter} onValueChange={setEventFilter}>
+                <SelectTrigger data-testid="select-event-filter">
+                  <SelectValue placeholder="Todos os eventos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os eventos</SelectItem>
+                  {uniqueEvents.map((event) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      {event.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Solicitante</label>
+              <Select value={requesterFilter} onValueChange={setRequesterFilter}>
+                <SelectTrigger data-testid="select-requester-filter">
+                  <SelectValue placeholder="Todos os solicitantes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os solicitantes</SelectItem>
+                  {uniqueRequesters.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Pending Approvals */}
       <div className="space-y-4">

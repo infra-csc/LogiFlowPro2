@@ -109,9 +109,6 @@ export default function ApprovalDetail() {
     queryKey: ["/api/requests", id, "items"],
   });
 
-  console.log("Items data:", items);
-  console.log("Request data:", request);
-
   const approveAllMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", `/api/requests/${id}/approve-all`, {
