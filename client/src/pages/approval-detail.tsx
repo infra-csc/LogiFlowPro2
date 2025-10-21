@@ -380,7 +380,14 @@ export default function ApprovalDetail() {
                               {item.product?.name || item.kit?.name}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {item.product?.sku} • Quantidade: {item.quantity} {item.product?.unit}
+                              {item.product?.sku} • 
+                              {!canApprove && item.approvalStatus === "approved" && item.approvedQuantity !== item.quantity ? (
+                                <span className="font-medium text-chart-4">
+                                  {" "}Aprovado: {item.approvedQuantity} de {item.quantity} {item.product?.unit}
+                                </span>
+                              ) : (
+                                <span> Quantidade: {item.quantity} {item.product?.unit}</span>
+                              )}
                             </p>
                           </div>
                           {!canApprove && <StatusBadge status={item.approvalStatus} />}
