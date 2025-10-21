@@ -386,9 +386,13 @@ export default function ApprovalDetail() {
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {item.product?.sku} • 
-                              {!canApprove && item.approvalStatus === "approved" && item.approvedQuantity !== item.quantity ? (
+                              {!canApprove && item.approvalStatus === "approved" ? (
                                 <span className="font-medium text-chart-4">
                                   {" "}Aprovado: {item.approvedQuantity} de {item.quantity} {item.product?.unit}
+                                </span>
+                              ) : !canApprove && item.approvalStatus === "rejected" ? (
+                                <span className="font-medium text-destructive">
+                                  {" "}Rejeitado: {item.quantity} {item.product?.unit}
                                 </span>
                               ) : (
                                 <span> Quantidade: {item.quantity} {item.product?.unit}</span>
