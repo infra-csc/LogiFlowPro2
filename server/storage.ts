@@ -78,6 +78,7 @@ export interface IStorage {
   // BOM Lines
   getBomLinesByKit(kitId: string): Promise<BomLine[]>;
   createBomLine(bomLine: InsertBomLine): Promise<BomLine>;
+  deleteBomLinesByKit(kitId: string): Promise<void>;
 
   // Products
   getProducts(): Promise<Product[]>;
@@ -231,6 +232,10 @@ export class DatabaseStorage implements IStorage {
   async createBomLine(bomLine: InsertBomLine): Promise<BomLine> {
     const [created] = await db.insert(bomLines).values(bomLine).returning();
     return created;
+  }
+
+  async deleteBomLinesByKit(kitId: string): Promise<void> {
+    await db.delete(bomLines).where(eq(bomLines.kitId, kitId));
   }
 
   // Products

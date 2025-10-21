@@ -194,9 +194,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/kits/:id", async (req, res) => {
     try {
-      const { kit: kitData } = req.body;
+      // Support both { kit, bomLines } and flat body for backward compatibility
+      const raw = req.body;
+      const kitData = raw.kit ?? raw;
+      const bomLinesData = raw.bomLines;
+      
       const data = insertKitSchema.partial().parse(kitData);
       const kit = await storage.updateKit(req.params.id, data);
+
+      // Update BOM lines if provided
+      if (bomLinesData && Array.isArray(bomLinesData)) {
+        // Delete existing BOM lines
+        await storage.deleteBomLinesByKit(req.params.id);
+        
+        // Create new BOM lines
+        for (const line of bomLinesData) {
+          const validatedLine = insertBomLineSchema.parse({ ...line, kitId: req.params.id });
+          await storage.createBomLine(validatedLine);
+        }
+      }
+
       res.json(kit);
     } catch (error) {
       res.status(400).json({ error: "Invalid kit data" });

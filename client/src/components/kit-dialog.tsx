@@ -76,6 +76,19 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
     }
   }, [open, kit]);
 
+  // Load existing BOM lines when editing a kit
+  useEffect(() => {
+    if (open && kit?.id && existingBomLines) {
+      setBomLines(
+        existingBomLines.map((line) => ({
+          productId: line.productId,
+          quantityFormula: line.quantityFormula,
+          notes: line.notes || "",
+        }))
+      );
+    }
+  }, [open, kit?.id, existingBomLines]);
+
   const handleGetUploadParameters = async () => {
     const response: any = await apiRequest("POST", "/api/objects/upload", {});
     const data = await response.json();
@@ -172,11 +185,14 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/kits"] });
-      toast({ description: "Kit updated successfully" });
+      if (kit?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/kits", kit.id, "bom"] });
+      }
+      toast({ description: "Kit atualizado com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to update kit", variant: "destructive" });
+      toast({ description: "Erro ao atualizar kit", variant: "destructive" });
     },
   });
 
