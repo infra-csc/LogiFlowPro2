@@ -180,23 +180,23 @@ export default function ApprovalDetail() {
 
   const handleItemToggle = (itemId: string, item: RequestItem) => {
     const newSelected = new Set(selectedItems);
+    const newApprovals = new Map(itemApprovals);
+    
     if (newSelected.has(itemId)) {
       newSelected.delete(itemId);
-      const newApprovals = new Map(itemApprovals);
       newApprovals.delete(itemId);
-      setItemApprovals(newApprovals);
     } else {
       newSelected.add(itemId);
-      const newApprovals = new Map(itemApprovals);
       newApprovals.set(itemId, {
         itemId,
         status: "approved",
         approvedQuantity: item.quantity,
         rejectionReason: "",
       });
-      setItemApprovals(newApprovals);
     }
+    
     setSelectedItems(newSelected);
+    setItemApprovals(newApprovals);
   };
 
   const handleApprovalChange = (itemId: string, field: string, value: any) => {
