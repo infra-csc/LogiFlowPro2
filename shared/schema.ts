@@ -54,6 +54,14 @@ export const tripStatusEnum = pgEnum("trip_status", [
   "completed"
 ]);
 
+export const loadingOrderStatusEnum = pgEnum("loading_order_status", [
+  "draft",
+  "ready",
+  "in_progress",
+  "completed",
+  "cancelled"
+]);
+
 export const inventoryMovementTypeEnum = pgEnum("inventory_movement_type", [
   "reserve",
   "load",
@@ -284,6 +292,51 @@ export const tripItems = pgTable("trip_items", {
   discrepancies: text("discrepancies")
 });
 
+// Loading Orders table
+export const loadingOrders = pgTable("loading_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  orderNumber: text("order_number").notNull(),
+  status: loadingOrderStatusEnum("status").notNull().default("draft"),
+  plannedStartTime: timestamp("planned_start_time").notNull(),
+  plannedEndTime: timestamp("planned_end_time").notNull(),
+  actualStartTime: timestamp("actual_start_time"),
+  actualEndTime: timestamp("actual_end_time"),
+  createdBy: text("created_by").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
+// Loading Order - Material Request relationship (Many-to-Many)
+export const loadingOrderRequests = pgTable("loading_order_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loadingOrderId: varchar("loading_order_id").notNull().references(() => loadingOrders.id, { onDelete: "cascade" }),
+  requestId: varchar("request_id").notNull().references(() => materialRequests.id, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at").notNull().default(sql`now()`)
+});
+
+// Loading Order Consolidated Items table
+export const loadingOrderItems = pgTable("loading_order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loadingOrderId: varchar("loading_order_id").notNull().references(() => loadingOrders.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  consolidatedQuantity: integer("consolidated_quantity").notNull(),
+  pickedQuantity: integer("picked_quantity").default(0),
+  loadedQuantity: integer("loaded_quantity").default(0),
+  sourceRequests: jsonb("source_requests").$type<Array<{
+    requestId: string;
+    area: string;
+    quantity: number;
+    fromKit?: {
+      kitId: string;
+      kitName: string;
+      itemId: string;
+    };
+  }>>().notNull(),
+  notes: text("notes")
+});
+
 // Inventory Movements table
 export const inventoryMovements = pgTable("inventory_movements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -327,6 +380,7 @@ export const auditLogs = pgTable("audit_logs", {
 export const eventsRelations = relations(events, ({ many }) => ({
   materialRequests: many(materialRequests),
   trips: many(trips),
+  loadingOrders: many(loadingOrders),
   inventoryMovements: many(inventoryMovements)
 }));
 
@@ -359,7 +413,8 @@ export const materialRequestsRelations = relations(materialRequests, ({ one, man
     fields: [materialRequests.eventId],
     references: [events.id]
   }),
-  items: many(requestItems)
+  items: many(requestItems),
+  loadingOrderRequests: many(loadingOrderRequests)
 }));
 
 export const requestItemsRelations = relations(requestItems, ({ one }) => ({
@@ -417,6 +472,37 @@ export const returnsRelations = relations(returns, ({ one }) => ({
   }),
   product: one(products, {
     fields: [returns.productId],
+    references: [products.id]
+  })
+}));
+
+export const loadingOrdersRelations = relations(loadingOrders, ({ one, many }) => ({
+  event: one(events, {
+    fields: [loadingOrders.eventId],
+    references: [events.id]
+  }),
+  orderRequests: many(loadingOrderRequests),
+  items: many(loadingOrderItems)
+}));
+
+export const loadingOrderRequestsRelations = relations(loadingOrderRequests, ({ one }) => ({
+  loadingOrder: one(loadingOrders, {
+    fields: [loadingOrderRequests.loadingOrderId],
+    references: [loadingOrders.id]
+  }),
+  request: one(materialRequests, {
+    fields: [loadingOrderRequests.requestId],
+    references: [materialRequests.id]
+  })
+}));
+
+export const loadingOrderItemsRelations = relations(loadingOrderItems, ({ one }) => ({
+  loadingOrder: one(loadingOrders, {
+    fields: [loadingOrderItems.loadingOrderId],
+    references: [loadingOrders.id]
+  }),
+  product: one(products, {
+    fields: [loadingOrderItems.productId],
     references: [products.id]
   })
 }));
@@ -534,6 +620,26 @@ export const insertTripItemSchema = createInsertSchema(tripItems).omit({
   id: true
 });
 
+export const insertLoadingOrderSchema = createInsertSchema(loadingOrders, {
+  plannedStartTime: z.coerce.date(),
+  plannedEndTime: z.coerce.date(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  actualStartTime: true,
+  actualEndTime: true
+});
+
+export const insertLoadingOrderRequestSchema = createInsertSchema(loadingOrderRequests).omit({
+  id: true,
+  addedAt: true
+});
+
+export const insertLoadingOrderItemSchema = createInsertSchema(loadingOrderItems).omit({
+  id: true
+});
+
 export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements).omit({
   id: true,
   createdAt: true
@@ -606,6 +712,15 @@ export type InsertTrip = z.infer<typeof insertTripSchema>;
 
 export type TripItem = typeof tripItems.$inferSelect;
 export type InsertTripItem = z.infer<typeof insertTripItemSchema>;
+
+export type LoadingOrder = typeof loadingOrders.$inferSelect;
+export type InsertLoadingOrder = z.infer<typeof insertLoadingOrderSchema>;
+
+export type LoadingOrderRequest = typeof loadingOrderRequests.$inferSelect;
+export type InsertLoadingOrderRequest = z.infer<typeof insertLoadingOrderRequestSchema>;
+
+export type LoadingOrderItem = typeof loadingOrderItems.$inferSelect;
+export type InsertLoadingOrderItem = z.infer<typeof insertLoadingOrderItemSchema>;
 
 export type InventoryMovement = typeof inventoryMovements.$inferSelect;
 export type InsertInventoryMovement = z.infer<typeof insertInventoryMovementSchema>;
