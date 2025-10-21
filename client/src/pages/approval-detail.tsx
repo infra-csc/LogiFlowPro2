@@ -64,6 +64,11 @@ type MaterialRequest = {
     client: string;
     eventDate: string;
   };
+  requestedByUser?: {
+    id: string;
+    name: string;
+    username: string;
+  };
 };
 
 type ItemApproval = {
@@ -300,7 +305,7 @@ export default function ApprovalDetail() {
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Solicitante</span>
-              <p className="font-semibold">{request.requestedBy}</p>
+              <p className="font-semibold">{request.requestedByUser?.name || "Usuário não encontrado"}</p>
             </div>
             {request.submittedAt && (
               <div>

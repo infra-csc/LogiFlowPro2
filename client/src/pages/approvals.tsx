@@ -24,6 +24,11 @@ type MaterialRequest = {
     client: string;
     eventDate: string;
   };
+  requestedByUser?: {
+    id: string;
+    name: string;
+    username: string;
+  };
 };
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -117,7 +122,7 @@ export default function Approvals() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Solicitante:</span>
-                          <p className="font-medium">{request.requestedBy}</p>
+                          <p className="font-medium">{request.requestedByUser?.name || "Usuário não encontrado"}</p>
                         </div>
                       </div>
 
