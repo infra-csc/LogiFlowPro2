@@ -50,7 +50,13 @@ export default function Approvals() {
 
   // Filter only pending approval requests
   const pendingRequests = requests.filter(r => r.status === "pending_approval");
-  const processedRequests = requests.filter(r => r.status === "approved" || r.status === "rejected");
+  const processedRequests = requests
+    .filter(r => r.status === "approved" || r.status === "rejected")
+    .sort((a, b) => {
+      const dateA = a.approvedAt ? new Date(a.approvedAt).getTime() : 0;
+      const dateB = b.approvedAt ? new Date(b.approvedAt).getTime() : 0;
+      return dateB - dateA;
+    });
 
   if (isLoading) {
     return (
@@ -149,7 +155,7 @@ export default function Approvals() {
           </div>
 
           <div className="grid gap-4">
-            {processedRequests.slice(0, 5).map((request) => (
+            {processedRequests.map((request) => (
               <Card
                 key={request.id}
                 className="hover-elevate cursor-pointer opacity-80"
