@@ -2,8 +2,8 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Trash2, Send } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle } from "lucide-react";
+import { useState, useMemo } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,10 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AddItemDialog } from "@/components/add-item-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge as SharedStatusBadge } from "@/components/status-badge";
+import type { Event } from "@shared/schema";
 
 type RequestItem = {
   id: string;
@@ -82,6 +84,43 @@ export default function RequestDetails() {
   const { data: items = [] } = useQuery<RequestItem[]>({
     queryKey: ["/api/requests", id, "items"],
   });
+
+  const { data: event } = useQuery<Event>({
+    queryKey: ["/api/events", request?.eventId],
+    enabled: !!request?.eventId,
+  });
+
+  const requestWindowInfo = useMemo(() => {
+    if (!event?.requestWindowStart || !event?.requestWindowEnd) {
+      return null;
+    }
+
+    const now = new Date();
+    const start = new Date(event.requestWindowStart);
+    const end = new Date(event.requestWindowEnd);
+
+    const formatDate = (date: Date) => {
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    const isBeforeWindow = now < start;
+    const isAfterWindow = now > end;
+    const isWithinWindow = !isBeforeWindow && !isAfterWindow;
+
+    return {
+      start: formatDate(start),
+      end: formatDate(end),
+      isBeforeWindow,
+      isAfterWindow,
+      isWithinWindow
+    };
+  }, [event]);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -241,6 +280,31 @@ export default function RequestDetails() {
           )}
         </div>
       </div>
+
+      {/* Requisition Window Alert - Only show for draft requests outside the window */}
+      {canEdit && requestWindowInfo && !requestWindowInfo.isWithinWindow && (
+        <Alert variant="destructive" data-testid="alert-requisition-window">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 mt-0.5" />
+            <AlertDescription className="text-sm">
+              {requestWindowInfo.isBeforeWindow && (
+                <span>
+                  <strong>Atenção:</strong> Requisições para este evento ainda não estão permitidas.
+                  <br />
+                  <span className="text-xs">Período: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
+                </span>
+              )}
+              {requestWindowInfo.isAfterWindow && (
+                <span>
+                  <strong>Atenção:</strong> O período de requisição para este evento já foi encerrado.
+                  <br />
+                  <span className="text-xs">Período permitido era: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
+                </span>
+              )}
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
 
       {/* Request Info */}
       <Card>
