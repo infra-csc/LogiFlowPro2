@@ -23,7 +23,7 @@ type ParsedProduct = {
   name: string;
   ownership: string;
   unit: string;
-  weight?: number;
+  weight?: string;
   currentStock?: number;
   minimumStock?: number;
 };
@@ -87,15 +87,18 @@ export default function ProductUpload() {
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
 
-        const products: ParsedProduct[] = jsonData.map((row) => ({
-          sku: row.SKU || row.sku,
-          name: row.Name || row.name,
-          ownership: (row.Ownership || row.ownership || "owned").toLowerCase(),
-          unit: row.Unit || row.unit || "unit",
-          weight: row.Peso || row.weight || row.Peso,
-          currentStock: row["Estoque Atual"] || row.currentStock || 0,
-          minimumStock: row["Estoque Minimo"] || row["Estoque Mínimo"] || row.minimumStock || 0,
-        }));
+        const products: ParsedProduct[] = jsonData.map((row) => {
+          const weight = row.Peso || row.weight;
+          return {
+            sku: row.SKU || row.sku,
+            name: row.Name || row.name,
+            ownership: (row.Ownership || row.ownership || "owned").toLowerCase(),
+            unit: row.Unit || row.unit || "unit",
+            weight: weight !== undefined && weight !== null ? String(weight) : undefined,
+            currentStock: row["Estoque Atual"] || row.currentStock || 0,
+            minimumStock: row["Estoque Minimo"] || row["Estoque Mínimo"] || row.minimumStock || 0,
+          };
+        });
 
         setParsedData(products);
         toast({
