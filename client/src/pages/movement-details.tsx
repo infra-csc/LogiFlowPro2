@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft,
   PlayCircle,
@@ -14,6 +16,8 @@ import {
   Scan,
   Plus,
   Minus,
+  PackageCheck,
+  ClipboardList,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -28,6 +32,18 @@ type MovementWithDetails = Movement & {
     id: string;
     name: string;
   };
+};
+
+type LoadingOrderItemWithProduct = LoadingOrderItem & {
+  product: Product;
+};
+
+type ExpectedItem = {
+  productId: string;
+  product: Product;
+  expectedQuantity: number;
+  loadedQuantity: number;
+  remaining: number;
 };
 
 const getStatusColor = (status: string) => {
@@ -59,6 +75,7 @@ export default function MovementDetails() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { data: movement, isLoading } = useQuery<MovementWithDetails>({
@@ -85,7 +102,7 @@ export default function MovementDetails() {
     queryKey: ["/api/products"],
   });
 
-  const { data: loadingOrderItems = [] } = useQuery<LoadingOrderItem[]>({
+  const { data: loadingOrderItems = [] } = useQuery<LoadingOrderItemWithProduct[]>({
     queryKey: ["/api/loading-orders", movement?.loadingOrderId, "items"],
     queryFn: async () => {
       const res = await fetch(`/api/loading-orders/${movement?.loadingOrderId}/items`, {
@@ -96,6 +113,44 @@ export default function MovementDetails() {
     },
     enabled: !!movement?.loadingOrderId,
   });
+
+  // Calculate expected items with loaded quantities
+  const expectedItems: ExpectedItem[] = useMemo(() => {
+    if (!loadingOrderItems.length) return [];
+
+    return loadingOrderItems.map((orderItem) => {
+      const loadedQuantity = movementItems
+        .filter((item) => item.productId === orderItem.productId)
+        .reduce((sum, item) => sum + item.quantity, 0);
+
+      return {
+        productId: orderItem.productId,
+        product: orderItem.product,
+        expectedQuantity: orderItem.consolidatedQuantity,
+        loadedQuantity,
+        remaining: Math.max(0, orderItem.consolidatedQuantity - loadedQuantity),
+      };
+    });
+  }, [loadingOrderItems, movementItems]);
+
+  // Calculate overall progress
+  const totalExpected = expectedItems.reduce((sum, item) => sum + item.expectedQuantity, 0);
+  const totalLoaded = expectedItems.reduce((sum, item) => sum + item.loadedQuantity, 0);
+  const progress = totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0;
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return products
+      .filter(
+        (p) =>
+          p.sku?.toLowerCase().includes(query) ||
+          p.barcode?.toLowerCase().includes(query) ||
+          p.name.toLowerCase().includes(query)
+      )
+      .slice(0, 10); // Limit to 10 suggestions
+  }, [searchQuery, products]);
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
@@ -136,6 +191,7 @@ export default function MovementDetails() {
       setSelectedProduct(null);
       setQuantity(1);
       setSearchQuery("");
+      setShowSuggestions(false);
       toast({
         title: "Item adicionado",
         description: "O item foi adicionado à movimentação.",
@@ -167,26 +223,10 @@ export default function MovementDetails() {
     updateStatusMutation.mutate("completed");
   };
 
-  const handleSearch = () => {
-    const query = searchQuery.toLowerCase().trim();
-    if (!query) return;
-
-    const product = products.find(
-      (p) =>
-        p.sku?.toLowerCase() === query ||
-        p.barcode?.toLowerCase() === query ||
-        p.name.toLowerCase().includes(query)
-    );
-
-    if (product) {
-      setSelectedProduct(product);
-    } else {
-      toast({
-        title: "Produto não encontrado",
-        description: "Nenhum produto foi encontrado com esse código.",
-        variant: "destructive",
-      });
-    }
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setSearchQuery(product.name);
+    setShowSuggestions(false);
   };
 
   const handleAddItem = () => {
@@ -199,13 +239,22 @@ export default function MovementDetails() {
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && searchQuery && !selectedProduct) {
-        handleSearch();
+      if (e.key === "Enter" && selectedProduct) {
+        handleAddItem();
       }
     };
     window.addEventListener("keypress", handleKeyPress);
     return () => window.removeEventListener("keypress", handleKeyPress);
-  }, [searchQuery, selectedProduct]);
+  }, [selectedProduct, quantity]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowSuggestions(false);
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   if (isLoading) {
     return (
@@ -222,10 +271,6 @@ export default function MovementDetails() {
       </div>
     );
   }
-
-  const expectedItems = loadingOrderItems.length;
-  const scannedItems = movementItems.reduce((sum, item) => sum + item.quantity, 0);
-  const progress = expectedItems > 0 ? Math.round((scannedItems / expectedItems) * 100) : 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -245,6 +290,11 @@ export default function MovementDetails() {
               {movement.movementNumber}
             </h1>
             <p className="text-muted-foreground">{movement.name}</p>
+            {movement.loadingOrder && (
+              <p className="text-sm text-muted-foreground">
+                Ordem: {movement.loadingOrder.orderNumber}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -328,9 +378,10 @@ export default function MovementDetails() {
             <CardTitle className="text-sm font-medium">Progresso</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-semibold">
-              {scannedItems} / {expectedItems} ({progress}%)
+            <p className="text-lg font-semibold mb-2">
+              {totalLoaded} / {totalExpected} ({progress}%)
             </p>
+            <Progress value={progress} className="h-2" />
           </CardContent>
         </Card>
       </div>
@@ -345,31 +396,70 @@ export default function MovementDetails() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                ref={searchInputRef}
-                placeholder="Digite ou escaneie o código do produto..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") handleSearch();
-                }}
-                disabled={!!selectedProduct}
-                data-testid="input-search-product"
-                className="text-lg"
-                autoFocus
-              />
-              <Button
-                onClick={handleSearch}
-                disabled={!searchQuery || !!selectedProduct}
-                data-testid="button-search"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
+            <div className="relative">
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    ref={searchInputRef}
+                    placeholder="Digite SKU, código de barras ou nome do produto..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowSuggestions(true);
+                      if (!e.target.value.trim()) {
+                        setSelectedProduct(null);
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (searchQuery.trim()) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    disabled={!!selectedProduct}
+                    data-testid="input-search-product"
+                    className="text-lg"
+                    autoFocus
+                  />
+                  {showSuggestions && filteredProducts.length > 0 && !selectedProduct && (
+                    <Card className="absolute top-full left-0 right-0 mt-1 z-50 max-h-80 overflow-auto">
+                      <CardContent className="p-0">
+                        {filteredProducts.map((product) => (
+                          <button
+                            key={product.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectProduct(product);
+                            }}
+                            className="w-full text-left p-3 hover-elevate active-elevate-2 border-b last:border-b-0"
+                            data-testid={`suggestion-${product.id}`}
+                          >
+                            <p className="font-medium">{product.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              SKU: {product.sku} {product.barcode && `| Código: ${product.barcode}`}
+                            </p>
+                          </button>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+                <Button
+                  onClick={() => {
+                    if (filteredProducts.length === 1) {
+                      handleSelectProduct(filteredProducts[0]);
+                    }
+                  }}
+                  disabled={!searchQuery || !!selectedProduct || filteredProducts.length !== 1}
+                  data-testid="button-search"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {selectedProduct && (
-              <div className="border rounded-lg p-4 space-y-4">
+              <div className="border rounded-lg p-4 space-y-4 bg-accent/20">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-lg" data-testid="text-selected-product">
@@ -434,42 +524,113 @@ export default function MovementDetails() {
         </Card>
       )}
 
-      {/* Lista de Itens Escaneados */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Itens Escaneados ({movementItems.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {movementItems.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              Nenhum item escaneado ainda
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {movementItems.map((item) => {
-                const product = products.find((p) => p.id === item.productId);
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                    data-testid={`item-${item.id}`}
-                  >
-                    <div>
-                      <p className="font-medium">{product?.name || "Produto desconhecido"}</p>
-                      <p className="text-sm text-muted-foreground">
-                        SKU: {product?.sku || "-"}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-lg px-4 py-1">
-                      {item.quantity}x
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Lista dupla: Esperado vs Carregado */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Itens Esperados (da Ordem) */}
+        {expectedItems.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Itens da Ordem ({expectedItems.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[500px] pr-4">
+                <div className="space-y-3">
+                  {expectedItems.map((item) => {
+                    const percentComplete = Math.round(
+                      (item.loadedQuantity / item.expectedQuantity) * 100
+                    );
+                    const isComplete = item.remaining === 0;
+
+                    return (
+                      <div
+                        key={item.productId}
+                        className={`border rounded-lg p-4 space-y-2 ${
+                          isComplete ? "bg-chart-4/10 border-chart-4" : ""
+                        }`}
+                        data-testid={`expected-item-${item.productId}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">{item.product.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              SKU: {item.product.sku}
+                            </p>
+                          </div>
+                          {isComplete && (
+                            <Badge className="bg-chart-4 text-white">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Completo
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Progresso:</span>
+                            <span className="font-medium">
+                              {item.loadedQuantity} / {item.expectedQuantity} ({percentComplete}%)
+                            </span>
+                          </div>
+                          <Progress value={percentComplete} className="h-2" />
+                          {item.remaining > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                              Faltam: {item.remaining} unidades
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Itens Carregados */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PackageCheck className="h-5 w-5" />
+              Itens Carregados ({movementItems.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[500px] pr-4">
+              {movementItems.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhum item carregado ainda
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {movementItems.map((item) => {
+                    const product = products.find((p) => p.id === item.productId);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover-elevate"
+                        data-testid={`item-${item.id}`}
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium">{product?.name || "Produto desconhecido"}</p>
+                          <p className="text-sm text-muted-foreground">
+                            SKU: {product?.sku || "-"}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-lg px-4 py-1">
+                          {item.quantity}x
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
