@@ -94,6 +94,27 @@ export default function LoadingOrderDetails() {
     },
   });
 
+  const markAsReadyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/loading-orders/${id}/mark-ready`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/loading-orders/${id}`] });
+      toast({
+        title: "Ordem marcada como pronta",
+        description: "A ordem de carregamento agora pode ser aprovada para carga.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao marcar como pronta",
+        description: "Não foi possível marcar a ordem de carregamento como pronta.",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (orderLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -134,6 +155,16 @@ export default function LoadingOrderDetails() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <StatusBadge status={order.status} />
+          {order.status === "draft" && (
+            <Button
+              onClick={() => markAsReadyMutation.mutate()}
+              disabled={markAsReadyMutation.isPending}
+              data-testid="button-mark-ready"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Marcar como Pronta
+            </Button>
+          )}
           {order.status === "ready" && (
             <Button
               onClick={() => approveMutation.mutate()}
