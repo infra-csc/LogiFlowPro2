@@ -116,12 +116,18 @@ export default function MovementDetails() {
     enabled: !!movement?.loadingOrderId,
   });
 
+  // Get product IDs that are in the loading order
+  const expectedProductIds = useMemo(() => {
+    return new Set(loadingOrderItems.map(item => item.productId));
+  }, [loadingOrderItems]);
+
   // Consolidate movement items by product
   const consolidatedLoadedItems = useMemo(() => {
     const itemsByProduct = new Map<string, { 
       productId: string; 
       totalQuantity: number; 
       itemIds: string[];
+      isNotInOrder: boolean;
     }>();
 
     movementItems.forEach((item) => {
@@ -130,16 +136,22 @@ export default function MovementDetails() {
         existing.totalQuantity += item.quantity;
         existing.itemIds.push(item.id);
       } else {
+        // Check if this product is not in the loading order (only when there is a loading order)
+        const isNotInOrder = movement?.loadingOrderId 
+          ? !expectedProductIds.has(item.productId)
+          : false;
+        
         itemsByProduct.set(item.productId, {
           productId: item.productId,
           totalQuantity: item.quantity,
           itemIds: [item.id],
+          isNotInOrder,
         });
       }
     });
 
     return Array.from(itemsByProduct.values());
-  }, [movementItems]);
+  }, [movementItems, movement?.loadingOrderId, expectedProductIds]);
 
   // Calculate expected items with loaded quantities
   const expectedItems: ExpectedItem[] = useMemo(() => {
@@ -796,11 +808,21 @@ export default function MovementDetails() {
                     return (
                       <div
                         key={item.productId}
-                        className="flex items-center justify-between gap-3 p-3 border rounded-lg hover-elevate"
+                        className={`flex items-center justify-between gap-3 p-3 border rounded-lg hover-elevate ${
+                          item.isNotInOrder ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800" : ""
+                        }`}
                         data-testid={`item-${item.productId}`}
                       >
                         <div className="flex-1">
-                          <p className="font-medium">{product?.name || "Produto desconhecido"}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{product?.name || "Produto desconhecido"}</p>
+                            {item.isNotInOrder && (
+                              <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-400 dark:border-amber-600">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Produto não consta na ordem
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             SKU: {product?.sku || "-"}
                           </p>
