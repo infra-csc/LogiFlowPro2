@@ -713,6 +713,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/loading-orders/:id/items", async (req, res) => {
+    try {
+      const loadingOrderId = req.params.id;
+      const { insertLoadingOrderItemSchema } = await import("@shared/schema");
+      
+      // Validate the request body
+      const itemData = insertLoadingOrderItemSchema.parse({
+        loadingOrderId,
+        ...req.body,
+      });
+      
+      const item = await storage.createLoadingOrderItem(itemData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Error creating loading order item:", error);
+      res.status(400).json({ error: "Invalid loading order item data" });
+    }
+  });
+
   app.post("/api/loading-orders", async (req, res) => {
     try {
       const { consolidateLoadingOrderItems } = await import("./loadingOrderUtils");
