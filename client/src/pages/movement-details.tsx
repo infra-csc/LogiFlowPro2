@@ -209,6 +209,31 @@ export default function MovementDetails() {
     },
   });
 
+  const decrementItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      const res = await apiRequest("PATCH", `/api/movements/${id}/items/${itemId}/decrement`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to decrement item");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      toast({
+        title: "Quantidade reduzida",
+        description: "Uma unidade foi removida do item.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao remover unidade",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
       const res = await apiRequest("DELETE", `/api/movements/${id}/items/${itemId}`);
@@ -220,7 +245,7 @@ export default function MovementDetails() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
       toast({
-        title: "Item removido",
+        title: "Item removido completamente",
         description: "O item foi removido da movimentação.",
       });
     },
@@ -741,17 +766,30 @@ export default function MovementDetails() {
                           {item.quantity}x
                         </Badge>
                         {movement?.status === "in_progress" && (
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeItemMutation.mutate(item.id)}
-                            disabled={removeItemMutation.isPending}
-                            data-testid={`button-remove-${item.id}`}
-                            className="flex-shrink-0 h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                            title="Remover item"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => decrementItemMutation.mutate(item.id)}
+                              disabled={decrementItemMutation.isPending}
+                              data-testid={`button-decrement-${item.id}`}
+                              className="flex-shrink-0 h-8 w-8"
+                              title="Remover 1 unidade"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => removeItemMutation.mutate(item.id)}
+                              disabled={removeItemMutation.isPending}
+                              data-testid={`button-remove-${item.id}`}
+                              className="flex-shrink-0 h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              title="Remover item completo"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     );

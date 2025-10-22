@@ -176,6 +176,7 @@ export interface IStorage {
   // Movement Items
   getMovementItems(movementId: string): Promise<MovementItem[]>;
   createMovementItem(item: InsertMovementItem): Promise<MovementItem>;
+  decrementMovementItemQuantity(id: string): Promise<MovementItem | null>;
   deleteMovementItem(id: string): Promise<void>;
 
   // Inventory Movements
@@ -723,6 +724,29 @@ export class DatabaseStorage implements IStorage {
   async createMovementItem(item: InsertMovementItem): Promise<MovementItem> {
     const [created] = await db.insert(movementItems).values(item).returning();
     return created;
+  }
+
+  async decrementMovementItemQuantity(id: string): Promise<MovementItem | null> {
+    // Get current item
+    const [item] = await db.select().from(movementItems).where(eq(movementItems.id, id));
+    if (!item) {
+      return null;
+    }
+
+    // If quantity is 1, delete the item
+    if (item.quantity <= 1) {
+      await db.delete(movementItems).where(eq(movementItems.id, id));
+      return null;
+    }
+
+    // Otherwise, decrement quantity by 1
+    const [updated] = await db
+      .update(movementItems)
+      .set({ quantity: item.quantity - 1 })
+      .where(eq(movementItems.id, id))
+      .returning();
+    
+    return updated;
   }
 
   async deleteMovementItem(id: string): Promise<void> {

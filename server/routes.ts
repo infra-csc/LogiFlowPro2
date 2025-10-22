@@ -957,6 +957,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/movements/:id/items/:itemId/decrement", async (req, res) => {
+    try {
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) {
+        return res.status(404).json({ error: "Movement not found" });
+      }
+      
+      // Only allow modifying items if movement is in progress
+      if (movement.status !== "in_progress") {
+        return res.status(400).json({
+          error: "Items can only be modified in movements in progress",
+        });
+      }
+
+      const updatedItem = await storage.decrementMovementItemQuantity(req.params.itemId);
+      if (!updatedItem) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      res.json(updatedItem);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to decrement item quantity" });
+    }
+  });
+
   app.delete("/api/movements/:id/items/:itemId", async (req, res) => {
     try {
       const movement = await storage.getMovement(req.params.id);
