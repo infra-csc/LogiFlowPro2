@@ -26,7 +26,8 @@ Preferred communication style: Simple, everyday language.
 - **Loading Orders**: System for consolidating approved material requests into picking lists. Supports parametric kit expansion (BOM), grouping identical products, and tracking source breakdown. Features a multi-stage status workflow (draft, ready, approved, in_progress, completed, cancelled).
 - **Warehouse Movements (Carga e Descarga)**: Module for managing loading/unloading operations with a scanner interface. Supports various movement types (outbound_event, inbound_event, etc.), status transitions, and real-time item tracking. The details page provides a side-by-side view of expected vs. loaded items, product search with autocomplete, progress bars, clickable expected items for quick scanning, and alerts for quantity overages or exceeded items.
 - **Product & Kit Management**: Dedicated dialogs for editing products and kits, including image upload functionality (Replit Object Storage via presigned URLs) and handling of various field types.
-- **Event Enhancements**: Events include `sku`, `requestWindowStart`, and `requestWindowEnd` fields to control material requisition periods.
+- **Bulk Import System**: Excel-based bulk import functionality for both events and products. Features file upload, data preview with validation, automatic type conversion (dates, numbers to strings), detailed error reporting with row-by-row feedback, and partial import support. Backend endpoints (POST /api/events/bulk, POST /api/products/bulk) handle array processing with individual validation and return detailed success/error results (201 for full success, 207 for partial success).
+- **Event Enhancements**: Events include `sku`, `requestWindowStart`, and `requestWindowEnd` fields to control material requisition periods. Bulk import supports all event fields including optional requisition windows and notes.
 
 ## External Dependencies
 
