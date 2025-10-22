@@ -267,6 +267,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/products/bulk", async (req, res) => {
+    try {
+      const { products: productsData } = req.body;
+      
+      if (!Array.isArray(productsData)) {
+        return res.status(400).json({ error: "Expected an array of products" });
+      }
+
+      const results = {
+        success: [] as any[],
+        errors: [] as any[]
+      };
+
+      for (let i = 0; i < productsData.length; i++) {
+        try {
+          const data = insertProductSchema.parse(productsData[i]);
+          const product = await storage.createProduct(data);
+          results.success.push({ row: i + 1, product });
+        } catch (error: any) {
+          results.errors.push({ 
+            row: i + 1, 
+            data: productsData[i], 
+            error: error.message || "Erro ao processar produto" 
+          });
+        }
+      }
+
+      res.status(results.errors.length > 0 ? 207 : 201).json({
+        message: `${results.success.length} produtos importados com sucesso, ${results.errors.length} erros`,
+        success: results.success,
+        errors: results.errors
+      });
+    } catch (error) {
+      res.status(400).json({ error: "Erro ao processar importação em lote" });
+    }
+  });
+
   app.patch("/api/products/:id", async (req, res) => {
     try {
       const data = insertProductSchema.partial().parse(req.body);
