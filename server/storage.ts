@@ -23,6 +23,7 @@ import {
   returns,
   auditLogs,
   users,
+  passwordResetTokens,
   roles,
   permissions,
   userRoles,
@@ -67,6 +68,8 @@ import {
   type InsertAuditLog,
   type User,
   type InsertUser,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
   type Role,
   type InsertRole,
   type Permission,
@@ -196,6 +199,12 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User>;
+  
+  // Password Reset Tokens
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenAsUsed(token: string): Promise<void>;
+  deleteExpiredPasswordResetTokens(): Promise<void>;
   
   // Roles
   getRoles(): Promise<Role[]>;
@@ -785,6 +794,30 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, user: Partial<InsertUser>): Promise<User> {
     const [updated] = await db.update(users).set({ ...user, updatedAt: new Date() }).where(eq(users.id, id)).returning();
     return updated;
+  }
+
+  // Password Reset Tokens
+  async createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [created] = await db.insert(passwordResetTokens).values(token).returning();
+    return created;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db.select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token));
+    return resetToken || undefined;
+  }
+
+  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
+    await db.update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.token, token));
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<void> {
+    await db.delete(passwordResetTokens)
+      .where(sql`${passwordResetTokens.expiresAt} < NOW()`);
   }
 
   // Roles
