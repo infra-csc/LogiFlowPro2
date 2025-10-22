@@ -162,7 +162,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (let i = 0; i < eventsData.length; i++) {
         try {
-          const data = insertEventSchema.parse(eventsData[i]);
+          const eventData = eventsData[i];
+          
+          // Convert ISO date strings to Date objects
+          const convertedData = {
+            ...eventData,
+            setupDate: eventData.setupDate ? new Date(eventData.setupDate) : undefined,
+            eventDate: eventData.eventDate ? new Date(eventData.eventDate) : undefined,
+            teardownDate: eventData.teardownDate ? new Date(eventData.teardownDate) : undefined,
+            requestWindowStart: eventData.requestWindowStart ? new Date(eventData.requestWindowStart) : undefined,
+            requestWindowEnd: eventData.requestWindowEnd ? new Date(eventData.requestWindowEnd) : undefined,
+          };
+          
+          const data = insertEventSchema.parse(convertedData);
           const event = await storage.createEvent(data);
           results.success.push({ row: i + 1, event });
         } catch (error: any) {
