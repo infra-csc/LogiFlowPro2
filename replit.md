@@ -36,6 +36,7 @@ Preferred communication style: Simple, everyday language.
 - **apiRequest Response Handling** (Fixed Oct 17, 2025): The `apiRequest` function in `client/src/lib/queryClient.ts` returns a `Response` object, NOT parsed JSON. Must call `.json()` before accessing response data. Fixed in product-dialog.tsx and kit-dialog.tsx where upload parameter retrieval was failing with "Cannot upload to an undefined URL" because `response.uploadURL` was undefined - should be `(await response.json()).uploadURL`.
 - **HTML Entity Decoding in Signed URLs**: Replit sidecar returns presigned URLs with HTML entities (`&amp;` instead of `&`). These are decoded server-side using `.replace(/&amp;/g, '&')` before sending to frontend.
 - **Cache Synchronization Pattern**: After image uploads, parent pages (products.tsx, kits.tsx) use useEffect to monitor query data changes and update selected entity state, ensuring UI reflects backend updates immediately.
+- **Movement Creation Error** (Fixed Oct 22, 2025): POST /api/movements was failing with "db is not defined" error. Fixed by importing `db` from `./db`, `sql` from `drizzle-orm`, and `movements` table from `@shared/schema` in server/routes.ts. Also corrected field names from `actualStartTime`/`actualEndTime` to `startedAt`/`completedAt` to match schema. Added type casts for generated fields (movementNumber, createdBy) to resolve TypeScript type mismatches with InsertMovement.
 
 ## External Dependencies
 
