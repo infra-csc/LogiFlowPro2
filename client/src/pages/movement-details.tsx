@@ -742,12 +742,13 @@ export default function MovementDetails() {
                         </Badge>
                         {movement?.status === "in_progress" && (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
                             onClick={() => removeItemMutation.mutate(item.id)}
                             disabled={removeItemMutation.isPending}
                             data-testid={`button-remove-${item.id}`}
-                            className="flex-shrink-0 h-8 w-8"
+                            className="flex-shrink-0 h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            title="Remover item"
                           >
                             <X className="h-4 w-4" />
                           </Button>
