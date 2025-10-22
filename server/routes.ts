@@ -147,6 +147,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/events/bulk", async (req, res) => {
+    try {
+      const { events: eventsData } = req.body;
+      
+      if (!Array.isArray(eventsData)) {
+        return res.status(400).json({ error: "Expected an array of events" });
+      }
+
+      const results = {
+        success: [] as any[],
+        errors: [] as any[]
+      };
+
+      for (let i = 0; i < eventsData.length; i++) {
+        try {
+          const data = insertEventSchema.parse(eventsData[i]);
+          const event = await storage.createEvent(data);
+          results.success.push({ row: i + 1, event });
+        } catch (error: any) {
+          results.errors.push({ 
+            row: i + 1, 
+            data: eventsData[i], 
+            error: error.message || "Erro ao processar evento" 
+          });
+        }
+      }
+
+      res.status(results.errors.length > 0 ? 207 : 201).json({
+        message: `${results.success.length} eventos importados com sucesso, ${results.errors.length} erros`,
+        success: results.success,
+        errors: results.errors
+      });
+    } catch (error) {
+      res.status(400).json({ error: "Erro ao processar importação em lote" });
+    }
+  });
+
   app.patch("/api/events/:id", async (req, res) => {
     try {
       const data = insertEventSchema.partial().parse(req.body);
