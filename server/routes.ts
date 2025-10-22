@@ -302,6 +302,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/requests", async (req, res) => {
     try {
       const data = insertMaterialRequestSchema.parse(req.body);
+      
+      // Validate request window if event has it configured
+      const event = await storage.getEvent(data.eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      
+      // Check if event has request window configured
+      if (event.requestWindowStart && event.requestWindowEnd) {
+        const now = new Date();
+        const windowStart = new Date(event.requestWindowStart);
+        const windowEnd = new Date(event.requestWindowEnd);
+        
+        if (now < windowStart) {
+          return res.status(400).json({ 
+            error: "Requisições para este evento ainda não estão permitidas",
+            windowStart: windowStart.toISOString(),
+            windowEnd: windowEnd.toISOString()
+          });
+        }
+        
+        if (now > windowEnd) {
+          return res.status(400).json({ 
+            error: "O período de requisição para este evento já foi encerrado",
+            windowStart: windowStart.toISOString(),
+            windowEnd: windowEnd.toISOString()
+          });
+        }
+      }
+      
       const request = await storage.createMaterialRequest(data);
       res.status(201).json(request);
     } catch (error) {
