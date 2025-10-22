@@ -47,12 +47,15 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
   const form = useForm<InsertEvent>({
     resolver: zodResolver(insertEventSchema),
     defaultValues: {
+      sku: "",
       name: "",
       client: "",
       location: "",
       setupDate: new Date(),
       eventDate: new Date(),
       teardownDate: new Date(),
+      requestWindowStart: undefined,
+      requestWindowEnd: undefined,
       status: "planning",
       notes: "",
       cutoffConfig: {},
@@ -62,24 +65,30 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
   useEffect(() => {
     if (event) {
       form.reset({
+        sku: event.sku || "",
         name: event.name,
         client: event.client,
         location: event.location,
         setupDate: new Date(event.setupDate),
         eventDate: new Date(event.eventDate),
         teardownDate: new Date(event.teardownDate),
+        requestWindowStart: event.requestWindowStart ? new Date(event.requestWindowStart) : undefined,
+        requestWindowEnd: event.requestWindowEnd ? new Date(event.requestWindowEnd) : undefined,
         status: event.status,
         notes: event.notes || "",
         cutoffConfig: event.cutoffConfig || {},
       });
     } else {
       form.reset({
+        sku: "",
         name: "",
         client: "",
         location: "",
         setupDate: new Date(),
         eventDate: new Date(),
         teardownDate: new Date(),
+        requestWindowStart: undefined,
+        requestWindowEnd: undefined,
         status: "planning",
         notes: "",
         cutoffConfig: {},
@@ -181,6 +190,90 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="sku"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>SKU do Evento</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value || ""} placeholder="SKU para integração com outros sistemas" data-testid="input-sku" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Período de Requisição de Materiais</h3>
+              <p className="text-xs text-muted-foreground">Defina o período em que requisições podem ser criadas para este evento</p>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="requestWindowStart"
+                  render={({ field }) => {
+                    const formatDateValue = (val: any) => {
+                      if (!val) return "";
+                      try {
+                        const date = val instanceof Date ? val : new Date(val);
+                        if (isNaN(date.getTime())) return "";
+                        return format(date, "yyyy-MM-dd'T'HH:mm");
+                      } catch {
+                        return "";
+                      }
+                    };
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Início</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="datetime-local"
+                            value={formatDateValue(field.value)}
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                            data-testid="input-request-window-start"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="requestWindowEnd"
+                  render={({ field }) => {
+                    const formatDateValue = (val: any) => {
+                      if (!val) return "";
+                      try {
+                        const date = val instanceof Date ? val : new Date(val);
+                        if (isNaN(date.getTime())) return "";
+                        return format(date, "yyyy-MM-dd'T'HH:mm");
+                      } catch {
+                        return "";
+                      }
+                    };
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Fim</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="datetime-local"
+                            value={formatDateValue(field.value)}
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                            data-testid="input-request-window-end"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              </div>
+            </div>
 
             <div className="grid grid-cols-3 gap-4">
               <FormField
