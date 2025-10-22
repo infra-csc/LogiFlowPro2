@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Redirect } from "wouter";
+import { Redirect, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,6 +153,14 @@ export default function AuthPage() {
                           "Entrar"
                         )}
                       </Button>
+
+                      <div className="text-center">
+                        <Link href="/forgot-password">
+                          <Button variant="ghost" size="sm" data-testid="link-forgot-password">
+                            Esqueceu sua senha?
+                          </Button>
+                        </Link>
+                      </div>
                     </form>
                   </Form>
                 </CardContent>

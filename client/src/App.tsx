@@ -24,6 +24,8 @@ import Products from "@/pages/products";
 import Kits from "@/pages/kits";
 import Config from "@/pages/config";
 import AuthPage from "@/pages/auth-page";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import UsersPage from "@/pages/users";
 import RolesPage from "@/pages/roles";
 import Approvals from "@/pages/approvals";
@@ -33,6 +35,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/events" component={Events} />
       <ProtectedRoute path="/approvals/:id" component={ApprovalDetail} />
