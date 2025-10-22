@@ -116,6 +116,31 @@ export default function MovementDetails() {
     enabled: !!movement?.loadingOrderId,
   });
 
+  // Consolidate movement items by product
+  const consolidatedLoadedItems = useMemo(() => {
+    const itemsByProduct = new Map<string, { 
+      productId: string; 
+      totalQuantity: number; 
+      itemIds: string[];
+    }>();
+
+    movementItems.forEach((item) => {
+      const existing = itemsByProduct.get(item.productId);
+      if (existing) {
+        existing.totalQuantity += item.quantity;
+        existing.itemIds.push(item.id);
+      } else {
+        itemsByProduct.set(item.productId, {
+          productId: item.productId,
+          totalQuantity: item.quantity,
+          itemIds: [item.id],
+        });
+      }
+    });
+
+    return Array.from(itemsByProduct.values());
+  }, [movementItems]);
+
   // Calculate expected items with loaded quantities
   const expectedItems: ExpectedItem[] = useMemo(() => {
     if (!loadingOrderItems.length) return [];
@@ -210,7 +235,17 @@ export default function MovementDetails() {
   });
 
   const decrementItemMutation = useMutation({
-    mutationFn: async (itemId: string) => {
+    mutationFn: async (productId: string) => {
+      // Find the most recent item for this product (using processedAt timestamp)
+      const productItems = movementItems
+        .filter((item) => item.productId === productId)
+        .sort((a, b) => new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime());
+      
+      if (productItems.length === 0) {
+        throw new Error("No items found for this product");
+      }
+
+      const itemId = productItems[0].id;
       const res = await apiRequest("PATCH", `/api/movements/${id}/items/${itemId}/decrement`);
       if (!res.ok) {
         const error = await res.json();
@@ -235,12 +270,20 @@ export default function MovementDetails() {
   });
 
   const removeItemMutation = useMutation({
-    mutationFn: async (itemId: string) => {
-      const res = await apiRequest("DELETE", `/api/movements/${id}/items/${itemId}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to remove item");
+    mutationFn: async (productId: string) => {
+      // Remove all items for this product
+      const productItems = movementItems.filter((item) => item.productId === productId);
+      
+      if (productItems.length === 0) {
+        throw new Error("No items found for this product");
       }
+
+      // Delete all items for this product
+      await Promise.all(
+        productItems.map((item) =>
+          apiRequest("DELETE", `/api/movements/${id}/items/${item.id}`)
+        )
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
@@ -737,24 +780,24 @@ export default function MovementDetails() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PackageCheck className="h-5 w-5" />
-              Itens Carregados ({movementItems.length})
+              Itens Carregados ({consolidatedLoadedItems.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[500px] pr-4">
-              {movementItems.length === 0 ? (
+              {consolidatedLoadedItems.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   Nenhum item carregado ainda
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {movementItems.map((item) => {
+                  {consolidatedLoadedItems.map((item) => {
                     const product = products.find((p) => p.id === item.productId);
                     return (
                       <div
-                        key={item.id}
+                        key={item.productId}
                         className="flex items-center justify-between gap-3 p-3 border rounded-lg hover-elevate"
-                        data-testid={`item-${item.id}`}
+                        data-testid={`item-${item.productId}`}
                       >
                         <div className="flex-1">
                           <p className="font-medium">{product?.name || "Produto desconhecido"}</p>
@@ -763,16 +806,16 @@ export default function MovementDetails() {
                           </p>
                         </div>
                         <Badge variant="outline" className="text-lg px-4 py-1">
-                          {item.quantity}x
+                          {item.totalQuantity}x
                         </Badge>
                         {movement?.status === "in_progress" && (
                           <div className="flex items-center gap-1">
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => decrementItemMutation.mutate(item.id)}
+                              onClick={() => decrementItemMutation.mutate(item.productId)}
                               disabled={decrementItemMutation.isPending}
-                              data-testid={`button-decrement-${item.id}`}
+                              data-testid={`button-decrement-${item.productId}`}
                               className="flex-shrink-0 h-8 w-8"
                               title="Remover 1 unidade"
                             >
@@ -781,9 +824,9 @@ export default function MovementDetails() {
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => removeItemMutation.mutate(item.id)}
+                              onClick={() => removeItemMutation.mutate(item.productId)}
                               disabled={removeItemMutation.isPending}
-                              data-testid={`button-remove-${item.id}`}
+                              data-testid={`button-remove-${item.productId}`}
                               className="flex-shrink-0 h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                               title="Remover item completo"
                             >
