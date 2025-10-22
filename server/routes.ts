@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 import {
   insertEventSchema,
   insertKitSchema,
@@ -24,6 +26,7 @@ import {
   insertPermissionSchema,
   insertUserRoleSchema,
   insertRolePermissionSchema,
+  movements,
 } from "@shared/schema";
 import {
   ObjectStorageService,
@@ -721,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...data,
         movementNumber,
         createdBy,
-      });
+      } as any);
       res.status(201).json(movement);
     } catch (error) {
       console.error("Movement creation error:", error);
@@ -756,11 +759,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Set timestamps based on status
-        if (data.status === "in_progress" && !movement.actualStartTime) {
-          data.actualStartTime = new Date();
+        if (data.status === "in_progress" && !movement.startedAt) {
+          (data as any).startedAt = new Date();
         }
         if (data.status === "completed") {
-          data.actualEndTime = new Date();
+          (data as any).completedAt = new Date();
         }
       }
       

@@ -696,7 +696,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMovement(movement: InsertMovement): Promise<Movement> {
-    const [created] = await db.insert(movements).values(movement).returning();
+    const [created] = await db.insert(movements).values(movement as any).returning();
     return created;
   }
 
