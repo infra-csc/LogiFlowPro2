@@ -610,13 +610,19 @@ export default function MovementDetails() {
                     const percentComplete = Math.round(
                       (item.loadedQuantity / item.expectedQuantity) * 100
                     );
-                    const isComplete = item.remaining === 0;
+                    const isExceeded = item.loadedQuantity > item.expectedQuantity;
+                    const isComplete = item.remaining === 0 && !isExceeded;
+                    const excess = isExceeded ? item.loadedQuantity - item.expectedQuantity : 0;
 
                     return (
                       <div
                         key={item.productId}
                         className={`border rounded-lg p-4 space-y-2 cursor-pointer hover-elevate active-elevate-2 ${
-                          isComplete ? "bg-chart-4/10 border-chart-4" : ""
+                          isExceeded
+                            ? "bg-destructive/10 border-destructive"
+                            : isComplete
+                            ? "bg-chart-4/10 border-chart-4"
+                            : ""
                         }`}
                         onClick={() => {
                           if (movement.status === "in_progress" || movement.status === "paused") {
@@ -632,6 +638,12 @@ export default function MovementDetails() {
                               SKU: {item.product.sku}
                             </p>
                           </div>
+                          {isExceeded && (
+                            <Badge className="bg-destructive text-destructive-foreground">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Excedido
+                            </Badge>
+                          )}
                           {isComplete && (
                             <Badge className="bg-chart-4 text-white">
                               <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -642,14 +654,22 @@ export default function MovementDetails() {
                         <div className="space-y-1">
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Progresso:</span>
-                            <span className="font-medium">
+                            <span className={`font-medium ${isExceeded ? "text-destructive" : ""}`}>
                               {item.loadedQuantity} / {item.expectedQuantity} ({percentComplete}%)
                             </span>
                           </div>
-                          <Progress value={percentComplete} className="h-2" />
+                          <Progress
+                            value={Math.min(percentComplete, 100)}
+                            className={`h-2 ${isExceeded ? "[&>div]:bg-destructive" : ""}`}
+                          />
                           {item.remaining > 0 && (
                             <p className="text-sm text-muted-foreground">
                               Faltam: {item.remaining} unidades
+                            </p>
+                          )}
+                          {isExceeded && (
+                            <p className="text-sm text-destructive font-medium">
+                              Excesso: +{excess} unidades
                             </p>
                           )}
                         </div>
