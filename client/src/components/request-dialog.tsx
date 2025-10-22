@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Calendar, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -39,6 +41,42 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
   });
 
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
+
+  const selectedEvent = useMemo(() => {
+    return events?.find(e => e.id === formData.eventId);
+  }, [events, formData.eventId]);
+
+  const requestWindowInfo = useMemo(() => {
+    if (!selectedEvent?.requestWindowStart || !selectedEvent?.requestWindowEnd) {
+      return null;
+    }
+
+    const now = new Date();
+    const start = new Date(selectedEvent.requestWindowStart);
+    const end = new Date(selectedEvent.requestWindowEnd);
+
+    const formatDate = (date: Date) => {
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    const isBeforeWindow = now < start;
+    const isAfterWindow = now > end;
+    const isWithinWindow = !isBeforeWindow && !isAfterWindow;
+
+    return {
+      start: formatDate(start),
+      end: formatDate(end),
+      isBeforeWindow,
+      isAfterWindow,
+      isWithinWindow
+    };
+  }, [selectedEvent]);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertMaterialRequest) => {
@@ -149,6 +187,39 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                 ))}
               </SelectContent>
             </Select>
+            
+            {requestWindowInfo && (
+              <Alert variant={requestWindowInfo.isWithinWindow ? "default" : "destructive"} className="mt-2">
+                <div className="flex items-start gap-2">
+                  {requestWindowInfo.isWithinWindow ? (
+                    <Calendar className="h-4 w-4 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 mt-0.5" />
+                  )}
+                  <AlertDescription className="text-sm">
+                    {requestWindowInfo.isWithinWindow && (
+                      <span>
+                        <strong>Período permitido:</strong> {requestWindowInfo.start} até {requestWindowInfo.end}
+                      </span>
+                    )}
+                    {requestWindowInfo.isBeforeWindow && (
+                      <span>
+                        <strong>Atenção:</strong> Requisições para este evento ainda não estão permitidas.
+                        <br />
+                        <span className="text-xs">Período: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
+                      </span>
+                    )}
+                    {requestWindowInfo.isAfterWindow && (
+                      <span>
+                        <strong>Atenção:</strong> O período de requisição para este evento já foi encerrado.
+                        <br />
+                        <span className="text-xs">Período permitido era: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
+                      </span>
+                    )}
+                  </AlertDescription>
+                </div>
+              </Alert>
+            )}
           </div>
 
           <div className="space-y-2">
