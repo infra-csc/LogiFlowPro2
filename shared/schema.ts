@@ -177,12 +177,15 @@ export const rolePermissions = pgTable("role_permissions", {
 // Events table
 export const events = pgTable("events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sku: text("sku"),
   name: text("name").notNull(),
   client: text("client").notNull(),
   location: text("location").notNull(),
   setupDate: timestamp("setup_date").notNull(),
   eventDate: timestamp("event_date").notNull(),
   teardownDate: timestamp("teardown_date").notNull(),
+  requestWindowStart: timestamp("request_window_start"),
+  requestWindowEnd: timestamp("request_window_end"),
   status: eventStatusEnum("status").notNull().default("planning"),
   cutoffConfig: jsonb("cutoff_config").$type<Record<string, string>>().default({}),
   notes: text("notes"),
