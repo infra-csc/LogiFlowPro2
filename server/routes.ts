@@ -641,6 +641,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/loading-orders/:id/mark-ready", async (req, res) => {
+    try {
+      const order = await storage.getLoadingOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Loading order not found" });
+      }
+      
+      if (order.status !== "draft") {
+        return res.status(400).json({ error: "Only draft orders can be marked as ready" });
+      }
+
+      const ready = await storage.markLoadingOrderAsReady(req.params.id);
+      res.json(ready);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark loading order as ready" });
+    }
+  });
+
   // Movements
   app.get("/api/movements", async (req, res) => {
     try {

@@ -153,6 +153,7 @@ export interface IStorage {
   updateLoadingOrder(id: string, order: Partial<InsertLoadingOrder>): Promise<LoadingOrder>;
   approveLoadingOrder(id: string): Promise<LoadingOrder>;
   disapproveLoadingOrder(id: string): Promise<LoadingOrder>;
+  markLoadingOrderAsReady(id: string): Promise<LoadingOrder>;
 
   // Loading Order Requests (junction table)
   getLoadingOrderRequests(loadingOrderId: string): Promise<LoadingOrderRequest[]>;
@@ -631,6 +632,15 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(loadingOrders)
       .set({ status: "draft", updatedAt: sql`now()` })
+      .where(eq(loadingOrders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markLoadingOrderAsReady(id: string): Promise<LoadingOrder> {
+    const [updated] = await db
+      .update(loadingOrders)
+      .set({ status: "ready", updatedAt: sql`now()` })
       .where(eq(loadingOrders.id, id))
       .returning();
     return updated;
