@@ -651,6 +651,8 @@ export const insertEventSchema = createInsertSchema(events, {
   setupDate: z.coerce.date(),
   eventDate: z.coerce.date(),
   teardownDate: z.coerce.date(),
+  requestWindowStart: z.coerce.date().optional().nullable(),
+  requestWindowEnd: z.coerce.date().optional().nullable(),
 }).omit({
   id: true,
   createdAt: true,
