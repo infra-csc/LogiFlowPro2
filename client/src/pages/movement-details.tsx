@@ -19,6 +19,7 @@ import {
   PackageCheck,
   ClipboardList,
   AlertTriangle,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -202,6 +203,30 @@ export default function MovementDetails() {
     onError: (error: Error) => {
       toast({
         title: "Erro ao adicionar item",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      const res = await apiRequest("DELETE", `/api/movements/${id}/items/${itemId}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to remove item");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      toast({
+        title: "Item removido",
+        description: "O item foi removido da movimentação.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao remover item",
         description: error.message,
         variant: "destructive",
       });
@@ -703,7 +728,7 @@ export default function MovementDetails() {
                     return (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover-elevate"
+                        className="flex items-center justify-between gap-3 p-3 border rounded-lg hover-elevate"
                         data-testid={`item-${item.id}`}
                       >
                         <div className="flex-1">
@@ -715,6 +740,18 @@ export default function MovementDetails() {
                         <Badge variant="outline" className="text-lg px-4 py-1">
                           {item.quantity}x
                         </Badge>
+                        {movement?.status === "in_progress" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeItemMutation.mutate(item.id)}
+                            disabled={removeItemMutation.isPending}
+                            data-testid={`button-remove-${item.id}`}
+                            className="flex-shrink-0 h-8 w-8"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     );
                   })}
