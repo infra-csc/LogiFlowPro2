@@ -16,7 +16,8 @@ import {
   Dock as DockIcon,
   ChevronDown,
   LogOut,
-  CheckSquare
+  CheckSquare,
+  Upload
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -91,14 +92,22 @@ const catalogItems = [
     icon: Calendar,
   },
   {
-    title: "Produtos",
+    title: "Kits & BOM",
+    url: "/kits",
+    icon: Boxes,
+  },
+];
+
+const productItems = [
+  {
+    title: "Listagem",
     url: "/products",
     icon: Package,
   },
   {
-    title: "Kits & BOM",
-    url: "/kits",
-    icon: Boxes,
+    title: "Upload em Lote",
+    url: "/products/upload",
+    icon: Upload,
   },
 ];
 
@@ -186,6 +195,36 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton data-testid="button-products-menu">
+                      <Package className="h-4 w-4" />
+                      <span>Produtos</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {productItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton 
+                            asChild 
+                            isActive={location === item.url}
+                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                          >
+                            <Link href={item.url}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -21,6 +21,7 @@ import Movements from "@/pages/movements";
 import MovementDetails from "@/pages/movement-details";
 import Returns from "@/pages/returns";
 import Products from "@/pages/products";
+import ProductUpload from "@/pages/product-upload";
 import Kits from "@/pages/kits";
 import Config from "@/pages/config";
 import AuthPage from "@/pages/auth-page";
@@ -50,6 +51,7 @@ function Router() {
       <ProtectedRoute path="/movements/:id" component={MovementDetails} />
       <ProtectedRoute path="/movements" component={Movements} />
       <ProtectedRoute path="/returns" component={Returns} />
+      <ProtectedRoute path="/products/upload" component={ProductUpload} />
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/kits" component={Kits} />
       <ProtectedRoute path="/config" component={Config} />
