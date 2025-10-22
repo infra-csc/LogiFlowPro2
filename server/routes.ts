@@ -343,9 +343,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = insertMaterialRequestSchema.partial().parse(req.body);
       
-      // If status is being changed to pending_approval, set submittedAt
+      // If status is being changed to pending_approval, validate request window and set submittedAt
       const updateData: any = { ...data };
       if (data.status === "pending_approval") {
+        // Get the current request to find its event
+        const currentRequest = await storage.getMaterialRequest(req.params.id);
+        if (!currentRequest) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+        
+        // Validate request window if event has it configured
+        const event = await storage.getEvent(currentRequest.eventId);
+        if (!event) {
+          return res.status(404).json({ error: "Event not found" });
+        }
+        
+        // Check if event has request window configured
+        if (event.requestWindowStart && event.requestWindowEnd) {
+          const now = new Date();
+          const windowStart = new Date(event.requestWindowStart);
+          const windowEnd = new Date(event.requestWindowEnd);
+          
+          if (now < windowStart) {
+            return res.status(400).json({ 
+              error: "Requisições para este evento ainda não estão permitidas",
+              windowStart: windowStart.toISOString(),
+              windowEnd: windowEnd.toISOString()
+            });
+          }
+          
+          if (now > windowEnd) {
+            return res.status(400).json({ 
+              error: "O período de requisição para este evento já foi encerrado",
+              windowStart: windowStart.toISOString(),
+              windowEnd: windowEnd.toISOString()
+            });
+          }
+        }
+        
         updateData.submittedAt = new Date();
       }
       
