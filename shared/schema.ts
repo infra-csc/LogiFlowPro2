@@ -126,6 +126,16 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
 });
 
+// Password reset tokens
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
 // Roles table
 export const roles = pgTable("roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -757,6 +767,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true
 });
 
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true
+});
+
 export const insertRoleSchema = createInsertSchema(roles).omit({
   id: true,
   createdAt: true
@@ -835,6 +850,9 @@ export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 
 export type Role = typeof roles.$inferSelect;
 export type InsertRole = z.infer<typeof insertRoleSchema>;
