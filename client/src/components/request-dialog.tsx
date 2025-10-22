@@ -42,15 +42,46 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertMaterialRequest) => {
-      return apiRequest("POST", "/api/requests", data);
+      const response = await apiRequest("POST", "/api/requests", data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw errorData;
+      }
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       toast({ description: "Requisição criada com sucesso" });
       onOpenChange(false);
     },
-    onError: () => {
-      toast({ description: "Erro ao criar requisição", variant: "destructive" });
+    onError: (error: any) => {
+      let description = "Erro ao criar requisição";
+      
+      // Check if error contains window information
+      if (error?.windowStart && error?.windowEnd) {
+        const start = new Date(error.windowStart);
+        const end = new Date(error.windowEnd);
+        description = `${error.error}\n\nPeríodo permitido: ${start.toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })} até ${end.toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`;
+      } else if (error?.error) {
+        description = error.error;
+      }
+      
+      toast({ 
+        description: description, 
+        variant: "destructive" 
+      });
     },
   });
 

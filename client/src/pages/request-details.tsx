@@ -105,7 +105,12 @@ export default function RequestDetails() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("PATCH", `/api/requests/${id}`, { status: "pending_approval" });
+      const response = await apiRequest("PATCH", `/api/requests/${id}`, { status: "pending_approval" });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw errorData;
+      }
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests", id] });
@@ -114,11 +119,34 @@ export default function RequestDetails() {
         description: "A requisição foi submetida para aprovação",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      let description = "Não foi possível submeter a requisição";
+      
+      // Check if error contains window information
+      if (error?.windowStart && error?.windowEnd) {
+        const start = new Date(error.windowStart);
+        const end = new Date(error.windowEnd);
+        description = `${error.error}\n\nPeríodo permitido: ${start.toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })} até ${end.toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`;
+      } else if (error?.error) {
+        description = error.error;
+      }
+      
       toast({
         variant: "destructive",
         title: "Erro ao submeter",
-        description: "Não foi possível submeter a requisição",
+        description: description,
       });
     },
   });
