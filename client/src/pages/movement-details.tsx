@@ -18,6 +18,7 @@ import {
   Minus,
   PackageCheck,
   ClipboardList,
+  AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -229,6 +230,14 @@ export default function MovementDetails() {
     setShowSuggestions(false);
   };
 
+  const handleSelectFromExpectedItem = (item: ExpectedItem) => {
+    // Search by SKU to select the product
+    setSearchQuery(item.product.sku || item.product.name);
+    setSelectedProduct(item.product);
+    setShowSuggestions(false);
+    searchInputRef.current?.focus();
+  };
+
   const handleAddItem = () => {
     if (!selectedProduct) return;
     addItemMutation.mutate({
@@ -236,6 +245,18 @@ export default function MovementDetails() {
       quantity,
     });
   };
+
+  // Check if quantity exceeds expected
+  const selectedExpectedItem = useMemo(() => {
+    if (!selectedProduct) return null;
+    return expectedItems.find((item) => item.productId === selectedProduct.id);
+  }, [selectedProduct, expectedItems]);
+
+  const willExceedExpected = useMemo(() => {
+    if (!selectedExpectedItem) return false;
+    const totalAfterAdd = selectedExpectedItem.loadedQuantity + quantity;
+    return totalAfterAdd > selectedExpectedItem.expectedQuantity;
+  }, [selectedExpectedItem, quantity]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -459,15 +480,41 @@ export default function MovementDetails() {
             </div>
 
             {selectedProduct && (
-              <div className="border rounded-lg p-4 space-y-4 bg-accent/20">
+              <div
+                className={`border rounded-lg p-4 space-y-4 ${
+                  willExceedExpected
+                    ? "bg-destructive/10 border-destructive"
+                    : "bg-accent/20"
+                }`}
+              >
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold text-lg" data-testid="text-selected-product">
                       {selectedProduct.name}
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       SKU: {selectedProduct.sku} | Código: {selectedProduct.barcode || "-"}
                     </p>
+                    {selectedExpectedItem && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Esperado:</span>{" "}
+                          <span className="font-medium">
+                            {selectedExpectedItem.expectedQuantity}
+                          </span>
+                        </p>
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Já carregado:</span>{" "}
+                          <span className="font-medium">
+                            {selectedExpectedItem.loadedQuantity}
+                          </span>
+                        </p>
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Faltam:</span>{" "}
+                          <span className="font-medium">{selectedExpectedItem.remaining}</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="outline"
@@ -481,6 +528,24 @@ export default function MovementDetails() {
                     Limpar
                   </Button>
                 </div>
+
+                {willExceedExpected && (
+                  <div className="bg-destructive/20 border border-destructive rounded-md p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-destructive">
+                          Atenção: Esta quantidade ({quantity}) excederá o esperado!
+                        </p>
+                        <p className="text-sm text-destructive/80 mt-1">
+                          Total após adicionar:{" "}
+                          {selectedExpectedItem!.loadedQuantity + quantity} /{" "}
+                          {selectedExpectedItem!.expectedQuantity}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
@@ -497,7 +562,9 @@ export default function MovementDetails() {
                       min="1"
                       value={quantity}
                       onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-20 text-center"
+                      className={`w-20 text-center ${
+                        willExceedExpected ? "border-destructive" : ""
+                      }`}
                       data-testid="input-quantity"
                     />
                     <Button
@@ -514,6 +581,7 @@ export default function MovementDetails() {
                     disabled={addItemMutation.isPending}
                     className="flex-1"
                     data-testid="button-add-item"
+                    variant={willExceedExpected ? "destructive" : "default"}
                   >
                     {addItemMutation.isPending ? "Adicionando..." : "Confirmar Item"}
                   </Button>
@@ -547,9 +615,14 @@ export default function MovementDetails() {
                     return (
                       <div
                         key={item.productId}
-                        className={`border rounded-lg p-4 space-y-2 ${
+                        className={`border rounded-lg p-4 space-y-2 cursor-pointer hover-elevate active-elevate-2 ${
                           isComplete ? "bg-chart-4/10 border-chart-4" : ""
                         }`}
+                        onClick={() => {
+                          if (movement.status === "in_progress" || movement.status === "paused") {
+                            handleSelectFromExpectedItem(item);
+                          }
+                        }}
                         data-testid={`expected-item-${item.productId}`}
                       >
                         <div className="flex items-start justify-between">
