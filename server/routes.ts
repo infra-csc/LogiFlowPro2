@@ -957,6 +957,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/movements/:id/items/:itemId", async (req, res) => {
+    try {
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) {
+        return res.status(404).json({ error: "Movement not found" });
+      }
+      
+      // Only allow removing items if movement is in progress
+      if (movement.status !== "in_progress") {
+        return res.status(400).json({
+          error: "Items can only be removed from movements in progress",
+        });
+      }
+
+      await storage.deleteMovementItem(req.params.itemId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: "Failed to remove movement item" });
+    }
+  });
+
   // Returns
   app.get("/api/returns", async (req, res) => {
     try {

@@ -176,6 +176,7 @@ export interface IStorage {
   // Movement Items
   getMovementItems(movementId: string): Promise<MovementItem[]>;
   createMovementItem(item: InsertMovementItem): Promise<MovementItem>;
+  deleteMovementItem(id: string): Promise<void>;
 
   // Inventory Movements
   getInventoryMovements(): Promise<InventoryMovement[]>;
@@ -722,6 +723,10 @@ export class DatabaseStorage implements IStorage {
   async createMovementItem(item: InsertMovementItem): Promise<MovementItem> {
     const [created] = await db.insert(movementItems).values(item).returning();
     return created;
+  }
+
+  async deleteMovementItem(id: string): Promise<void> {
+    await db.delete(movementItems).where(eq(movementItems.id, id));
   }
 
   // Inventory Movements
