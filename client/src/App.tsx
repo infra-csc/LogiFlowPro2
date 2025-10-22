@@ -22,6 +22,7 @@ import MovementDetails from "@/pages/movement-details";
 import Returns from "@/pages/returns";
 import Products from "@/pages/products";
 import ProductUpload from "@/pages/product-upload";
+import EventUpload from "@/pages/event-upload";
 import Kits from "@/pages/kits";
 import Config from "@/pages/config";
 import AuthPage from "@/pages/auth-page";
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <ProtectedRoute path="/" component={Dashboard} />
+      <ProtectedRoute path="/events/upload" component={EventUpload} />
       <ProtectedRoute path="/events" component={Events} />
       <ProtectedRoute path="/approvals/:id" component={ApprovalDetail} />
       <ProtectedRoute path="/approvals" component={Approvals} />

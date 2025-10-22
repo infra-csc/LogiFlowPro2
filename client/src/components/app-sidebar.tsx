@@ -85,12 +85,20 @@ const mainMenuItems = [
   },
 ];
 
-const catalogItems = [
+const eventItems = [
   {
-    title: "Eventos",
+    title: "Listagem",
     url: "/events",
     icon: Calendar,
   },
+  {
+    title: "Upload em Lote",
+    url: "/events/upload",
+    icon: Upload,
+  },
+];
+
+const catalogItems = [
   {
     title: "Kits & BOM",
     url: "/kits",
@@ -181,6 +189,36 @@ export function AppSidebar() {
           <SidebarGroupLabel>Catálogo</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton data-testid="button-events-menu">
+                      <Calendar className="h-4 w-4" />
+                      <span>Eventos</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {eventItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton 
+                            asChild 
+                            isActive={location === item.url}
+                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                          >
+                            <Link href={item.url}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+              
               {catalogItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
