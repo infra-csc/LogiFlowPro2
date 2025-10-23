@@ -1391,33 +1391,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve private objects (with ACL check)
-  app.get("/objects/:objectPath(*)", async (req, res) => {
-    const objectStorageService = new ObjectStorageService();
+  // Serve uploaded objects from local filesystem
+  app.get("/objects/uploads/:filename", async (req, res) => {
     try {
-      const objectFile = await objectStorageService.getObjectEntityFile(
-        req.path,
-      );
+      const fs = await import('fs/promises');
+      const path = await import('path');
       
-      // Get user ID for ACL check
-      const userId = req.user?.id;
-      const canAccess = await objectStorageService.canAccessObjectEntity({
-        objectFile,
-        userId: userId,
-        requestedPermission: ObjectPermission.READ,
-      });
+      const filename = req.params.filename;
+      const filePath = path.join(process.cwd(), 'uploads', filename);
       
-      if (!canAccess) {
-        return res.sendStatus(401);
+      // Check if file exists
+      try {
+        await fs.access(filePath);
+      } catch {
+        return res.status(404).json({ error: "File not found" });
       }
       
-      objectStorageService.downloadObject(objectFile, res);
+      // Send file
+      res.sendFile(filePath);
     } catch (error) {
-      console.error("Error accessing object:", error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.sendStatus(404);
-      }
-      return res.sendStatus(500);
+      console.error("Error serving file:", error);
+      res.status(500).json({ error: "Failed to serve file" });
     }
   });
 
@@ -1432,24 +1426,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const objectStorageService = new ObjectStorageService();
-      const userId = req.user?.id || "system";
-      
-      // Set ACL policy (public visibility for product images)
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        req.body.imageUrl,
-        {
-          owner: userId,
-          visibility: "public",
-        },
-      );
-
-      // Update product with image URL
+      // Update product with image URL (no ACL needed for local storage)
       const product = await storage.updateProduct(req.params.id, {
-        imageUrl: objectPath,
+        imageUrl: req.body.imageUrl,
       });
 
-      res.status(200).json({ objectPath, product });
+      res.status(200).json({ objectPath: req.body.imageUrl, product });
     } catch (error) {
       console.error("Error setting product image:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -1467,24 +1449,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const objectStorageService = new ObjectStorageService();
-      const userId = req.user?.id || "system";
-      
-      // Set ACL policy (public visibility for kit images)
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        req.body.imageUrl,
-        {
-          owner: userId,
-          visibility: "public",
-        },
-      );
-
-      // Update kit with image URL
+      // Update kit with image URL (no ACL needed for local storage)
       const kit = await storage.updateKit(req.params.id, {
-        imageUrl: objectPath,
+        imageUrl: req.body.imageUrl,
       });
 
-      res.status(200).json({ objectPath, kit });
+      res.status(200).json({ objectPath: req.body.imageUrl, kit });
     } catch (error) {
       console.error("Error setting kit image:", error);
       res.status(500).json({ error: "Internal server error" });

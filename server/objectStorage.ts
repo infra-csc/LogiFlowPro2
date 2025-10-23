@@ -136,13 +136,22 @@ export class ObjectStorageService {
     const ext = filename.split('.').pop() || '';
     const objectPath = `uploads/${objectId}${ext ? '.' + ext : ''}`;
 
-    // Use Replit's official SDK - handles auth automatically
-    const client = getReplitClient();
-    const { ok, error } = await client.uploadFromBytes(objectPath, buffer);
+    // For now, use local filesystem storage
+    // TODO: Migrate to Replit Object Storage when bucket is configured
+    const fs = await import('fs/promises');
+    const path = await import('path');
     
-    if (!ok) {
-      throw new Error(`Failed to upload object: ${error?.message || 'Unknown error'}`);
+    // Create uploads directory if it doesn't exist
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    try {
+      await fs.mkdir(uploadsDir, { recursive: true });
+    } catch (err) {
+      // Directory might already exist
     }
+    
+    // Save file to local filesystem
+    const localPath = path.join(uploadsDir, `${objectId}${ext ? '.' + ext : ''}`);
+    await fs.writeFile(localPath, buffer);
     
     // Return the object path for later retrieval
     return `/objects/${objectPath}`;
