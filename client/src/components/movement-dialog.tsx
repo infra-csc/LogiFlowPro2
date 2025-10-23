@@ -29,7 +29,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { LoadingOrder, Dock } from "@shared/schema";
+import type { LoadingOrder, Dock, Event } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -42,6 +44,7 @@ const formSchema = z.object({
     "internal_transfer",
     "inventory_adjustment",
   ]),
+  eventIds: z.array(z.string()).min(1, "Selecione pelo menos um evento"),
   loadingOrderId: z.string().optional(),
   vehiclePlate: z.string().optional(),
   dockId: z.string().min(1, "Doca é obrigatória"),
@@ -75,11 +78,16 @@ export function MovementDialog({ children }: MovementDialogProps) {
     queryKey: ["/api/docks"],
   });
 
+  const { data: events = [] } = useQuery<Event[]>({
+    queryKey: ["/api/events"],
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       type: "outbound_event",
+      eventIds: [],
       loadingOrderId: undefined,
       vehiclePlate: undefined,
       dockId: "",
@@ -105,6 +113,7 @@ export function MovementDialog({ children }: MovementDialogProps) {
       form.reset({
         name: "",
         type: "outbound_event",
+        eventIds: [],
         loadingOrderId: undefined,
         vehiclePlate: undefined,
         dockId: "",
@@ -183,6 +192,83 @@ export function MovementDialog({ children }: MovementDialogProps) {
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <FormField
+              control={form.control}
+              name="eventIds"
+              render={({ field }) => {
+                const selectedEventIds = field.value || [];
+                const selectedEvents = events.filter(e => selectedEventIds.includes(e.id));
+                const unselectedEvents = events.filter(e => !selectedEventIds.includes(e.id));
+
+                const handleEventSelect = (eventId: string) => {
+                  const newIds = [...selectedEventIds, eventId];
+                  field.onChange(newIds);
+                };
+
+                const handleEventRemove = (eventId: string) => {
+                  const newIds = selectedEventIds.filter(id => id !== eventId);
+                  field.onChange(newIds);
+                };
+
+                return (
+                  <FormItem>
+                    <FormLabel>Eventos</FormLabel>
+                    <div className="space-y-2">
+                      {selectedEvents.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {selectedEvents.map((event) => (
+                            <Badge
+                              key={event.id}
+                              variant="secondary"
+                              className="gap-1 pr-1"
+                              data-testid={`badge-event-${event.id}`}
+                            >
+                              {event.name}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 p-0 hover:bg-transparent"
+                                onClick={() => handleEventRemove(event.id)}
+                                data-testid={`button-remove-event-${event.id}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {unselectedEvents.length > 0 && (
+                        <Select
+                          onValueChange={handleEventSelect}
+                          value=""
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-events">
+                              <SelectValue placeholder="Adicionar evento..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {unselectedEvents.map((event) => (
+                              <SelectItem key={event.id} value={event.id}>
+                                {event.name} ({event.sku})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {unselectedEvents.length === 0 && selectedEvents.length > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          Todos os eventos disponíveis foram selecionados
+                        </p>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
