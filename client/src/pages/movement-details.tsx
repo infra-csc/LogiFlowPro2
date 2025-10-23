@@ -29,9 +29,12 @@ import {
   AlertTriangle,
   X,
   Keyboard,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useSidebar } from "@/components/ui/sidebar";
 import type { Movement, MovementItem, Product, LoadingOrderItem } from "@shared/schema";
 
 type MovementWithDetails = Movement & {
@@ -88,6 +91,8 @@ export default function MovementDetails() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const sidebar = useSidebar();
+  const [focusMode, setFocusMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -346,6 +351,18 @@ export default function MovementDetails() {
     updateStatusMutation.mutate("completed");
   };
 
+  const toggleFocusMode = () => {
+    const newFocusMode = !focusMode;
+    setFocusMode(newFocusMode);
+    
+    // Toggle sidebar when entering/exiting focus mode
+    if (newFocusMode && sidebar.open) {
+      sidebar.setOpen(false);
+    } else if (!newFocusMode && !sidebar.open) {
+      sidebar.setOpen(true);
+    }
+  };
+
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);
     setSearchQuery(product.name);
@@ -456,9 +473,23 @@ export default function MovementDetails() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 relative">
+      {/* Botão de Modo Foco - Sempre visível */}
+      <div className="fixed top-20 right-6 z-50">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleFocusMode}
+          data-testid="button-toggle-focus"
+          title={focusMode ? "Sair do modo foco" : "Entrar em modo foco"}
+        >
+          {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </Button>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {!focusMode && (
+        <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
@@ -539,9 +570,11 @@ export default function MovementDetails() {
           )}
         </div>
       </div>
+      )}
 
       {/* Status e Informações */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {!focusMode && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Status</CardTitle>
@@ -582,7 +615,8 @@ export default function MovementDetails() {
             <Progress value={progress} className="h-2" />
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Scanner */}
       {(movement.status === "in_progress" || movement.status === "paused") && (
