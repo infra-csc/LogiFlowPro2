@@ -701,7 +701,31 @@ export class DatabaseStorage implements IStorage {
 
   // Movements
   async getMovements(): Promise<Movement[]> {
-    return await db.select().from(movements).orderBy(desc(movements.createdAt));
+    // Get all movements with their relations
+    const movementsData = await db
+      .select()
+      .from(movements)
+      .orderBy(desc(movements.createdAt));
+    
+    // For each movement, get its associated events
+    const movementsWithEvents = await Promise.all(
+      movementsData.map(async (movement) => {
+        const eventRelations = await db
+          .select({
+            event: events,
+          })
+          .from(movementEvents)
+          .leftJoin(events, eq(movementEvents.eventId, events.id))
+          .where(eq(movementEvents.movementId, movement.id));
+        
+        return {
+          ...movement,
+          events: eventRelations.map(r => r.event).filter(Boolean),
+        };
+      })
+    );
+    
+    return movementsWithEvents as any;
   }
 
   async getMovement(id: string): Promise<Movement | undefined> {

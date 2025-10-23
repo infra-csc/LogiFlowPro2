@@ -28,6 +28,7 @@ type MovementWithRelations = Movement & {
   loadingOrder?: LoadingOrder;
   event?: Event;
   dock?: Dock;
+  events?: Event[];
 };
 
 const getStatusColor = (status: string) => {
@@ -421,13 +422,33 @@ export default function Movements() {
                         </div>
                       )}
                     </div>
+                    
+                    {movement.events && movement.events.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-muted-foreground">Eventos:</span>
+                        {movement.events.map((event) => (
+                          <Badge key={event.id} variant="outline" data-testid={`badge-movement-event-${event.id}`}>
+                            {event.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-2">
                     {movement.status === "created" && (
                       <Button
                         size="sm"
-                        onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "in_progress" })}
+                        onClick={() => {
+                          updateStatusMutation.mutate(
+                            { id: movement.id, status: "in_progress" },
+                            {
+                              onSuccess: () => {
+                                navigate(`/movements/${movement.id}`);
+                              }
+                            }
+                          );
+                        }}
                         disabled={updateStatusMutation.isPending}
                         data-testid={`button-start-${movement.id}`}
                       >
