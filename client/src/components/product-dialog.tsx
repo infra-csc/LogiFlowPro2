@@ -120,23 +120,20 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     },
   });
 
-  const handleGetUploadParameters = async () => {
-    const response: any = await apiRequest("POST", "/api/objects/upload", {});
-    const data = await response.json();
-    return {
-      method: "PUT" as const,
-      url: data.uploadURL,
-    };
-  };
-
   const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
     if (result.successful && result.successful.length > 0) {
       const uploadedFile = result.successful[0];
-      const uploadURL = uploadedFile.uploadURL as string;
+      // Get the URL from the server response
+      const objectPath = (uploadedFile.response as any)?.body?.url as string;
+
+      if (!objectPath) {
+        toast({ description: "Erro: URL da imagem não recebida", variant: "destructive" });
+        return;
+      }
 
       if (!product?.id) {
         // If creating a new product, just store the URL to be used after creation
-        setImageUrl(uploadURL || null);
+        setImageUrl(objectPath);
         toast({ description: "Imagem carregada com sucesso" });
         return;
       }
@@ -144,10 +141,10 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       // If editing, update the product image immediately
       try {
         const response: any = await apiRequest("PUT", `/api/products/${product.id}/image`, {
-          imageUrl: uploadURL,
+          imageUrl: objectPath,
         });
         // Use the normalized object path from the response
-        setImageUrl(response.objectPath || uploadURL);
+        setImageUrl(response.objectPath || objectPath);
         queryClient.invalidateQueries({ queryKey: ["/api/products"] });
         toast({ description: "Imagem atualizada com sucesso" });
       } catch (error) {
@@ -370,7 +367,6 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 <ObjectUploader
                   maxNumberOfFiles={1}
                   maxFileSize={10485760}
-                  onGetUploadParameters={handleGetUploadParameters}
                   onComplete={handleUploadComplete}
                   buttonVariant="outline"
                 >

@@ -1,4 +1,5 @@
 // From blueprint: javascript_object_storage
+import { Client } from "@replit/object-storage";
 import { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
 import { randomUUID } from "crypto";
@@ -12,6 +13,7 @@ import {
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
+// Keep GCS client for backward compatibility with existing files
 export const objectStorageClient = new Storage({
   credentials: {
     audience: "replit",
@@ -29,6 +31,15 @@ export const objectStorageClient = new Storage({
   },
   projectId: "",
 });
+
+// Get Replit storage client - lazy init to avoid errors on startup
+let replitClient: Client | null = null;
+export function getReplitClient(): Client {
+  if (!replitClient) {
+    replitClient = new Client();
+  }
+  return replitClient;
+}
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -120,26 +131,21 @@ export class ObjectStorageService {
     }
   }
 
-  async getObjectEntityUploadURL(): Promise<string> {
-    const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-
+  async uploadObjectEntity(buffer: Buffer, filename: string): Promise<string> {
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const ext = filename.split('.').pop() || '';
+    const objectPath = `uploads/${objectId}${ext ? '.' + ext : ''}`;
 
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
+    // Use Replit's official SDK - handles auth automatically
+    const client = getReplitClient();
+    const { ok, error } = await client.uploadFromBytes(objectPath, buffer);
+    
+    if (!ok) {
+      throw new Error(`Failed to upload object: ${error?.message || 'Unknown error'}`);
+    }
+    
+    // Return the object path for later retrieval
+    return `/objects/${objectPath}`;
   }
 
   async getObjectEntityFile(objectPath: string): Promise<File> {

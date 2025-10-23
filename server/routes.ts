@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
@@ -74,6 +75,14 @@ async function initializeDefaultPermissions() {
     console.error("Error initializing default permissions:", error);
   }
 }
+
+// Configure multer for in-memory file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
@@ -1359,19 +1368,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Object Storage - From blueprint: javascript_object_storage
-  // Get presigned upload URL
-  app.post("/api/objects/upload", async (req, res) => {
+  // Direct upload endpoint (accepts file via multipart/form-data)
+  app.post("/api/objects/upload", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
+    if (!req.file) {
+      return res.status(400).json({ error: "No file provided" });
+    }
+
     try {
       const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
+      const objectPath = await objectStorageService.uploadObjectEntity(
+        req.file.buffer,
+        req.file.originalname
+      );
+      res.json({ url: objectPath });
     } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ error: "Failed to get upload URL" });
+      console.error("Error uploading file:", error);
+      res.status(500).json({ error: "Failed to upload file" });
     }
   });
 
