@@ -18,6 +18,7 @@ import {
   loadingOrderRequests,
   loadingOrderItems,
   movements,
+  movementEvents,
   movementItems,
   inventoryMovements,
   returns,
@@ -58,6 +59,7 @@ import {
   type InsertLoadingOrderItem,
   type Movement,
   type InsertMovement,
+  type InsertMovementWithEvents,
   type MovementItem,
   type InsertMovementItem,
   type InventoryMovement,
@@ -171,6 +173,7 @@ export interface IStorage {
   getMovements(): Promise<Movement[]>;
   getMovement(id: string): Promise<Movement | undefined>;
   createMovement(movement: InsertMovement): Promise<Movement>;
+  createMovementWithEvents(movement: InsertMovementWithEvents): Promise<Movement>;
   updateMovement(id: string, movement: Partial<InsertMovement>): Promise<Movement>;
 
   // Movement Items
@@ -708,6 +711,25 @@ export class DatabaseStorage implements IStorage {
 
   async createMovement(movement: InsertMovement): Promise<Movement> {
     const [created] = await db.insert(movements).values(movement as any).returning();
+    return created;
+  }
+
+  async createMovementWithEvents(movementData: InsertMovementWithEvents): Promise<Movement> {
+    const { eventIds, ...movementInsert } = movementData;
+    
+    // Create the movement
+    const [created] = await db.insert(movements).values(movementInsert as any).returning();
+    
+    // Create the junction records for events
+    if (eventIds && eventIds.length > 0) {
+      await db.insert(movementEvents).values(
+        eventIds.map(eventId => ({
+          movementId: created.id,
+          eventId
+        }))
+      );
+    }
+    
     return created;
   }
 
