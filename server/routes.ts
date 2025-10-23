@@ -18,6 +18,7 @@ import {
   insertTripItemSchema,
   insertLoadingOrderSchema,
   insertMovementSchema,
+  insertMovementWithEventsSchema,
   insertMovementItemSchema,
   insertInventoryMovementSchema,
   insertReturnSchema,
@@ -865,7 +866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/movements", async (req, res) => {
     try {
-      const data = insertMovementSchema.parse(req.body);
+      const data = insertMovementWithEventsSchema.parse(req.body);
       
       // Validate loading order if provided
       if (data.loadingOrderId) {
@@ -875,6 +876,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (order.status !== "approved" && order.status !== "in_progress") {
           return res.status(400).json({ error: "Loading order must be approved" });
+        }
+      }
+      
+      // Validate events exist
+      if (data.eventIds && data.eventIds.length > 0) {
+        for (const eventId of data.eventIds) {
+          const event = await storage.getEvent(eventId);
+          if (!event) {
+            return res.status(404).json({ error: `Event not found: ${eventId}` });
+          }
         }
       }
       
@@ -890,7 +901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get current user
       const createdBy = req.user?.name || "System";
       
-      const movement = await storage.createMovement({
+      const movement = await storage.createMovementWithEvents({
         ...data,
         movementNumber,
         createdBy,
