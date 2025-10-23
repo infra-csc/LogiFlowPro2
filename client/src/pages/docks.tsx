@@ -33,7 +33,7 @@ export default function Docks() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertDock) => {
-      return await apiRequest("/api/docks", "POST", data);
+      return await apiRequest("POST", "/api/docks", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/docks"] });
