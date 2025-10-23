@@ -111,15 +111,38 @@ export default function EventUpload() {
         const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
 
         const events: ParsedEvent[] = jsonData.map((row) => {
-          const setupDate = parseExcelDate(row["Data Montagem"] || row.setupDate || row.SetupDate);
-          const eventDate = parseExcelDate(row["Data Evento"] || row.eventDate || row.EventDate);
-          const teardownDate = parseExcelDate(row["Data Desmontagem"] || row.teardownDate || row.TeardownDate);
-          const requestWindowStart = parseExcelDate(row["Janela Início"] || row.requestWindowStart || row.RequestWindowStart);
-          const requestWindowEnd = parseExcelDate(row["Janela Fim"] || row.requestWindowEnd || row.RequestWindowEnd);
+          const setupDate = parseExcelDate(
+            row["Data de Montagem"] || row["Data Montagem"] || row.setupDate || row.SetupDate
+          );
+          const eventDate = parseExcelDate(
+            row["Data do evento"] || row["Data Evento"] || row.eventDate || row.EventDate
+          );
+          const teardownDate = parseExcelDate(
+            row["Data da desmontagem"] || row["Data Desmontagem"] || row.teardownDate || row.TeardownDate
+          );
+          const requestWindowStart = parseExcelDate(
+            row["Janela de Início"] || row["Janela Início"] || row.requestWindowStart || row.RequestWindowStart
+          );
+          const requestWindowEnd = parseExcelDate(
+            row["Janela de Fim"] || row["Janela Fim"] || row.requestWindowEnd || row.RequestWindowEnd
+          );
+
+          // Map Portuguese status to English
+          let status = row.Status || row.status || "planning";
+          const statusMap: Record<string, string> = {
+            "Planejamento": "planning",
+            "Em andamento": "in_progress",
+            "Aprovado": "approved",
+            "Concluído": "completed",
+            "Cancelado": "cancelled"
+          };
+          if (statusMap[status]) {
+            status = statusMap[status];
+          }
 
           return {
             sku: row.SKU || row.sku,
-            name: row.Nome || row.Name || row.name,
+            name: row["Nome do Evento"] || row.Nome || row.Name || row.name,
             client: row.Cliente || row.Client || row.client,
             location: row.Local || row.Location || row.location,
             setupDate: setupDate!,
@@ -127,7 +150,7 @@ export default function EventUpload() {
             teardownDate: teardownDate!,
             requestWindowStart,
             requestWindowEnd,
-            status: row.Status || row.status || "planning",
+            status,
             notes: row.Observações || row.Notes || row.notes,
           };
         });
@@ -186,7 +209,7 @@ export default function EventUpload() {
             Upload de Planilha
           </CardTitle>
           <CardDescription>
-            A planilha deve conter as colunas: Nome, Cliente, Local, Data Montagem, Data Evento, Data Desmontagem (opcionais: SKU, Janela Início, Janela Fim, Status, Observações)
+            A planilha deve conter as colunas: Nome do Evento, Cliente, Local, Data de Montagem, Data do evento, Data da desmontagem (opcionais: SKU, Janela de Início, Janela de Fim, Status, Observações)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
