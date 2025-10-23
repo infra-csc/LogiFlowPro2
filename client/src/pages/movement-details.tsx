@@ -43,6 +43,11 @@ type MovementWithDetails = Movement & {
     id: string;
     name: string;
   };
+  events?: Array<{
+    id: string;
+    name: string;
+    sku: string;
+  }>;
 };
 
 type LoadingOrderItemWithProduct = LoadingOrderItem & {
@@ -463,7 +468,7 @@ export default function MovementDetails() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
+          <div className="space-y-2">
             <h1 className="text-3xl font-bold" data-testid="text-movement-title">
               {movement.movementNumber}
             </h1>
@@ -472,6 +477,21 @@ export default function MovementDetails() {
               <p className="text-sm text-muted-foreground">
                 Ordem: {movement.loadingOrder.orderNumber}
               </p>
+            )}
+            {movement.events && movement.events.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <span className="text-sm font-medium text-muted-foreground">Eventos:</span>
+                {movement.events.map((event) => (
+                  <Badge 
+                    key={event.id} 
+                    variant="default" 
+                    className="text-sm"
+                    data-testid={`badge-event-${event.id}`}
+                  >
+                    {event.name}
+                  </Badge>
+                ))}
+              </div>
             )}
           </div>
         </div>
