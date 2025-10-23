@@ -377,7 +377,6 @@ export const movements = pgTable("movements", {
   type: movementTypeEnum("type").notNull(),
   status: movementStatusEnum("status").notNull().default("created"),
   loadingOrderId: varchar("loading_order_id").references(() => loadingOrders.id),
-  eventId: varchar("event_id").references(() => events.id),
   vehiclePlate: text("vehicle_plate"),
   dockId: varchar("dock_id").references(() => docks.id),
   startedAt: timestamp("started_at"),
@@ -388,6 +387,14 @@ export const movements = pgTable("movements", {
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
+// Movement Events junction table (many-to-many)
+export const movementEvents = pgTable("movement_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  movementId: varchar("movement_id").notNull().references(() => movements.id, { onDelete: "cascade" }),
+  eventId: varchar("event_id").notNull().references(() => events.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 
 // Movement Items table
@@ -446,7 +453,8 @@ export const eventsRelations = relations(events, ({ many }) => ({
   materialRequests: many(materialRequests),
   trips: many(trips),
   loadingOrders: many(loadingOrders),
-  inventoryMovements: many(inventoryMovements)
+  inventoryMovements: many(inventoryMovements),
+  movementEvents: many(movementEvents)
 }));
 
 export const kitsRelations = relations(kits, ({ many }) => ({
@@ -577,15 +585,12 @@ export const movementsRelations = relations(movements, ({ one, many }) => ({
     fields: [movements.loadingOrderId],
     references: [loadingOrders.id]
   }),
-  event: one(events, {
-    fields: [movements.eventId],
-    references: [events.id]
-  }),
   dock: one(docks, {
     fields: [movements.dockId],
     references: [docks.id]
   }),
-  items: many(movementItems)
+  items: many(movementItems),
+  movementEvents: many(movementEvents)
 }));
 
 export const movementItemsRelations = relations(movementItems, ({ one }) => ({
@@ -596,6 +601,17 @@ export const movementItemsRelations = relations(movementItems, ({ one }) => ({
   product: one(products, {
     fields: [movementItems.productId],
     references: [products.id]
+  })
+}));
+
+export const movementEventsRelations = relations(movementEvents, ({ one }) => ({
+  movement: one(movements, {
+    fields: [movementEvents.movementId],
+    references: [movements.id]
+  }),
+  event: one(events, {
+    fields: [movementEvents.eventId],
+    references: [events.id]
   })
 }));
 
@@ -746,6 +762,10 @@ export const insertMovementSchema = createInsertSchema(movements).omit({
   totalDuration: true
 });
 
+export const insertMovementWithEventsSchema = insertMovementSchema.extend({
+  eventIds: z.array(z.string()).min(1, "Selecione pelo menos um evento")
+});
+
 export const insertMovementItemSchema = createInsertSchema(movementItems).omit({
   id: true,
   processedAt: true
@@ -840,6 +860,9 @@ export type InsertLoadingOrderItem = z.infer<typeof insertLoadingOrderItemSchema
 
 export type Movement = typeof movements.$inferSelect;
 export type InsertMovement = z.infer<typeof insertMovementSchema>;
+export type InsertMovementWithEvents = z.infer<typeof insertMovementWithEventsSchema>;
+
+export type MovementEvent = typeof movementEvents.$inferSelect;
 
 export type MovementItem = typeof movementItems.$inferSelect;
 export type InsertMovementItem = z.infer<typeof insertMovementItemSchema>;
