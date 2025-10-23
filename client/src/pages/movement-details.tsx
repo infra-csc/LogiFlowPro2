@@ -8,6 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   PlayCircle,
   PauseCircle,
@@ -20,6 +27,7 @@ import {
   ClipboardList,
   AlertTriangle,
   X,
+  Keyboard,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -78,7 +86,10 @@ export default function MovementDetails() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: movement, isLoading } = useQuery<MovementWithDetails>({
     queryKey: ["/api/movements", id],
@@ -333,6 +344,11 @@ export default function MovementDetails() {
     setSelectedProduct(product);
     setSearchQuery(product.name);
     setShowSuggestions(false);
+    // Focus quantity input after selecting product
+    setTimeout(() => {
+      quantityInputRef.current?.focus();
+      quantityInputRef.current?.select();
+    }, 100);
   };
 
   const handleSelectFromExpectedItem = (item: ExpectedItem) => {
@@ -340,15 +356,32 @@ export default function MovementDetails() {
     setSearchQuery(item.product.sku || item.product.name);
     setSelectedProduct(item.product);
     setShowSuggestions(false);
-    searchInputRef.current?.focus();
+    // Focus quantity input after selecting product
+    setTimeout(() => {
+      quantityInputRef.current?.focus();
+      quantityInputRef.current?.select();
+    }, 100);
   };
 
   const handleAddItem = () => {
+    if (!selectedProduct) return;
+    // Open confirmation dialog instead of adding directly
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmAddItem = () => {
     if (!selectedProduct) return;
     addItemMutation.mutate({
       productId: selectedProduct.id,
       quantity,
     });
+    setShowConfirmDialog(false);
+  };
+
+  const handleCancelAddItem = () => {
+    setShowConfirmDialog(false);
+    // Return focus to quantity input
+    setTimeout(() => quantityInputRef.current?.focus(), 100);
   };
 
   // Check if quantity exceeds expected
@@ -363,15 +396,33 @@ export default function MovementDetails() {
     return totalAfterAdd > selectedExpectedItem.expectedQuantity;
   }, [selectedExpectedItem, quantity]);
 
+  // Auto-focus quantity input when product is selected
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && selectedProduct) {
-        handleAddItem();
+    if (selectedProduct) {
+      setTimeout(() => {
+        quantityInputRef.current?.focus();
+        quantityInputRef.current?.select();
+      }, 100);
+    }
+  }, [selectedProduct]);
+
+  // Handle Enter key in confirmation dialog
+  useEffect(() => {
+    if (!showConfirmDialog) return;
+    
+    const handleDialogKeyPress = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleConfirmAddItem();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        handleCancelAddItem();
       }
     };
-    window.addEventListener("keypress", handleKeyPress);
-    return () => window.removeEventListener("keypress", handleKeyPress);
-  }, [selectedProduct, quantity]);
+    
+    window.addEventListener("keydown", handleDialogKeyPress);
+    return () => window.removeEventListener("keydown", handleDialogKeyPress);
+  }, [showConfirmDialog, selectedProduct, quantity]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -523,6 +574,13 @@ export default function MovementDetails() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
+              <label className="block mb-2 font-medium flex items-center gap-2">
+                Produto
+                <Badge variant="outline" className="text-xs">
+                  <Keyboard className="h-3 w-3 mr-1" />
+                  Auto-focus
+                </Badge>
+              </label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
                   <Input
@@ -652,44 +710,61 @@ export default function MovementDetails() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-3">
+                  <label className="block font-medium flex items-center gap-2">
+                    Quantidade
+                    <Badge variant="outline" className="text-xs">
+                      <Keyboard className="h-3 w-3 mr-1" />
+                      Auto-select
+                    </Badge>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        data-testid="button-decrease-quantity"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <Input
+                        ref={quantityInputRef}
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddItem();
+                          }
+                        }}
+                        className={`w-24 text-center text-lg ${
+                          willExceedExpected ? "border-destructive" : ""
+                        }`}
+                        data-testid="input-quantity"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setQuantity(quantity + 1)}
+                        data-testid="button-increase-quantity"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      data-testid="button-decrease-quantity"
+                      onClick={handleAddItem}
+                      disabled={addItemMutation.isPending}
+                      className="flex-1 gap-2"
+                      data-testid="button-add-item"
+                      variant={willExceedExpected ? "destructive" : "default"}
                     >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className={`w-20 text-center ${
-                        willExceedExpected ? "border-destructive" : ""
-                      }`}
-                      data-testid="input-quantity"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setQuantity(quantity + 1)}
-                      data-testid="button-increase-quantity"
-                    >
-                      <Plus className="h-4 w-4" />
+                      {addItemMutation.isPending ? "Adicionando..." : "Confirmar Item"}
+                      <Badge variant="outline" className="bg-background/20">ENTER</Badge>
                     </Button>
                   </div>
-                  <Button
-                    onClick={handleAddItem}
-                    disabled={addItemMutation.isPending}
-                    className="flex-1"
-                    data-testid="button-add-item"
-                    variant={willExceedExpected ? "destructive" : "default"}
-                  >
-                    {addItemMutation.isPending ? "Adicionando..." : "Confirmar Item"}
-                  </Button>
                 </div>
               </div>
             )}
@@ -865,6 +940,101 @@ export default function MovementDetails() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Confirmação */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Confirmar Adição de Item</DialogTitle>
+          </DialogHeader>
+          
+          {selectedProduct && (
+            <div className="space-y-6 py-4">
+              <div className="space-y-4 p-6 bg-accent/20 rounded-lg border-2">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">PRODUTO</p>
+                  <p className="text-4xl font-bold" data-testid="text-confirm-product-name">
+                    {selectedProduct.name}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">SKU</p>
+                    <p className="text-2xl font-semibold">{selectedProduct.sku}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">CÓDIGO DE BARRAS</p>
+                    <p className="text-2xl font-semibold">{selectedProduct.barcode || "-"}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-primary/10 rounded-lg border-2 border-primary">
+                <p className="text-sm text-muted-foreground mb-1">QUANTIDADE</p>
+                <p className="text-6xl font-bold text-primary" data-testid="text-confirm-quantity">
+                  {quantity}
+                </p>
+                {selectedExpectedItem && (
+                  <div className="mt-4 space-y-1">
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Esperado:</span>{" "}
+                      <span className="font-medium">{selectedExpectedItem.expectedQuantity}</span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Já carregado:</span>{" "}
+                      <span className="font-medium">{selectedExpectedItem.loadedQuantity}</span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Total após adicionar:</span>{" "}
+                      <span className="font-medium">{selectedExpectedItem.loadedQuantity + quantity}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {willExceedExpected && (
+                <div className="p-4 bg-destructive/20 border-2 border-destructive rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-6 w-6 text-destructive mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-destructive text-lg">
+                        ATENÇÃO: Quantidade excederá o esperado!
+                      </p>
+                      <p className="text-destructive/80 mt-1">
+                        Você está adicionando {quantity} unidades, mas só faltam {selectedExpectedItem!.remaining}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelAddItem}
+              data-testid="button-cancel-confirm"
+              className="flex items-center gap-2"
+            >
+              Cancelar
+              <Badge variant="outline" className="ml-1">ESC</Badge>
+            </Button>
+            <Button
+              onClick={handleConfirmAddItem}
+              disabled={addItemMutation.isPending}
+              data-testid="button-confirm-add"
+              ref={confirmButtonRef}
+              variant={willExceedExpected ? "destructive" : "default"}
+              className="flex items-center gap-2"
+            >
+              {addItemMutation.isPending ? "Adicionando..." : "Confirmar"}
+              <Badge variant="outline" className="ml-1 bg-background/20">ENTER</Badge>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
