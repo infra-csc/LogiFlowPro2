@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -946,6 +947,9 @@ export default function MovementDetails() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-2xl">Confirmar Adição de Item</DialogTitle>
+            <DialogDescription>
+              Verifique os dados do produto e quantidade antes de confirmar
+            </DialogDescription>
           </DialogHeader>
           
           {selectedProduct && (
