@@ -152,7 +152,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { events: eventsData } = req.body;
       
+      console.log("[BULK UPLOAD] Received bulk upload request with", eventsData?.length || 0, "events");
+      
       if (!Array.isArray(eventsData)) {
+        console.log("[BULK UPLOAD ERROR] Expected array, received:", typeof eventsData);
         return res.status(400).json({ error: "Expected an array of events" });
       }
 
@@ -164,6 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (let i = 0; i < eventsData.length; i++) {
         try {
           const eventData = eventsData[i];
+          console.log(`[BULK UPLOAD] Processing event ${i + 1}:`, JSON.stringify(eventData, null, 2));
           
           // Convert ISO date strings to Date objects
           const convertedData = {
@@ -175,24 +179,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
             requestWindowEnd: eventData.requestWindowEnd ? new Date(eventData.requestWindowEnd) : undefined,
           };
           
+          console.log(`[BULK UPLOAD] Converted data for event ${i + 1}:`, JSON.stringify(convertedData, null, 2));
+          
           const data = insertEventSchema.parse(convertedData);
           const event = await storage.createEvent(data);
+          console.log(`[BULK UPLOAD] Successfully created event ${i + 1}:`, event.id);
           results.success.push({ row: i + 1, event });
         } catch (error: any) {
+          console.error(`[BULK UPLOAD ERROR] Failed to process event ${i + 1}:`, error);
+          console.error(`[BULK UPLOAD ERROR] Error details:`, error.message);
+          if (error.issues) {
+            console.error(`[BULK UPLOAD ERROR] Validation issues:`, JSON.stringify(error.issues, null, 2));
+          }
           results.errors.push({ 
             row: i + 1, 
             data: eventsData[i], 
-            error: error.message || "Erro ao processar evento" 
+            error: error.issues ? JSON.stringify(error.issues) : (error.message || "Erro ao processar evento")
           });
         }
       }
 
+      console.log(`[BULK UPLOAD] Finished. Success: ${results.success.length}, Errors: ${results.errors.length}`);
+      
       res.status(results.errors.length > 0 ? 207 : 201).json({
         message: `${results.success.length} eventos importados com sucesso, ${results.errors.length} erros`,
         success: results.success,
         errors: results.errors
       });
     } catch (error) {
+      console.error("[BULK UPLOAD ERROR] Unexpected error:", error);
       res.status(400).json({ error: "Erro ao processar importação em lote" });
     }
   });
