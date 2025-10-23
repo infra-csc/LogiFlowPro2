@@ -259,12 +259,11 @@ export default function Movements() {
                 {/* Filtro de Evento */}
                 <div className="space-y-2">
                   <Label htmlFor="filter-event">Evento</Label>
-                  <Select value={filterEventId} onValueChange={setFilterEventId}>
+                  <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
                     <SelectTrigger id="filter-event" data-testid="select-filter-event">
                       <SelectValue placeholder="Todos os eventos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os eventos</SelectItem>
                       {events.map((event) => (
                         <SelectItem key={event.id} value={event.id}>
                           {event.name}
@@ -277,12 +276,11 @@ export default function Movements() {
                 {/* Filtro de Status */}
                 <div className="space-y-2">
                   <Label htmlFor="filter-status">Status</Label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
                     <SelectTrigger id="filter-status" data-testid="select-filter-status">
                       <SelectValue placeholder="Todos os status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os status</SelectItem>
                       <SelectItem value="created">Criada</SelectItem>
                       <SelectItem value="in_progress">Em Andamento</SelectItem>
                       <SelectItem value="paused">Pausada</SelectItem>
@@ -295,12 +293,11 @@ export default function Movements() {
                 {/* Filtro de Tipo de Movimentação */}
                 <div className="space-y-2">
                   <Label htmlFor="filter-type">Tipo de Movimentação</Label>
-                  <Select value={filterType} onValueChange={setFilterType}>
+                  <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
                     <SelectTrigger id="filter-type" data-testid="select-filter-type">
                       <SelectValue placeholder="Todos os tipos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os tipos</SelectItem>
                       <SelectItem value="outbound_event">Saída para Evento</SelectItem>
                       <SelectItem value="inbound_event">Retorno de Evento</SelectItem>
                       <SelectItem value="inbound_purchase">Entrada Produto Comprado</SelectItem>
@@ -315,12 +312,11 @@ export default function Movements() {
                 {/* Filtro de Doca */}
                 <div className="space-y-2">
                   <Label htmlFor="filter-dock">Doca</Label>
-                  <Select value={filterDockId} onValueChange={setFilterDockId}>
+                  <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
                     <SelectTrigger id="filter-dock" data-testid="select-filter-dock">
                       <SelectValue placeholder="Todas as docas" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as docas</SelectItem>
                       {docks.map((dock) => (
                         <SelectItem key={dock.id} value={dock.id}>
                           {dock.name}
