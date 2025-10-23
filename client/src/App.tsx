@@ -32,6 +32,7 @@ import UsersPage from "@/pages/users";
 import RolesPage from "@/pages/roles";
 import Approvals from "@/pages/approvals";
 import ApprovalDetail from "@/pages/approval-detail";
+import Docks from "@/pages/docks";
 
 function Router() {
   return (
@@ -61,7 +62,7 @@ function Router() {
       <ProtectedRoute path="/config/roles" component={RolesPage} />
       <ProtectedRoute path="/config/vehicles" component={Config} />
       <ProtectedRoute path="/config/drivers" component={Config} />
-      <ProtectedRoute path="/config/docks" component={Config} />
+      <ProtectedRoute path="/config/docks" component={Docks} />
       <Route component={NotFound} />
     </Switch>
   );
