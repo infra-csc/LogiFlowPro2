@@ -1,9 +1,23 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye } from "lucide-react";
+import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Filter, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useLocation } from "wouter";
 import { MovementDialog } from "@/components/movement-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -63,12 +77,99 @@ const formatDuration = (minutes?: number | null) => {
 
 export default function Movements() {
   const [, navigate] = useLocation();
-  const [filter] = useState("all");
   const { toast } = useToast();
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Filtros
+  const [filterEventId, setFilterEventId] = useState<string>("");
+  const [filterStartDate, setFilterStartDate] = useState<string>("");
+  const [filterEndDate, setFilterEndDate] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterType, setFilterType] = useState<string>("");
+  const [filterVehiclePlate, setFilterVehiclePlate] = useState<string>("");
+  const [filterDockId, setFilterDockId] = useState<string>("");
 
   const { data: movements = [], isLoading } = useQuery<MovementWithRelations[]>({
     queryKey: ["/api/movements"],
   });
+
+  const { data: events = [] } = useQuery<Event[]>({
+    queryKey: ["/api/events"],
+  });
+
+  const { data: docks = [] } = useQuery<Dock[]>({
+    queryKey: ["/api/docks"],
+  });
+
+  // Aplicar filtros
+  const filteredMovements = useMemo(() => {
+    return movements.filter((movement) => {
+      // Filtro por evento
+      if (filterEventId && movement.loadingOrder?.eventId !== filterEventId) {
+        return false;
+      }
+
+      // Filtro por período de carregamento
+      if (filterStartDate && movement.startedAt) {
+        const movementDate = new Date(movement.startedAt).toISOString().split('T')[0];
+        if (movementDate < filterStartDate) {
+          return false;
+        }
+      }
+      if (filterEndDate && movement.startedAt) {
+        const movementDate = new Date(movement.startedAt).toISOString().split('T')[0];
+        if (movementDate > filterEndDate) {
+          return false;
+        }
+      }
+
+      // Filtro por status
+      if (filterStatus && movement.status !== filterStatus) {
+        return false;
+      }
+
+      // Filtro por tipo
+      if (filterType && movement.type !== filterType) {
+        return false;
+      }
+
+      // Filtro por placa do veículo
+      if (filterVehiclePlate && !movement.vehiclePlate?.toLowerCase().includes(filterVehiclePlate.toLowerCase())) {
+        return false;
+      }
+
+      // Filtro por doca
+      if (filterDockId && movement.dockId !== filterDockId) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [movements, filterEventId, filterStartDate, filterEndDate, filterStatus, filterType, filterVehiclePlate, filterDockId]);
+
+  // Contar filtros ativos
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filterEventId) count++;
+    if (filterStartDate) count++;
+    if (filterEndDate) count++;
+    if (filterStatus) count++;
+    if (filterType) count++;
+    if (filterVehiclePlate) count++;
+    if (filterDockId) count++;
+    return count;
+  }, [filterEventId, filterStartDate, filterEndDate, filterStatus, filterType, filterVehiclePlate, filterDockId]);
+
+  // Limpar todos os filtros
+  const clearAllFilters = () => {
+    setFilterEventId("");
+    setFilterStartDate("");
+    setFilterEndDate("");
+    setFilterStatus("");
+    setFilterType("");
+    setFilterVehiclePlate("");
+    setFilterDockId("");
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -120,29 +221,172 @@ export default function Movements() {
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-2">
-        <Badge variant={filter === "all" ? "default" : "outline"} className="cursor-pointer">
-          Todas
-        </Badge>
-        <Badge variant={filter === "today" ? "default" : "outline"} className="cursor-pointer">
-          Hoje
-        </Badge>
-      </div>
+      <Card>
+        <Collapsible open={showFilters} onOpenChange={setShowFilters}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="gap-2 p-0 hover:bg-transparent" data-testid="button-toggle-filters">
+                  <Filter className="h-4 w-4" />
+                  <CardTitle className="text-base">
+                    Filtros
+                    {activeFiltersCount > 0 && (
+                      <Badge variant="default" className="ml-2">
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                </Button>
+              </CollapsibleTrigger>
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="gap-2"
+                  data-testid="button-clear-filters"
+                >
+                  <X className="h-4 w-4" />
+                  Limpar Filtros
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Filtro de Evento */}
+                <div className="space-y-2">
+                  <Label htmlFor="filter-event">Evento</Label>
+                  <Select value={filterEventId} onValueChange={setFilterEventId}>
+                    <SelectTrigger id="filter-event" data-testid="select-filter-event">
+                      <SelectValue placeholder="Todos os eventos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os eventos</SelectItem>
+                      {events.map((event) => (
+                        <SelectItem key={event.id} value={event.id}>
+                          {event.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro de Status */}
+                <div className="space-y-2">
+                  <Label htmlFor="filter-status">Status</Label>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger id="filter-status" data-testid="select-filter-status">
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os status</SelectItem>
+                      <SelectItem value="created">Criada</SelectItem>
+                      <SelectItem value="in_progress">Em Andamento</SelectItem>
+                      <SelectItem value="paused">Pausada</SelectItem>
+                      <SelectItem value="completed">Finalizada</SelectItem>
+                      <SelectItem value="cancelled">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro de Tipo de Movimentação */}
+                <div className="space-y-2">
+                  <Label htmlFor="filter-type">Tipo de Movimentação</Label>
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger id="filter-type" data-testid="select-filter-type">
+                      <SelectValue placeholder="Todos os tipos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os tipos</SelectItem>
+                      <SelectItem value="outbound_event">Saída para Evento</SelectItem>
+                      <SelectItem value="inbound_event">Retorno de Evento</SelectItem>
+                      <SelectItem value="inbound_purchase">Entrada Produto Comprado</SelectItem>
+                      <SelectItem value="inbound_rental">Entrada Produto Locado</SelectItem>
+                      <SelectItem value="outbound_rental_return">Devolução Produto Locado</SelectItem>
+                      <SelectItem value="internal_transfer">Transferência Interna</SelectItem>
+                      <SelectItem value="inventory_adjustment">Ajuste de Inventário</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro de Doca */}
+                <div className="space-y-2">
+                  <Label htmlFor="filter-dock">Doca</Label>
+                  <Select value={filterDockId} onValueChange={setFilterDockId}>
+                    <SelectTrigger id="filter-dock" data-testid="select-filter-dock">
+                      <SelectValue placeholder="Todas as docas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todas as docas</SelectItem>
+                      {docks.map((dock) => (
+                        <SelectItem key={dock.id} value={dock.id}>
+                          {dock.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filtro de Placa do Veículo */}
+                <div className="space-y-2">
+                  <Label htmlFor="filter-vehicle">Placa do Veículo</Label>
+                  <Input
+                    id="filter-vehicle"
+                    placeholder="Digite a placa..."
+                    value={filterVehiclePlate}
+                    onChange={(e) => setFilterVehiclePlate(e.target.value)}
+                    data-testid="input-filter-vehicle"
+                  />
+                </div>
+
+                {/* Filtro de Data Início */}
+                <div className="space-y-2">
+                  <Label htmlFor="filter-start-date">Data Início</Label>
+                  <Input
+                    id="filter-start-date"
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    data-testid="input-filter-start-date"
+                  />
+                </div>
+
+                {/* Filtro de Data Fim */}
+                <div className="space-y-2">
+                  <Label htmlFor="filter-end-date">Data Fim</Label>
+                  <Input
+                    id="filter-end-date"
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    data-testid="input-filter-end-date"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
 
       {/* Lista de Movimentações */}
       <div className="space-y-4">
-        {movements.length === 0 ? (
+        {filteredMovements.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-lg font-medium">Nenhuma movimentação encontrada</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Crie uma nova movimentação para começar
+                {activeFiltersCount > 0 
+                  ? "Tente ajustar os filtros para ver mais resultados" 
+                  : "Crie uma nova movimentação para começar"}
               </p>
             </CardContent>
           </Card>
         ) : (
-          movements.map((movement) => (
+          filteredMovements.map((movement) => (
             <Card key={movement.id} className="hover-elevate" data-testid={`card-movement-${movement.id}`}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between gap-4">
