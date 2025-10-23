@@ -377,6 +377,7 @@ export const movements = pgTable("movements", {
   type: movementTypeEnum("type").notNull(),
   status: movementStatusEnum("status").notNull().default("created"),
   loadingOrderId: varchar("loading_order_id").references(() => loadingOrders.id),
+  eventId: varchar("event_id").references(() => events.id), // Deprecated: use movementEvents table for multiple events
   vehiclePlate: text("vehicle_plate"),
   dockId: varchar("dock_id").references(() => docks.id),
   startedAt: timestamp("started_at"),
@@ -584,6 +585,10 @@ export const movementsRelations = relations(movements, ({ one, many }) => ({
   loadingOrder: one(loadingOrders, {
     fields: [movements.loadingOrderId],
     references: [loadingOrders.id]
+  }),
+  event: one(events, {
+    fields: [movements.eventId],
+    references: [events.id]
   }),
   dock: one(docks, {
     fields: [movements.dockId],
