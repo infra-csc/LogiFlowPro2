@@ -1,14 +1,16 @@
 import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, FileText, Calendar, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Package, FileText, Calendar, CheckCircle, XCircle, TruckIcon, AlertCircle } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { LoadingOrder, Event, MaterialRequest } from "@shared/schema";
+import type { LoadingOrder, Event, MaterialRequest, Movement, MovementItem } from "@shared/schema";
+import { useMemo } from "react";
 
 type LoadingOrderItem = {
   id: string;
@@ -51,6 +53,68 @@ export default function LoadingOrderDetails() {
     queryKey: [`/api/loading-orders/${id}/requests`],
     enabled: !!id,
   });
+
+  const { data: movements = [] } = useQuery<Movement[]>({
+    queryKey: [`/api/loading-orders/${id}/movements`],
+    enabled: !!id,
+  });
+
+  // Fetch items for each movement using useQueries (compliant with Rules of Hooks)
+  const movementItemsQueries = useQueries({
+    queries: movements.map(movement => ({
+      queryKey: [`/api/movements/${movement.id}/items`],
+      queryFn: async () => {
+        const res = await fetch(`/api/movements/${movement.id}/items`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch movement items");
+        return res.json() as Promise<MovementItem[]>;
+      },
+      enabled: !!movement.id,
+    })),
+  });
+
+  // Calculate progress by product across all movements
+  const productProgress = useMemo(() => {
+    const progressMap = new Map<string, {
+      productId: string;
+      productName: string;
+      productSku: string;
+      expectedQuantity: number;
+      loadedQuantity: number;
+    }>();
+
+    // Initialize with loading order items and accumulate expected quantities for duplicate products
+    items.forEach(item => {
+      if (item.product) {
+        const existing = progressMap.get(item.productId);
+        if (existing) {
+          // Accumulate expected quantity for duplicate products
+          existing.expectedQuantity += item.consolidatedQuantity;
+        } else {
+          progressMap.set(item.productId, {
+            productId: item.productId,
+            productName: item.product.name,
+            productSku: item.product.sku,
+            expectedQuantity: item.consolidatedQuantity,
+            loadedQuantity: 0,
+          });
+        }
+      }
+    });
+
+    // Aggregate loaded quantities from all movements
+    movementItemsQueries.forEach(query => {
+      if (query.data) {
+        query.data.forEach(movementItem => {
+          const existing = progressMap.get(movementItem.productId);
+          if (existing) {
+            existing.loadedQuantity += movementItem.quantity;
+          }
+        });
+      }
+    });
+
+    return Array.from(progressMap.values());
+  }, [items, movementItemsQueries]);
 
   const approveMutation = useMutation({
     mutationFn: async () => {
@@ -326,6 +390,135 @@ export default function LoadingOrderDetails() {
           )}
         </CardContent>
       </Card>
+
+      {/* Seção de Movimentações e Progresso */}
+      {movements.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TruckIcon className="h-5 w-5" />
+              Movimentações e Progresso ({movements.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Resumo de Progresso por Produto */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground">
+                Progresso por Produto
+              </h3>
+              <div className="space-y-3">
+                {productProgress.map((progress) => {
+                  const percentage = progress.expectedQuantity > 0
+                    ? Math.round((progress.loadedQuantity / progress.expectedQuantity) * 100)
+                    : 0;
+                  const isComplete = progress.loadedQuantity >= progress.expectedQuantity;
+                  const isExceeded = progress.loadedQuantity > progress.expectedQuantity;
+
+                  return (
+                    <div
+                      key={progress.productId}
+                      className="border rounded-lg p-4 space-y-2"
+                      data-testid={`product-progress-${progress.productId}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium">{progress.productName}</p>
+                          <p className="text-sm text-muted-foreground">SKU: {progress.productSku}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold">
+                            {progress.loadedQuantity} / {progress.expectedQuantity}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{percentage}%</div>
+                        </div>
+                      </div>
+                      <Progress
+                        value={Math.min(percentage, 100)}
+                        className={`h-2 ${isExceeded ? "[&>div]:bg-destructive" : isComplete ? "[&>div]:bg-chart-4" : ""}`}
+                      />
+                      {isExceeded && (
+                        <div className="flex items-center gap-1 text-sm text-destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Excedido em {progress.loadedQuantity - progress.expectedQuantity} unidades</span>
+                        </div>
+                      )}
+                      {isComplete && !isExceeded && (
+                        <div className="flex items-center gap-1 text-sm text-chart-4">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Completo</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Lista de Movimentações */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground">
+                Histórico de Movimentações
+              </h3>
+              <div className="space-y-2">
+                {movements.map((movement, idx) => {
+                  const movementItems = movementItemsQueries[idx]?.data || [];
+                  const totalItems = movementItems.reduce((sum, item) => sum + item.quantity, 0);
+
+                  return (
+                    <div
+                      key={movement.id}
+                      className="border rounded-lg p-4 hover-elevate cursor-pointer"
+                      onClick={() => navigate(`/movements/${movement.id}`)}
+                      data-testid={`movement-${movement.id}`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{movement.type || "Movimentação"}</p>
+                            <StatusBadge status={movement.status} />
+                          </div>
+                          {movement.vehiclePlate && (
+                            <p className="text-sm text-muted-foreground">
+                              Veículo: {movement.vehiclePlate}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(movement.createdAt), "dd/MM/yyyy, HH:mm")}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold">{totalItems}</div>
+                          <div className="text-xs text-muted-foreground">itens carregados</div>
+                        </div>
+                      </div>
+                      {movementItems.length > 0 && (
+                        <div className="mt-2 pt-2 border-t">
+                          <div className="text-xs text-muted-foreground mb-1">Itens:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {movementItems.slice(0, 3).map((item, itemIdx) => {
+                              const product = items.find(i => i.productId === item.productId)?.product;
+                              return (
+                                <Badge key={itemIdx} variant="secondary" className="text-xs">
+                                  {product?.name || "Produto"}: {item.quantity}
+                                </Badge>
+                              );
+                            })}
+                            {movementItems.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{movementItems.length - 3} mais
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
