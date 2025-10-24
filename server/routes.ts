@@ -857,6 +857,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/loading-orders/:id/movements", async (req, res) => {
+    try {
+      const movements = await storage.getMovementsByLoadingOrder(req.params.id);
+      res.json(movements);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch movements for loading order" });
+    }
+  });
+
   // Movements
   app.get("/api/movements", async (req, res) => {
     try {

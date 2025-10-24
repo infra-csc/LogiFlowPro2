@@ -172,6 +172,7 @@ export interface IStorage {
   // Movements
   getMovements(): Promise<Movement[]>;
   getMovement(id: string): Promise<Movement | undefined>;
+  getMovementsByLoadingOrder(loadingOrderId: string): Promise<Movement[]>;
   createMovement(movement: InsertMovement): Promise<Movement>;
   createMovementWithEvents(movement: InsertMovementWithEvents): Promise<Movement>;
   updateMovement(id: string, movement: Partial<InsertMovement>): Promise<Movement>;
@@ -745,6 +746,35 @@ export class DatabaseStorage implements IStorage {
       ...movement,
       events: eventRelations.map(r => r.event).filter(Boolean),
     } as any;
+  }
+
+  async getMovementsByLoadingOrder(loadingOrderId: string): Promise<Movement[]> {
+    // Get all movements for this loading order
+    const movementsData = await db
+      .select()
+      .from(movements)
+      .where(eq(movements.loadingOrderId, loadingOrderId))
+      .orderBy(desc(movements.createdAt));
+    
+    // For each movement, get its associated events
+    const movementsWithEvents = await Promise.all(
+      movementsData.map(async (movement) => {
+        const eventRelations = await db
+          .select({
+            event: events,
+          })
+          .from(movementEvents)
+          .leftJoin(events, eq(movementEvents.eventId, events.id))
+          .where(eq(movementEvents.movementId, movement.id));
+        
+        return {
+          ...movement,
+          events: eventRelations.map(r => r.event).filter(Boolean),
+        };
+      })
+    );
+    
+    return movementsWithEvents as any;
   }
 
   async createMovement(movement: InsertMovement): Promise<Movement> {
