@@ -38,3 +38,7 @@ Preferred communication style: Simple, everyday language.
 - **Styling**: Tailwind CSS, PostCSS, class-variance-authority, clsx, tailwind-merge.
 - **Authentication**: Passport.js, express-session, connect-pg-simple, bcrypt.
 - **Object Storage**: Replit Object Storage (Google Cloud Storage).
+
+## Recent Changes (Latest First)
+
+- **2025-01-24**: Implemented Transport Planning ("Planejamento de Transporte") system overhaul. Created vehicleTypes table with capacity, weight limit, and length limit fields. Updated trips schema with new fields organized in three sections: Loading (loadingDate, loadingLocation, loadingStartTime, loadingEndTime, departureDateTime), Destination (via tripDestinations table with location, arrivalDateTime, sequence), and Unloading (unloadingLocation, unloadingDate, unloadingStartTime, unloadingEndTime). Added tripEvents table for many-to-many relationship between trips and events. Created Vehicle Types management page (/config/vehicle-types) with full CRUD operations. Updated TripDialog component with form fields for loading/unloading details. Renamed "Planejamento de Viagens" to "Planejamento de Transporte" throughout application. **Note**: Multi-event and multi-destination features are supported in the database schema but not yet fully implemented in the UI forms. Backend routes and storage methods for managing tripEvents and tripDestinations associations need to be added.

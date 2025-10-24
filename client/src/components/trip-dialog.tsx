@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,19 +30,63 @@ interface TripDialogProps {
   trip?: Trip;
 }
 
+interface TripFormData {
+  vehicleId?: string;
+  driverId?: string;
+  dockId?: string;
+  loadingDate?: string;
+  loadingLocation?: string;
+  loadingStartTime?: string;
+  loadingEndTime?: string;
+  departureDateTime?: string;
+  unloadingLocation?: string;
+  unloadingDate?: string;
+  unloadingStartTime?: string;
+  unloadingEndTime?: string;
+  status?: string;
+  notes?: string;
+}
+
 export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState<Partial<InsertTrip>>({
-    eventId: trip?.eventId || "",
+  const [formData, setFormData] = useState<TripFormData>({
     vehicleId: trip?.vehicleId || "",
     driverId: trip?.driverId || "",
     dockId: trip?.dockId || "",
-    scheduledStart: trip?.scheduledStart ? format(new Date(trip.scheduledStart), "yyyy-MM-dd'T'HH:mm") : "",
-    scheduledEnd: trip?.scheduledEnd ? format(new Date(trip.scheduledEnd), "yyyy-MM-dd'T'HH:mm") : "",
     status: trip?.status || "planned",
     notes: trip?.notes || "",
   });
+
+  useEffect(() => {
+    if (trip && open) {
+      setFormData({
+        vehicleId: trip.vehicleId || "",
+        driverId: trip.driverId || "",
+        dockId: trip.dockId || "",
+        loadingDate: trip.loadingDate ? format(new Date(trip.loadingDate), "yyyy-MM-dd'T'HH:mm") : "",
+        loadingLocation: trip.loadingLocation || "",
+        loadingStartTime: trip.loadingStartTime ? format(new Date(trip.loadingStartTime), "yyyy-MM-dd'T'HH:mm") : "",
+        loadingEndTime: trip.loadingEndTime ? format(new Date(trip.loadingEndTime), "yyyy-MM-dd'T'HH:mm") : "",
+        departureDateTime: trip.departureDateTime ? format(new Date(trip.departureDateTime), "yyyy-MM-dd'T'HH:mm") : "",
+        unloadingLocation: trip.unloadingLocation || "",
+        unloadingDate: trip.unloadingDate ? format(new Date(trip.unloadingDate), "yyyy-MM-dd'T'HH:mm") : "",
+        unloadingStartTime: trip.unloadingStartTime ? format(new Date(trip.unloadingStartTime), "yyyy-MM-dd'T'HH:mm") : "",
+        unloadingEndTime: trip.unloadingEndTime ? format(new Date(trip.unloadingEndTime), "yyyy-MM-dd'T'HH:mm") : "",
+        status: trip.status || "planned",
+        notes: trip.notes || "",
+      });
+    } else if (!trip && !open) {
+      // Reset form when closing dialog for creation
+      setFormData({
+        vehicleId: "",
+        driverId: "",
+        dockId: "",
+        status: "planned",
+        notes: "",
+      });
+    }
+  }, [trip, open]);
 
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
   const { data: vehicles } = useQuery<Vehicle[]>({ queryKey: ["/api/vehicles"] });
@@ -56,11 +100,11 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({ description: "Trip created successfully" });
+      toast({ description: "Viagem criada com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to create trip", variant: "destructive" });
+      toast({ description: "Erro ao criar viagem", variant: "destructive" });
     },
   });
 
@@ -70,32 +114,37 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-      toast({ description: "Trip updated successfully" });
+      toast({ description: "Viagem atualizada com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to update trip", variant: "destructive" });
+      toast({ description: "Erro ao atualizar viagem", variant: "destructive" });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.eventId || !formData.vehicleId || !formData.driverId || 
-        !formData.scheduledStart || !formData.scheduledEnd) {
-      toast({ description: "Please fill in all required fields", variant: "destructive" });
+    if (!formData.vehicleId || !formData.driverId) {
+      toast({ description: "Preencha os campos obrigatórios (Veículo e Motorista)", variant: "destructive" });
       return;
     }
 
-    const submitData: InsertTrip = {
-      eventId: formData.eventId,
+    const submitData: any = {
       vehicleId: formData.vehicleId,
       driverId: formData.driverId,
-      dockId: formData.dockId,
-      scheduledStart: new Date(formData.scheduledStart),
-      scheduledEnd: new Date(formData.scheduledEnd),
-      status: formData.status as any || "planned",
-      notes: formData.notes,
+      dockId: formData.dockId || null,
+      loadingDate: formData.loadingDate ? new Date(formData.loadingDate) : null,
+      loadingLocation: formData.loadingLocation || null,
+      loadingStartTime: formData.loadingStartTime ? new Date(formData.loadingStartTime) : null,
+      loadingEndTime: formData.loadingEndTime ? new Date(formData.loadingEndTime) : null,
+      departureDateTime: formData.departureDateTime ? new Date(formData.departureDateTime) : null,
+      unloadingLocation: formData.unloadingLocation || null,
+      unloadingDate: formData.unloadingDate ? new Date(formData.unloadingDate) : null,
+      unloadingStartTime: formData.unloadingStartTime ? new Date(formData.unloadingStartTime) : null,
+      unloadingEndTime: formData.unloadingEndTime ? new Date(formData.unloadingEndTime) : null,
+      status: formData.status || "planned",
+      notes: formData.notes || null,
     };
 
     if (trip) {
@@ -107,161 +156,238 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{trip ? "Edit Trip" : "Plan Trip"}</DialogTitle>
+          <DialogTitle>{trip ? "Editar Viagem" : "Planejar Nova Viagem"}</DialogTitle>
           <DialogDescription>
-            {trip ? "Update trip details" : "Schedule a new vehicle trip"}
+            {trip ? "Atualize os detalhes do planejamento de transporte" : "Crie um novo planejamento de transporte"}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="eventId">Event *</Label>
-            <Select 
-              value={formData.eventId}
-              onValueChange={(value) => setFormData({ ...formData, eventId: value })}
-            >
-              <SelectTrigger data-testid="select-event">
-                <SelectValue placeholder="Select event" />
-              </SelectTrigger>
-              <SelectContent>
-                {events?.map((event) => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {event.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Seção: Veículo e Motorista */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium border-b pb-2">Veículo e Motorista</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="vehicleId">Veículo *</Label>
+                <Select 
+                  value={formData.vehicleId}
+                  onValueChange={(value) => setFormData({ ...formData, vehicleId: value })}
+                >
+                  <SelectTrigger data-testid="select-vehicle">
+                    <SelectValue placeholder="Selecione um veículo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vehicles?.map((vehicle) => (
+                      <SelectItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.plate} - {vehicle.type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="driverId">Motorista *</Label>
+                <Select 
+                  value={formData.driverId}
+                  onValueChange={(value) => setFormData({ ...formData, driverId: value })}
+                >
+                  <SelectTrigger data-testid="select-driver">
+                    <SelectValue placeholder="Selecione um motorista" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {drivers?.map((driver) => (
+                      <SelectItem key={driver.id} value={driver.id}>
+                        {driver.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="vehicleId">Vehicle *</Label>
+              <Label htmlFor="dockId">Doca (Opcional)</Label>
               <Select 
-                value={formData.vehicleId}
-                onValueChange={(value) => setFormData({ ...formData, vehicleId: value })}
+                value={formData.dockId || "none"}
+                onValueChange={(value) => setFormData({ ...formData, dockId: value === "none" ? undefined : value })}
               >
-                <SelectTrigger data-testid="select-vehicle">
-                  <SelectValue placeholder="Select vehicle" />
+                <SelectTrigger data-testid="select-dock">
+                  <SelectValue placeholder="Selecione uma doca" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vehicles?.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.plate} - {vehicle.type}
+                  <SelectItem value="none">Nenhuma doca</SelectItem>
+                  {docks?.map((dock) => (
+                    <SelectItem key={dock.id} value={dock.id}>
+                      {dock.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
+          {/* Seção: Carregamento */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium border-b pb-2">Carregamento</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="loadingDate">Data de Carregamento</Label>
+                <Input
+                  id="loadingDate"
+                  type="datetime-local"
+                  value={formData.loadingDate || ""}
+                  onChange={(e) => setFormData({ ...formData, loadingDate: e.target.value })}
+                  data-testid="input-loading-date"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="loadingLocation">Local de Carregamento</Label>
+                <Input
+                  id="loadingLocation"
+                  value={formData.loadingLocation || ""}
+                  onChange={(e) => setFormData({ ...formData, loadingLocation: e.target.value })}
+                  placeholder="Ex: Armazém Central"
+                  data-testid="input-loading-location"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="loadingStartTime">Início do Carregamento</Label>
+                <Input
+                  id="loadingStartTime"
+                  type="datetime-local"
+                  value={formData.loadingStartTime || ""}
+                  onChange={(e) => setFormData({ ...formData, loadingStartTime: e.target.value })}
+                  data-testid="input-loading-start"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="loadingEndTime">Fim do Carregamento</Label>
+                <Input
+                  id="loadingEndTime"
+                  type="datetime-local"
+                  value={formData.loadingEndTime || ""}
+                  onChange={(e) => setFormData({ ...formData, loadingEndTime: e.target.value })}
+                  data-testid="input-loading-end"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="departureDateTime">Data/Hora de Saída</Label>
+                <Input
+                  id="departureDateTime"
+                  type="datetime-local"
+                  value={formData.departureDateTime || ""}
+                  onChange={(e) => setFormData({ ...formData, departureDateTime: e.target.value })}
+                  data-testid="input-departure"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Seção: Descarregamento */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium border-b pb-2">Descarregamento</h3>
             <div className="space-y-2">
-              <Label htmlFor="driverId">Driver *</Label>
+              <Label htmlFor="unloadingLocation">Local de Descarregamento</Label>
+              <Input
+                id="unloadingLocation"
+                value={formData.unloadingLocation || ""}
+                onChange={(e) => setFormData({ ...formData, unloadingLocation: e.target.value })}
+                placeholder="Ex: Local do Evento"
+                data-testid="input-unloading-location"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="unloadingDate">Data de Descarregamento</Label>
+                <Input
+                  id="unloadingDate"
+                  type="datetime-local"
+                  value={formData.unloadingDate || ""}
+                  onChange={(e) => setFormData({ ...formData, unloadingDate: e.target.value })}
+                  data-testid="input-unloading-date"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="unloadingStartTime">Início do Descarregamento</Label>
+                <Input
+                  id="unloadingStartTime"
+                  type="datetime-local"
+                  value={formData.unloadingStartTime || ""}
+                  onChange={(e) => setFormData({ ...formData, unloadingStartTime: e.target.value })}
+                  data-testid="input-unloading-start"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="unloadingEndTime">Fim do Descarregamento</Label>
+                <Input
+                  id="unloadingEndTime"
+                  type="datetime-local"
+                  value={formData.unloadingEndTime || ""}
+                  onChange={(e) => setFormData({ ...formData, unloadingEndTime: e.target.value })}
+                  data-testid="input-unloading-end"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Seção: Status e Notas */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
               <Select 
-                value={formData.driverId}
-                onValueChange={(value) => setFormData({ ...formData, driverId: value })}
+                value={formData.status as string}
+                onValueChange={(value) => setFormData({ ...formData, status: value as any })}
               >
-                <SelectTrigger data-testid="select-driver">
-                  <SelectValue placeholder="Select driver" />
+                <SelectTrigger data-testid="select-status">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {drivers?.map((driver) => (
-                    <SelectItem key={driver.id} value={driver.id}>
-                      {driver.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="planned">Planejada</SelectItem>
+                  <SelectItem value="loading">Carregando</SelectItem>
+                  <SelectItem value="loaded">Carregada</SelectItem>
+                  <SelectItem value="in_transit">Em Trânsito</SelectItem>
+                  <SelectItem value="at_destination">No Destino</SelectItem>
+                  <SelectItem value="unloading">Descarregando</SelectItem>
+                  <SelectItem value="completed">Concluída</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dockId">Dock (Optional)</Label>
-            <Select 
-              value={formData.dockId || ""}
-              onValueChange={(value) => setFormData({ ...formData, dockId: value || undefined })}
-            >
-              <SelectTrigger data-testid="select-dock">
-                <SelectValue placeholder="Select dock" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">No dock</SelectItem>
-                {docks?.map((dock) => (
-                  <SelectItem key={dock.id} value={dock.id}>
-                    {dock.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="scheduledStart">Scheduled Start *</Label>
-              <Input
-                id="scheduledStart"
-                type="datetime-local"
-                value={formData.scheduledStart}
-                onChange={(e) => setFormData({ ...formData, scheduledStart: e.target.value })}
-                data-testid="input-scheduled-start"
-              />
-            </div>
 
             <div className="space-y-2">
-              <Label htmlFor="scheduledEnd">Scheduled End *</Label>
-              <Input
-                id="scheduledEnd"
-                type="datetime-local"
-                value={formData.scheduledEnd}
-                onChange={(e) => setFormData({ ...formData, scheduledEnd: e.target.value })}
-                data-testid="input-scheduled-end"
+              <Label htmlFor="notes">Observações</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes || ""}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Notas sobre a viagem..."
+                rows={3}
+                data-testid="input-notes"
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select 
-              value={formData.status as string}
-              onValueChange={(value) => setFormData({ ...formData, status: value as any })}
-            >
-              <SelectTrigger data-testid="select-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="planned">Planned</SelectItem>
-                <SelectItem value="loading">Loading</SelectItem>
-                <SelectItem value="loaded">Loaded</SelectItem>
-                <SelectItem value="in_transit">In Transit</SelectItem>
-                <SelectItem value="at_destination">At Destination</SelectItem>
-                <SelectItem value="unloading">Unloading</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Trip notes..."
-              rows={2}
-              data-testid="input-notes"
-            />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button 
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
               data-testid="button-submit-trip"
             >
-              {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : (trip ? "Update" : "Create")}
+              {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (trip ? "Atualizar" : "Criar")}
             </Button>
           </DialogFooter>
         </form>

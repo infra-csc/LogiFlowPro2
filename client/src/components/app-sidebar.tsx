@@ -64,7 +64,7 @@ const mainMenuItems = [
     icon: Warehouse,
   },
   {
-    title: "Planejamento de Viagens",
+    title: "Planejamento de Transporte",
     url: "/trips",
     icon: Truck,
   },

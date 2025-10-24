@@ -48,8 +48,8 @@ export default function Trips() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Planejamento de Viagens</h1>
-          <p className="text-sm text-muted-foreground mt-1">Agende e gerencie a logística de veículos</p>
+          <h1 className="text-2xl font-semibold text-foreground">Planejamento de Transporte</h1>
+          <p className="text-sm text-muted-foreground mt-1">Agende e gerencie a logística de veículos e rotas</p>
         </div>
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-trip">
           <Plus className="h-4 w-4 mr-2" />
@@ -100,15 +100,15 @@ export default function Trips() {
                     <p className="text-sm font-medium">{trip.driver?.name || "—"}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Início Agendado</p>
+                    <p className="text-xs text-muted-foreground">Carregamento</p>
                     <p className="text-sm font-medium">
-                      {format(new Date(trip.scheduledStart), "MMM dd, HH:mm")}
+                      {trip.loadingDate ? format(new Date(trip.loadingDate), "MMM dd, HH:mm") : "—"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Scheduled End</p>
+                    <p className="text-xs text-muted-foreground">Descarregamento</p>
                     <p className="text-sm font-medium">
-                      {format(new Date(trip.scheduledEnd), "MMM dd, HH:mm")}
+                      {trip.unloadingDate ? format(new Date(trip.unloadingDate), "MMM dd, HH:mm") : "—"}
                     </p>
                   </div>
                 </div>
