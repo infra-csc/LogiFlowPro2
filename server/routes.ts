@@ -731,6 +731,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/trips/bulk", async (req, res) => {
+    try {
+      const { trips: tripsData } = req.body;
+      
+      console.log("[BULK UPLOAD TRIPS] Received bulk upload request with", tripsData?.length || 0, "trips");
+      
+      if (!Array.isArray(tripsData)) {
+        console.log("[BULK UPLOAD TRIPS ERROR] Expected array, received:", typeof tripsData);
+        return res.status(400).json({ error: "Expected an array of trips" });
+      }
+
+      const results = {
+        success: [] as any[],
+        errors: [] as any[]
+      };
+
+      // Get all events and vehicle types for lookup
+      const allEvents = await storage.getEvents();
+      const allVehicleTypes = await storage.getVehicleTypes();
+
+      const eventMap = new Map(allEvents.map(e => [e.name.trim().toLowerCase(), e.id]));
+      const vehicleTypeMap = new Map(allVehicleTypes.map(vt => [vt.name.trim().toLowerCase(), vt.id]));
+
+      // Status mapping from Portuguese to English
+      const statusMap: Record<string, string> = {
+        'planejada': 'planned',
+        'carregando': 'loading',
+        'carregada': 'loaded',
+        'em trânsito': 'in_transit',
+        'no destino': 'at_destination',
+        'descarregando': 'unloading',
+        'concluída': 'completed'
+      };
+
+      for (let i = 0; i < tripsData.length; i++) {
+        try {
+          const tripData = tripsData[i];
+          console.log(`[BULK UPLOAD TRIPS] Processing trip ${i + 1}:`, JSON.stringify(tripData, null, 2));
+          
+          // Find event ID by name
+          const eventId = tripData.eventName ? eventMap.get(tripData.eventName.trim().toLowerCase()) : undefined;
+          if (!eventId) {
+            throw new Error(`Evento não encontrado: ${tripData.eventName}`);
+          }
+
+          // Find vehicle type ID by name
+          const vehicleTypeId = tripData.vehicleTypeName ? vehicleTypeMap.get(tripData.vehicleTypeName.trim().toLowerCase()) : undefined;
+          if (!vehicleTypeId) {
+            throw new Error(`Tipo de veículo não encontrado: ${tripData.vehicleTypeName}`);
+          }
+
+          // Map status
+          const status = tripData.status ? statusMap[tripData.status.trim().toLowerCase()] || 'planned' : 'planned';
+
+          // Convert ISO date strings to Date objects
+          const convertedData = {
+            description: tripData.description || null,
+            eventId,
+            vehicleTypeId,
+            loadingLocation: tripData.loadingLocation || null,
+            loadingStartTime: tripData.loadingStartTime ? new Date(tripData.loadingStartTime) : null,
+            loadingEndTime: tripData.loadingEndTime ? new Date(tripData.loadingEndTime) : null,
+            departureDateTime: tripData.departureDateTime ? new Date(tripData.departureDateTime) : null,
+            unloadingLocation: tripData.unloadingLocation || null,
+            unloadingStartTime: tripData.unloadingStartTime ? new Date(tripData.unloadingStartTime) : null,
+            unloadingEndTime: tripData.unloadingEndTime ? new Date(tripData.unloadingEndTime) : null,
+            status,
+            notes: tripData.notes || null
+          };
+          
+          console.log(`[BULK UPLOAD TRIPS] Converted data for trip ${i + 1}:`, JSON.stringify(convertedData, null, 2));
+          
+          const data = insertTripSchema.parse(convertedData);
+          const trip = await storage.createTrip(data);
+          console.log(`[BULK UPLOAD TRIPS] Successfully created trip ${i + 1}:`, trip.id);
+          results.success.push({ row: i + 1, trip });
+        } catch (error: any) {
+          console.error(`[BULK UPLOAD TRIPS ERROR] Failed to process trip ${i + 1}:`, error);
+          console.error(`[BULK UPLOAD TRIPS ERROR] Error details:`, error.message);
+          if (error.issues) {
+            console.error(`[BULK UPLOAD TRIPS ERROR] Validation issues:`, JSON.stringify(error.issues, null, 2));
+          }
+          results.errors.push({ 
+            row: i + 1, 
+            data: tripsData[i], 
+            error: error.issues ? JSON.stringify(error.issues) : (error.message || "Erro ao processar viagem")
+          });
+        }
+      }
+
+      console.log(`[BULK UPLOAD TRIPS] Finished. Success: ${results.success.length}, Errors: ${results.errors.length}`);
+      
+      res.status(results.errors.length > 0 ? 207 : 201).json({
+        message: `${results.success.length} viagens importadas com sucesso, ${results.errors.length} erros`,
+        success: results.success,
+        errors: results.errors
+      });
+    } catch (error) {
+      console.error("[BULK UPLOAD TRIPS ERROR] Unexpected error:", error);
+      res.status(400).json({ error: "Erro ao processar importação em lote" });
+    }
+  });
+
   // Loading Orders
   app.get("/api/loading-orders", async (req, res) => {
     try {
