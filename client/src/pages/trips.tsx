@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, Calendar, MapPin, Filter, X } from "lucide-react";
+import { Plus, Truck, Calendar, MapPin, Filter, X, List, CalendarDays, ArrowUp, ArrowDown } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
-import { format, startOfDay, endOfDay, parseISO } from "date-fns";
+import { format, startOfDay, endOfDay, parseISO, startOfWeek, endOfWeek, addWeeks, addDays, isSameDay, isWithinInterval } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import type { Trip, Event, Vehicle, VehicleType, Driver } from "@shared/schema";
 import { TripDialog } from "@/components/trip-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
 
 interface TripWithRelations extends Trip {
   event?: Event;
@@ -36,11 +41,19 @@ interface TripFilters {
   movementDate?: string;
 }
 
+type ViewMode = "list" | "calendar";
+type SortBy = "loading" | "unloading";
+type CalendarPeriod = "week" | "biweekly";
+
 export default function Trips() {
   const [showDialog, setShowDialog] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | undefined>();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<TripFilters>({});
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [sortBy, setSortBy] = useState<SortBy>("loading");
+  const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>("week");
+  const [calendarStartDate, setCalendarStartDate] = useState(startOfWeek(new Date(), { locale: ptBR }));
 
   const { data: trips, isLoading } = useQuery<TripWithRelations[]>({
     queryKey: ["/api/trips"],
@@ -107,6 +120,62 @@ export default function Trips() {
     });
   }, [trips, filters]);
 
+  // Sort trips
+  const sortedTrips = useMemo(() => {
+    if (!filteredTrips) return [];
+    
+    return [...filteredTrips].sort((a, b) => {
+      const dateA = sortBy === "loading" 
+        ? (a.loadingDate ? new Date(a.loadingDate).getTime() : Infinity)
+        : (a.unloadingDate ? new Date(a.unloadingDate).getTime() : Infinity);
+      const dateB = sortBy === "loading"
+        ? (b.loadingDate ? new Date(b.loadingDate).getTime() : Infinity)
+        : (b.unloadingDate ? new Date(b.unloadingDate).getTime() : Infinity);
+      
+      return dateA - dateB;
+    });
+  }, [filteredTrips, sortBy]);
+
+  // Calendar period calculation
+  const calendarEndDate = useMemo(() => {
+    if (calendarPeriod === "week") {
+      return endOfWeek(calendarStartDate, { locale: ptBR });
+    } else {
+      return endOfWeek(addWeeks(calendarStartDate, 1), { locale: ptBR });
+    }
+  }, [calendarStartDate, calendarPeriod]);
+
+  // Generate calendar days
+  const calendarDays = useMemo(() => {
+    const days = [];
+    let currentDay = calendarStartDate;
+    
+    while (currentDay <= calendarEndDate) {
+      days.push(currentDay);
+      currentDay = addDays(currentDay, 1);
+    }
+    
+    return days;
+  }, [calendarStartDate, calendarEndDate]);
+
+  // Group trips by date for calendar view
+  const tripsByDate = useMemo(() => {
+    const grouped: Record<string, TripWithRelations[]> = {};
+    
+    sortedTrips.forEach((trip) => {
+      const relevantDate = sortBy === "loading" ? trip.loadingDate : trip.unloadingDate;
+      if (!relevantDate) return;
+      
+      const dateKey = format(new Date(relevantDate), "yyyy-MM-dd");
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(trip);
+    });
+    
+    return grouped;
+  }, [sortedTrips, sortBy]);
+
   const handleEdit = (trip: Trip) => {
     setSelectedTrip(trip);
     setShowDialog(true);
@@ -119,6 +188,19 @@ export default function Trips() {
 
   const clearFilters = () => {
     setFilters({});
+  };
+
+  const navigateCalendar = (direction: "prev" | "next") => {
+    const weeksToAdd = calendarPeriod === "week" ? 1 : 2;
+    setCalendarStartDate(
+      direction === "next"
+        ? addWeeks(calendarStartDate, weeksToAdd)
+        : addWeeks(calendarStartDate, -weeksToAdd)
+    );
+  };
+
+  const goToToday = () => {
+    setCalendarStartDate(startOfWeek(new Date(), { locale: ptBR }));
   };
 
   if (isLoading) {
@@ -144,6 +226,54 @@ export default function Trips() {
           Planejar Viagem
         </Button>
       </div>
+
+      {/* View Controls */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as ViewMode)}>
+                <ToggleGroupItem value="list" aria-label="Visualização em lista" data-testid="toggle-view-list">
+                  <List className="h-4 w-4 mr-2" />
+                  Lista
+                </ToggleGroupItem>
+                <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" data-testid="toggle-view-calendar">
+                  <CalendarDays className="h-4 w-4 mr-2" />
+                  Calendário
+                </ToggleGroupItem>
+              </ToggleGroup>
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor="sort-by" className="text-sm whitespace-nowrap">Ordenar por:</Label>
+                <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
+                  <SelectTrigger id="sort-by" className="w-[180px]" data-testid="select-sort-by">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="loading">Data de Carregamento</SelectItem>
+                    <SelectItem value="unloading">Data de Descarregamento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {viewMode === "calendar" && (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="calendar-period" className="text-sm whitespace-nowrap">Período:</Label>
+                <Select value={calendarPeriod} onValueChange={(value) => setCalendarPeriod(value as CalendarPeriod)}>
+                  <SelectTrigger id="calendar-period" className="w-[140px]" data-testid="select-calendar-period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Semana</SelectItem>
+                    <SelectItem value="biweekly">Quinzena</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters Panel */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
@@ -277,78 +407,194 @@ export default function Trips() {
         </Card>
       </Collapsible>
 
-      {/* Results */}
-      {!filteredTrips || filteredTrips.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <Truck className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">
-                {activeFilterCount > 0 ? "Nenhuma viagem encontrada" : "Nenhuma viagem agendada"}
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {activeFilterCount > 0
-                  ? "Tente ajustar os filtros para ver mais resultados"
-                  : "Comece a planejar o transporte para seus eventos"}
-              </p>
-              {activeFilterCount === 0 && (
-                <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-plan-first-trip">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Planejar Viagem
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredTrips.map((trip) => (
-            <Card 
-              key={trip.id}
-              className="hover-elevate cursor-pointer"
-              onClick={() => handleEdit(trip)}
-              data-testid={`card-trip-${trip.id}`}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Truck className="h-5 w-5" />
-                    {trip.event?.name || "Trip"}
-                  </CardTitle>
-                  <StatusBadge status={trip.status} />
+      {/* List View */}
+      {viewMode === "list" && (
+        <>
+          {!sortedTrips || sortedTrips.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <Truck className="h-16 w-16 mx-auto text-muted-foreground/50" />
+                  <h3 className="mt-4 text-lg font-medium">
+                    {activeFilterCount > 0 ? "Nenhuma viagem encontrada" : "Nenhuma viagem agendada"}
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {activeFilterCount > 0
+                      ? "Tente ajustar os filtros para ver mais resultados"
+                      : "Comece a planejar o transporte para seus eventos"}
+                  </p>
+                  {activeFilterCount === 0 && (
+                    <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-plan-first-trip">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Planejar Viagem
+                    </Button>
+                  )}
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Tipo de Veículo</p>
-                    <p className="text-sm font-medium">{trip.vehicleType?.name || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Motorista</p>
-                    <p className="text-sm font-medium">{trip.driver?.name || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Carregamento</p>
-                    <p className="text-sm font-medium">
-                      {trip.loadingDate ? format(new Date(trip.loadingDate), "dd/MM/yyyy HH:mm") : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Descarregamento</p>
-                    <p className="text-sm font-medium">
-                      {trip.unloadingDate ? format(new Date(trip.unloadingDate), "dd/MM/yyyy HH:mm") : "—"}
-                    </p>
-                  </div>
-                </div>
-                {trip.notes && (
-                  <div className="mt-4">
-                    <p className="text-sm text-muted-foreground">{trip.notes}</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
-          ))}
+          ) : (
+            <div className="space-y-4">
+              {sortedTrips.map((trip) => (
+                <Card 
+                  key={trip.id}
+                  className="hover-elevate cursor-pointer"
+                  onClick={() => handleEdit(trip)}
+                  data-testid={`card-trip-${trip.id}`}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Truck className="h-5 w-5" />
+                        {trip.event?.name || "Trip"}
+                      </CardTitle>
+                      <StatusBadge status={trip.status} />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Tipo de Veículo</p>
+                        <p className="text-sm font-medium">{trip.vehicleType?.name || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Motorista</p>
+                        <p className="text-sm font-medium">{trip.driver?.name || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Carregamento</p>
+                        <p className="text-sm font-medium">
+                          {trip.loadingDate ? format(new Date(trip.loadingDate), "dd/MM/yyyy HH:mm") : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Descarregamento</p>
+                        <p className="text-sm font-medium">
+                          {trip.unloadingDate ? format(new Date(trip.unloadingDate), "dd/MM/yyyy HH:mm") : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    {trip.notes && (
+                      <div className="mt-4">
+                        <p className="text-sm text-muted-foreground">{trip.notes}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Calendar View */}
+      {viewMode === "calendar" && (
+        <div className="space-y-4">
+          {/* Calendar Navigation */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigateCalendar("prev")}
+                  data-testid="button-calendar-prev"
+                >
+                  Anterior
+                </Button>
+                <div className="text-center">
+                  <p className="font-medium">
+                    {format(calendarStartDate, "dd 'de' MMMM", { locale: ptBR })} - {format(calendarEndDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={goToToday}
+                    className="mt-1"
+                    data-testid="button-calendar-today"
+                  >
+                    Hoje
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigateCalendar("next")}
+                  data-testid="button-calendar-next"
+                >
+                  Próximo
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+            {calendarDays.map((day) => {
+              const dayKey = format(day, "yyyy-MM-dd");
+              const dayTrips = tripsByDate[dayKey] || [];
+              const isToday = isSameDay(day, new Date());
+
+              return (
+                <Card 
+                  key={dayKey} 
+                  className={isToday ? "border-primary" : ""}
+                  data-testid={`calendar-day-${dayKey}`}
+                >
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="capitalize">
+                          {format(day, "EEE", { locale: ptBR })}
+                        </span>
+                        <span className={isToday ? "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs" : ""}>
+                          {format(day, "dd")}
+                        </span>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {dayTrips.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">
+                        Sem viagens
+                      </p>
+                    ) : (
+                      dayTrips.map((trip) => (
+                        <div
+                          key={trip.id}
+                          className="p-2 rounded-md bg-card hover-elevate cursor-pointer border text-xs space-y-1"
+                          onClick={() => handleEdit(trip)}
+                          data-testid={`calendar-trip-${trip.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-1">
+                            <p className="font-medium line-clamp-1">{trip.event?.name}</p>
+                            <StatusBadge status={trip.status} className="scale-75 origin-top-right" />
+                          </div>
+                          <div className="space-y-0.5 text-muted-foreground">
+                            <p className="flex items-center gap-1">
+                              <Truck className="h-3 w-3" />
+                              <span className="line-clamp-1">{trip.vehicleType?.name}</span>
+                            </p>
+                            {trip.loadingDate && (
+                              <p className="text-[10px] flex items-center gap-1">
+                                <ArrowUp className="h-3 w-3" />
+                                {format(new Date(trip.loadingDate), "HH:mm")}
+                              </p>
+                            )}
+                            {trip.unloadingDate && (
+                              <p className="text-[10px] flex items-center gap-1">
+                                <ArrowDown className="h-3 w-3" />
+                                {format(new Date(trip.unloadingDate), "HH:mm")}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
 
