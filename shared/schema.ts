@@ -318,9 +318,9 @@ export const docks = pgTable("docks", {
 export const trips = pgTable("trips", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
-  vehicleId: varchar("vehicle_id").references(() => vehicles.id), // Opcional agora
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id), // Opcional
   vehicleTypeId: varchar("vehicle_type_id").notNull().references(() => vehicleTypes.id),
-  driverId: varchar("driver_id").notNull().references(() => drivers.id),
+  driverId: varchar("driver_id").references(() => drivers.id), // Opcional
   dockId: varchar("dock_id").references(() => docks.id),
   
   // Seção Carregamento

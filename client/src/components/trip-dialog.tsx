@@ -161,9 +161,9 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.eventId || !formData.vehicleTypeId || !formData.driverId) {
+    if (!formData.eventId || !formData.vehicleTypeId) {
       toast({ 
-        description: "Preencha os campos obrigatórios (Evento, Tipo de Veículo e Motorista)", 
+        description: "Preencha os campos obrigatórios (Evento e Tipo de Veículo)", 
         variant: "destructive" 
       });
       return;
@@ -172,7 +172,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     const submitData: any = {
       eventId: formData.eventId,
       vehicleTypeId: formData.vehicleTypeId,
-      driverId: formData.driverId,
+      driverId: formData.driverId || null,
       dockId: formData.dockId || null,
       loadingDate: formData.loadingDate ? new Date(formData.loadingDate) : null,
       loadingLocation: formData.loadingLocation || null,
@@ -252,7 +252,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="driverId">Motorista *</Label>
+                <Label htmlFor="driverId">Motorista</Label>
                 <Select 
                   value={formData.driverId}
                   onValueChange={(value) => setFormData({ ...formData, driverId: value })}
