@@ -457,43 +457,65 @@ export default function Trips() {
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-1">
+                      <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2">
                           <Truck className="h-5 w-5 text-primary" />
                           <span className="text-lg font-semibold">{trip.event?.name || "Trip"}</span>
                         </div>
                         {trip.description && (
-                          <p className="text-sm text-muted-foreground">{trip.description}</p>
+                          <p className="text-base font-medium">{trip.description}</p>
                         )}
                       </div>
                       <StatusBadge status={trip.status} />
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Tipo de Veículo</p>
-                        <p className="text-sm font-medium">{trip.vehicleType?.name || "—"}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tipo de Veículo</p>
+                        <p className="text-base font-semibold">{trip.vehicleType?.name || "—"}</p>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Período de Carregamento</p>
-                        <p className="text-sm font-medium">
-                          {trip.loadingStartTime && trip.loadingEndTime
-                            ? `${format(new Date(trip.loadingStartTime), "dd/MM HH:mm")} - ${format(new Date(trip.loadingEndTime), "HH:mm")}`
-                            : trip.loadingStartTime
-                            ? format(new Date(trip.loadingStartTime), "dd/MM/yyyy HH:mm")
-                            : "—"}
-                        </p>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Carregamento</p>
+                        <div className="space-y-0.5">
+                          {trip.loadingStartTime && trip.loadingEndTime ? (
+                            <>
+                              <p className="text-base font-semibold">
+                                {format(new Date(trip.loadingStartTime), "dd/MM/yyyy")}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {format(new Date(trip.loadingStartTime), "HH:mm")} - {format(new Date(trip.loadingEndTime), "HH:mm")}
+                              </p>
+                            </>
+                          ) : trip.loadingStartTime ? (
+                            <p className="text-base font-semibold">
+                              {format(new Date(trip.loadingStartTime), "dd/MM/yyyy 'às' HH:mm")}
+                            </p>
+                          ) : (
+                            <p className="text-base font-semibold">—</p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Período de Descarregamento</p>
-                        <p className="text-sm font-medium">
-                          {trip.unloadingStartTime && trip.unloadingEndTime
-                            ? `${format(new Date(trip.unloadingStartTime), "dd/MM HH:mm")} - ${format(new Date(trip.unloadingEndTime), "HH:mm")}`
-                            : trip.unloadingStartTime
-                            ? format(new Date(trip.unloadingStartTime), "dd/MM/yyyy HH:mm")
-                            : "—"}
-                        </p>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Descarregamento</p>
+                        <div className="space-y-0.5">
+                          {trip.unloadingStartTime && trip.unloadingEndTime ? (
+                            <>
+                              <p className="text-base font-semibold">
+                                {format(new Date(trip.unloadingStartTime), "dd/MM/yyyy")}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {format(new Date(trip.unloadingStartTime), "HH:mm")} - {format(new Date(trip.unloadingEndTime), "HH:mm")}
+                              </p>
+                            </>
+                          ) : trip.unloadingStartTime ? (
+                            <p className="text-base font-semibold">
+                              {format(new Date(trip.unloadingStartTime), "dd/MM/yyyy 'às' HH:mm")}
+                            </p>
+                          ) : (
+                            <p className="text-base font-semibold">—</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                     {trip.notes && (
