@@ -131,6 +131,11 @@ const configItems = [
     icon: Shield,
   },
   {
+    title: "Tipos de Veículos",
+    url: "/config/vehicle-types",
+    icon: Truck,
+  },
+  {
     title: "Veículos",
     url: "/config/vehicles",
     icon: CarFront,

@@ -270,8 +270,9 @@ export const requestItems = pgTable("request_items", {
 export const vehicleTypes = pgTable("vehicle_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
-  description: text("description"),
-  active: boolean("active").notNull().default(true),
+  capacity: decimal("capacity", { precision: 10, scale: 2 }),
+  weightLimit: decimal("weight_limit", { precision: 10, scale: 2 }),
+  lengthLimit: decimal("length_limit", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 

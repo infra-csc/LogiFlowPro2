@@ -33,6 +33,7 @@ import RolesPage from "@/pages/roles";
 import Approvals from "@/pages/approvals";
 import ApprovalDetail from "@/pages/approval-detail";
 import Docks from "@/pages/docks";
+import VehicleTypes from "@/pages/vehicle-types";
 
 function Router() {
   return (
@@ -60,6 +61,7 @@ function Router() {
       <ProtectedRoute path="/config" component={Config} />
       <ProtectedRoute path="/config/users" component={UsersPage} />
       <ProtectedRoute path="/config/roles" component={RolesPage} />
+      <ProtectedRoute path="/config/vehicle-types" component={VehicleTypes} />
       <ProtectedRoute path="/config/vehicles" component={Config} />
       <ProtectedRoute path="/config/drivers" component={Config} />
       <ProtectedRoute path="/config/docks" component={Docks} />
