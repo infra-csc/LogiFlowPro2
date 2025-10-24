@@ -23,6 +23,7 @@ import Returns from "@/pages/returns";
 import Products from "@/pages/products";
 import ProductUpload from "@/pages/product-upload";
 import EventUpload from "@/pages/event-upload";
+import TripUpload from "@/pages/trip-upload";
 import Kits from "@/pages/kits";
 import Config from "@/pages/config";
 import AuthPage from "@/pages/auth-page";
@@ -49,6 +50,7 @@ function Router() {
       <ProtectedRoute path="/requests/:id" component={RequestDetails} />
       <ProtectedRoute path="/requests" component={Requests} />
       <ProtectedRoute path="/inventory" component={Inventory} />
+      <ProtectedRoute path="/trips/upload" component={TripUpload} />
       <ProtectedRoute path="/trips" component={Trips} />
       <ProtectedRoute path="/loading-orders/:id" component={LoadingOrderDetails} />
       <ProtectedRoute path="/loading-orders" component={LoadingOrders} />
