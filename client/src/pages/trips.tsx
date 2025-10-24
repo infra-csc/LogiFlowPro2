@@ -571,30 +571,26 @@ export default function Trips() {
                       dayTrips.map((trip) => (
                         <div
                           key={trip.id}
-                          className="p-2 rounded-md bg-card hover-elevate cursor-pointer border text-xs space-y-1"
+                          className="p-2 rounded-md bg-card hover-elevate cursor-pointer border space-y-1.5"
                           onClick={() => handleEdit(trip)}
                           data-testid={`calendar-trip-${trip.id}`}
                         >
-                          <div className="flex items-start justify-between gap-1">
-                            <p className="font-medium line-clamp-1">{trip.event?.name}</p>
-                            <StatusBadge status={trip.status} className="scale-75 origin-top-right" />
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-medium text-sm line-clamp-2 flex-1">{trip.event?.name}</p>
+                            <StatusBadge status={trip.status} className="text-[10px] px-1.5 py-0.5 h-auto" />
                           </div>
-                          <div className="space-y-0.5 text-muted-foreground">
-                            <p className="flex items-center gap-1">
-                              <Truck className="h-3 w-3" />
-                              <span className="line-clamp-1">{trip.vehicleType?.name}</span>
-                            </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             {trip.loadingStartTime && (
-                              <p className="text-[10px] flex items-center gap-1">
+                              <div className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded">
                                 <ArrowUp className="h-3 w-3" />
-                                {format(new Date(trip.loadingStartTime), "HH:mm")}
-                              </p>
+                                <span className="font-medium">{format(new Date(trip.loadingStartTime), "HH:mm")}</span>
+                              </div>
                             )}
                             {trip.unloadingStartTime && (
-                              <p className="text-[10px] flex items-center gap-1">
+                              <div className="flex items-center gap-1 bg-secondary/50 text-secondary-foreground px-2 py-0.5 rounded">
                                 <ArrowDown className="h-3 w-3" />
-                                {format(new Date(trip.unloadingStartTime), "HH:mm")}
-                              </p>
+                                <span className="font-medium">{format(new Date(trip.unloadingStartTime), "HH:mm")}</span>
+                              </div>
                             )}
                           </div>
                         </div>
