@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Filter, X } from "lucide-react";
+import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Filter, X, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,13 +22,14 @@ import { useLocation } from "wouter";
 import { MovementDialog } from "@/components/movement-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Movement, LoadingOrder, Event, Dock } from "@shared/schema";
+import type { Movement, LoadingOrder, Event, Dock, Trip } from "@shared/schema";
 
 type MovementWithRelations = Movement & {
   loadingOrder?: LoadingOrder;
   event?: Event;
   dock?: Dock;
   events?: Event[];
+  trips?: Trip[];
 };
 
 const getStatusColor = (status: string) => {
@@ -437,24 +438,36 @@ export default function Movements() {
 
                   <div className="flex gap-2">
                     {movement.status === "created" && (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          updateStatusMutation.mutate(
-                            { id: movement.id, status: "in_progress" },
-                            {
-                              onSuccess: () => {
-                                navigate(`/movements/${movement.id}`);
+                      <>
+                        <MovementDialog movement={movement}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            data-testid={`button-edit-${movement.id}`}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Editar
+                          </Button>
+                        </MovementDialog>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            updateStatusMutation.mutate(
+                              { id: movement.id, status: "in_progress" },
+                              {
+                                onSuccess: () => {
+                                  navigate(`/movements/${movement.id}`);
+                                }
                               }
-                            }
-                          );
-                        }}
-                        disabled={updateStatusMutation.isPending}
-                        data-testid={`button-start-${movement.id}`}
-                      >
-                        <PlayCircle className="h-4 w-4 mr-1" />
-                        Iniciar
-                      </Button>
+                            );
+                          }}
+                          disabled={updateStatusMutation.isPending}
+                          data-testid={`button-start-${movement.id}`}
+                        >
+                          <PlayCircle className="h-4 w-4 mr-1" />
+                          Iniciar
+                        </Button>
+                      </>
                     )}
                     {movement.status === "in_progress" && (
                       <>
@@ -480,15 +493,27 @@ export default function Movements() {
                       </>
                     )}
                     {movement.status === "paused" && (
-                      <Button
-                        size="sm"
-                        onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "in_progress" })}
-                        disabled={updateStatusMutation.isPending}
-                        data-testid={`button-continue-${movement.id}`}
-                      >
-                        <PlayCircle className="h-4 w-4 mr-1" />
-                        Continuar
-                      </Button>
+                      <>
+                        <MovementDialog movement={movement}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            data-testid={`button-edit-${movement.id}`}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Editar
+                          </Button>
+                        </MovementDialog>
+                        <Button
+                          size="sm"
+                          onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "in_progress" })}
+                          disabled={updateStatusMutation.isPending}
+                          data-testid={`button-continue-${movement.id}`}
+                        >
+                          <PlayCircle className="h-4 w-4 mr-1" />
+                          Continuar
+                        </Button>
+                      </>
                     )}
                     <Button
                       size="sm"

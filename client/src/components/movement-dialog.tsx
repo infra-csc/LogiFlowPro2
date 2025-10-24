@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { LoadingOrder, Dock, Event, Trip } from "@shared/schema";
+import type { LoadingOrder, Dock, Event, Trip, Movement } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 
@@ -53,8 +53,14 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+type MovementWithRelations = Movement & {
+  events?: Event[];
+  trips?: Trip[];
+};
+
 interface MovementDialogProps {
   children: React.ReactNode;
+  movement?: MovementWithRelations;
 }
 
 const typeLabels: Record<string, string> = {
@@ -67,9 +73,10 @@ const typeLabels: Record<string, string> = {
   inventory_adjustment: "Ajuste de Inventário",
 };
 
-export function MovementDialog({ children }: MovementDialogProps) {
+export function MovementDialog({ children, movement }: MovementDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const isEditMode = !!movement;
 
   const { data: loadingOrders = [] } = useQuery<LoadingOrder[]>({
     queryKey: ["/api/loading-orders"],
@@ -99,6 +106,21 @@ export function MovementDialog({ children }: MovementDialogProps) {
       dockId: "",
     },
   });
+
+  // Load movement data when in edit mode
+  useEffect(() => {
+    if (movement && open) {
+      form.reset({
+        name: movement.name,
+        type: movement.type as any,
+        eventIds: movement.events?.map(e => e.id) || [],
+        tripIds: movement.trips?.map(t => t.id) || [],
+        loadingOrderId: movement.loadingOrderId ?? undefined,
+        vehiclePlate: movement.vehiclePlate ?? undefined,
+        dockId: movement.dockId || "",
+      });
+    }
+  }, [movement, open, form]);
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -135,6 +157,34 @@ export function MovementDialog({ children }: MovementDialogProps) {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      if (!movement) throw new Error("No movement to update");
+      const res = await apiRequest("PATCH", `/api/movements/${movement.id}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update movement");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Movimentação atualizada",
+        description: "A movimentação foi atualizada com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", movement?.id] });
+      setOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar movimentação",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: FormData) => {
     // Normalize optional fields: convert empty strings to undefined
     const normalizedData = {
@@ -142,7 +192,12 @@ export function MovementDialog({ children }: MovementDialogProps) {
       loadingOrderId: data.loadingOrderId || undefined,
       vehiclePlate: data.vehiclePlate || undefined,
     };
-    createMutation.mutate(normalizedData);
+    
+    if (isEditMode) {
+      updateMutation.mutate(normalizedData);
+    } else {
+      createMutation.mutate(normalizedData);
+    }
   };
 
   const approvedOrders = loadingOrders.filter(
@@ -154,7 +209,7 @@ export function MovementDialog({ children }: MovementDialogProps) {
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-2xl" data-testid="dialog-movement">
         <DialogHeader>
-          <DialogTitle>Nova Movimentação</DialogTitle>
+          <DialogTitle>{isEditMode ? "Editar Movimentação" : "Nova Movimentação"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -434,10 +489,12 @@ export function MovementDialog({ children }: MovementDialogProps) {
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending}
                 data-testid="button-submit"
               >
-                {createMutation.isPending ? "Criando..." : "Criar Movimentação"}
+                {isEditMode
+                  ? (updateMutation.isPending ? "Salvando..." : "Salvar Alterações")
+                  : (createMutation.isPending ? "Criando..." : "Criar Movimentação")}
               </Button>
             </div>
           </form>
