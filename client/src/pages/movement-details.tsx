@@ -149,7 +149,7 @@ export default function MovementDetails() {
   // Fetch items for all related movements using useQueries
   const relatedMovementItemsQueries = useQueries({
     queries: relatedMovements.map(mov => ({
-      queryKey: [`/api/movements/${mov.id}/items`],
+      queryKey: ["/api/movements", mov.id, "items"],
       queryFn: async () => {
         const res = await fetch(`/api/movements/${mov.id}/items`, { credentials: "include" });
         if (!res.ok) throw new Error("Failed to fetch movement items");
