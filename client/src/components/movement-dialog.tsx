@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { LoadingOrder, Dock, Event } from "@shared/schema";
+import type { LoadingOrder, Dock, Event, Trip } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 
@@ -45,6 +45,7 @@ const formSchema = z.object({
     "inventory_adjustment",
   ]),
   eventIds: z.array(z.string()).min(1, "Selecione pelo menos um evento"),
+  tripIds: z.array(z.string()).optional(),
   loadingOrderId: z.string().optional(),
   vehiclePlate: z.string().optional(),
   dockId: z.string().min(1, "Doca é obrigatória"),
@@ -82,12 +83,17 @@ export function MovementDialog({ children }: MovementDialogProps) {
     queryKey: ["/api/events"],
   });
 
+  const { data: trips = [] } = useQuery<Trip[]>({
+    queryKey: ["/api/trips"],
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       type: "outbound_event",
       eventIds: [],
+      tripIds: [],
       loadingOrderId: undefined,
       vehiclePlate: undefined,
       dockId: "",
@@ -114,6 +120,7 @@ export function MovementDialog({ children }: MovementDialogProps) {
         name: "",
         type: "outbound_event",
         eventIds: [],
+        tripIds: [],
         loadingOrderId: undefined,
         vehiclePlate: undefined,
         dockId: "",
@@ -262,6 +269,83 @@ export function MovementDialog({ children }: MovementDialogProps) {
                       {unselectedEvents.length === 0 && selectedEvents.length > 0 && (
                         <p className="text-sm text-muted-foreground">
                           Todos os eventos disponíveis foram selecionados
+                        </p>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <FormField
+              control={form.control}
+              name="tripIds"
+              render={({ field }) => {
+                const selectedTripIds = field.value || [];
+                const selectedTrips = trips.filter(t => selectedTripIds.includes(t.id));
+                const unselectedTrips = trips.filter(t => !selectedTripIds.includes(t.id));
+
+                const handleTripSelect = (tripId: string) => {
+                  const newIds = [...selectedTripIds, tripId];
+                  field.onChange(newIds);
+                };
+
+                const handleTripRemove = (tripId: string) => {
+                  const newIds = selectedTripIds.filter(id => id !== tripId);
+                  field.onChange(newIds);
+                };
+
+                return (
+                  <FormItem>
+                    <FormLabel>Viagens (Opcional)</FormLabel>
+                    <div className="space-y-2">
+                      {selectedTrips.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTrips.map((trip) => (
+                            <Badge
+                              key={trip.id}
+                              variant="secondary"
+                              className="gap-1 pr-1"
+                              data-testid={`badge-trip-${trip.id}`}
+                            >
+                              {trip.description || `Viagem ${trip.id.substring(0, 8)}`}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 p-0 hover:bg-transparent"
+                                onClick={() => handleTripRemove(trip.id)}
+                                data-testid={`button-remove-trip-${trip.id}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {unselectedTrips.length > 0 && (
+                        <Select
+                          onValueChange={handleTripSelect}
+                          value=""
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-trips">
+                              <SelectValue placeholder="Adicionar viagem..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {unselectedTrips.map((trip) => (
+                              <SelectItem key={trip.id} value={trip.id}>
+                                {trip.description || `Viagem ${trip.id.substring(0, 8)}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {unselectedTrips.length === 0 && selectedTrips.length > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          Todas as viagens disponíveis foram selecionadas
                         </p>
                       )}
                     </div>

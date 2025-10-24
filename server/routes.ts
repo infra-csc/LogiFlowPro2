@@ -1092,6 +1092,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Validate trips exist
+      if (data.tripIds && data.tripIds.length > 0) {
+        for (const tripId of data.tripIds) {
+          const trip = await storage.getTrip(tripId);
+          if (!trip) {
+            return res.status(404).json({ error: `Trip not found: ${tripId}` });
+          }
+        }
+      }
+      
       // Generate movement number (MVT-YYYYMMDD-XXX)
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
