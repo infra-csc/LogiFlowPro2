@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,6 +140,36 @@ export default function MovementDetails() {
     enabled: !!movement?.loadingOrderId,
   });
 
+  // Fetch all movements with the same loading order ID
+  const { data: relatedMovements = [] } = useQuery<Movement[]>({
+    queryKey: [`/api/loading-orders/${movement?.loadingOrderId}/movements`],
+    enabled: !!movement?.loadingOrderId,
+  });
+
+  // Fetch items for all related movements using useQueries
+  const relatedMovementItemsQueries = useQueries({
+    queries: relatedMovements.map(mov => ({
+      queryKey: [`/api/movements/${mov.id}/items`],
+      queryFn: async () => {
+        const res = await fetch(`/api/movements/${mov.id}/items`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch movement items");
+        return res.json() as Promise<MovementItem[]>;
+      },
+      enabled: !!mov.id,
+    })),
+  });
+
+  // Combine all movement items from all related movements
+  const allRelatedMovementItems = useMemo(() => {
+    const allItems: MovementItem[] = [];
+    relatedMovementItemsQueries.forEach(query => {
+      if (query.data) {
+        allItems.push(...query.data);
+      }
+    });
+    return allItems;
+  }, [relatedMovementItemsQueries]);
+
   // Get product IDs that are in the loading order
   const expectedProductIds = useMemo(() => {
     return new Set(loadingOrderItems.map(item => item.productId));
@@ -177,12 +207,15 @@ export default function MovementDetails() {
     return Array.from(itemsByProduct.values());
   }, [movementItems, movement?.loadingOrderId, expectedProductIds]);
 
-  // Calculate expected items with loaded quantities
+  // Calculate expected items with loaded quantities from ALL related movements
   const expectedItems: ExpectedItem[] = useMemo(() => {
     if (!loadingOrderItems.length) return [];
 
+    // Use all related movement items if we have a loading order, otherwise use current movement items
+    const itemsToConsider = movement?.loadingOrderId ? allRelatedMovementItems : movementItems;
+
     return loadingOrderItems.map((orderItem) => {
-      const loadedQuantity = movementItems
+      const loadedQuantity = itemsToConsider
         .filter((item) => item.productId === orderItem.productId)
         .reduce((sum, item) => sum + item.quantity, 0);
 
@@ -194,7 +227,7 @@ export default function MovementDetails() {
         remaining: Math.max(0, orderItem.consolidatedQuantity - loadedQuantity),
       };
     });
-  }, [loadingOrderItems, movementItems]);
+  }, [loadingOrderItems, movementItems, movement?.loadingOrderId, allRelatedMovementItems]);
 
   // Calculate overall progress
   const totalExpected = expectedItems.reduce((sum, item) => sum + item.expectedQuantity, 0);
