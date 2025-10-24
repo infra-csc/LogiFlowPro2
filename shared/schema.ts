@@ -270,9 +270,15 @@ export const requestItems = pgTable("request_items", {
 export const vehicleTypes = pgTable("vehicle_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
+  description: text("description"),
   capacity: decimal("capacity", { precision: 10, scale: 2 }),
   weightLimit: decimal("weight_limit", { precision: 10, scale: 2 }),
   lengthLimit: decimal("length_limit", { precision: 10, scale: 2 }),
+  // Medidas do baú
+  cargoLength: decimal("cargo_length", { precision: 10, scale: 2 }),
+  cargoHeight: decimal("cargo_height", { precision: 10, scale: 2 }),
+  cargoWidth: decimal("cargo_width", { precision: 10, scale: 2 }),
+  axleCount: integer("axle_count"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 

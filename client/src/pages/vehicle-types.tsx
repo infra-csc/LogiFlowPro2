@@ -3,11 +3,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Truck, Package2, Weight, Ruler } from "lucide-react";
+import { Plus, Truck, Package2, Weight, Ruler, Maximize2, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { VehicleType } from "@shared/schema";
@@ -26,9 +27,14 @@ export default function VehicleTypes() {
     resolver: zodResolver(insertVehicleTypeSchema),
     defaultValues: {
       name: "",
+      description: null,
       capacity: null,
       weightLimit: null,
       lengthLimit: null,
+      cargoLength: null,
+      cargoHeight: null,
+      cargoWidth: null,
+      axleCount: null,
     },
   });
 
@@ -68,9 +74,14 @@ export default function VehicleTypes() {
     setEditingType(vehicleType);
     form.reset({
       name: vehicleType.name,
+      description: vehicleType.description || null,
       capacity: vehicleType.capacity || null,
       weightLimit: vehicleType.weightLimit || null,
       lengthLimit: vehicleType.lengthLimit || null,
+      cargoLength: vehicleType.cargoLength || null,
+      cargoHeight: vehicleType.cargoHeight || null,
+      cargoWidth: vehicleType.cargoWidth || null,
+      axleCount: vehicleType.axleCount || null,
     });
     setIsCreateOpen(true);
   };
@@ -100,7 +111,7 @@ export default function VehicleTypes() {
               Novo Tipo
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingType ? "Editar Tipo de Veículo" : "Criar Novo Tipo de Veículo"}
@@ -112,90 +123,219 @@ export default function VehicleTypes() {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome do Tipo</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ex: Caminhão Baú 3/4"
-                          data-testid="input-vehicle-type-name"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="capacity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Capacidade (m³)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0"
-                          data-testid="input-vehicle-type-capacity"
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value || null)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="weightLimit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Limite de Peso (kg)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0"
-                          data-testid="input-vehicle-type-weight"
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value || null)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="lengthLimit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Limite de Comprimento (m)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0"
-                          data-testid="input-vehicle-type-length"
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value || null)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-foreground">Informações Básicas</h3>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome do Tipo</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: Caminhão Baú 3/4"
+                            data-testid="input-vehicle-type-name"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Informações adicionais sobre o tipo de veículo"
+                            data-testid="input-vehicle-type-description"
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Cargo Bay Measurements */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-foreground">Medidas do Baú</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="cargoLength"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Comprimento (m)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              data-testid="input-vehicle-type-cargo-length"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="cargoHeight"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Altura (m)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              data-testid="input-vehicle-type-cargo-height"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="cargoWidth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Largura (m)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              data-testid="input-vehicle-type-cargo-width"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Other Specifications */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-foreground">Outras Especificações</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="axleCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantidade de Eixos</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="1"
+                              placeholder="0"
+                              data-testid="input-vehicle-type-axle-count"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="capacity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Capacidade (m³)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              data-testid="input-vehicle-type-capacity"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="weightLimit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Limite de Peso (kg)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              data-testid="input-vehicle-type-weight"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="lengthLimit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Limite de Comprimento (m)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              data-testid="input-vehicle-type-length"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            Comprimento máximo de carga individual
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
@@ -237,8 +377,34 @@ export default function VehicleTypes() {
                   <Truck className="h-5 w-5" />
                   {type.name}
                 </CardTitle>
+                {type.description && (
+                  <p className="text-sm text-muted-foreground mt-2">{type.description}</p>
+                )}
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
+                {/* Cargo Bay Measurements */}
+                {(type.cargoLength || type.cargoHeight || type.cargoWidth) && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Medidas do Baú</p>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        {type.cargoLength ? `${type.cargoLength}m` : "—"} × {type.cargoHeight ? `${type.cargoHeight}m` : "—"} × {type.cargoWidth ? `${type.cargoWidth}m` : "—"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Axle Count */}
+                {type.axleCount !== null && parseInt(String(type.axleCount)) > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Eixos:</span>
+                    <span className="font-medium">{type.axleCount}</span>
+                  </div>
+                )}
+
+                {/* Capacity */}
                 {type.capacity !== null && parseFloat(type.capacity) > 0 && (
                   <div className="flex items-center gap-2 text-sm">
                     <Package2 className="h-4 w-4 text-muted-foreground" />
@@ -246,6 +412,8 @@ export default function VehicleTypes() {
                     <span className="font-medium">{type.capacity} m³</span>
                   </div>
                 )}
+
+                {/* Weight Limit */}
                 {type.weightLimit !== null && parseFloat(type.weightLimit) > 0 && (
                   <div className="flex items-center gap-2 text-sm">
                     <Weight className="h-4 w-4 text-muted-foreground" />
@@ -253,10 +421,12 @@ export default function VehicleTypes() {
                     <span className="font-medium">{type.weightLimit} kg</span>
                   </div>
                 )}
+
+                {/* Length Limit */}
                 {type.lengthLimit !== null && parseFloat(type.lengthLimit) > 0 && (
                   <div className="flex items-center gap-2 text-sm">
                     <Ruler className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Comprimento:</span>
+                    <span className="text-muted-foreground">Comp. máx carga:</span>
                     <span className="font-medium">{type.lengthLimit} m</span>
                   </div>
                 )}
