@@ -637,15 +637,25 @@ export class DatabaseStorage implements IStorage {
         vehicle: true,
         vehicleType: true,
         driver: true,
-        dock: true
+        dock: true,
+        destinations: true
       },
       orderBy: (trips, { desc }) => [desc(trips.createdAt)]
     });
   }
 
   async getTrip(id: string): Promise<Trip | undefined> {
-    const [trip] = await db.select().from(trips).where(eq(trips.id, id));
-    return trip || undefined;
+    return await db.query.trips.findFirst({
+      where: (trips, { eq }) => eq(trips.id, id),
+      with: {
+        event: true,
+        vehicle: true,
+        vehicleType: true,
+        driver: true,
+        dock: true,
+        destinations: true
+      }
+    });
   }
 
   async createTrip(trip: InsertTrip): Promise<Trip> {

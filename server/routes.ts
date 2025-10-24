@@ -713,20 +713,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/trips", async (req, res) => {
     try {
-      const data = insertTripSchema.parse(req.body);
+      const { destinations, ...tripData } = req.body;
+      const data = insertTripSchema.parse(tripData);
       const trip = await storage.createTrip(data);
+      
+      // Save destinations if provided
+      if (destinations && Array.isArray(destinations) && destinations.length > 0) {
+        for (const dest of destinations) {
+          await storage.createTripDestination({
+            tripId: trip.id,
+            location: dest.location,
+            arrivalDateTime: new Date(dest.arrivalDateTime)
+          });
+        }
+      }
+      
       res.status(201).json(trip);
     } catch (error) {
+      console.error("[CREATE TRIP ERROR]", error);
       res.status(400).json({ error: "Invalid trip data" });
     }
   });
 
   app.patch("/api/trips/:id", async (req, res) => {
     try {
-      const data = insertTripSchema.partial().parse(req.body);
+      const { destinations, ...tripData } = req.body;
+      const data = insertTripSchema.partial().parse(tripData);
       const trip = await storage.updateTrip(req.params.id, data);
+      
+      // Update destinations if provided
+      if (destinations !== undefined) {
+        // Delete existing destinations
+        await storage.deleteTripDestinations(req.params.id);
+        
+        // Add new destinations
+        if (Array.isArray(destinations) && destinations.length > 0) {
+          for (const dest of destinations) {
+            await storage.createTripDestination({
+              tripId: req.params.id,
+              location: dest.location,
+              arrivalDateTime: new Date(dest.arrivalDateTime)
+            });
+          }
+        }
+      }
+      
       res.json(trip);
     } catch (error) {
+      console.error("[UPDATE TRIP ERROR]", error);
       res.status(400).json({ error: "Invalid trip data" });
     }
   });

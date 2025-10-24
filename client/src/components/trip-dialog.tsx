@@ -88,7 +88,19 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         status: trip.status || "planned",
         notes: trip.notes || "",
       });
-      setDestinations([]);
+      
+      // Load existing destinations if any
+      if ((trip as any).destinations && Array.isArray((trip as any).destinations)) {
+        setDestinations(
+          (trip as any).destinations.map((dest: any) => ({
+            id: dest.id || crypto.randomUUID(),
+            location: dest.location || "",
+            arrivalDateTime: dest.arrivalDateTime ? format(new Date(dest.arrivalDateTime), "yyyy-MM-dd'T'HH:mm") : ""
+          }))
+        );
+      } else {
+        setDestinations([]);
+      }
     } else if (!trip && !open) {
       setFormData({
         description: "",
@@ -185,6 +197,14 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       status: formData.status || "planned",
       notes: formData.notes || null,
     };
+
+    // Include destinations if any are defined
+    if (destinations.length > 0) {
+      submitData.destinations = destinations.map(dest => ({
+        location: dest.location,
+        arrivalDateTime: dest.arrivalDateTime
+      }));
+    }
 
     if (trip) {
       updateMutation.mutate(submitData);
