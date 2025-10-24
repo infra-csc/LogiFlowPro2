@@ -22,6 +22,7 @@ import {
   loadingOrderItems,
   movements,
   movementEvents,
+  movementTrips,
   movementItems,
   inventoryMovements,
   returns,
@@ -800,8 +801,8 @@ export class DatabaseStorage implements IStorage {
       .from(movements)
       .orderBy(desc(movements.createdAt));
     
-    // For each movement, get its associated events
-    const movementsWithEvents = await Promise.all(
+    // For each movement, get its associated events and trips
+    const movementsWithRelations = await Promise.all(
       movementsData.map(async (movement) => {
         const eventRelations = await db
           .select({
@@ -811,14 +812,23 @@ export class DatabaseStorage implements IStorage {
           .leftJoin(events, eq(movementEvents.eventId, events.id))
           .where(eq(movementEvents.movementId, movement.id));
         
+        const tripRelations = await db
+          .select({
+            trip: trips,
+          })
+          .from(movementTrips)
+          .leftJoin(trips, eq(movementTrips.tripId, trips.id))
+          .where(eq(movementTrips.movementId, movement.id));
+        
         return {
           ...movement,
           events: eventRelations.map(r => r.event).filter(Boolean),
+          trips: tripRelations.map(r => r.trip).filter(Boolean),
         };
       })
     );
     
-    return movementsWithEvents as any;
+    return movementsWithRelations as any;
   }
 
   async getMovement(id: string): Promise<Movement | undefined> {
@@ -834,9 +844,19 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(events, eq(movementEvents.eventId, events.id))
       .where(eq(movementEvents.movementId, movement.id));
     
+    // Get associated trips
+    const tripRelations = await db
+      .select({
+        trip: trips,
+      })
+      .from(movementTrips)
+      .leftJoin(trips, eq(movementTrips.tripId, trips.id))
+      .where(eq(movementTrips.movementId, movement.id));
+    
     return {
       ...movement,
       events: eventRelations.map(r => r.event).filter(Boolean),
+      trips: tripRelations.map(r => r.trip).filter(Boolean),
     } as any;
   }
 
@@ -848,8 +868,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(movements.loadingOrderId, loadingOrderId))
       .orderBy(desc(movements.createdAt));
     
-    // For each movement, get its associated events
-    const movementsWithEvents = await Promise.all(
+    // For each movement, get its associated events and trips
+    const movementsWithRelations = await Promise.all(
       movementsData.map(async (movement) => {
         const eventRelations = await db
           .select({
@@ -859,14 +879,23 @@ export class DatabaseStorage implements IStorage {
           .leftJoin(events, eq(movementEvents.eventId, events.id))
           .where(eq(movementEvents.movementId, movement.id));
         
+        const tripRelations = await db
+          .select({
+            trip: trips,
+          })
+          .from(movementTrips)
+          .leftJoin(trips, eq(movementTrips.tripId, trips.id))
+          .where(eq(movementTrips.movementId, movement.id));
+        
         return {
           ...movement,
           events: eventRelations.map(r => r.event).filter(Boolean),
+          trips: tripRelations.map(r => r.trip).filter(Boolean),
         };
       })
     );
     
-    return movementsWithEvents as any;
+    return movementsWithRelations as any;
   }
 
   async createMovement(movement: InsertMovement): Promise<Movement> {
@@ -875,7 +904,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMovementWithEvents(movementData: InsertMovementWithEvents): Promise<Movement> {
-    const { eventIds, ...movementInsert } = movementData;
+    const { eventIds, tripIds, ...movementInsert } = movementData;
     
     // Create the movement
     const [created] = await db.insert(movements).values(movementInsert as any).returning();
@@ -886,6 +915,16 @@ export class DatabaseStorage implements IStorage {
         eventIds.map(eventId => ({
           movementId: created.id,
           eventId
+        }))
+      );
+    }
+    
+    // Create the junction records for trips
+    if (tripIds && tripIds.length > 0) {
+      await db.insert(movementTrips).values(
+        tripIds.map(tripId => ({
+          movementId: created.id,
+          tripId
         }))
       );
     }
