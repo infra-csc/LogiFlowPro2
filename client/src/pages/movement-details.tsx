@@ -94,6 +94,8 @@ export default function MovementDetails() {
   const sidebar = useSidebar();
   const [focusMode, setFocusMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [loadedSearchQuery, setLoadedSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -198,6 +200,32 @@ export default function MovementDetails() {
   const totalExpected = expectedItems.reduce((sum, item) => sum + item.expectedQuantity, 0);
   const totalLoaded = expectedItems.reduce((sum, item) => sum + item.loadedQuantity, 0);
   const progress = totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0;
+
+  // Filter expected items based on order search query
+  const filteredExpectedItems = useMemo(() => {
+    if (!orderSearchQuery.trim()) return expectedItems;
+    const query = orderSearchQuery.toLowerCase();
+    return expectedItems.filter(
+      (item) =>
+        item.product.name.toLowerCase().includes(query) ||
+        item.product.sku?.toLowerCase().includes(query) ||
+        item.product.barcode?.toLowerCase().includes(query)
+    );
+  }, [expectedItems, orderSearchQuery]);
+
+  // Filter loaded items based on loaded search query
+  const filteredLoadedItems = useMemo(() => {
+    if (!loadedSearchQuery.trim()) return consolidatedLoadedItems;
+    const query = loadedSearchQuery.toLowerCase();
+    return consolidatedLoadedItems.filter((item) => {
+      const product = products.find((p) => p.id === item.productId);
+      return (
+        product?.name.toLowerCase().includes(query) ||
+        product?.sku?.toLowerCase().includes(query) ||
+        product?.barcode?.toLowerCase().includes(query)
+      );
+    });
+  }, [consolidatedLoadedItems, loadedSearchQuery, products]);
 
   // Filter products based on search query
   const filteredProducts = useMemo(() => {
@@ -832,16 +860,31 @@ export default function MovementDetails() {
         {/* Itens Esperados (da Ordem) */}
         {expectedItems.length > 0 && (
           <Card>
-            <CardHeader>
+            <CardHeader className="space-y-4">
               <CardTitle className="flex items-center gap-2">
                 <ClipboardList className="h-5 w-5" />
                 Itens da Ordem ({expectedItems.length})
               </CardTitle>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, SKU ou código de barras..."
+                  value={orderSearchQuery}
+                  onChange={(e) => setOrderSearchQuery(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-order-items"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[500px] pr-4">
                 <div className="space-y-3">
-                  {expectedItems.map((item) => {
+                  {filteredExpectedItems.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      {orderSearchQuery ? "Nenhum item encontrado" : "Nenhum item na ordem"}
+                    </p>
+                  ) : (
+                    filteredExpectedItems.map((item) => {
                     const percentComplete = Math.round(
                       (item.loadedQuantity / item.expectedQuantity) * 100
                     );
@@ -910,7 +953,8 @@ export default function MovementDetails() {
                         </div>
                       </div>
                     );
-                  })}
+                  }))
+                }
                 </div>
               </ScrollArea>
             </CardContent>
@@ -919,21 +963,31 @@ export default function MovementDetails() {
 
         {/* Itens Carregados */}
         <Card>
-          <CardHeader>
+          <CardHeader className="space-y-4">
             <CardTitle className="flex items-center gap-2">
               <PackageCheck className="h-5 w-5" />
               Itens Carregados ({consolidatedLoadedItems.length})
             </CardTitle>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, SKU ou código de barras..."
+                value={loadedSearchQuery}
+                onChange={(e) => setLoadedSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-loaded-items"
+              />
+            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[500px] pr-4">
-              {consolidatedLoadedItems.length === 0 ? (
+              {filteredLoadedItems.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  Nenhum item carregado ainda
+                  {loadedSearchQuery ? "Nenhum item encontrado" : "Nenhum item carregado ainda"}
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {consolidatedLoadedItems.map((item) => {
+                  {filteredLoadedItems.map((item) => {
                     const product = products.find((p) => p.id === item.productId);
                     return (
                       <div
