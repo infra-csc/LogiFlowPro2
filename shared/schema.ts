@@ -449,6 +449,14 @@ export const movementEvents = pgTable("movement_events", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 
+// Movement Trips junction table (many-to-many)
+export const movementTrips = pgTable("movement_trips", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  movementId: varchar("movement_id").notNull().references(() => movements.id, { onDelete: "cascade" }),
+  tripId: varchar("trip_id").notNull().references(() => trips.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
 // Movement Items table
 export const movementItems = pgTable("movement_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -587,7 +595,8 @@ export const tripsRelations = relations(trips, ({ one, many }) => ({
   returns: many(returns),
   inventoryMovements: many(inventoryMovements),
   tripEvents: many(tripEvents),
-  destinations: many(tripDestinations)
+  destinations: many(tripDestinations),
+  movementTrips: many(movementTrips)
 }));
 
 export const tripEventsRelations = relations(tripEvents, ({ one }) => ({
@@ -675,7 +684,8 @@ export const movementsRelations = relations(movements, ({ one, many }) => ({
     references: [docks.id]
   }),
   items: many(movementItems),
-  movementEvents: many(movementEvents)
+  movementEvents: many(movementEvents),
+  movementTrips: many(movementTrips)
 }));
 
 export const movementItemsRelations = relations(movementItems, ({ one }) => ({
@@ -697,6 +707,17 @@ export const movementEventsRelations = relations(movementEvents, ({ one }) => ({
   event: one(events, {
     fields: [movementEvents.eventId],
     references: [events.id]
+  })
+}));
+
+export const movementTripsRelations = relations(movementTrips, ({ one }) => ({
+  movement: one(movements, {
+    fields: [movementTrips.movementId],
+    references: [movements.id]
+  }),
+  trip: one(trips, {
+    fields: [movementTrips.tripId],
+    references: [trips.id]
   })
 }));
 
@@ -874,12 +895,18 @@ export const insertMovementSchema = createInsertSchema(movements).omit({
 });
 
 export const insertMovementWithEventsSchema = insertMovementSchema.extend({
-  eventIds: z.array(z.string()).min(1, "Selecione pelo menos um evento")
+  eventIds: z.array(z.string()).min(1, "Selecione pelo menos um evento"),
+  tripIds: z.array(z.string()).optional()
 });
 
 export const insertMovementItemSchema = createInsertSchema(movementItems).omit({
   id: true,
   processedAt: true
+});
+
+export const insertMovementTripSchema = createInsertSchema(movementTrips).omit({
+  id: true,
+  createdAt: true
 });
 
 export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements).omit({
@@ -983,6 +1010,9 @@ export type InsertMovement = z.infer<typeof insertMovementSchema>;
 export type InsertMovementWithEvents = z.infer<typeof insertMovementWithEventsSchema>;
 
 export type MovementEvent = typeof movementEvents.$inferSelect;
+
+export type MovementTrip = typeof movementTrips.$inferSelect;
+export type InsertMovementTrip = z.infer<typeof insertMovementTripSchema>;
 
 export type MovementItem = typeof movementItems.$inferSelect;
 export type InsertMovementItem = z.infer<typeof insertMovementItemSchema>;
