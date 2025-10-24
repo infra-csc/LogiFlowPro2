@@ -39,17 +39,16 @@ interface Destination {
 }
 
 interface TripFormData {
+  description?: string;
   eventId?: string;
   vehicleTypeId?: string;
   driverId?: string;
   dockId?: string;
-  loadingDate?: string;
   loadingLocation?: string;
   loadingStartTime?: string;
   loadingEndTime?: string;
   departureDateTime?: string;
   unloadingLocation?: string;
-  unloadingDate?: string;
   unloadingStartTime?: string;
   unloadingEndTime?: string;
   status?: string;
@@ -60,6 +59,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<TripFormData>({
+    description: "",
     eventId: "",
     vehicleTypeId: "",
     driverId: "",
@@ -73,17 +73,16 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   useEffect(() => {
     if (trip && open) {
       setFormData({
+        description: trip.description || "",
         eventId: trip.eventId || "",
         vehicleTypeId: trip.vehicleTypeId || "",
         driverId: trip.driverId || "",
         dockId: trip.dockId || "",
-        loadingDate: trip.loadingDate ? format(new Date(trip.loadingDate), "yyyy-MM-dd'T'HH:mm") : "",
         loadingLocation: trip.loadingLocation || "",
         loadingStartTime: trip.loadingStartTime ? format(new Date(trip.loadingStartTime), "yyyy-MM-dd'T'HH:mm") : "",
         loadingEndTime: trip.loadingEndTime ? format(new Date(trip.loadingEndTime), "yyyy-MM-dd'T'HH:mm") : "",
         departureDateTime: trip.departureDateTime ? format(new Date(trip.departureDateTime), "yyyy-MM-dd'T'HH:mm") : "",
         unloadingLocation: trip.unloadingLocation || "",
-        unloadingDate: trip.unloadingDate ? format(new Date(trip.unloadingDate), "yyyy-MM-dd'T'HH:mm") : "",
         unloadingStartTime: trip.unloadingStartTime ? format(new Date(trip.unloadingStartTime), "yyyy-MM-dd'T'HH:mm") : "",
         unloadingEndTime: trip.unloadingEndTime ? format(new Date(trip.unloadingEndTime), "yyyy-MM-dd'T'HH:mm") : "",
         status: trip.status || "planned",
@@ -92,6 +91,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       setDestinations([]);
     } else if (!trip && !open) {
       setFormData({
+        description: "",
         eventId: "",
         vehicleTypeId: "",
         driverId: "",
@@ -170,17 +170,16 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     }
 
     const submitData: any = {
+      description: formData.description || null,
       eventId: formData.eventId,
       vehicleTypeId: formData.vehicleTypeId,
       driverId: formData.driverId || null,
       dockId: formData.dockId || null,
-      loadingDate: formData.loadingDate ? new Date(formData.loadingDate) : null,
       loadingLocation: formData.loadingLocation || null,
       loadingStartTime: formData.loadingStartTime ? new Date(formData.loadingStartTime) : null,
       loadingEndTime: formData.loadingEndTime ? new Date(formData.loadingEndTime) : null,
       departureDateTime: formData.departureDateTime ? new Date(formData.departureDateTime) : null,
       unloadingLocation: formData.unloadingLocation || null,
-      unloadingDate: formData.unloadingDate ? new Date(formData.unloadingDate) : null,
       unloadingStartTime: formData.unloadingStartTime ? new Date(formData.unloadingStartTime) : null,
       unloadingEndTime: formData.unloadingEndTime ? new Date(formData.unloadingEndTime) : null,
       status: formData.status || "planned",
@@ -205,6 +204,18 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Campo: Descrição */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Descrição</Label>
+            <Textarea
+              id="description"
+              placeholder="Breve descrição do planejamento de transporte"
+              value={formData.description || ""}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              data-testid="input-description"
+            />
+          </div>
+
           {/* Seção: Evento */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium border-b pb-2">Evento</h3>
@@ -376,28 +387,15 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
           {/* Seção: Carregamento */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium border-b pb-2">Carregamento</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="loadingDate">Data de Carregamento</Label>
-                <Input
-                  id="loadingDate"
-                  type="datetime-local"
-                  value={formData.loadingDate || ""}
-                  onChange={(e) => setFormData({ ...formData, loadingDate: e.target.value })}
-                  data-testid="input-loading-date"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="loadingLocation">Local de Carregamento</Label>
-                <Input
-                  id="loadingLocation"
-                  value={formData.loadingLocation || ""}
-                  onChange={(e) => setFormData({ ...formData, loadingLocation: e.target.value })}
-                  placeholder="Ex: Armazém Central"
-                  data-testid="input-loading-location"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="loadingLocation">Local de Carregamento</Label>
+              <Input
+                id="loadingLocation"
+                value={formData.loadingLocation || ""}
+                onChange={(e) => setFormData({ ...formData, loadingLocation: e.target.value })}
+                placeholder="Ex: Armazém Central"
+                data-testid="input-loading-location"
+              />
             </div>
 
             <div className="grid grid-cols-3 gap-4">
@@ -450,18 +448,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="unloadingDate">Data de Descarregamento</Label>
-                <Input
-                  id="unloadingDate"
-                  type="datetime-local"
-                  value={formData.unloadingDate || ""}
-                  onChange={(e) => setFormData({ ...formData, unloadingDate: e.target.value })}
-                  data-testid="input-unloading-date"
-                />
-              </div>
-
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="unloadingStartTime">Início do Descarregamento</Label>
                 <Input

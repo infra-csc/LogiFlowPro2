@@ -317,6 +317,7 @@ export const docks = pgTable("docks", {
 // Trips table (Planejamento de Transporte)
 export const trips = pgTable("trips", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  description: text("description"),
   eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   vehicleId: varchar("vehicle_id").references(() => vehicles.id), // Opcional
   vehicleTypeId: varchar("vehicle_type_id").notNull().references(() => vehicleTypes.id),
@@ -324,7 +325,6 @@ export const trips = pgTable("trips", {
   dockId: varchar("dock_id").references(() => docks.id),
   
   // Seção Carregamento
-  loadingDate: timestamp("loading_date"),
   loadingLocation: text("loading_location"),
   loadingStartTime: timestamp("loading_start_time"),
   loadingEndTime: timestamp("loading_end_time"),
@@ -332,7 +332,6 @@ export const trips = pgTable("trips", {
   
   // Seção Descarregamento
   unloadingLocation: text("unloading_location"),
-  unloadingDate: timestamp("unloading_date"),
   unloadingStartTime: timestamp("unloading_start_time"),
   unloadingEndTime: timestamp("unloading_end_time"),
   
