@@ -808,7 +808,13 @@ export const insertDockSchema = createInsertSchema(docks).omit({
   createdAt: true
 });
 
-export const insertTripSchema = createInsertSchema(trips).omit({
+export const insertTripSchema = createInsertSchema(trips, {
+  loadingStartTime: z.coerce.date().optional(),
+  loadingEndTime: z.coerce.date().optional(),
+  departureDateTime: z.coerce.date().optional(),
+  unloadingStartTime: z.coerce.date().optional(),
+  unloadingEndTime: z.coerce.date().optional(),
+}).omit({
   id: true,
   createdAt: true,
   actualStart: true,
@@ -829,7 +835,9 @@ export const insertTripEventSchema = createInsertSchema(tripEvents).omit({
   addedAt: true
 });
 
-export const insertTripDestinationSchema = createInsertSchema(tripDestinations).omit({
+export const insertTripDestinationSchema = createInsertSchema(tripDestinations, {
+  arrivalDateTime: z.coerce.date()
+}).omit({
   id: true
 });
 
