@@ -79,8 +79,8 @@ export default function Trips() {
     return trips.filter((trip) => {
       // Filter by event date
       if (filters.eventDate) {
-        if (!trip.event?.startDate) return false;
-        const eventDate = startOfDay(parseISO(trip.event.startDate));
+        if (!trip.event?.eventDate) return false;
+        const eventDate = startOfDay(new Date(trip.event.eventDate));
         const filterDate = startOfDay(parseISO(filters.eventDate));
         if (eventDate.getTime() !== filterDate.getTime()) return false;
       }
@@ -98,16 +98,16 @@ export default function Trips() {
         let matchesMovementDate = false;
         
         // Check loading date
-        if (trip.loadingDate) {
-          const loadingDate = new Date(trip.loadingDate);
+        if (trip.loadingStartTime) {
+          const loadingDate = new Date(trip.loadingStartTime);
           if (loadingDate >= filterDate && loadingDate <= filterDateEnd) {
             matchesMovementDate = true;
           }
         }
         
         // Check unloading date
-        if (trip.unloadingDate) {
-          const unloadingDate = new Date(trip.unloadingDate);
+        if (trip.unloadingStartTime) {
+          const unloadingDate = new Date(trip.unloadingStartTime);
           if (unloadingDate >= filterDate && unloadingDate <= filterDateEnd) {
             matchesMovementDate = true;
           }
@@ -126,11 +126,11 @@ export default function Trips() {
     
     return [...filteredTrips].sort((a, b) => {
       const dateA = sortBy === "loading" 
-        ? (a.loadingDate ? new Date(a.loadingDate).getTime() : Infinity)
-        : (a.unloadingDate ? new Date(a.unloadingDate).getTime() : Infinity);
+        ? (a.loadingStartTime ? new Date(a.loadingStartTime).getTime() : Infinity)
+        : (a.unloadingStartTime ? new Date(a.unloadingStartTime).getTime() : Infinity);
       const dateB = sortBy === "loading"
-        ? (b.loadingDate ? new Date(b.loadingDate).getTime() : Infinity)
-        : (b.unloadingDate ? new Date(b.unloadingDate).getTime() : Infinity);
+        ? (b.loadingStartTime ? new Date(b.loadingStartTime).getTime() : Infinity)
+        : (b.unloadingStartTime ? new Date(b.unloadingStartTime).getTime() : Infinity);
       
       return dateA - dateB;
     });
@@ -163,7 +163,7 @@ export default function Trips() {
     const grouped: Record<string, TripWithRelations[]> = {};
     
     sortedTrips.forEach((trip) => {
-      const relevantDate = sortBy === "loading" ? trip.loadingDate : trip.unloadingDate;
+      const relevantDate = sortBy === "loading" ? trip.loadingStartTime : trip.unloadingStartTime;
       if (!relevantDate) return;
       
       const dateKey = format(new Date(relevantDate), "yyyy-MM-dd");
@@ -316,16 +316,16 @@ export default function Trips() {
                 <div className="space-y-2">
                   <Label htmlFor="filter-event">Evento</Label>
                   <Select
-                    value={filters.eventId || ""}
+                    value={filters.eventId || "all"}
                     onValueChange={(value) =>
-                      setFilters((prev) => ({ ...prev, eventId: value || undefined }))
+                      setFilters((prev) => ({ ...prev, eventId: value === "all" ? undefined : value }))
                     }
                   >
                     <SelectTrigger id="filter-event" data-testid="select-filter-event">
                       <SelectValue placeholder="Todos os eventos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os eventos</SelectItem>
+                      <SelectItem value="all">Todos os eventos</SelectItem>
                       {events?.map((event) => (
                         <SelectItem key={event.id} value={String(event.id)}>
                           {event.name}
@@ -463,13 +463,13 @@ export default function Trips() {
                       <div>
                         <p className="text-xs text-muted-foreground">Carregamento</p>
                         <p className="text-sm font-medium">
-                          {trip.loadingDate ? format(new Date(trip.loadingDate), "dd/MM/yyyy HH:mm") : "—"}
+                          {trip.loadingStartTime ? format(new Date(trip.loadingStartTime), "dd/MM/yyyy HH:mm") : "—"}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Descarregamento</p>
                         <p className="text-sm font-medium">
-                          {trip.unloadingDate ? format(new Date(trip.unloadingDate), "dd/MM/yyyy HH:mm") : "—"}
+                          {trip.unloadingStartTime ? format(new Date(trip.unloadingStartTime), "dd/MM/yyyy HH:mm") : "—"}
                         </p>
                       </div>
                     </div>
@@ -574,16 +574,16 @@ export default function Trips() {
                               <Truck className="h-3 w-3" />
                               <span className="line-clamp-1">{trip.vehicleType?.name}</span>
                             </p>
-                            {trip.loadingDate && (
+                            {trip.loadingStartTime && (
                               <p className="text-[10px] flex items-center gap-1">
                                 <ArrowUp className="h-3 w-3" />
-                                {format(new Date(trip.loadingDate), "HH:mm")}
+                                {format(new Date(trip.loadingStartTime), "HH:mm")}
                               </p>
                             )}
-                            {trip.unloadingDate && (
+                            {trip.unloadingStartTime && (
                               <p className="text-[10px] flex items-center gap-1">
                                 <ArrowDown className="h-3 w-3" />
-                                {format(new Date(trip.unloadingDate), "HH:mm")}
+                                {format(new Date(trip.unloadingStartTime), "HH:mm")}
                               </p>
                             )}
                           </div>
