@@ -12,11 +12,14 @@ import {
   insertProductSchema,
   insertMaterialRequestSchema,
   insertRequestItemSchema,
+  insertVehicleTypeSchema,
   insertVehicleSchema,
   insertDriverSchema,
   insertDockSchema,
   insertTripSchema,
   insertTripItemSchema,
+  insertTripEventSchema,
+  insertTripDestinationSchema,
   insertLoadingOrderSchema,
   insertMovementSchema,
   insertMovementWithEventsSchema,
@@ -593,6 +596,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error rejecting request:", error);
       res.status(500).json({ error: "Failed to reject request" });
+    }
+  });
+
+  // Vehicle Types
+  app.get("/api/vehicle-types", async (req, res) => {
+    try {
+      const vehicleTypes = await storage.getVehicleTypes();
+      res.json(vehicleTypes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vehicle types" });
+    }
+  });
+
+  app.post("/api/vehicle-types", async (req, res) => {
+    try {
+      const data = insertVehicleTypeSchema.parse(req.body);
+      const vehicleType = await storage.createVehicleType(data);
+      res.status(201).json(vehicleType);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid vehicle type data" });
+    }
+  });
+
+  app.patch("/api/vehicle-types/:id", async (req, res) => {
+    try {
+      const data = insertVehicleTypeSchema.partial().parse(req.body);
+      const vehicleType = await storage.updateVehicleType(req.params.id, data);
+      res.json(vehicleType);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid vehicle type data" });
     }
   });
 

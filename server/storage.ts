@@ -9,11 +9,14 @@ import {
   products,
   materialRequests,
   requestItems,
+  vehicleTypes,
   vehicles,
   drivers,
   docks,
   trips,
   tripItems,
+  tripEvents,
+  tripDestinations,
   loadingOrders,
   loadingOrderRequests,
   loadingOrderItems,
@@ -41,6 +44,8 @@ import {
   type InsertMaterialRequest,
   type RequestItem,
   type InsertRequestItem,
+  type VehicleType,
+  type InsertVehicleType,
   type Vehicle,
   type InsertVehicle,
   type Driver,
@@ -51,6 +56,10 @@ import {
   type InsertTrip,
   type TripItem,
   type InsertTripItem,
+  type TripEvent,
+  type InsertTripEvent,
+  type TripDestination,
+  type InsertTripDestination,
   type LoadingOrder,
   type InsertLoadingOrder,
   type LoadingOrderRequest,
@@ -123,6 +132,12 @@ export interface IStorage {
   approveRequestPartial(requestId: string, approverName: string, itemApprovals: Array<{itemId: string, status: string, approvedQuantity?: number, rejectionReason?: string}>, comments?: string): Promise<void>;
   rejectRequestAll(requestId: string, approverName: string, reason: string): Promise<void>;
 
+  // Vehicle Types
+  getVehicleTypes(): Promise<VehicleType[]>;
+  getVehicleType(id: string): Promise<VehicleType | undefined>;
+  createVehicleType(vehicleType: InsertVehicleType): Promise<VehicleType>;
+  updateVehicleType(id: string, vehicleType: Partial<InsertVehicleType>): Promise<VehicleType>;
+
   // Vehicles
   getVehicles(): Promise<Vehicle[]>;
   getVehicle(id: string): Promise<Vehicle | undefined>;
@@ -150,6 +165,16 @@ export interface IStorage {
   // Trip Items
   getTripItems(tripId: string): Promise<TripItem[]>;
   createTripItem(item: InsertTripItem): Promise<TripItem>;
+
+  // Trip Events (junction table)
+  getTripEvents(tripId: string): Promise<TripEvent[]>;
+  createTripEvent(tripEvent: InsertTripEvent): Promise<TripEvent>;
+  deleteTripEvents(tripId: string): Promise<void>;
+
+  // Trip Destinations
+  getTripDestinations(tripId: string): Promise<TripDestination[]>;
+  createTripDestination(destination: InsertTripDestination): Promise<TripDestination>;
+  deleteTripDestinations(tripId: string): Promise<void>;
 
   // Loading Orders
   getLoadingOrders(): Promise<LoadingOrder[]>;
@@ -524,6 +549,26 @@ export class DatabaseStorage implements IStorage {
       .where(eq(materialRequests.id, requestId));
   }
 
+  // Vehicle Types
+  async getVehicleTypes(): Promise<VehicleType[]> {
+    return await db.select().from(vehicleTypes).orderBy(desc(vehicleTypes.createdAt));
+  }
+
+  async getVehicleType(id: string): Promise<VehicleType | undefined> {
+    const [vehicleType] = await db.select().from(vehicleTypes).where(eq(vehicleTypes.id, id));
+    return vehicleType || undefined;
+  }
+
+  async createVehicleType(vehicleType: InsertVehicleType): Promise<VehicleType> {
+    const [created] = await db.insert(vehicleTypes).values(vehicleType).returning();
+    return created;
+  }
+
+  async updateVehicleType(id: string, vehicleType: Partial<InsertVehicleType>): Promise<VehicleType> {
+    const [updated] = await db.update(vehicleTypes).set(vehicleType).where(eq(vehicleTypes.id, id)).returning();
+    return updated;
+  }
+
   // Vehicles
   async getVehicles(): Promise<Vehicle[]> {
     return await db.select().from(vehicles).orderBy(desc(vehicles.createdAt));
@@ -612,6 +657,34 @@ export class DatabaseStorage implements IStorage {
   async createTripItem(item: InsertTripItem): Promise<TripItem> {
     const [created] = await db.insert(tripItems).values(item).returning();
     return created;
+  }
+
+  // Trip Events (junction table)
+  async getTripEvents(tripId: string): Promise<TripEvent[]> {
+    return await db.select().from(tripEvents).where(eq(tripEvents.tripId, tripId));
+  }
+
+  async createTripEvent(tripEvent: InsertTripEvent): Promise<TripEvent> {
+    const [created] = await db.insert(tripEvents).values(tripEvent).returning();
+    return created;
+  }
+
+  async deleteTripEvents(tripId: string): Promise<void> {
+    await db.delete(tripEvents).where(eq(tripEvents.tripId, tripId));
+  }
+
+  // Trip Destinations
+  async getTripDestinations(tripId: string): Promise<TripDestination[]> {
+    return await db.select().from(tripDestinations).where(eq(tripDestinations.tripId, tripId)).orderBy(tripDestinations.sequence);
+  }
+
+  async createTripDestination(destination: InsertTripDestination): Promise<TripDestination> {
+    const [created] = await db.insert(tripDestinations).values(destination).returning();
+    return created;
+  }
+
+  async deleteTripDestinations(tripId: string): Promise<void> {
+    await db.delete(tripDestinations).where(eq(tripDestinations.tripId, tripId));
   }
 
   // Loading Orders

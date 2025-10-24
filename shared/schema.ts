@@ -266,11 +266,21 @@ export const requestItems = pgTable("request_items", {
   notes: text("notes")
 });
 
+// Vehicle Types table
+export const vehicleTypes = pgTable("vehicle_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
 // Vehicles table
 export const vehicles = pgTable("vehicles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   plate: text("plate").notNull().unique(),
-  type: text("type").notNull(),
+  vehicleTypeId: varchar("vehicle_type_id").references(() => vehicleTypes.id),
+  type: text("type").notNull(), // Manter por compatibilidade
   maxWeight: decimal("max_weight", { precision: 10, scale: 2 }),
   maxVolume: decimal("max_volume", { precision: 10, scale: 2 }),
   dimensions: text("dimensions"),
@@ -297,20 +307,54 @@ export const docks = pgTable("docks", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 
-// Trips table
+// Trips table (Planejamento de Transporte)
 export const trips = pgTable("trips", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  eventId: varchar("event_id").references(() => events.id, { onDelete: "cascade" }), // Nullable agora
   vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id),
   driverId: varchar("driver_id").notNull().references(() => drivers.id),
   dockId: varchar("dock_id").references(() => docks.id),
-  scheduledStart: timestamp("scheduled_start").notNull(),
-  scheduledEnd: timestamp("scheduled_end").notNull(),
+  
+  // Seção Carregamento
+  loadingDate: timestamp("loading_date"),
+  loadingLocation: text("loading_location"),
+  loadingStartTime: timestamp("loading_start_time"),
+  loadingEndTime: timestamp("loading_end_time"),
+  departureDateTime: timestamp("departure_date_time"),
+  
+  // Seção Descarregamento
+  unloadingLocation: text("unloading_location"),
+  unloadingDate: timestamp("unloading_date"),
+  unloadingStartTime: timestamp("unloading_start_time"),
+  unloadingEndTime: timestamp("unloading_end_time"),
+  
+  // Campos legados (manter por compatibilidade)
+  scheduledStart: timestamp("scheduled_start"),
+  scheduledEnd: timestamp("scheduled_end"),
   actualStart: timestamp("actual_start"),
   actualEnd: timestamp("actual_end"),
+  
   status: tripStatusEnum("status").notNull().default("planned"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
+// Trip Events table (Many-to-Many)
+export const tripEvents = pgTable("trip_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tripId: varchar("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
+  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at").notNull().default(sql`now()`)
+});
+
+// Trip Destinations table (Multiple arrival locations)
+export const tripDestinations = pgTable("trip_destinations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tripId: varchar("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
+  location: text("location").notNull(),
+  arrivalDateTime: timestamp("arrival_date_time").notNull(),
+  sequence: integer("sequence").notNull().default(1),
+  notes: text("notes")
 });
 
 // Trip Items table
@@ -506,6 +550,10 @@ export const requestItemsRelations = relations(requestItems, ({ one }) => ({
   })
 }));
 
+export const vehicleTypesRelations = relations(vehicleTypes, ({ many }) => ({
+  vehicles: many(vehicles)
+}));
+
 export const tripsRelations = relations(trips, ({ one, many }) => ({
   event: one(events, {
     fields: [trips.eventId],
@@ -525,7 +573,27 @@ export const tripsRelations = relations(trips, ({ one, many }) => ({
   }),
   items: many(tripItems),
   returns: many(returns),
-  inventoryMovements: many(inventoryMovements)
+  inventoryMovements: many(inventoryMovements),
+  tripEvents: many(tripEvents),
+  destinations: many(tripDestinations)
+}));
+
+export const tripEventsRelations = relations(tripEvents, ({ one }) => ({
+  trip: one(trips, {
+    fields: [tripEvents.tripId],
+    references: [trips.id]
+  }),
+  event: one(events, {
+    fields: [tripEvents.eventId],
+    references: [events.id]
+  })
+}));
+
+export const tripDestinationsRelations = relations(tripDestinations, ({ one }) => ({
+  trip: one(trips, {
+    fields: [tripDestinations.tripId],
+    references: [trips.id]
+  })
 }));
 
 export const tripItemsRelations = relations(tripItems, ({ one }) => ({
@@ -620,7 +688,11 @@ export const movementEventsRelations = relations(movementEvents, ({ one }) => ({
   })
 }));
 
-export const vehiclesRelations = relations(vehicles, ({ many }) => ({
+export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
+  vehicleType: one(vehicleTypes, {
+    fields: [vehicles.vehicleTypeId],
+    references: [vehicleTypes.id]
+  }),
   trips: many(trips)
 }));
 
@@ -732,6 +804,20 @@ export const insertTripSchema = createInsertSchema(trips).omit({
 });
 
 export const insertTripItemSchema = createInsertSchema(tripItems).omit({
+  id: true
+});
+
+export const insertVehicleTypeSchema = createInsertSchema(vehicleTypes).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertTripEventSchema = createInsertSchema(tripEvents).omit({
+  id: true,
+  addedAt: true
+});
+
+export const insertTripDestinationSchema = createInsertSchema(tripDestinations).omit({
   id: true
 });
 
@@ -853,6 +939,15 @@ export type InsertTrip = z.infer<typeof insertTripSchema>;
 
 export type TripItem = typeof tripItems.$inferSelect;
 export type InsertTripItem = z.infer<typeof insertTripItemSchema>;
+
+export type VehicleType = typeof vehicleTypes.$inferSelect;
+export type InsertVehicleType = z.infer<typeof insertVehicleTypeSchema>;
+
+export type TripEvent = typeof tripEvents.$inferSelect;
+export type InsertTripEvent = z.infer<typeof insertTripEventSchema>;
+
+export type TripDestination = typeof tripDestinations.$inferSelect;
+export type InsertTripDestination = z.infer<typeof insertTripDestinationSchema>;
 
 export type LoadingOrder = typeof loadingOrders.$inferSelect;
 export type InsertLoadingOrder = z.infer<typeof insertLoadingOrderSchema>;
