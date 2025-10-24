@@ -442,40 +442,50 @@ export default function Trips() {
                   data-testid={`card-trip-${trip.id}`}
                 >
                   <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Truck className="h-5 w-5" />
-                        {trip.event?.name || "Trip"}
-                      </CardTitle>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-5 w-5 text-primary" />
+                          <span className="text-lg font-semibold">{trip.event?.name || "Trip"}</span>
+                        </div>
+                        {trip.description && (
+                          <p className="text-sm text-muted-foreground">{trip.description}</p>
+                        )}
+                      </div>
                       <StatusBadge status={trip.status} />
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-xs text-muted-foreground">Tipo de Veículo</p>
                         <p className="text-sm font-medium">{trip.vehicleType?.name || "—"}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Motorista</p>
-                        <p className="text-sm font-medium">{trip.driver?.name || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Carregamento</p>
+                        <p className="text-xs text-muted-foreground">Período de Carregamento</p>
                         <p className="text-sm font-medium">
-                          {trip.loadingStartTime ? format(new Date(trip.loadingStartTime), "dd/MM/yyyy HH:mm") : "—"}
+                          {trip.loadingStartTime && trip.loadingEndTime
+                            ? `${format(new Date(trip.loadingStartTime), "dd/MM HH:mm")} - ${format(new Date(trip.loadingEndTime), "HH:mm")}`
+                            : trip.loadingStartTime
+                            ? format(new Date(trip.loadingStartTime), "dd/MM/yyyy HH:mm")
+                            : "—"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Descarregamento</p>
+                        <p className="text-xs text-muted-foreground">Período de Descarregamento</p>
                         <p className="text-sm font-medium">
-                          {trip.unloadingStartTime ? format(new Date(trip.unloadingStartTime), "dd/MM/yyyy HH:mm") : "—"}
+                          {trip.unloadingStartTime && trip.unloadingEndTime
+                            ? `${format(new Date(trip.unloadingStartTime), "dd/MM HH:mm")} - ${format(new Date(trip.unloadingEndTime), "HH:mm")}`
+                            : trip.unloadingStartTime
+                            ? format(new Date(trip.unloadingStartTime), "dd/MM/yyyy HH:mm")
+                            : "—"}
                         </p>
                       </div>
                     </div>
                     {trip.notes && (
-                      <div className="mt-4">
-                        <p className="text-sm text-muted-foreground">{trip.notes}</p>
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                        <p className="text-sm">{trip.notes}</p>
                       </div>
                     )}
                   </CardContent>
