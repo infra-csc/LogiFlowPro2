@@ -41,6 +41,11 @@ interface TripFilters {
   movementDate?: string;
 }
 
+interface CalendarTripEntry {
+  trip: TripWithRelations;
+  type: "loading" | "unloading";
+}
+
 type ViewMode = "list" | "calendar";
 type SortBy = "loading" | "unloading";
 type CalendarPeriod = "week" | "biweekly";
@@ -160,21 +165,30 @@ export default function Trips() {
 
   // Group trips by date for calendar view
   const tripsByDate = useMemo(() => {
-    const grouped: Record<string, TripWithRelations[]> = {};
+    const grouped: Record<string, CalendarTripEntry[]> = {};
     
     sortedTrips.forEach((trip) => {
-      const relevantDate = sortBy === "loading" ? trip.loadingStartTime : trip.unloadingStartTime;
-      if (!relevantDate) return;
-      
-      const dateKey = format(new Date(relevantDate), "yyyy-MM-dd");
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
+      // Add loading entry
+      if (trip.loadingStartTime) {
+        const loadingDateKey = format(new Date(trip.loadingStartTime), "yyyy-MM-dd");
+        if (!grouped[loadingDateKey]) {
+          grouped[loadingDateKey] = [];
+        }
+        grouped[loadingDateKey].push({ trip, type: "loading" });
       }
-      grouped[dateKey].push(trip);
+      
+      // Add unloading entry
+      if (trip.unloadingStartTime) {
+        const unloadingDateKey = format(new Date(trip.unloadingStartTime), "yyyy-MM-dd");
+        if (!grouped[unloadingDateKey]) {
+          grouped[unloadingDateKey] = [];
+        }
+        grouped[unloadingDateKey].push({ trip, type: "unloading" });
+      }
     });
     
     return grouped;
-  }, [sortedTrips, sortBy]);
+  }, [sortedTrips]);
 
   const handleEdit = (trip: Trip) => {
     setSelectedTrip(trip);
@@ -568,30 +582,25 @@ export default function Trips() {
                         Sem viagens
                       </p>
                     ) : (
-                      dayTrips.map((trip) => (
+                      dayTrips.map((entry, index) => (
                         <div
-                          key={trip.id}
-                          className="p-2 rounded-md bg-card hover-elevate cursor-pointer border space-y-1.5"
-                          onClick={() => handleEdit(trip)}
-                          data-testid={`calendar-trip-${trip.id}`}
+                          key={`${entry.trip.id}-${entry.type}-${index}`}
+                          className="p-2 rounded-md bg-card hover-elevate cursor-pointer border"
+                          onClick={() => handleEdit(entry.trip)}
+                          data-testid={`calendar-trip-${entry.trip.id}-${entry.type}`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="font-medium text-sm line-clamp-2 flex-1">{trip.event?.name}</p>
-                            <StatusBadge status={trip.status} className="text-[10px] px-1.5 py-0.5 h-auto" />
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {trip.loadingStartTime && (
-                              <div className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded">
-                                <ArrowUp className="h-3 w-3" />
-                                <span className="font-medium">{format(new Date(trip.loadingStartTime), "HH:mm")}</span>
-                              </div>
-                            )}
-                            {trip.unloadingStartTime && (
-                              <div className="flex items-center gap-1 bg-secondary/50 text-secondary-foreground px-2 py-0.5 rounded">
-                                <ArrowDown className="h-3 w-3" />
-                                <span className="font-medium">{format(new Date(trip.unloadingStartTime), "HH:mm")}</span>
-                              </div>
-                            )}
+                          <div className="flex items-start gap-3">
+                            <div className={`flex-shrink-0 w-8 h-8 rounded flex items-center justify-center font-bold text-lg ${
+                              entry.type === "loading" 
+                                ? "bg-pink-500/20 text-pink-600 dark:bg-pink-500/30 dark:text-pink-400" 
+                                : "bg-blue-500/20 text-blue-600 dark:bg-blue-500/30 dark:text-blue-400"
+                            }`}>
+                              {entry.type === "loading" ? "C" : "D"}
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <p className="font-medium text-sm line-clamp-2">{entry.trip.event?.name}</p>
+                              <StatusBadge status={entry.trip.status} className="text-[10px] px-1.5 py-0.5 h-auto" />
+                            </div>
                           </div>
                         </div>
                       ))
