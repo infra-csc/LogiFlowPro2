@@ -338,7 +338,7 @@ export default function Trips() {
                 {/* Event Date Filter */}
                 <div className="space-y-2">
                   <Label htmlFor="filter-event-date">Data do Evento</Label>
-                  <div className="relative">
+                  <div className="flex gap-2">
                     <Input
                       id="filter-event-date"
                       type="date"
@@ -349,13 +349,13 @@ export default function Trips() {
                           eventDate: e.target.value || undefined,
                         }))
                       }
+                      className="flex-1"
                       data-testid="input-filter-event-date"
                     />
                     {filters.eventDate && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute right-0 top-0"
                         onClick={() =>
                           setFilters((prev) => ({ ...prev, eventDate: undefined }))
                         }
@@ -370,7 +370,7 @@ export default function Trips() {
                 {/* Movement Date Filter */}
                 <div className="space-y-2">
                   <Label htmlFor="filter-movement-date">Movimentações do Dia</Label>
-                  <div className="relative">
+                  <div className="flex gap-2">
                     <Input
                       id="filter-movement-date"
                       type="date"
@@ -381,13 +381,13 @@ export default function Trips() {
                           movementDate: e.target.value || undefined,
                         }))
                       }
+                      className="flex-1"
                       data-testid="input-filter-movement-date"
                     />
                     {filters.movementDate && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute right-0 top-0"
                         onClick={() =>
                           setFilters((prev) => ({ ...prev, movementDate: undefined }))
                         }
