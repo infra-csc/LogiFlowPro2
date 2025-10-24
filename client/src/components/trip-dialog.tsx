@@ -19,10 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Trip, InsertTrip, Event, Vehicle, Driver, Dock } from "@shared/schema";
+import type { Trip, InsertTrip, Event, VehicleType, Driver, Dock } from "@shared/schema";
 import { format } from "date-fns";
+import { Plus, X, MapPin } from "lucide-react";
 
 interface TripDialogProps {
   open: boolean;
@@ -30,8 +32,15 @@ interface TripDialogProps {
   trip?: Trip;
 }
 
+interface Destination {
+  id: string;
+  location: string;
+  arrivalDateTime: string;
+}
+
 interface TripFormData {
-  vehicleId?: string;
+  eventId?: string;
+  vehicleTypeId?: string;
   driverId?: string;
   dockId?: string;
   loadingDate?: string;
@@ -51,17 +60,21 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<TripFormData>({
-    vehicleId: trip?.vehicleId || "",
-    driverId: trip?.driverId || "",
-    dockId: trip?.dockId || "",
-    status: trip?.status || "planned",
-    notes: trip?.notes || "",
+    eventId: "",
+    vehicleTypeId: "",
+    driverId: "",
+    dockId: "",
+    status: "planned",
+    notes: "",
   });
+
+  const [destinations, setDestinations] = useState<Destination[]>([]);
 
   useEffect(() => {
     if (trip && open) {
       setFormData({
-        vehicleId: trip.vehicleId || "",
+        eventId: trip.eventId || "",
+        vehicleTypeId: trip.vehicleTypeId || "",
         driverId: trip.driverId || "",
         dockId: trip.dockId || "",
         loadingDate: trip.loadingDate ? format(new Date(trip.loadingDate), "yyyy-MM-dd'T'HH:mm") : "",
@@ -76,20 +89,22 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         status: trip.status || "planned",
         notes: trip.notes || "",
       });
+      setDestinations([]);
     } else if (!trip && !open) {
-      // Reset form when closing dialog for creation
       setFormData({
-        vehicleId: "",
+        eventId: "",
+        vehicleTypeId: "",
         driverId: "",
         dockId: "",
         status: "planned",
         notes: "",
       });
+      setDestinations([]);
     }
   }, [trip, open]);
 
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
-  const { data: vehicles } = useQuery<Vehicle[]>({ queryKey: ["/api/vehicles"] });
+  const { data: vehicleTypes } = useQuery<VehicleType[]>({ queryKey: ["/api/vehicle-types"] });
   const { data: drivers } = useQuery<Driver[]>({ queryKey: ["/api/drivers"] });
   const { data: docks } = useQuery<Dock[]>({ queryKey: ["/api/docks"] });
 
@@ -122,16 +137,41 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     },
   });
 
+  const addDestination = () => {
+    setDestinations([
+      ...destinations,
+      {
+        id: crypto.randomUUID(),
+        location: "",
+        arrivalDateTime: "",
+      },
+    ]);
+  };
+
+  const removeDestination = (id: string) => {
+    setDestinations(destinations.filter((d) => d.id !== id));
+  };
+
+  const updateDestination = (id: string, field: keyof Destination, value: string) => {
+    setDestinations(
+      destinations.map((d) => (d.id === id ? { ...d, [field]: value } : d))
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.vehicleId || !formData.driverId) {
-      toast({ description: "Preencha os campos obrigatórios (Veículo e Motorista)", variant: "destructive" });
+    if (!formData.eventId || !formData.vehicleTypeId || !formData.driverId) {
+      toast({ 
+        description: "Preencha os campos obrigatórios (Evento, Tipo de Veículo e Motorista)", 
+        variant: "destructive" 
+      });
       return;
     }
 
     const submitData: any = {
-      vehicleId: formData.vehicleId,
+      eventId: formData.eventId,
+      vehicleTypeId: formData.vehicleTypeId,
       driverId: formData.driverId,
       dockId: formData.dockId || null,
       loadingDate: formData.loadingDate ? new Date(formData.loadingDate) : null,
@@ -165,23 +205,46 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Seção: Veículo e Motorista */}
+          {/* Seção: Evento */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium border-b pb-2">Evento</h3>
+            <div className="space-y-2">
+              <Label htmlFor="eventId">Evento *</Label>
+              <Select 
+                value={formData.eventId}
+                onValueChange={(value) => setFormData({ ...formData, eventId: value })}
+              >
+                <SelectTrigger data-testid="select-event">
+                  <SelectValue placeholder="Selecione um evento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {events?.map((event) => (
+                    <SelectItem key={event.id} value={event.id.toString()}>
+                      {event.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Seção: Tipo de Veículo e Motorista */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium border-b pb-2">Veículo e Motorista</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="vehicleId">Veículo *</Label>
+                <Label htmlFor="vehicleTypeId">Tipo de Veículo *</Label>
                 <Select 
-                  value={formData.vehicleId}
-                  onValueChange={(value) => setFormData({ ...formData, vehicleId: value })}
+                  value={formData.vehicleTypeId}
+                  onValueChange={(value) => setFormData({ ...formData, vehicleTypeId: value })}
                 >
-                  <SelectTrigger data-testid="select-vehicle">
-                    <SelectValue placeholder="Selecione um veículo" />
+                  <SelectTrigger data-testid="select-vehicle-type">
+                    <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {vehicles?.map((vehicle) => (
-                      <SelectItem key={vehicle.id} value={vehicle.id}>
-                        {vehicle.plate} - {vehicle.type}
+                    {vehicleTypes?.map((type) => (
+                      <SelectItem key={type.id} value={type.id.toString()}>
+                        {type.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -227,6 +290,87 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Seção: Destinos */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b pb-2">
+              <h3 className="text-sm font-medium">Destinos</h3>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={addDestination}
+                data-testid="button-add-destination"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Incluir Destino
+              </Button>
+            </div>
+
+            {destinations.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                Nenhum destino adicionado. Clique em "Incluir Destino" para adicionar.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {destinations.map((destination, index) => (
+                  <Card key={destination.id} data-testid={`card-destination-${index}`}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Destino {index + 1}</span>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor={`destination-location-${destination.id}`}>
+                              Endereço
+                            </Label>
+                            <Input
+                              id={`destination-location-${destination.id}`}
+                              value={destination.location}
+                              onChange={(e) =>
+                                updateDestination(destination.id, "location", e.target.value)
+                              }
+                              placeholder="Ex: Rua ABC, 123 - Bairro"
+                              data-testid={`input-destination-location-${index}`}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`destination-arrival-${destination.id}`}>
+                              Data e Horário de Chegada
+                            </Label>
+                            <Input
+                              id={`destination-arrival-${destination.id}`}
+                              type="datetime-local"
+                              value={destination.arrivalDateTime}
+                              onChange={(e) =>
+                                updateDestination(destination.id, "arrivalDateTime", e.target.value)
+                              }
+                              data-testid={`input-destination-arrival-${index}`}
+                            />
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeDestination(destination.id)}
+                          data-testid={`button-remove-destination-${index}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Seção: Carregamento */}

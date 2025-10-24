@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { format, startOfDay, endOfDay, parseISO } from "date-fns";
-import type { Trip, Event, Vehicle, Driver } from "@shared/schema";
+import type { Trip, Event, Vehicle, VehicleType, Driver } from "@shared/schema";
 import { TripDialog } from "@/components/trip-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import {
 interface TripWithRelations extends Trip {
   event?: Event;
   vehicle?: Vehicle;
+  vehicleType?: VehicleType;
   driver?: Driver;
 }
 
@@ -72,7 +73,7 @@ export default function Trips() {
       }
 
       // Filter by event
-      if (filters.eventId && trip.eventId !== parseInt(filters.eventId)) {
+      if (filters.eventId && trip.eventId !== filters.eventId) {
         return false;
       }
 
@@ -320,8 +321,8 @@ export default function Trips() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground">Veículo</p>
-                    <p className="text-sm font-medium">{trip.vehicle?.plate || "—"}</p>
+                    <p className="text-xs text-muted-foreground">Tipo de Veículo</p>
+                    <p className="text-sm font-medium">{trip.vehicleType?.name || "—"}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Motorista</p>

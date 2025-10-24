@@ -631,7 +631,16 @@ export class DatabaseStorage implements IStorage {
 
   // Trips
   async getTrips(): Promise<Trip[]> {
-    return await db.select().from(trips).orderBy(desc(trips.createdAt));
+    return await db.query.trips.findMany({
+      with: {
+        event: true,
+        vehicle: true,
+        vehicleType: true,
+        driver: true,
+        dock: true
+      },
+      orderBy: (trips, { desc }) => [desc(trips.createdAt)]
+    });
   }
 
   async getTrip(id: string): Promise<Trip | undefined> {

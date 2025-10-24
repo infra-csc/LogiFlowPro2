@@ -311,8 +311,9 @@ export const docks = pgTable("docks", {
 // Trips table (Planejamento de Transporte)
 export const trips = pgTable("trips", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  eventId: varchar("event_id").references(() => events.id, { onDelete: "cascade" }), // Nullable agora
-  vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id),
+  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id), // Opcional agora
+  vehicleTypeId: varchar("vehicle_type_id").notNull().references(() => vehicleTypes.id),
   driverId: varchar("driver_id").notNull().references(() => drivers.id),
   dockId: varchar("dock_id").references(() => docks.id),
   
@@ -552,7 +553,8 @@ export const requestItemsRelations = relations(requestItems, ({ one }) => ({
 }));
 
 export const vehicleTypesRelations = relations(vehicleTypes, ({ many }) => ({
-  vehicles: many(vehicles)
+  vehicles: many(vehicles),
+  trips: many(trips)
 }));
 
 export const tripsRelations = relations(trips, ({ one, many }) => ({
@@ -563,6 +565,10 @@ export const tripsRelations = relations(trips, ({ one, many }) => ({
   vehicle: one(vehicles, {
     fields: [trips.vehicleId],
     references: [vehicles.id]
+  }),
+  vehicleType: one(vehicleTypes, {
+    fields: [trips.vehicleTypeId],
+    references: [vehicleTypes.id]
   }),
   driver: one(drivers, {
     fields: [trips.driverId],
