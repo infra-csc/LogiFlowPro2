@@ -83,7 +83,7 @@ export default function StockSimulation() {
   const [filters, setFilters] = useState<SimulationFilters>({
     eventIds: [],
     requestIds: [],
-    requestStatus: ['approved', 'submitted'],
+    requestStatus: ['approved', 'pending_approval'],
   });
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
@@ -103,10 +103,10 @@ export default function StockSimulation() {
 
   // Run simulation
   const runSimulation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", "/api/reports/stock-simulation", filters);
+    mutationFn: async (): Promise<SimulationResult> => {
+      return await apiRequest("POST", "/api/reports/stock-simulation", filters) as unknown as SimulationResult;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: SimulationResult) => {
       setSimulation(data);
       toast({
         title: "Simulação concluída",
@@ -181,9 +181,9 @@ export default function StockSimulation() {
       productsData.push([
         p.productSku,
         p.productName,
-        p.totalNeed,
-        p.currentStock,
-        p.balance,
+        p.totalNeed.toString(),
+        p.currentStock.toString(),
+        p.balance.toString(),
         p.status,
         p.unit
       ]);
@@ -202,7 +202,7 @@ export default function StockSimulation() {
           p.productName,
           e.eventName,
           new Date(e.eventDate).toLocaleDateString("pt-BR"),
-          e.quantity
+          e.quantity.toString()
         ]);
       });
     });
@@ -326,22 +326,27 @@ export default function StockSimulation() {
             <div className="space-y-2">
               <Label>Status das Requisições</Label>
               <div className="space-y-2">
-                {['draft', 'submitted', 'approved', 'rejected'].map(status => (
-                  <div key={status} className="flex items-center space-x-2">
+                {[
+                  { value: 'draft', label: 'Rascunho' },
+                  { value: 'pending_approval', label: 'Aguardando Aprovação' },
+                  { value: 'approved', label: 'Aprovado' },
+                  { value: 'rejected', label: 'Rejeitado' }
+                ].map(({ value, label }) => (
+                  <div key={value} className="flex items-center space-x-2">
                     <Checkbox
-                      id={`status-${status}`}
-                      checked={filters.requestStatus.includes(status)}
+                      id={`status-${value}`}
+                      checked={filters.requestStatus.includes(value)}
                       onCheckedChange={(checked) => {
                         setFilters(prev => ({
                           ...prev,
                           requestStatus: checked
-                            ? [...prev.requestStatus, status]
-                            : prev.requestStatus.filter(s => s !== status)
+                            ? [...prev.requestStatus, value]
+                            : prev.requestStatus.filter(s => s !== value)
                         }));
                       }}
                     />
-                    <label htmlFor={`status-${status}`} className="text-sm capitalize">
-                      {status}
+                    <label htmlFor={`status-${value}`} className="text-sm">
+                      {label}
                     </label>
                   </div>
                 ))}

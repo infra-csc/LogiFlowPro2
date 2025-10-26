@@ -57,7 +57,7 @@ export function registerReportsRoutes(app: Express) {
         requestIds,
         startDate,
         endDate,
-        requestStatus = ['approved', 'submitted']
+        requestStatus = ['approved', 'pending_approval']
       } = params;
 
       // Build query conditions
@@ -151,12 +151,6 @@ export function registerReportsRoutes(app: Express) {
       const productIds = Array.from(productIdsSet);
 
       // Get product details with stock levels
-      const productConditions: any[] = [inArray(products.id, productIds)];
-      
-      if (params.productCategory) {
-        productConditions.push(eq(products.category, params.productCategory));
-      }
-      
       const productsData = await db
         .select({
           id: products.id,
@@ -167,7 +161,7 @@ export function registerReportsRoutes(app: Express) {
           minimumStock: products.minimumStock,
         })
         .from(products)
-        .where(and(...productConditions));
+        .where(inArray(products.id, productIds));
 
       const productsMap = new Map(productsData.map(p => [p.id, p]));
 

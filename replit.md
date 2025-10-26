@@ -31,6 +31,7 @@ Preferred communication style: Simple, everyday language.
 - **Notification System**: Comprehensive system with @mention support in comments, in-app notifications with unread count indicator, notification preferences panel for email settings, and dashboard display. Supports mark-as-read functionality and real-time updates.
 - **Transport Planning**: Overhauled system with vehicle type management, detailed trip planning with multiple destinations, and a dual-view display (list and calendar/agenda view) for trips. Calendar view categorizes trips by loading and unloading dates with distinct visual indicators.
 - **AI-Powered Optimization**: Advanced optimization system for vehicle loading and route planning. Vehicle loading optimization uses 3D bin packing algorithms (First-Fit Decreasing Height strategy) to maximize space utilization and weight distribution. Route optimization employs nearest neighbor heuristic for multi-stop trip planning with distance, duration, and fuel estimates. Features optimization run tracking, confidence scoring, warnings, recommendations, and detailed loading sequences with layer-based positioning.
+- **Reports Module - Stock Simulation**: Comprehensive stock simulation system for proactive shortage identification. Aggregates material needs from multiple events and material requests, compares against current inventory levels, and identifies potential shortages before event execution. Features multi-select filters (events, requests, date range, status), status classification (FALTA/CRÍTICO/ADEQUADO), drill-down by event breakdown, Excel export with multiple worksheets, and real-time search/filtering capabilities.
 
 ## External Dependencies
 
@@ -41,3 +42,4 @@ Preferred communication style: Simple, everyday language.
 - **Styling**: Tailwind CSS, PostCSS, class-variance-authority, clsx, tailwind-merge.
 - **Authentication**: Passport.js, express-session, connect-pg-simple, bcrypt.
 - **Object Storage**: Replit Object Storage (Google Cloud Storage).
+- **Excel Export**: SheetJS (xlsx) for multi-worksheet Excel report generation.
