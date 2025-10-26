@@ -1160,3 +1160,165 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
+
+// AI Optimization System
+
+// Optimization type enum
+export const optimizationTypeEnum = pgEnum("optimization_type", [
+  "vehicle_loading",
+  "route_planning",
+  "combined"
+]);
+
+// Optimization status enum  
+export const optimizationStatusEnum = pgEnum("optimization_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+  "applied"
+]);
+
+// Optimization Runs table - tracks each optimization request
+export const optimizationRuns = pgTable("optimization_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: optimizationTypeEnum("type").notNull(),
+  status: optimizationStatusEnum("status").notNull().default("pending"),
+  loadingOrderId: varchar("loading_order_id").references(() => loadingOrders.id),
+  tripId: varchar("trip_id").references(() => trips.id),
+  requestedBy: varchar("requested_by").notNull().references(() => users.id),
+  inputParams: jsonb("input_params").$type<{
+    productIds?: string[];
+    vehicleTypeId?: string;
+    destinations?: Array<{location: string; arrivalDateTime: string}>;
+    constraints?: Record<string, any>;
+  }>(),
+  executionTimeMs: integer("execution_time_ms"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  completedAt: timestamp("completed_at")
+});
+
+// Loading Optimizations table - stores vehicle loading suggestions
+export const loadingOptimizations = pgTable("loading_optimizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  optimizationRunId: varchar("optimization_run_id").notNull().references(() => optimizationRuns.id, { onDelete: "cascade" }),
+  loadingOrderId: varchar("loading_order_id").notNull().references(() => loadingOrders.id),
+  vehicleTypeId: varchar("vehicle_type_id").notNull().references(() => vehicleTypes.id),
+  confidenceScore: decimal("confidence_score", { precision: 5, scale: 2 }).notNull(), // 0-100
+  utilizationPercentage: decimal("utilization_percentage", { precision: 5, scale: 2 }).notNull(),
+  weightDistributionScore: decimal("weight_distribution_score", { precision: 5, scale: 2 }),
+  loadingSequence: jsonb("loading_sequence").$type<Array<{
+    productId: string;
+    productName: string;
+    quantity: number;
+    position: {x: number; y: number; z: number};
+    dimensions: {length: number; width: number; height: number};
+    weight: number;
+    layer: number;
+  }>>().notNull(),
+  warnings: text("warnings").array(),
+  recommendations: text("recommendations").array(),
+  estimatedLoadingTimeMinutes: integer("estimated_loading_time_minutes"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
+// Route Optimizations table - stores route planning suggestions
+export const routeOptimizations = pgTable("route_optimizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  optimizationRunId: varchar("optimization_run_id").notNull().references(() => optimizationRuns.id, { onDelete: "cascade" }),
+  tripId: varchar("trip_id").references(() => trips.id),
+  confidenceScore: decimal("confidence_score", { precision: 5, scale: 2 }).notNull(),
+  totalDistanceKm: decimal("total_distance_km", { precision: 10, scale: 2 }),
+  estimatedDurationMinutes: integer("estimated_duration_minutes"),
+  fuelEstimateLiters: decimal("fuel_estimate_liters", { precision: 10, scale: 2 }),
+  optimizedRoute: jsonb("optimized_route").$type<Array<{
+    order: number;
+    location: string;
+    arrivalTime: string;
+    departureTime?: string;
+    distanceFromPrevious: number;
+    durationFromPrevious: number;
+    instructions?: string;
+  }>>().notNull(),
+  alternativeRoutes: jsonb("alternative_routes").$type<Array<{
+    name: string;
+    totalDistanceKm: number;
+    estimatedDurationMinutes: number;
+    route: Array<{location: string; arrivalTime: string}>;
+  }>>(),
+  warnings: text("warnings").array(),
+  recommendations: text("recommendations").array(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
+// Relations for optimization tables
+export const optimizationRunsRelations = relations(optimizationRuns, ({ one, many }) => ({
+  loadingOrder: one(loadingOrders, {
+    fields: [optimizationRuns.loadingOrderId],
+    references: [loadingOrders.id]
+  }),
+  trip: one(trips, {
+    fields: [optimizationRuns.tripId],
+    references: [trips.id]
+  }),
+  requestedByUser: one(users, {
+    fields: [optimizationRuns.requestedBy],
+    references: [users.id]
+  }),
+  loadingOptimizations: many(loadingOptimizations),
+  routeOptimizations: many(routeOptimizations)
+}));
+
+export const loadingOptimizationsRelations = relations(loadingOptimizations, ({ one }) => ({
+  optimizationRun: one(optimizationRuns, {
+    fields: [loadingOptimizations.optimizationRunId],
+    references: [optimizationRuns.id]
+  }),
+  loadingOrder: one(loadingOrders, {
+    fields: [loadingOptimizations.loadingOrderId],
+    references: [loadingOrders.id]
+  }),
+  vehicleType: one(vehicleTypes, {
+    fields: [loadingOptimizations.vehicleTypeId],
+    references: [vehicleTypes.id]
+  })
+}));
+
+export const routeOptimizationsRelations = relations(routeOptimizations, ({ one }) => ({
+  optimizationRun: one(optimizationRuns, {
+    fields: [routeOptimizations.optimizationRunId],
+    references: [optimizationRuns.id]
+  }),
+  trip: one(trips, {
+    fields: [routeOptimizations.tripId],
+    references: [trips.id]
+  })
+}));
+
+// Insert schemas
+export const insertOptimizationRunSchema = createInsertSchema(optimizationRuns).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true
+});
+
+export const insertLoadingOptimizationSchema = createInsertSchema(loadingOptimizations).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertRouteOptimizationSchema = createInsertSchema(routeOptimizations).omit({
+  id: true,
+  createdAt: true
+});
+
+// Types
+export type OptimizationRun = typeof optimizationRuns.$inferSelect;
+export type InsertOptimizationRun = z.infer<typeof insertOptimizationRunSchema>;
+
+export type LoadingOptimization = typeof loadingOptimizations.$inferSelect;
+export type InsertLoadingOptimization = z.infer<typeof insertLoadingOptimizationSchema>;
+
+export type RouteOptimization = typeof routeOptimizations.$inferSelect;
+export type InsertRouteOptimization = z.infer<typeof insertRouteOptimizationSchema>;
