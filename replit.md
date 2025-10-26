@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 - **Event Enhancements**: Events include `sku`, `requestWindowStart`, and `requestWindowEnd` fields to control material requisition periods.
 - **Notification System**: Comprehensive system with @mention support in comments, in-app notifications with unread count indicator, notification preferences panel for email settings, and dashboard display. Supports mark-as-read functionality and real-time updates.
 - **Transport Planning**: Overhauled system with vehicle type management, detailed trip planning with multiple destinations, and a dual-view display (list and calendar/agenda view) for trips. Calendar view categorizes trips by loading and unloading dates with distinct visual indicators.
+- **AI-Powered Optimization**: Advanced optimization system for vehicle loading and route planning. Vehicle loading optimization uses 3D bin packing algorithms (First-Fit Decreasing Height strategy) to maximize space utilization and weight distribution. Route optimization employs nearest neighbor heuristic for multi-stop trip planning with distance, duration, and fuel estimates. Features optimization run tracking, confidence scoring, warnings, recommendations, and detailed loading sequences with layer-based positioning.
 
 ## External Dependencies
 
