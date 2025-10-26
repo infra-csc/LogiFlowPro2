@@ -373,32 +373,32 @@ export default function StockSimulation() {
 
         {/* Results Panel */}
         <div className="lg:col-span-2 space-y-4">
-          {simulation && (
+          {simulation && simulation.summary && (
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="pb-3">
                     <CardDescription>Total Analisado</CardDescription>
-                    <CardTitle className="text-3xl">{simulation.summary.totalProducts}</CardTitle>
+                    <CardTitle className="text-3xl">{simulation.summary?.totalProducts || 0}</CardTitle>
                   </CardHeader>
                 </Card>
                 <Card className="border-red-200 dark:border-red-900">
                   <CardHeader className="pb-3">
                     <CardDescription>Em Falta</CardDescription>
-                    <CardTitle className="text-3xl text-red-600">{simulation.summary.productsShortage}</CardTitle>
+                    <CardTitle className="text-3xl text-red-600">{simulation.summary?.productsShortage || 0}</CardTitle>
                   </CardHeader>
                 </Card>
                 <Card className="border-orange-200 dark:border-orange-900">
                   <CardHeader className="pb-3">
                     <CardDescription>Crítico</CardDescription>
-                    <CardTitle className="text-3xl text-orange-600">{simulation.summary.productsCritical}</CardTitle>
+                    <CardTitle className="text-3xl text-orange-600">{simulation.summary?.productsCritical || 0}</CardTitle>
                   </CardHeader>
                 </Card>
                 <Card className="border-green-200 dark:border-green-900">
                   <CardHeader className="pb-3">
                     <CardDescription>Adequado</CardDescription>
-                    <CardTitle className="text-3xl text-green-600">{simulation.summary.productsAdequate}</CardTitle>
+                    <CardTitle className="text-3xl text-green-600">{simulation.summary?.productsAdequate || 0}</CardTitle>
                   </CardHeader>
                 </Card>
               </div>
