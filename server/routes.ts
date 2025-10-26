@@ -6,6 +6,7 @@ import { setupAuth } from "./auth";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { registerOptimizationRoutes } from "./routes-optimization";
+import { registerReportsRoutes } from "./routes-reports";
 import {
   insertEventSchema,
   insertKitSchema,
@@ -1923,6 +1924,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register AI Optimization routes
   registerOptimizationRoutes(app);
+
+  // Register Reports routes
+  registerReportsRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

@@ -18,7 +18,8 @@ import {
   LogOut,
   CheckSquare,
   Upload,
-  Bell
+  Bell,
+  BarChart3
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -125,6 +126,14 @@ const productItems = [
     title: "Upload em Lote",
     url: "/products/upload",
     icon: Upload,
+  },
+];
+
+const reportItems = [
+  {
+    title: "Simulação de Estoque",
+    url: "/reports/stock-simulation",
+    icon: BarChart3,
   },
 ];
 
@@ -312,6 +321,28 @@ export function AppSidebar() {
                   </CollapsibleContent>
                 </SidebarMenuItem>
               </Collapsible>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Relatórios</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {reportItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={location === item.url}
+                    data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

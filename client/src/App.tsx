@@ -37,6 +37,7 @@ import ApprovalDetail from "@/pages/approval-detail";
 import Docks from "@/pages/docks";
 import VehicleTypes from "@/pages/vehicle-types";
 import NotificationSettingsPage from "@/pages/notification-settings";
+import StockSimulation from "@/pages/stock-simulation";
 
 function Router() {
   return (
@@ -70,6 +71,7 @@ function Router() {
       <ProtectedRoute path="/config/drivers" component={Config} />
       <ProtectedRoute path="/config/docks" component={Docks} />
       <ProtectedRoute path="/notification-settings" component={NotificationSettingsPage} />
+      <ProtectedRoute path="/reports/stock-simulation" component={StockSimulation} />
       <Route component={NotFound} />
     </Switch>
   );
