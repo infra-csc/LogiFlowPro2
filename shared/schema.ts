@@ -508,6 +508,65 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 
+// Notification System
+
+// Entity types that support comments
+export const commentEntityTypeEnum = pgEnum("comment_entity_type", [
+  "event",
+  "material_request",
+  "trip",
+  "loading_order",
+  "movement"
+]);
+
+// Notification types
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "mention",
+  "comment_reply",
+  "status_change",
+  "approval_request"
+]);
+
+// Comments table
+export const comments = pgTable("comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityType: commentEntityTypeEnum("entity_type").notNull(),
+  entityId: varchar("entity_id").notNull(),
+  content: text("content").notNull(),
+  mentions: text("mentions").array().default(sql`'{}'::text[]`), // Array of user IDs mentioned
+  authorId: varchar("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  entityType: commentEntityTypeEnum("entity_type"),
+  entityId: varchar("entity_id"),
+  commentId: varchar("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+  actionUrl: text("action_url"),
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
+// Notification settings
+export const notificationSettings = pgTable("notification_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  emailOnMention: boolean("email_on_mention").notNull().default(true),
+  emailOnCommentReply: boolean("email_on_comment_reply").notNull().default(false),
+  emailOnStatusChange: boolean("email_on_status_change").notNull().default(false),
+  emailOnApprovalRequest: boolean("email_on_approval_request").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
 // Relations
 export const eventsRelations = relations(events, ({ many }) => ({
   materialRequests: many(materialRequests),
@@ -737,8 +796,40 @@ export const docksRelations = relations(docks, ({ many }) => ({
   trips: many(trips)
 }));
 
-export const usersRelations = relations(users, ({ many }) => ({
-  userRoles: many(userRoles)
+export const usersRelations = relations(users, ({ many, one }) => ({
+  userRoles: many(userRoles),
+  comments: many(comments),
+  notifications: many(notifications),
+  notificationSettings: one(notificationSettings, {
+    fields: [users.id],
+    references: [notificationSettings.userId]
+  })
+}));
+
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+  author: one(users, {
+    fields: [comments.authorId],
+    references: [users.id]
+  }),
+  notifications: many(notifications)
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id]
+  }),
+  comment: one(comments, {
+    fields: [notifications.commentId],
+    references: [comments.id]
+  })
+}));
+
+export const notificationSettingsRelations = relations(notificationSettings, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationSettings.userId],
+    references: [users.id]
+  })
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({
@@ -953,6 +1044,23 @@ export const insertRolePermissionSchema = createInsertSchema(rolePermissions).om
   id: true
 });
 
+export const insertCommentSchema = createInsertSchema(comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertNotificationSettingsSchema = createInsertSchema(notificationSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 // TypeScript types
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
@@ -1043,3 +1151,12 @@ export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
 
 export type RolePermission = typeof rolePermissions.$inferSelect;
 export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type NotificationSettings = typeof notificationSettings.$inferSelect;
+export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
