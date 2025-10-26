@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { registerOptimizationRoutes } from "./routes-optimization";
 import {
   insertEventSchema,
   insertKitSchema,
@@ -1919,6 +1920,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch users" });
     }
   });
+
+  // Register AI Optimization routes
+  registerOptimizationRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
