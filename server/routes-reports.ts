@@ -122,6 +122,18 @@ export function registerReportsRoutes(app: Express) {
       const eventIdsSet = new Set<string>();
       requests.forEach(r => eventIdsSet.add(r.eventId));
       const eventIdsList = Array.from(eventIdsSet);
+      
+      // Build event filter conditions
+      const eventConditions: any[] = [inArray(events.id, eventIdsList)];
+      
+      if (startDate) {
+        eventConditions.push(gte(events.eventDate, new Date(startDate)));
+      }
+      
+      if (endDate) {
+        eventConditions.push(lte(events.eventDate, new Date(endDate)));
+      }
+      
       const eventsData = await db
         .select({
           id: events.id,
@@ -129,7 +141,7 @@ export function registerReportsRoutes(app: Express) {
           eventDate: events.eventDate,
         })
         .from(events)
-        .where(inArray(events.id, eventIdsList));
+        .where(and(...eventConditions));
 
       const eventsMap = new Map(eventsData.map(e => [e.id, e]));
 
@@ -139,6 +151,12 @@ export function registerReportsRoutes(app: Express) {
       const productIds = Array.from(productIdsSet);
 
       // Get product details with stock levels
+      const productConditions: any[] = [inArray(products.id, productIds)];
+      
+      if (params.productCategory) {
+        productConditions.push(eq(products.category, params.productCategory));
+      }
+      
       const productsData = await db
         .select({
           id: products.id,
@@ -149,7 +167,7 @@ export function registerReportsRoutes(app: Express) {
           minimumStock: products.minimumStock,
         })
         .from(products)
-        .where(inArray(products.id, productIds));
+        .where(and(...productConditions));
 
       const productsMap = new Map(productsData.map(p => [p.id, p]));
 
@@ -172,7 +190,12 @@ export function registerReportsRoutes(app: Express) {
         if (!request) continue;
 
         const event = eventsMap.get(request.eventId);
+        // Skip if event was filtered out by date range
         if (!event) continue;
+        
+        // Skip if product was filtered out by category
+        const product = productsMap.get(item.productId);
+        if (!product) continue;
 
         // Determine quantity to use based on approval status
         let quantityToUse = 0;
