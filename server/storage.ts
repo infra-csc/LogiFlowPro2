@@ -33,6 +33,9 @@ import {
   permissions,
   userRoles,
   rolePermissions,
+  comments,
+  notifications,
+  notificationSettings,
   type Event,
   type InsertEvent,
   type Kit,
@@ -90,6 +93,12 @@ import {
   type InsertUserRole,
   type RolePermission,
   type InsertRolePermission,
+  type Comment,
+  type InsertComment,
+  type Notification,
+  type InsertNotification,
+  type NotificationSettings,
+  type InsertNotificationSettings,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -261,6 +270,24 @@ export interface IStorage {
   assignRolePermission(rolePermission: InsertRolePermission): Promise<RolePermission>;
   updateRolePermission(id: string, rolePermission: Partial<InsertRolePermission>): Promise<RolePermission>;
   removeRolePermission(roleId: string, permissionId: string): Promise<void>;
+  
+  // Comments
+  getComments(entityType: string, entityId: string): Promise<Comment[]>;
+  getComment(id: string): Promise<Comment | undefined>;
+  createComment(comment: InsertComment): Promise<Comment>;
+  
+  // Notifications
+  getNotifications(userId: string): Promise<Notification[]>;
+  getUnreadNotifications(userId: string): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: string): Promise<Notification>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  
+  // Notification Settings
+  getNotificationSettings(userId: string): Promise<NotificationSettings | undefined>;
+  createNotificationSettings(settings: InsertNotificationSettings): Promise<NotificationSettings>;
+  updateNotificationSettings(userId: string, settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1149,6 +1176,112 @@ export class DatabaseStorage implements IStorage {
     await db.delete(rolePermissions).where(
       and(eq(rolePermissions.roleId, roleId), eq(rolePermissions.permissionId, permissionId))
     );
+  }
+
+  // Comments
+  async getComments(entityType: string, entityId: string): Promise<Comment[]> {
+    return await db.query.comments.findMany({
+      where: and(
+        eq(comments.entityType, entityType as any),
+        eq(comments.entityId, entityId)
+      ),
+      with: {
+        author: true
+      },
+      orderBy: [desc(comments.createdAt)]
+    });
+  }
+
+  async getComment(id: string): Promise<Comment | undefined> {
+    const comment = await db.query.comments.findFirst({
+      where: eq(comments.id, id),
+      with: {
+        author: true
+      }
+    });
+    return comment || undefined;
+  }
+
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [created] = await db.insert(comments).values(comment).returning();
+    return created;
+  }
+
+  // Notifications
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return await db.select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotifications(userId: string): Promise<Notification[]> {
+    return await db.select()
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      )
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      );
+    return result[0]?.count || 0;
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async markNotificationAsRead(id: string): Promise<Notification> {
+    const [updated] = await db.update(notifications)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(notifications.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true, readAt: new Date() })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      );
+  }
+
+  // Notification Settings
+  async getNotificationSettings(userId: string): Promise<NotificationSettings | undefined> {
+    const [settings] = await db.select()
+      .from(notificationSettings)
+      .where(eq(notificationSettings.userId, userId));
+    return settings || undefined;
+  }
+
+  async createNotificationSettings(settings: InsertNotificationSettings): Promise<NotificationSettings> {
+    const [created] = await db.insert(notificationSettings).values(settings).returning();
+    return created;
+  }
+
+  async updateNotificationSettings(userId: string, settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings> {
+    const [updated] = await db.update(notificationSettings)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(notificationSettings.userId, userId))
+      .returning();
+    return updated;
   }
 }
 
