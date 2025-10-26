@@ -31,6 +31,9 @@ import {
   insertPermissionSchema,
   insertUserRoleSchema,
   insertRolePermissionSchema,
+  insertCommentSchema,
+  insertNotificationSchema,
+  insertNotificationSettingsSchema,
   movements,
 } from "@shared/schema";
 import {
@@ -1647,6 +1650,274 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting kit image:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Comments
+  // Get comments for an entity
+  app.get("/api/comments/:entityType/:entityId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { entityType, entityId } = req.params;
+      const comments = await storage.getComments(entityType, entityId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
+  // Create a comment with @mentions
+  app.post("/api/comments", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = req.user as any;
+      const data = insertCommentSchema.parse(req.body);
+
+      // Parse @mentions from content (format: @username)
+      const mentionRegex = /@(\w+)/g;
+      const mentionedUsernames = [...new Set(
+        Array.from(data.content.matchAll(mentionRegex)).map(match => match[1])
+      )];
+
+      // Get mentioned users
+      const mentionedUserIds: string[] = [];
+      for (const username of mentionedUsernames) {
+        const mentionedUser = await storage.getUserByUsername(username);
+        if (mentionedUser) {
+          mentionedUserIds.push(mentionedUser.id);
+        }
+      }
+
+      // Create comment
+      const comment = await storage.createComment({
+        ...data,
+        authorId: user.id,
+        mentions: mentionedUserIds,
+      });
+
+      // Create notifications for mentioned users
+      for (const mentionedUserId of mentionedUserIds) {
+        const mentionedUser = await storage.getUser(mentionedUserId);
+        if (!mentionedUser) continue;
+
+        // Build action URL based on entity type
+        let actionUrl = "";
+        let entityName = "";
+        
+        switch (data.entityType) {
+          case "event":
+            actionUrl = `/events/${data.entityId}`;
+            const event = await storage.getEvent(data.entityId);
+            entityName = event?.name || "evento";
+            break;
+          case "material_request":
+            actionUrl = `/requests/${data.entityId}`;
+            entityName = "requisição de material";
+            break;
+          case "trip":
+            actionUrl = `/trips/${data.entityId}`;
+            const trip = await storage.getTrip(data.entityId);
+            entityName = trip?.description || "viagem";
+            break;
+          case "loading_order":
+            actionUrl = `/loading-orders/${data.entityId}`;
+            entityName = "ordem de carregamento";
+            break;
+          case "movement":
+            actionUrl = `/movements/${data.entityId}`;
+            const movement = await storage.getMovement(data.entityId);
+            entityName = movement?.name || "movimentação";
+            break;
+        }
+
+        // Create notification
+        await storage.createNotification({
+          userId: mentionedUserId,
+          type: "mention",
+          title: `${user.name} mencionou você`,
+          message: `${user.name} mencionou você em um comentário em ${entityName}`,
+          entityType: data.entityType as any,
+          entityId: data.entityId,
+          commentId: comment.id,
+          actionUrl,
+        });
+      }
+
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  // Notifications
+  // Get all notifications for current user
+  app.get("/api/notifications", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = req.user as any;
+      const notifications = await storage.getNotifications(user.id);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Get unread notifications for current user
+  app.get("/api/notifications/unread", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = req.user as any;
+      const notifications = await storage.getUnreadNotifications(user.id);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching unread notifications:", error);
+      res.status(500).json({ error: "Failed to fetch unread notifications" });
+    }
+  });
+
+  // Get unread notification count
+  app.get("/api/notifications/unread/count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = req.user as any;
+      const count = await storage.getUnreadNotificationCount(user.id);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread notification count:", error);
+      res.status(500).json({ error: "Failed to fetch unread notification count" });
+    }
+  });
+
+  // Mark notification as read
+  app.post("/api/notifications/:id/read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const notification = await storage.markNotificationAsRead(req.params.id);
+      res.json(notification);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.post("/api/notifications/read-all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = req.user as any;
+      await storage.markAllNotificationsAsRead(user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Notification Settings
+  // Get notification settings for current user
+  app.get("/api/notification-settings", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = req.user as any;
+      let settings = await storage.getNotificationSettings(user.id);
+      
+      // Create default settings if they don't exist
+      if (!settings) {
+        settings = await storage.createNotificationSettings({
+          userId: user.id,
+          emailOnMention: true,
+          emailOnCommentReply: false,
+          emailOnStatusChange: false,
+          emailOnApprovalRequest: true,
+        });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching notification settings:", error);
+      res.status(500).json({ error: "Failed to fetch notification settings" });
+    }
+  });
+
+  // Update notification settings
+  app.patch("/api/notification-settings", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = req.user as any;
+      const data = insertNotificationSettingsSchema.partial().parse(req.body);
+      
+      // Check if settings exist
+      let settings = await storage.getNotificationSettings(user.id);
+      
+      if (!settings) {
+        // Create new settings if they don't exist
+        settings = await storage.createNotificationSettings({
+          userId: user.id,
+          emailOnMention: data.emailOnMention ?? true,
+          emailOnCommentReply: data.emailOnCommentReply ?? false,
+          emailOnStatusChange: data.emailOnStatusChange ?? false,
+          emailOnApprovalRequest: data.emailOnApprovalRequest ?? true,
+        });
+      } else {
+        // Update existing settings
+        settings = await storage.updateNotificationSettings(user.id, data);
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      res.status(500).json({ error: "Failed to update notification settings" });
+    }
+  });
+
+  // Get all users for @mention autocomplete
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const users = await storage.getUsers();
+      // Return only necessary fields for autocomplete
+      const simplifiedUsers = users.map(u => ({
+        id: u.id,
+        username: u.username,
+        name: u.name,
+      }));
+      res.json(simplifiedUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
     }
   });
 
