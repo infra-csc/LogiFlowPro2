@@ -104,7 +104,8 @@ export default function StockSimulation() {
   // Run simulation
   const runSimulation = useMutation({
     mutationFn: async (): Promise<SimulationResult> => {
-      return await apiRequest("POST", "/api/reports/stock-simulation", filters) as unknown as SimulationResult;
+      const response = await apiRequest("POST", "/api/reports/stock-simulation", filters);
+      return await response.json() as SimulationResult;
     },
     onSuccess: (data: SimulationResult) => {
       setSimulation(data);
