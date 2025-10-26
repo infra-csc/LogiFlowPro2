@@ -219,7 +219,7 @@ export default function StockSimulation() {
     });
   };
 
-  const filteredProducts = simulation?.products.filter(p => {
+  const filteredProducts = simulation?.products?.filter(p => {
     if (showOnlyShortage && p.status !== 'FALTA') return false;
     if (searchTerm && !p.productName.toLowerCase().includes(searchTerm.toLowerCase()) &&
         !p.productSku.toLowerCase().includes(searchTerm.toLowerCase())) {
