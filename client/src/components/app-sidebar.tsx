@@ -17,7 +17,8 @@ import {
   ChevronDown,
   LogOut,
   CheckSquare,
-  Upload
+  Upload,
+  Bell
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -128,6 +129,11 @@ const productItems = [
 ];
 
 const configItems = [
+  {
+    title: "Notificações",
+    url: "/notification-settings",
+    icon: Bell,
+  },
   {
     title: "Usuários",
     url: "/config/users",
