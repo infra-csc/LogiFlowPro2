@@ -36,6 +36,9 @@ import {
   comments,
   notifications,
   notificationSettings,
+  optimizationRuns,
+  loadingOptimizations,
+  routeOptimizations,
   type Event,
   type InsertEvent,
   type Kit,
@@ -99,6 +102,12 @@ import {
   type InsertNotification,
   type NotificationSettings,
   type InsertNotificationSettings,
+  type OptimizationRun,
+  type InsertOptimizationRun,
+  type LoadingOptimization,
+  type InsertLoadingOptimization,
+  type RouteOptimization,
+  type InsertRouteOptimization,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -288,6 +297,15 @@ export interface IStorage {
   getNotificationSettings(userId: string): Promise<NotificationSettings | undefined>;
   createNotificationSettings(settings: InsertNotificationSettings): Promise<NotificationSettings>;
   updateNotificationSettings(userId: string, settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings>;
+  
+  // AI Optimization
+  createOptimizationRun(run: InsertOptimizationRun): Promise<OptimizationRun>;
+  getOptimizationRun(id: string): Promise<OptimizationRun | undefined>;
+  updateOptimizationRun(id: string, data: Partial<InsertOptimizationRun> & {executionTimeMs?: number; errorMessage?: string; completedAt?: Date}): Promise<OptimizationRun>;
+  createLoadingOptimization(optimization: InsertLoadingOptimization): Promise<LoadingOptimization>;
+  getLoadingOptimizationsByLoadingOrder(loadingOrderId: string): Promise<any[]>;
+  createRouteOptimization(optimization: InsertRouteOptimization): Promise<RouteOptimization>;
+  getRouteOptimizationsByTrip(tripId: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1282,6 +1300,59 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notificationSettings.userId, userId))
       .returning();
     return updated;
+  }
+
+  // AI Optimization
+  async createOptimizationRun(run: InsertOptimizationRun): Promise<OptimizationRun> {
+    const [created] = await db.insert(optimizationRuns).values(run).returning();
+    return created;
+  }
+
+  async getOptimizationRun(id: string): Promise<OptimizationRun | undefined> {
+    const [run] = await db.select().from(optimizationRuns).where(eq(optimizationRuns.id, id));
+    return run || undefined;
+  }
+
+  async updateOptimizationRun(id: string, data: Partial<InsertOptimizationRun> & {executionTimeMs?: number; errorMessage?: string; completedAt?: Date}): Promise<OptimizationRun> {
+    const [updated] = await db
+      .update(optimizationRuns)
+      .set(data as any)
+      .where(eq(optimizationRuns.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createLoadingOptimization(optimization: InsertLoadingOptimization): Promise<LoadingOptimization> {
+    const [created] = await db.insert(loadingOptimizations).values(optimization as any).returning();
+    return created;
+  }
+
+  async getLoadingOptimizationsByLoadingOrder(loadingOrderId: string): Promise<any[]> {
+    const result = await db.execute(sql`
+      SELECT lo.*, optrun.created_at as run_created_at, vt.name as vehicle_type_name
+      FROM loading_optimizations lo
+      JOIN optimization_runs optrun ON lo.optimization_run_id = optrun.id
+      JOIN vehicle_types vt ON lo.vehicle_type_id = vt.id
+      WHERE lo.loading_order_id = ${loadingOrderId}
+      ORDER BY optrun.created_at DESC
+    `);
+    return result.rows;
+  }
+
+  async createRouteOptimization(optimization: InsertRouteOptimization): Promise<RouteOptimization> {
+    const [created] = await db.insert(routeOptimizations).values(optimization as any).returning();
+    return created;
+  }
+
+  async getRouteOptimizationsByTrip(tripId: string): Promise<any[]> {
+    const result = await db.execute(sql`
+      SELECT ro.*, optrun.created_at as run_created_at
+      FROM route_optimizations ro
+      JOIN optimization_runs optrun ON ro.optimization_run_id = optrun.id
+      WHERE ro.trip_id = ${tripId}
+      ORDER BY optrun.created_at DESC
+    `);
+    return result.rows;
   }
 }
 

@@ -92,7 +92,7 @@ export function optimizeVehicleLoading(
   let totalWeight = 0;
   
   for (const item of items) {
-    const dims = parseDimensions(item.product.dimensions);
+    let dims = parseDimensions(item.product.dimensions);
     if (!dims) {
       warnings.push(`Produto "${item.product.name}" sem dimensões definidas - usando dimensões padrão`);
       // Use default box dimensions: 40x30x30 cm = 0.4x0.3x0.3 m
