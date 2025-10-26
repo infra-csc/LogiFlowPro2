@@ -1,9 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Package, Truck, AlertTriangle, TrendingUp, Box } from "lucide-react";
+import { Calendar, Package, Truck, AlertTriangle, TrendingUp, Box, Bell, CheckCheck, ExternalLink } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Link, useLocation } from "wouter";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import type { Notification } from "@shared/schema";
 
 interface DashboardStats {
   activeEvents: number;
@@ -21,6 +27,8 @@ interface RecentEvent {
 }
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
+  
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
   });
@@ -28,6 +36,43 @@ export default function Dashboard() {
   const { data: recentEvents, isLoading: eventsLoading } = useQuery<RecentEvent[]>({
     queryKey: ["/api/dashboard/recent-events"],
   });
+  
+  const { data: notifications = [] } = useQuery<Notification[]>({
+    queryKey: ["/api/notifications"],
+  });
+  
+  const unreadNotifications = notifications.filter(n => !n.isRead);
+  
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/notifications/${id}/read`, {});
+      if (!res.ok) throw new Error("Failed to mark as read");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    },
+  });
+
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/notifications/read-all", {});
+      if (!res.ok) throw new Error("Failed to mark all as read");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    },
+  });
+
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.isRead) {
+      markAsReadMutation.mutate(notification.id);
+    }
+    if (notification.actionUrl) {
+      setLocation(notification.actionUrl);
+    }
+  };
 
   if (statsLoading || eventsLoading) {
     return (
@@ -96,6 +141,95 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+      
+      {/* Notifications Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Notificações Recentes
+              </CardTitle>
+              {unreadNotifications.length > 0 && (
+                <CardDescription className="mt-1">
+                  {unreadNotifications.length} não lida{unreadNotifications.length > 1 ? 's' : ''}
+                </CardDescription>
+              )}
+            </div>
+            {unreadNotifications.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => markAllAsReadMutation.mutate()}
+                disabled={markAllAsReadMutation.isPending}
+                data-testid="button-mark-all-read-dashboard"
+              >
+                <CheckCheck className="h-4 w-4 mr-2" />
+                Marcar todas como lidas
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[300px]">
+            {notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Bell className="h-12 w-12 mb-3 opacity-20" />
+                <p className="text-sm">Nenhuma notificação</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {notifications.slice(0, 10).map((notification) => (
+                  <Card
+                    key={notification.id}
+                    className={!notification.isRead ? "border-primary" : ""}
+                    data-testid={`notification-card-${notification.id}`}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex gap-3">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-sm">
+                                {notification.title}
+                              </p>
+                              {!notification.isRead && (
+                                <Badge variant="default" className="text-xs">Nova</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">
+                              {formatDistanceToNow(new Date(notification.createdAt), {
+                                addSuffix: true,
+                                locale: ptBR,
+                              })}
+                            </p>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {notification.message}
+                          </p>
+                          {notification.actionUrl && (
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={() => handleNotificationClick(notification)}
+                              className="h-auto p-0 text-xs"
+                              data-testid={`button-view-notification-${notification.id}`}
+                            >
+                              Ver detalhes
+                              <ExternalLink className="h-3 w-3 ml-1" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

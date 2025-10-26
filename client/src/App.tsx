@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { NotificationBell } from "@/components/notification-bell";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Events from "@/pages/events";
@@ -35,6 +36,7 @@ import Approvals from "@/pages/approvals";
 import ApprovalDetail from "@/pages/approval-detail";
 import Docks from "@/pages/docks";
 import VehicleTypes from "@/pages/vehicle-types";
+import NotificationSettingsPage from "@/pages/notification-settings";
 
 function Router() {
   return (
@@ -67,6 +69,7 @@ function Router() {
       <ProtectedRoute path="/config/vehicles" component={Config} />
       <ProtectedRoute path="/config/drivers" component={Config} />
       <ProtectedRoute path="/config/docks" component={Docks} />
+      <ProtectedRoute path="/notification-settings" component={NotificationSettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -92,6 +95,7 @@ export default function App() {
                     <div className="text-sm text-muted-foreground">
                       Gestão de Logística de Eventos
                     </div>
+                    <NotificationBell />
                   </header>
                   <main className="flex-1 overflow-y-auto bg-background">
                     <Router />

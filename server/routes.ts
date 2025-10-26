@@ -1682,9 +1682,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Parse @mentions from content (format: @username)
       const mentionRegex = /@(\w+)/g;
-      const mentionedUsernames = [...new Set(
-        Array.from(data.content.matchAll(mentionRegex)).map(match => match[1])
-      )];
+      const matches = Array.from(data.content.matchAll(mentionRegex)).map(match => match[1]);
+      const mentionedUsernames = Array.from(new Set(matches));
 
       // Get mentioned users
       const mentionedUserIds: string[] = [];
