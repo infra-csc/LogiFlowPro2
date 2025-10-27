@@ -932,6 +932,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Loading Order Trips routes
+  app.get("/api/loading-orders/:id/trips", async (req, res) => {
+    try {
+      const trips = await storage.getLoadingOrderTrips(req.params.id);
+      res.json(trips);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch loading order trips" });
+    }
+  });
+
+  app.post("/api/loading-orders/:id/trips", async (req, res) => {
+    try {
+      const loadingOrderId = req.params.id;
+      const { tripId } = req.body;
+      
+      if (!tripId) {
+        return res.status(400).json({ error: "tripId is required" });
+      }
+      
+      const trip = await storage.createLoadingOrderTrip(loadingOrderId, tripId);
+      res.status(201).json(trip);
+    } catch (error) {
+      console.error("Error adding trip to loading order:", error);
+      res.status(400).json({ error: "Failed to add trip to loading order" });
+    }
+  });
+
+  app.delete("/api/loading-orders/:id/trips", async (req, res) => {
+    try {
+      await storage.deleteLoadingOrderTrips(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete loading order trips" });
+    }
+  });
+
   app.post("/api/loading-orders", async (req, res) => {
     try {
       const { consolidateLoadingOrderItems } = await import("./loadingOrderUtils");
