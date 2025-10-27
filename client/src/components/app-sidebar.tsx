@@ -215,7 +215,7 @@ export function AppSidebar() {
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton data-testid="button-trips-menu">
                       <Truck className="h-4 w-4" />
-                      <span>Planejamento de Transporte</span>
+                      <span>Viagens</span>
                       <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
