@@ -1,0 +1,525 @@
+# Prompt para Replit - Relatório de Simulação de Posição de Estoque por Período
+
+## 📋 Contexto do Sistema
+
+Desenvolver um **relatório de simulação de posição de estoque por período** que permita visualizar o saldo projetado de todos os produtos do galpão considerando as alocações temporais das ordens de carregamento e suas respectivas viagens.
+
+## 🎯 Objetivo Principal
+
+Criar uma funcionalidade que simule a posição de estoque ao longo do tempo, considerando quando os materiais estarão indisponíveis (em evento ou em trânsito) baseado nas datas de carregamento e descarregamento das ordens selecionadas.
+
+## 📊 Especificações do Relatório
+
+### **1. Filtros e Parâmetros de Entrada**
+
+#### **Filtros Obrigatórios:**
+```jsx
+// Componente de Filtros
+<div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+  <h2 className="text-xl font-bold mb-4">🔍 Filtros da Simulação</h2>
+  
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    {/* Período de Análise */}
+    <div>
+      <label className="block text-sm font-medium mb-2">📅 Período de Análise</label>
+      <div className="flex gap-2">
+        <input type="date" name="dataInicio" required />
+        <span className="self-center">até</span>
+        <input type="date" name="dataFim" required />
+      </div>
+    </div>
+
+    {/* Filtro por Evento */}
+    <div>
+      <label className="block text-sm font-medium mb-2">🎪 Eventos</label>
+      <select multiple name="eventos" className="w-full">
+        <option value="">Todos os eventos</option>
+        <option value="evento1">CDE São Paulo 2025</option>
+        <option value="evento2">CDE Rio de Janeiro 2025</option>
+      </select>
+    </div>
+
+    {/* Status das Ordens */}
+    <div>
+      <label className="block text-sm font-medium mb-2">📋 Status das Ordens</label>
+      <select multiple name="statusOrdens" className="w-full">
+        <option value="aprovada">Aprovada</option>
+        <option value="em_carregamento">Em Carregamento</option>
+        <option value="em_transito">Em Trânsito</option>
+        <option value="no_evento">No Evento</option>
+        <option value="retornando">Retornando</option>
+      </select>
+    </div>
+  </div>
+
+  <div className="mt-4 flex gap-4">
+    <button className="bg-blue-600 text-white px-6 py-2 rounded-lg">
+      🔄 Gerar Simulação
+    </button>
+    <button className="bg-gray-500 text-white px-6 py-2 rounded-lg">
+      🗑️ Limpar Filtros
+    </button>
+  </div>
+</div>
+```
+
+### **2. Lógica de Cálculo de Períodos**
+
+#### **Regras de Negócio para Períodos:**
+```javascript
+// Função para calcular período de indisponibilidade
+const calcularPeriodoIndisponibilidade = (ordem) => {
+  let dataInicioMaisAnterior = null;
+  let dataFimMaisTardio = null;
+  let temMultiplasViagens = false;
+  let detalhePeriodo = "";
+
+  if (ordem.viagens && ordem.viagens.length > 0) {
+    // Caso 1: Ordem com viagens atreladas
+    ordem.viagens.forEach(viagem => {
+      if (!viagem.dataCarregamento || !viagem.dataDescarregamento) {
+        throw new Error(`Viagem ${viagem.id} sem datas completas`);
+      }
+
+      if (!dataInicioMaisAnterior || viagem.dataCarregamento < dataInicioMaisAnterior) {
+        dataInicioMaisAnterior = viagem.dataCarregamento;
+      }
+
+      if (!dataFimMaisTardio || viagem.dataDescarregamento > dataFimMaisTardio) {
+        dataFimMaisTardio = viagem.dataDescarregamento;
+      }
+    });
+
+    if (ordem.viagens.length > 1) {
+      temMultiplasViagens = true;
+      detalhePeriodo = `Múltiplas viagens: ${ordem.viagens.length} viagens entre ${formatDate(dataInicioMaisAnterior)} e ${formatDate(dataFimMaisTardio)}`;
+    } else {
+      detalhePeriodo = `Viagem única: ${formatDate(dataInicioMaisAnterior)} até ${formatDate(dataFimMaisTardio)}`;
+    }
+
+  } else if (ordem.dataCarregamento && ordem.dataDescarregamento) {
+    // Caso 2: Ordem com período próprio
+    dataInicioMaisAnterior = ordem.dataCarregamento;
+    dataFimMaisTardio = ordem.dataDescarregamento;
+    detalhePeriodo = `Período da ordem: ${formatDate(dataInicioMaisAnterior)} até ${formatDate(dataFimMaisTardio)}`;
+
+  } else {
+    // Caso 3: Ordem sem período definido - ERRO
+    throw new Error(`Ordem ${ordem.codigo} sem período definido`);
+  }
+
+  return {
+    dataInicio: dataInicioMaisAnterior,
+    dataFim: dataFimMaisTardio,
+    temMultiplasViagens,
+    detalhePeriodo,
+    diasIndisponivel: calcularDiasEntre(dataInicioMaisAnterior, dataFimMaisTardio)
+  };
+};
+```
+
+### **3. Estrutura do Relatório Principal**
+
+#### **Cabeçalho do Relatório:**
+```jsx
+<div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+  <div className="flex justify-between items-start mb-4">
+    <div>
+      <h1 className="text-2xl font-bold text-gray-900">
+        📊 Simulação de Posição de Estoque por Período
+      </h1>
+      <p className="text-gray-600">
+        Período: {formatDate(filtros.dataInicio)} até {formatDate(filtros.dataFim)}
+      </p>
+    </div>
+    <div className="text-right">
+      <p className="text-sm text-gray-500">Gerado em: {new Date().toLocaleString()}</p>
+      <button className="bg-green-600 text-white px-4 py-2 rounded-lg mt-2">
+        📤 Exportar Excel
+      </button>
+    </div>
+  </div>
+
+  {/* Resumo Executivo */}
+  <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+    <div className="text-center">
+      <div className="text-2xl font-bold text-blue-600">{resumo.totalProdutos}</div>
+      <div className="text-sm text-gray-600">Total de Produtos</div>
+    </div>
+    <div className="text-center">
+      <div className="text-2xl font-bold text-green-600">{resumo.produtosDisponiveis}</div>
+      <div className="text-sm text-gray-600">Sempre Disponíveis</div>
+    </div>
+    <div className="text-center">
+      <div className="text-2xl font-bold text-yellow-600">{resumo.produtosParciais}</div>
+      <div className="text-sm text-gray-600">Parcialmente Alocados</div>
+    </div>
+    <div className="text-center">
+      <div className="text-2xl font-bold text-red-600">{resumo.produtosIndisponiveis}</div>
+      <div className="text-sm text-gray-600">Totalmente Alocados</div>
+    </div>
+  </div>
+</div>
+```
+
+#### **Tabela Principal:**
+```jsx
+<div className="bg-white rounded-lg shadow-sm overflow-hidden">
+  <table className="min-w-full">
+    <thead className="bg-gray-50">
+      <tr>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Produto
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Estoque Atual
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Qtd Alocada
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Saldo Disponível
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          % Utilização
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Status
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Período de Alocação
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Ações
+        </th>
+      </tr>
+    </thead>
+    <tbody className="bg-white divide-y divide-gray-200">
+      {produtos.map((produto) => (
+        <ProdutoRow key={produto.id} produto={produto} />
+      ))}
+    </tbody>
+  </table>
+</div>
+```
+
+### **4. Componente de Linha do Produto**
+
+```jsx
+const ProdutoRow = ({ produto }) => {
+  const [expandido, setExpandido] = useState(false);
+  
+  const getStatusColor = (utilizacao) => {
+    if (utilizacao >= 100) return 'bg-red-100 text-red-800';
+    if (utilizacao >= 80) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-green-100 text-green-800';
+  };
+
+  const getStatusText = (utilizacao) => {
+    if (utilizacao >= 100) return '🔴 Totalmente Alocado';
+    if (utilizacao >= 80) return '🟡 Parcialmente Alocado';
+    return '🟢 Disponível';
+  };
+
+  return (
+    <>
+      <tr className={produto.utilizacao >= 100 ? 'bg-red-50' : ''}>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="flex items-center">
+            <button 
+              onClick={() => setExpandido(!expandido)}
+              className="mr-2 text-gray-400 hover:text-gray-600"
+            >
+              {expandido ? '▼' : '▶'}
+            </button>
+            <div>
+              <div className="text-sm font-medium text-gray-900">{produto.nome}</div>
+              <div className="text-sm text-gray-500">{produto.sku}</div>
+            </div>
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {produto.estoqueAtual}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {produto.quantidadeAlocada}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <span className={produto.saldoDisponivel < 0 ? 'text-red-600 font-bold' : ''}>
+            {produto.saldoDisponivel}
+          </span>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <div className="flex items-center">
+            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+              <div 
+                className={`h-2 rounded-full ${produto.utilizacao >= 100 ? 'bg-red-500' : produto.utilizacao >= 80 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                style={{ width: `${Math.min(produto.utilizacao, 100)}%` }}
+              ></div>
+            </div>
+            <span>{produto.utilizacao.toFixed(1)}%</span>
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(produto.utilizacao)}`}>
+            {getStatusText(produto.utilizacao)}
+          </span>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {produto.periodoAlocacao ? (
+            <div>
+              <div>{formatDate(produto.periodoAlocacao.inicio)} até {formatDate(produto.periodoAlocacao.fim)}</div>
+              <div className="text-xs text-gray-500">({produto.periodoAlocacao.dias} dias)</div>
+            </div>
+          ) : (
+            <span className="text-gray-400">Sem alocação</span>
+          )}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <button className="text-blue-600 hover:text-blue-900">Ver Detalhes</button>
+        </td>
+      </tr>
+      
+      {/* Linha Expandida com Detalhes */}
+      {expandido && (
+        <tr className="bg-gray-50">
+          <td colSpan="8" className="px-6 py-4">
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-900">📋 Ordens que Utilizam este Produto:</h4>
+              {produto.ordensDetalhes.map((ordem) => (
+                <div key={ordem.id} className="bg-white p-3 rounded border">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-medium">{ordem.codigo} - {ordem.evento}</div>
+                      <div className="text-sm text-gray-600">Quantidade: {ordem.quantidade}</div>
+                      <div className="text-sm text-gray-600">{ordem.detalhePeriodo}</div>
+                      {ordem.temMultiplasViagens && (
+                        <div className="text-xs text-yellow-600 mt-1">
+                          ⚠️ Múltiplas viagens: período consolidado do mais longo
+                        </div>
+                      )}
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded ${getStatusBadgeColor(ordem.status)}`}>
+                      {ordem.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
+```
+
+### **5. Validações e Tratamento de Erros**
+
+#### **Validações Pré-Geração:**
+```javascript
+const validarDadosParaRelatorio = (ordensCarregamento) => {
+  const erros = [];
+  const avisos = [];
+
+  ordensCarregamento.forEach(ordem => {
+    try {
+      // Validar se ordem tem período definido
+      const periodo = calcularPeriodoIndisponibilidade(ordem);
+      
+      // Verificar múltiplas viagens
+      if (periodo.temMultiplasViagens) {
+        avisos.push({
+          tipo: 'multiplas_viagens',
+          ordem: ordem.codigo,
+          detalhes: periodo.detalhePeriodo
+        });
+      }
+      
+    } catch (error) {
+      erros.push({
+        tipo: 'periodo_indefinido',
+        ordem: ordem.codigo,
+        erro: error.message
+      });
+    }
+  });
+
+  return { erros, avisos };
+};
+
+// Componente de Alertas
+const AlertasValidacao = ({ erros, avisos }) => {
+  if (erros.length === 0 && avisos.length === 0) return null;
+
+  return (
+    <div className="mb-6 space-y-3">
+      {/* Erros Críticos */}
+      {erros.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h3 className="text-red-800 font-medium mb-2">❌ Erros Encontrados:</h3>
+          <ul className="text-red-700 text-sm space-y-1">
+            {erros.map((erro, index) => (
+              <li key={index}>• {erro.ordem}: {erro.erro}</li>
+            ))}
+          </ul>
+          <p className="text-red-600 text-sm mt-2 font-medium">
+            Corrija estes erros antes de gerar o relatório.
+          </p>
+        </div>
+      )}
+
+      {/* Avisos */}
+      {avisos.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 className="text-yellow-800 font-medium mb-2">⚠️ Avisos:</h3>
+          <ul className="text-yellow-700 text-sm space-y-1">
+            {avisos.map((aviso, index) => (
+              <li key={index}>• {aviso.ordem}: {aviso.detalhes}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### **6. Funcionalidade de Exportação Excel**
+
+```javascript
+const exportarParaExcel = (dadosRelatorio) => {
+  const workbook = XLSX.utils.book_new();
+
+  // Aba 1: Resumo Executivo
+  const resumoData = [
+    ['RELATÓRIO DE SIMULAÇÃO DE POSIÇÃO DE ESTOQUE'],
+    [`Período: ${formatDate(filtros.dataInicio)} até ${formatDate(filtros.dataFim)}`],
+    [`Gerado em: ${new Date().toLocaleString()}`],
+    [''],
+    ['RESUMO EXECUTIVO'],
+    ['Total de Produtos', dadosRelatorio.resumo.totalProdutos],
+    ['Produtos Sempre Disponíveis', dadosRelatorio.resumo.produtosDisponiveis],
+    ['Produtos Parcialmente Alocados', dadosRelatorio.resumo.produtosParciais],
+    ['Produtos Totalmente Alocados', dadosRelatorio.resumo.produtosIndisponiveis],
+  ];
+  
+  const wsResumo = XLSX.utils.aoa_to_sheet(resumoData);
+  XLSX.utils.book_append_sheet(workbook, wsResumo, 'Resumo');
+
+  // Aba 2: Detalhamento por Produto
+  const produtosData = [
+    ['SKU', 'Nome', 'Estoque Atual', 'Qtd Alocada', 'Saldo Disponível', '% Utilização', 'Status', 'Período Início', 'Período Fim', 'Dias Alocado'],
+    ...dadosRelatorio.produtos.map(produto => [
+      produto.sku,
+      produto.nome,
+      produto.estoqueAtual,
+      produto.quantidadeAlocada,
+      produto.saldoDisponivel,
+      produto.utilizacao,
+      getStatusText(produto.utilizacao),
+      produto.periodoAlocacao?.inicio || '',
+      produto.periodoAlocacao?.fim || '',
+      produto.periodoAlocacao?.dias || 0
+    ])
+  ];
+
+  const wsProdutos = XLSX.utils.aoa_to_sheet(produtosData);
+  XLSX.utils.book_append_sheet(workbook, wsProdutos, 'Produtos');
+
+  // Aba 3: Detalhamento por Ordem
+  const ordensData = [
+    ['Ordem', 'Evento', 'Produto SKU', 'Produto Nome', 'Quantidade', 'Data Carregamento', 'Data Descarregamento', 'Status', 'Múltiplas Viagens'],
+    ...dadosRelatorio.ordensDetalhadas.map(item => [
+      item.ordemCodigo,
+      item.evento,
+      item.produtoSku,
+      item.produtoNome,
+      item.quantidade,
+      formatDate(item.dataCarregamento),
+      formatDate(item.dataDescarregamento),
+      item.status,
+      item.temMultiplasViagens ? 'Sim' : 'Não'
+    ])
+  ];
+
+  const wsOrdens = XLSX.utils.aoa_to_sheet(ordensData);
+  XLSX.utils.book_append_sheet(workbook, wsOrdens, 'Ordens');
+
+  // Salvar arquivo
+  const nomeArquivo = `Simulacao_Estoque_Periodo_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
+  XLSX.writeFile(workbook, nomeArquivo);
+};
+```
+
+### **7. Timeline Visual (Funcionalidade Adicional)**
+
+```jsx
+const TimelineVisualizacao = ({ produto }) => {
+  return (
+    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+      <h4 className="font-medium mb-3">📅 Timeline de Alocação - {produto.nome}</h4>
+      <div className="relative">
+        {/* Linha do tempo */}
+        <div className="absolute top-6 left-0 right-0 h-2 bg-gray-200 rounded"></div>
+        
+        {/* Períodos de alocação */}
+        {produto.periodosAlocacao.map((periodo, index) => {
+          const posicaoInicio = calcularPosicaoTimeline(periodo.inicio);
+          const largura = calcularLarguraTimeline(periodo.inicio, periodo.fim);
+          
+          return (
+            <div
+              key={index}
+              className="absolute top-4 h-6 bg-blue-500 rounded opacity-75"
+              style={{
+                left: `${posicaoInicio}%`,
+                width: `${largura}%`
+              }}
+              title={`${periodo.ordem} - ${formatDate(periodo.inicio)} até ${formatDate(periodo.fim)}`}
+            >
+              <span className="text-xs text-white p-1">{periodo.ordem}</span>
+            </div>
+          );
+        })}
+        
+        {/* Marcadores de data */}
+        <div className="flex justify-between mt-8 text-xs text-gray-600">
+          <span>{formatDate(filtros.dataInicio)}</span>
+          <span>{formatDate(filtros.dataFim)}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+## 🚀 Implementação Sugerida
+
+### **Estrutura de Arquivos:**
+```
+src/
+├── pages/
+│   └── RelatorioSimulacaoEstoque.jsx
+├── components/
+│   ├── FiltrosSimulacao.jsx
+│   ├── TabelaSimulacao.jsx
+│   ├── ProdutoRow.jsx
+│   ├── AlertasValidacao.jsx
+│   └── TimelineVisualizacao.jsx
+├── services/
+│   ├── simulacaoEstoqueService.js
+│   └── exportExcelService.js
+└── utils/
+    ├── calculoPeriodos.js
+    └── formatters.js
+```
+
+### **Fluxo de Execução:**
+1. **Seleção de Filtros** → Validação de dados
+2. **Cálculo de Períodos** → Identificação de conflitos
+3. **Simulação de Estoque** → Geração do relatório
+4. **Visualização** → Interação e drill-down
+5. **Exportação** → Download do Excel
+
+Este relatório fornecerá uma visão completa e temporal da utilização do estoque, permitindo um planejamento logístico mais eficiente! 📊✨
