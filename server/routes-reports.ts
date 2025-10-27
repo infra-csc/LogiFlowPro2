@@ -26,7 +26,14 @@ interface ProductSimulation {
     eventId: string;
     eventName: string;
     eventDate: Date;
+    quantity: number;
+  }>;
+  requestBreakdown: Array<{
     requestId: string;
+    requestArea: string;
+    eventId: string;
+    eventName: string;
+    eventDate: Date;
     quantity: number;
   }>;
 }
@@ -40,6 +47,13 @@ interface SimulationResult {
     productsCritical: number;
     productsAdequate: number;
   };
+  consideredRequests: Array<{
+    id: string;
+    area: string;
+    eventId: string;
+    eventName: string;
+    status: string;
+  }>;
   products: ProductSimulation[];
 }
 
@@ -80,6 +94,7 @@ export function registerReportsRoutes(app: Express) {
         .select({
           id: materialRequests.id,
           eventId: materialRequests.eventId,
+          area: materialRequests.area,
           status: materialRequests.status,
         })
         .from(materialRequests)
@@ -95,6 +110,7 @@ export function registerReportsRoutes(app: Express) {
             productsCritical: 0,
             productsAdequate: 0,
           },
+          consideredRequests: [],
           products: [],
         });
       }
@@ -168,11 +184,12 @@ export function registerReportsRoutes(app: Express) {
       // Aggregate by product
       const productAggregation = new Map<string, {
         totalNeed: number;
-        eventBreakdown: Array<{
+        requestBreakdown: Array<{
+          requestId: string;
+          requestArea: string;
           eventId: string;
           eventName: string;
           eventDate: Date;
-          requestId: string;
           quantity: number;
         }>;
       }>();
@@ -205,17 +222,18 @@ export function registerReportsRoutes(app: Express) {
         if (!productAggregation.has(item.productId)) {
           productAggregation.set(item.productId, {
             totalNeed: 0,
-            eventBreakdown: [],
+            requestBreakdown: [],
           });
         }
 
         const agg = productAggregation.get(item.productId)!;
         agg.totalNeed += quantityToUse;
-        agg.eventBreakdown.push({
+        agg.requestBreakdown.push({
+          requestId: request.id,
+          requestArea: request.area,
           eventId: event.id,
           eventName: event.name,
           eventDate: event.eventDate,
-          requestId: request.id,
           quantity: quantityToUse,
         });
       }
@@ -239,6 +257,31 @@ export function registerReportsRoutes(app: Express) {
           status = 'ADEQUADO';
         }
 
+        // Create eventBreakdown by aggregating requestBreakdown by event
+        const eventMap = new Map<string, {
+          eventId: string;
+          eventName: string;
+          eventDate: Date;
+          quantity: number;
+        }>();
+
+        aggregation.requestBreakdown.forEach(rb => {
+          if (!eventMap.has(rb.eventId)) {
+            eventMap.set(rb.eventId, {
+              eventId: rb.eventId,
+              eventName: rb.eventName,
+              eventDate: rb.eventDate,
+              quantity: 0,
+            });
+          }
+          const eventEntry = eventMap.get(rb.eventId)!;
+          eventEntry.quantity += rb.quantity;
+        });
+
+        const eventBreakdown = Array.from(eventMap.values()).sort(
+          (a, b) => a.eventDate.getTime() - b.eventDate.getTime()
+        );
+
         productSimulations.push({
           productId: product.id,
           productSku: product.sku,
@@ -248,7 +291,8 @@ export function registerReportsRoutes(app: Express) {
           currentStock,
           balance,
           status,
-          eventBreakdown: aggregation.eventBreakdown.sort(
+          eventBreakdown,
+          requestBreakdown: aggregation.requestBreakdown.sort(
             (a, b) => a.eventDate.getTime() - b.eventDate.getTime()
           ),
         });
@@ -270,10 +314,26 @@ export function registerReportsRoutes(app: Express) {
         productsAdequate: productSimulations.filter(p => p.status === 'ADEQUADO').length,
       };
 
+      // Build list of considered requests
+      const consideredRequests = requests
+        .filter(r => eventsMap.has(r.eventId))
+        .map(r => {
+          const event = eventsMap.get(r.eventId)!;
+          return {
+            id: r.id,
+            area: r.area,
+            eventId: r.eventId,
+            eventName: event.name,
+            status: r.status,
+          };
+        })
+        .sort((a, b) => a.eventName.localeCompare(b.eventName));
+
       const result: SimulationResult = {
         generatedAt: new Date(),
         filters: params,
         summary,
+        consideredRequests,
         products: productSimulations,
       };
 
