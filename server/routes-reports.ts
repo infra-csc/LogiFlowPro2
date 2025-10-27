@@ -2,7 +2,16 @@ import { Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
 import { sql, eq, inArray, and, or, gte, lte } from "drizzle-orm";
-import { materialRequests, requestItems, products, events } from "@shared/schema";
+import { 
+  materialRequests, 
+  requestItems, 
+  products, 
+  events, 
+  loadingOrders,
+  loadingOrderItems,
+  loadingOrderTrips,
+  trips
+} from "@shared/schema";
 
 interface StockSimulationParams {
   eventIds?: string[];
@@ -388,6 +397,269 @@ export function registerReportsRoutes(app: Express) {
       res.json(requests);
     } catch (error: any) {
       console.error("Get simulation requests error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Period-based Stock Position Simulation Report
+  app.post("/api/reports/stock-position-simulation", async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const {
+        startDate,
+        endDate,
+        eventIds,
+        orderStatus
+      } = req.body;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "Start date and end date are required" });
+      }
+
+      // Build query conditions for loading orders
+      const conditions: any[] = [];
+
+      if (eventIds && eventIds.length > 0) {
+        conditions.push(inArray(loadingOrders.eventId, eventIds));
+      }
+
+      if (orderStatus && orderStatus.length > 0) {
+        conditions.push(inArray(loadingOrders.status, orderStatus as any));
+      }
+
+      // Get loading orders with their items, trips, and events
+      const orders = await db
+        .select({
+          orderId: loadingOrders.id,
+          orderNumber: loadingOrders.orderNumber,
+          orderStatus: loadingOrders.status,
+          loadingDate: loadingOrders.loadingDate,
+          unloadingDate: loadingOrders.unloadingDate,
+          eventId: loadingOrders.eventId,
+          eventName: events.name,
+          eventDate: events.eventDate,
+        })
+        .from(loadingOrders)
+        .leftJoin(events, eq(loadingOrders.eventId, events.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+      // Get all trips for these orders
+      const orderIds = orders.map(o => o.orderId);
+      const orderTripsData = orderIds.length > 0 ? await db
+        .select({
+          orderId: loadingOrderTrips.loadingOrderId,
+          tripId: trips.id,
+          loadingLocation: trips.loadingLocation,
+          unloadingLocation: trips.unloadingLocation,
+          loadingStartTime: trips.loadingStartTime,
+          unloadingEndTime: trips.unloadingEndTime,
+        })
+        .from(loadingOrderTrips)
+        .leftJoin(trips, eq(loadingOrderTrips.tripId, trips.id))
+        .where(inArray(loadingOrderTrips.loadingOrderId, orderIds)) : [];
+
+      // Get all items for these orders
+      const orderItemsData = orderIds.length > 0 ? await db
+        .select({
+          orderId: loadingOrderItems.loadingOrderId,
+          productId: loadingOrderItems.productId,
+          quantity: loadingOrderItems.consolidatedQuantity,
+          productSku: products.sku,
+          productName: products.name,
+          productStock: products.currentStock,
+        })
+        .from(loadingOrderItems)
+        .leftJoin(products, eq(loadingOrderItems.productId, products.id))
+        .where(inArray(loadingOrderItems.loadingOrderId, orderIds)) : [];
+
+      // Calculate period availability for each order
+      const ordersWithPeriods = orders.map(order => {
+        // Get trips for this order
+        const orderTrips = orderTripsData.filter(t => t.orderId === order.orderId);
+        
+        let periodStart: Date | null = null;
+        let periodEnd: Date | null = null;
+        let hasMultipleTrips = false;
+        let periodDetail = "";
+
+        if (orderTrips.length > 0) {
+          // Case 1: Order with attached trips
+          orderTrips.forEach(trip => {
+            if (trip.loadingStartTime) {
+              if (!periodStart || trip.loadingStartTime < periodStart) {
+                periodStart = trip.loadingStartTime;
+              }
+            }
+            if (trip.unloadingEndTime) {
+              if (!periodEnd || trip.unloadingEndTime > periodEnd) {
+                periodEnd = trip.unloadingEndTime;
+              }
+            }
+          });
+
+          hasMultipleTrips = orderTrips.length > 1;
+          periodDetail = hasMultipleTrips
+            ? `Múltiplas viagens: ${orderTrips.length} viagens`
+            : `Viagem única`;
+
+        } else if (order.loadingDate && order.unloadingDate) {
+          // Case 2: Order with own period
+          periodStart = order.loadingDate;
+          periodEnd = order.unloadingDate;
+          periodDetail = `Período da ordem`;
+        }
+
+        return {
+          ...order,
+          periodStart,
+          periodEnd,
+          hasMultipleTrips,
+          periodDetail,
+          daysUnavailable: periodStart && periodEnd
+            ? Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24))
+            : 0
+        };
+      });
+
+      // Filter orders that overlap with the requested period
+      const filterStart = new Date(startDate);
+      const filterEnd = new Date(endDate);
+      const relevantOrders = ordersWithPeriods.filter(order => {
+        if (!order.periodStart || !order.periodEnd) return false;
+        
+        // Check if periods overlap
+        return order.periodStart <= filterEnd && order.periodEnd >= filterStart;
+      });
+
+      // Aggregate by product
+      const productMap = new Map<string, {
+        productId: string;
+        productSku: string;
+        productName: string;
+        currentStock: number;
+        allocatedQuantity: number;
+        ordersDetails: any[];
+      }>();
+
+      relevantOrders.forEach(order => {
+        const items = orderItemsData.filter(item => item.orderId === order.orderId);
+        
+        items.forEach(item => {
+          if (!item.productId) return;
+
+          if (!productMap.has(item.productId)) {
+            productMap.set(item.productId, {
+              productId: item.productId,
+              productSku: item.productSku || '',
+              productName: item.productName || '',
+              currentStock: item.productStock || 0,
+              allocatedQuantity: 0,
+              ordersDetails: []
+            });
+          }
+
+          const product = productMap.get(item.productId)!;
+          product.allocatedQuantity += item.quantity || 0;
+          product.ordersDetails.push({
+            orderId: order.orderId,
+            orderNumber: order.orderNumber,
+            eventName: order.eventName,
+            quantity: item.quantity,
+            periodStart: order.periodStart,
+            periodEnd: order.periodEnd,
+            periodDetail: order.periodDetail,
+            hasMultipleTrips: order.hasMultipleTrips,
+            status: order.orderStatus,
+            daysUnavailable: order.daysUnavailable
+          });
+        });
+      });
+
+      // Calculate final results
+      const productsResults = Array.from(productMap.values()).map(product => {
+        const availableStock = product.currentStock - product.allocatedQuantity;
+        const utilization = product.currentStock > 0
+          ? (product.allocatedQuantity / product.currentStock) * 100
+          : 0;
+
+        let status: 'DISPONÍVEL' | 'PARCIAL' | 'TOTALMENTE_ALOCADO';
+        if (utilization >= 100) {
+          status = 'TOTALMENTE_ALOCADO';
+        } else if (utilization >= 80) {
+          status = 'PARCIAL';
+        } else {
+          status = 'DISPONÍVEL';
+        }
+
+        // Find overall period (earliest start to latest end)
+        let earliestStart: Date | null = null;
+        let latestEnd: Date | null = null;
+        product.ordersDetails.forEach(order => {
+          if (order.periodStart && (!earliestStart || order.periodStart < earliestStart)) {
+            earliestStart = order.periodStart;
+          }
+          if (order.periodEnd && (!latestEnd || order.periodEnd > latestEnd)) {
+            latestEnd = order.periodEnd;
+          }
+        });
+
+        return {
+          productId: product.productId,
+          productSku: product.productSku,
+          productName: product.productName,
+          currentStock: product.currentStock,
+          allocatedQuantity: product.allocatedQuantity,
+          availableStock,
+          utilization: Math.round(utilization * 10) / 10,
+          status,
+          allocationPeriod: earliestStart && latestEnd ? {
+            start: earliestStart,
+            end: latestEnd,
+            days: Math.ceil(((latestEnd as Date).getTime() - (earliestStart as Date).getTime()) / (1000 * 60 * 60 * 24))
+          } : null,
+          ordersDetails: product.ordersDetails
+        };
+      });
+
+      // Calculate summary
+      const summary = {
+        totalProducts: productsResults.length,
+        availableProducts: productsResults.filter(p => p.status === 'DISPONÍVEL').length,
+        partialProducts: productsResults.filter(p => p.status === 'PARCIAL').length,
+        fullyAllocatedProducts: productsResults.filter(p => p.status === 'TOTALMENTE_ALOCADO').length
+      };
+
+      // Validation errors and warnings
+      const errors = ordersWithPeriods
+        .filter(order => !order.periodStart || !order.periodEnd)
+        .map(order => ({
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          message: 'Ordem sem período definido (sem viagens e sem datas próprias)'
+        }));
+
+      const warnings = ordersWithPeriods
+        .filter(order => order.hasMultipleTrips)
+        .map(order => ({
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          message: order.periodDetail
+        }));
+
+      res.json({
+        generatedAt: new Date(),
+        filters: { startDate, endDate, eventIds, orderStatus },
+        summary,
+        products: productsResults,
+        errors,
+        warnings
+      });
+
+    } catch (error: any) {
+      console.error("Stock position simulation error:", error);
       res.status(500).json({ error: error.message });
     }
   });

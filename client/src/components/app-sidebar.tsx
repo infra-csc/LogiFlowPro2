@@ -135,6 +135,11 @@ const reportItems = [
     url: "/reports/stock-simulation",
     icon: BarChart3,
   },
+  {
+    title: "Posição de Estoque por Período",
+    url: "/reports/stock-position-simulation",
+    icon: BarChart3,
+  },
 ];
 
 const configItems = [

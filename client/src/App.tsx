@@ -38,6 +38,7 @@ import Docks from "@/pages/docks";
 import VehicleTypes from "@/pages/vehicle-types";
 import NotificationSettingsPage from "@/pages/notification-settings";
 import StockSimulation from "@/pages/stock-simulation";
+import StockPositionSimulation from "@/pages/stock-position-simulation";
 
 function Router() {
   return (
@@ -72,6 +73,7 @@ function Router() {
       <ProtectedRoute path="/config/docks" component={Docks} />
       <ProtectedRoute path="/notification-settings" component={NotificationSettingsPage} />
       <ProtectedRoute path="/reports/stock-simulation" component={StockSimulation} />
+      <ProtectedRoute path="/reports/stock-position-simulation" component={StockPositionSimulation} />
       <Route component={NotFound} />
     </Switch>
   );

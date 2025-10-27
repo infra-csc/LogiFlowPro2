@@ -385,6 +385,8 @@ export const loadingOrders = pgTable("loading_orders", {
   plannedEndTime: timestamp("planned_end_time").notNull(),
   actualStartTime: timestamp("actual_start_time"),
   actualEndTime: timestamp("actual_end_time"),
+  loadingDate: timestamp("loading_date"),
+  unloadingDate: timestamp("unloading_date"),
   createdBy: text("created_by").notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
