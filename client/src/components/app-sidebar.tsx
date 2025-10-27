@@ -71,7 +71,7 @@ const mainMenuItems = [
     icon: FileStack,
   },
   {
-    title: "Carga e Descarga",
+    title: "Movimentações",
     url: "/movements",
     icon: FileStack,
   },
