@@ -20,6 +20,7 @@ import {
   loadingOrders,
   loadingOrderRequests,
   loadingOrderItems,
+  loadingOrderTrips,
   movements,
   movementEvents,
   movementTrips,
@@ -212,6 +213,11 @@ export interface IStorage {
   getLoadingOrderItems(loadingOrderId: string): Promise<LoadingOrderItem[]>;
   createLoadingOrderItem(item: InsertLoadingOrderItem): Promise<LoadingOrderItem>;
   deleteLoadingOrderItems(loadingOrderId: string): Promise<void>;
+
+  // Loading Order Trips (junction table)
+  getLoadingOrderTrips(loadingOrderId: string): Promise<{id: string; tripId: string; addedAt: Date}[]>;
+  createLoadingOrderTrip(loadingOrderId: string, tripId: string): Promise<{id: string; tripId: string; addedAt: Date}>;
+  deleteLoadingOrderTrips(loadingOrderId: string): Promise<void>;
 
   // Movements
   getMovements(): Promise<Movement[]>;
@@ -836,6 +842,29 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLoadingOrderItems(loadingOrderId: string): Promise<void> {
     await db.delete(loadingOrderItems).where(eq(loadingOrderItems.loadingOrderId, loadingOrderId));
+  }
+
+  // Loading Order Trips (junction table)
+  async getLoadingOrderTrips(loadingOrderId: string): Promise<{id: string; tripId: string; addedAt: Date}[]> {
+    const results = await db.select().from(loadingOrderTrips).where(eq(loadingOrderTrips.loadingOrderId, loadingOrderId));
+    return results.map(r => ({
+      id: r.id,
+      tripId: r.tripId,
+      addedAt: r.addedAt
+    }));
+  }
+
+  async createLoadingOrderTrip(loadingOrderId: string, tripId: string): Promise<{id: string; tripId: string; addedAt: Date}> {
+    const [created] = await db.insert(loadingOrderTrips).values({ loadingOrderId, tripId }).returning();
+    return {
+      id: created.id,
+      tripId: created.tripId,
+      addedAt: created.addedAt
+    };
+  }
+
+  async deleteLoadingOrderTrips(loadingOrderId: string): Promise<void> {
+    await db.delete(loadingOrderTrips).where(eq(loadingOrderTrips.loadingOrderId, loadingOrderId));
   }
 
   // Movements
