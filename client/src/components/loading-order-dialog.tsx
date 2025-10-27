@@ -22,7 +22,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { LoadingOrder, InsertLoadingOrder, Event, MaterialRequest } from "@shared/schema";
+import type { LoadingOrder, InsertLoadingOrder, Event, MaterialRequest, Trip } from "@shared/schema";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
@@ -57,16 +57,22 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   });
 
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+  const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>(order?.eventId || "");
 
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
   const { data: allRequests } = useQuery<MaterialRequest[]>({ queryKey: ["/api/requests"] });
+  const { data: allTrips } = useQuery<Trip[]>({ queryKey: ["/api/trips"] });
 
   const approvedRequests = allRequests?.filter(
     (req) => 
       req.status === "approved" && 
       selectedEventId && 
       req.eventId === selectedEventId
+  ) || [];
+
+  const availableTrips = allTrips?.filter(
+    (trip) => selectedEventId && trip.eventId === selectedEventId
   ) || [];
 
   useEffect(() => {
@@ -81,13 +87,22 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
         notes: "",
       });
       setSelectedRequestIds([]);
+      setSelectedTripIds([]);
       setSelectedEventId("");
     }
   }, [open, user]);
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertLoadingOrder & { requestIds: string[] }) => {
-      return apiRequest("POST", "/api/loading-orders", data);
+    mutationFn: async (data: InsertLoadingOrder & { requestIds: string[]; tripIds: string[] }) => {
+      const response = await apiRequest("POST", "/api/loading-orders", data);
+      const loadingOrder = await response.json() as LoadingOrder;
+      
+      // Add trips to the loading order
+      for (const tripId of data.tripIds) {
+        await apiRequest("POST", `/api/loading-orders/${loadingOrder.id}/trips`, { tripId });
+      }
+      
+      return loadingOrder;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/loading-orders"] });
@@ -117,6 +132,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     setSelectedEventId(eventId);
     setFormData({ ...formData, eventId });
     setSelectedRequestIds([]);
+    setSelectedTripIds([]);
   };
 
   const toggleRequestSelection = (requestId: string) => {
@@ -124,6 +140,14 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       prev.includes(requestId)
         ? prev.filter((id) => id !== requestId)
         : [...prev, requestId]
+    );
+  };
+
+  const toggleTripSelection = (tripId: string) => {
+    setSelectedTripIds((prev) =>
+      prev.includes(tripId)
+        ? prev.filter((id) => id !== tripId)
+        : [...prev, tripId]
     );
   };
 
@@ -155,7 +179,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     if (order) {
       updateMutation.mutate(submitData);
     } else {
-      createMutation.mutate({ ...submitData, requestIds: selectedRequestIds });
+      createMutation.mutate({ ...submitData, requestIds: selectedRequestIds, tripIds: selectedTripIds });
     }
   };
 
@@ -296,6 +320,41 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {!order && selectedEventId && availableTrips.length > 0 && (
+              <div>
+                <Label>Viagens ({availableTrips.length})</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Selecione as viagens associadas a esta ordem (opcional)
+                </p>
+                
+                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                  {availableTrips.map((trip) => (
+                    <div
+                      key={trip.id}
+                      className="flex items-center space-x-3 p-2 rounded hover-elevate"
+                      data-testid={`trip-item-${trip.id}`}
+                    >
+                      <Checkbox
+                        id={`trip-${trip.id}`}
+                        checked={selectedTripIds.includes(trip.id)}
+                        onCheckedChange={() => toggleTripSelection(trip.id)}
+                        data-testid={`checkbox-trip-${trip.id}`}
+                      />
+                      <Label
+                        htmlFor={`trip-${trip.id}`}
+                        className="flex-1 cursor-pointer text-sm"
+                      >
+                        <div className="font-medium">{trip.description || 'Sem descrição'}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Viagem #{trip.id.slice(0, 8)} - {trip.loadingLocation || 'Local não definido'}
+                        </div>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
