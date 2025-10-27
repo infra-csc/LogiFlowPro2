@@ -420,6 +420,14 @@ export const loadingOrderItems = pgTable("loading_order_items", {
   notes: text("notes")
 });
 
+// Loading Order Trips junction table (many-to-many)
+export const loadingOrderTrips = pgTable("loading_order_trips", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loadingOrderId: varchar("loading_order_id").notNull().references(() => loadingOrders.id, { onDelete: "cascade" }),
+  tripId: varchar("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at").notNull().default(sql`now()`)
+});
+
 // Warehouse Movements table (Carga e Descarga)
 export const movements = pgTable("movements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -655,7 +663,8 @@ export const tripsRelations = relations(trips, ({ one, many }) => ({
   inventoryMovements: many(inventoryMovements),
   tripEvents: many(tripEvents),
   destinations: many(tripDestinations),
-  movementTrips: many(movementTrips)
+  movementTrips: many(movementTrips),
+  loadingOrderTrips: many(loadingOrderTrips)
 }));
 
 export const tripEventsRelations = relations(tripEvents, ({ one }) => ({
@@ -704,7 +713,8 @@ export const loadingOrdersRelations = relations(loadingOrders, ({ one, many }) =
     references: [events.id]
   }),
   orderRequests: many(loadingOrderRequests),
-  items: many(loadingOrderItems)
+  items: many(loadingOrderItems),
+  orderTrips: many(loadingOrderTrips)
 }));
 
 export const loadingOrderRequestsRelations = relations(loadingOrderRequests, ({ one }) => ({
@@ -726,6 +736,17 @@ export const loadingOrderItemsRelations = relations(loadingOrderItems, ({ one })
   product: one(products, {
     fields: [loadingOrderItems.productId],
     references: [products.id]
+  })
+}));
+
+export const loadingOrderTripsRelations = relations(loadingOrderTrips, ({ one }) => ({
+  loadingOrder: one(loadingOrders, {
+    fields: [loadingOrderTrips.loadingOrderId],
+    references: [loadingOrders.id]
+  }),
+  trip: one(trips, {
+    fields: [loadingOrderTrips.tripId],
+    references: [trips.id]
   })
 }));
 
