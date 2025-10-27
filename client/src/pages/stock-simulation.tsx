@@ -61,7 +61,14 @@ interface ProductSimulation {
     eventId: string;
     eventName: string;
     eventDate: string;
+    quantity: number;
+  }>;
+  requestBreakdown: Array<{
     requestId: string;
+    requestArea: string;
+    eventId: string;
+    eventName: string;
+    eventDate: string;
     quantity: number;
   }>;
 }
@@ -75,6 +82,13 @@ interface SimulationResult {
     productsCritical: number;
     productsAdequate: number;
   };
+  consideredRequests: Array<{
+    id: string;
+    area: string;
+    eventId: string;
+    eventName: string;
+    status: string;
+  }>;
   products: ProductSimulation[];
 }
 
@@ -89,6 +103,7 @@ export default function StockSimulation() {
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
   const [showOnlyShortage, setShowOnlyShortage] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [breakdownView, setBreakdownView] = useState<'event' | 'request'>('event');
 
   // Fetch events for filter
   const { data: events } = useQuery<any[]>({
@@ -404,6 +419,32 @@ export default function StockSimulation() {
                 </Card>
               </div>
 
+              {/* Considered Requests */}
+              {simulation.consideredRequests && simulation.consideredRequests.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Requisições Consideradas</CardTitle>
+                    <CardDescription>
+                      {simulation.consideredRequests.length} requisição(ões) incluída(s) nesta simulação
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {simulation.consideredRequests.map(req => (
+                        <div key={req.id} className="text-sm p-2 border rounded-md">
+                          <div className="font-medium">{req.area}</div>
+                          <div className="text-muted-foreground text-xs">{req.eventName}</div>
+                          <Badge variant="outline" className="mt-1 text-xs">
+                            {req.status === 'approved' ? 'Aprovado' : 
+                             req.status === 'pending_approval' ? 'Aguardando' : req.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Report Details */}
               <Card>
                 <CardHeader>
@@ -415,6 +456,24 @@ export default function StockSimulation() {
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
+                      <div className="flex border rounded-md">
+                        <Button
+                          variant={breakdownView === 'event' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setBreakdownView('event')}
+                          data-testid="button-view-event"
+                        >
+                          Por Evento
+                        </Button>
+                        <Button
+                          variant={breakdownView === 'request' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setBreakdownView('request')}
+                          data-testid="button-view-request"
+                        >
+                          Por Requisição
+                        </Button>
+                      </div>
                       <Button
                         variant="outline"
                         size="sm"
@@ -509,19 +568,42 @@ export default function StockSimulation() {
                                 <TableRow>
                                   <TableCell colSpan={6} className="bg-muted/30">
                                     <div className="p-4 space-y-2">
-                                      <div className="text-sm font-medium mb-2">Detalhamento por Evento:</div>
-                                      {product.eventBreakdown.map((event, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 text-sm pl-4">
-                                          <span className="text-muted-foreground">📅</span>
-                                          <span className="flex-1">{event.eventName}</span>
-                                          <span className="text-muted-foreground">
-                                            {new Date(event.eventDate).toLocaleDateString("pt-BR")}
-                                          </span>
-                                          <span className="font-semibold">
-                                            {event.quantity} {product.unit}
-                                          </span>
-                                        </div>
-                                      ))}
+                                      {breakdownView === 'event' ? (
+                                        <>
+                                          <div className="text-sm font-medium mb-2">Detalhamento por Evento:</div>
+                                          {product.eventBreakdown?.map((event, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 text-sm pl-4">
+                                              <span className="text-muted-foreground">📅</span>
+                                              <span className="flex-1">{event.eventName}</span>
+                                              <span className="text-muted-foreground">
+                                                {new Date(event.eventDate).toLocaleDateString("pt-BR")}
+                                              </span>
+                                              <span className="font-semibold">
+                                                {event.quantity} {product.unit}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <div className="text-sm font-medium mb-2">Detalhamento por Requisição:</div>
+                                          {product.requestBreakdown?.map((req, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 text-sm pl-4">
+                                              <span className="text-muted-foreground">📋</span>
+                                              <div className="flex-1">
+                                                <div>{req.requestArea}</div>
+                                                <div className="text-xs text-muted-foreground">{req.eventName}</div>
+                                              </div>
+                                              <span className="text-muted-foreground text-xs">
+                                                {new Date(req.eventDate).toLocaleDateString("pt-BR")}
+                                              </span>
+                                              <span className="font-semibold">
+                                                {req.quantity} {product.unit}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </>
+                                      )}
                                     </div>
                                   </TableCell>
                                 </TableRow>
