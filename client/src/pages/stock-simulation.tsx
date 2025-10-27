@@ -179,6 +179,7 @@ export default function StockSimulation() {
       [""],
       ["Data/Hora da Simulação:", new Date(simulation.generatedAt).toLocaleString("pt-BR")],
       ["Eventos Selecionados:", filters.eventIds.length],
+      ["Requisições Consideradas:", simulation.consideredRequests?.length || 0],
       [""],
       ["RESUMO EXECUTIVO"],
       ["Total de Produtos Analisados:", simulation.summary.totalProducts],
@@ -189,7 +190,24 @@ export default function StockSimulation() {
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, wsSummary, "Resumo Executivo");
 
-    // Aba 2: Detalhamento por Produto
+    // Aba 2: Requisições Consideradas
+    if (simulation.consideredRequests && simulation.consideredRequests.length > 0) {
+      const requestsData = [
+        ["Área", "Evento", "Status"]
+      ];
+      simulation.consideredRequests.forEach(req => {
+        requestsData.push([
+          req.area,
+          req.eventName,
+          req.status === 'approved' ? 'Aprovado' : 
+          req.status === 'pending_approval' ? 'Aguardando Aprovação' : req.status
+        ]);
+      });
+      const wsRequests = XLSX.utils.aoa_to_sheet(requestsData);
+      XLSX.utils.book_append_sheet(wb, wsRequests, "Requisições");
+    }
+
+    // Aba 3: Detalhamento por Produto
     const productsData = [
       ["Código/SKU", "Produto", "Necessidade", "Inventário", "Saldo", "Status", "Unidade"]
     ];
@@ -207,12 +225,12 @@ export default function StockSimulation() {
     const wsProducts = XLSX.utils.aoa_to_sheet(productsData);
     XLSX.utils.book_append_sheet(wb, wsProducts, "Detalhamento por Produto");
 
-    // Aba 3: Detalhamento por Evento
+    // Aba 4: Detalhamento por Evento
     const eventsData = [
       ["Código/SKU", "Produto", "Evento", "Data do Evento", "Quantidade"]
     ];
     simulation.products.forEach(p => {
-      p.eventBreakdown.forEach(e => {
+      p.eventBreakdown?.forEach(e => {
         eventsData.push([
           p.productSku,
           p.productName,
@@ -224,6 +242,25 @@ export default function StockSimulation() {
     });
     const wsEvents = XLSX.utils.aoa_to_sheet(eventsData);
     XLSX.utils.book_append_sheet(wb, wsEvents, "Detalhamento por Evento");
+
+    // Aba 5: Detalhamento por Requisição
+    const requestBreakdownData = [
+      ["Código/SKU", "Produto", "Área", "Evento", "Data do Evento", "Quantidade"]
+    ];
+    simulation.products.forEach(p => {
+      p.requestBreakdown?.forEach(req => {
+        requestBreakdownData.push([
+          p.productSku,
+          p.productName,
+          req.requestArea,
+          req.eventName,
+          new Date(req.eventDate).toLocaleDateString("pt-BR"),
+          req.quantity.toString()
+        ]);
+      });
+    });
+    const wsRequestBreakdown = XLSX.utils.aoa_to_sheet(requestBreakdownData);
+    XLSX.utils.book_append_sheet(wb, wsRequestBreakdown, "Detalhamento por Requisição");
 
     // Save file
     const fileName = `Simulacao_Estoque_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`;
