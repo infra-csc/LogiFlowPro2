@@ -72,6 +72,12 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     enabled: !!order?.id && open,
   });
 
+  // Load linked trips when editing
+  const { data: linkedTrips } = useQuery<any[]>({
+    queryKey: [`/api/loading-orders/${order?.id}/trips`],
+    enabled: !!order?.id && open,
+  });
+
   const approvedRequests = allRequests?.filter(
     (req) => 
       req.status === "approved" && 
@@ -96,6 +102,11 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
         notes: order.notes || "",
       });
       setSelectedEventId(order.eventId || "");
+      
+      // Load linked trips
+      if (linkedTrips) {
+        setSelectedTripIds(linkedTrips.map((lt: any) => lt.tripId));
+      }
     } else if (!open) {
       // Reset form when closing
       setFormData({
@@ -111,7 +122,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       setSelectedTripIds([]);
       setSelectedEventId("");
     }
-  }, [open, order, user]);
+  }, [open, order, user, linkedTrips]);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertLoadingOrder & { requestIds: string[]; tripIds: string[] }) => {
@@ -136,9 +147,22 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<InsertLoadingOrder>) => {
+    mutationFn: async (data: Partial<InsertLoadingOrder> & { tripIds?: string[] }) => {
       const response = await apiRequest("PATCH", `/api/loading-orders/${order?.id}`, data);
-      return await response.json();
+      const updatedOrder = await response.json();
+      
+      // Update trips if provided
+      if (data.tripIds !== undefined) {
+        // Delete existing trips
+        await apiRequest("DELETE", `/api/loading-orders/${order?.id}/trips`);
+        
+        // Add new trips
+        for (const tripId of data.tripIds) {
+          await apiRequest("POST", `/api/loading-orders/${order?.id}/trips`, { tripId });
+        }
+      }
+      
+      return updatedOrder;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/loading-orders"] });
@@ -207,7 +231,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     };
 
     if (order) {
-      updateMutation.mutate(submitData);
+      updateMutation.mutate({ ...submitData, tripIds: selectedTripIds });
     } else {
       createMutation.mutate({ ...submitData, requestIds: selectedRequestIds, tripIds: selectedTripIds });
     }
@@ -377,7 +401,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
               </div>
             )}
 
-            {!order && selectedEventId && availableTrips.length > 0 && (
+            {selectedEventId && availableTrips.length > 0 && (
               <div>
                 <Label>Viagens ({availableTrips.length})</Label>
                 <p className="text-sm text-muted-foreground mb-3">
@@ -395,6 +419,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                         id={`trip-${trip.id}`}
                         checked={selectedTripIds.includes(trip.id)}
                         onCheckedChange={() => toggleTripSelection(trip.id)}
+                        disabled={!canEdit}
                         data-testid={`checkbox-trip-${trip.id}`}
                       />
                       <Label
