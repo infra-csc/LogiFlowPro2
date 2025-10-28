@@ -49,18 +49,18 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     createdBy: string;
     notes?: string;
   }>({
-    eventId: order?.eventId || "",
-    orderNumber: order?.orderNumber || "",
-    plannedStartTime: order?.plannedStartTime ? format(new Date(order.plannedStartTime), "yyyy-MM-dd'T'HH:mm") : "",
-    plannedEndTime: order?.plannedEndTime ? format(new Date(order.plannedEndTime), "yyyy-MM-dd'T'HH:mm") : "",
-    status: order?.status || "draft",
-    createdBy: order?.createdBy || user?.name || "",
-    notes: order?.notes || "",
+    eventId: "",
+    orderNumber: "",
+    plannedStartTime: "",
+    plannedEndTime: "",
+    status: "draft",
+    createdBy: user?.name || "",
+    notes: "",
   });
 
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<string>(order?.eventId || "");
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
 
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
   const { data: allRequests } = useQuery<MaterialRequest[]>({ queryKey: ["/api/requests"] });
@@ -84,7 +84,20 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   ) || [];
 
   useEffect(() => {
-    if (!open) {
+    if (open && order) {
+      // Load existing order data when editing
+      setFormData({
+        eventId: order.eventId || "",
+        orderNumber: order.orderNumber || "",
+        plannedStartTime: order.plannedStartTime ? format(new Date(order.plannedStartTime), "yyyy-MM-dd'T'HH:mm") : "",
+        plannedEndTime: order.plannedEndTime ? format(new Date(order.plannedEndTime), "yyyy-MM-dd'T'HH:mm") : "",
+        status: order.status || "draft",
+        createdBy: order.createdBy || user?.name || "",
+        notes: order.notes || "",
+      });
+      setSelectedEventId(order.eventId || "");
+    } else if (!open) {
+      // Reset form when closing
       setFormData({
         eventId: "",
         orderNumber: "",
@@ -98,7 +111,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       setSelectedTripIds([]);
       setSelectedEventId("");
     }
-  }, [open, user]);
+  }, [open, order, user]);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertLoadingOrder & { requestIds: string[]; tripIds: string[] }) => {
