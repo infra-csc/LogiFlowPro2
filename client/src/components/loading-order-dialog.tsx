@@ -68,7 +68,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
 
   // Check if order can be edited
   const { data: canEditData } = useQuery<{ canEdit: boolean; reason?: string; activeMovements?: any[] }>({
-    queryKey: ["/api/loading-orders", order?.id, "can-edit"],
+    queryKey: [`/api/loading-orders/${order?.id}/can-edit`],
     enabled: !!order?.id && open,
   });
 

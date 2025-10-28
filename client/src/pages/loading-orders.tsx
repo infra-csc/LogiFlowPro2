@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Calendar, FileText } from "lucide-react";
+import { Plus, Package, Calendar, FileText, Edit } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,7 +86,20 @@ export default function LoadingOrders() {
                     <Package className="h-5 w-5" />
                     {order.orderNumber}
                   </CardTitle>
-                  <StatusBadge status={order.status} />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(order);
+                      }}
+                      data-testid={`button-edit-${order.id}`}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <StatusBadge status={order.status} />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
