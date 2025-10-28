@@ -1,0 +1,1149 @@
+# 🚀 **PROMPT PARA IMPLEMENTAÇÃO - FASE 1 (REVISADO)**
+
+## �� **CONTEXTO DO PROJETO**
+
+Você está implementando a **Fase 1** de um sistema de movimentações e controle de estoque para uma empresa de eventos. O objetivo é criar a base para um sistema que diferencia material próprio de material locado/terceiros, mantendo compatibilidade com o sistema atual.
+
+---
+
+## 🎯 **OBJETIVOS DA FASE 1**
+
+### **Principais Entregas**
+1. **Cadastro de Grupos de Movimentação** - Organização dos tipos
+2. **Cadastro de Tipos de Movimentação** - Catálogo configurável  
+3. **Campo de Fornecedor Opcional** - Para rastrear origem do material
+4. **Estrutura de Lotes** - Preparação para próximas fases
+
+### **Critérios de Sucesso**
+- ✅ Sistema atual **não deve ser afetado**
+- ✅ Novas funcionalidades **opcionais e configuráveis**
+- ✅ Interface **intuitiva e responsiva**
+- ✅ Base sólida para **próximas fases**
+
+---
+
+## 🗂️ **1. CADASTRO DE GRUPOS DE MOVIMENTAÇÃO**
+
+### **Estrutura de Dados**
+```sql
+CREATE TABLE grupos_movimentacao (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  codigo VARCHAR(50) NOT NULL UNIQUE,
+  nome VARCHAR(100) NOT NULL,
+  descricao TEXT,
+  cor VARCHAR(7) DEFAULT '#6b7280', -- hex color
+  icone VARCHAR(50) DEFAULT '📦', -- emoji ou classe CSS
+  finalidade ENUM('OPERACIONAL', 'CONTROLE', 'TERCEIROS', 'AJUSTES') NOT NULL,
+  ordem_exibicao INT DEFAULT 0,
+  ativo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### **Dados Iniciais (Seeds)**
+```sql
+INSERT INTO grupos_movimentacao (codigo, nome, descricao, cor, icone, finalidade, ordem_exibicao) VALUES
+('OPERACIONAIS', 'Operacionais', 'Movimentação física de material para eventos', '#22c55e', '🚛', 'OPERACIONAL', 1),
+('CONTROLE_QUALIDADE', 'Controle de Qualidade', 'Gestão de avarias, manutenção e reparos', '#f59e0b', '��', 'CONTROLE', 2),
+('PERDAS_SINISTROS', 'Perdas e Sinistros', 'Controle de perdas, roubos e baixas', '#ef4444', '⚠️', 'CONTROLE', 3),
+('LOCACAO_TERCEIROS', 'Locação e Terceiros', 'Material de terceiros sob custódia', '#3b82f6', '🤝', 'TERCEIROS', 4),
+('AJUSTES_CORRECOES', 'Ajustes e Correções', 'Correções de inventário e reclassificações', '#8b5cf6', '📊', 'AJUSTES', 5);
+```
+
+### **Model (Laravel/PHP)**
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class GrupoMovimentacao extends Model
+{
+    protected $table = 'grupos_movimentacao';
+    
+    protected $fillable = [
+        'codigo', 'nome', 'descricao', 'cor', 'icone', 
+        'finalidade', 'ordem_exibicao', 'ativo'
+    ];
+    
+    protected $casts = [
+        'ativo' => 'boolean',
+        'ordem_exibicao' => 'integer'
+    ];
+    
+    // Relacionamentos
+    public function tiposMovimentacao()
+    {
+        return $this->hasMany(TipoMovimentacao::class, 'grupo_id');
+    }
+    
+    // Scopes
+    public function scopeAtivos($query)
+    {
+        return $query->where('ativo', true);
+    }
+    
+    public function scopeOrdenados($query)
+    {
+        return $query->orderBy('ordem_exibicao')->orderBy('nome');
+    }
+    
+    // Accessors
+    public function getQuantidadeTiposAttribute()
+    {
+        return $this->tiposMovimentacao()->count();
+    }
+}
+```
+
+### **Controller**
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\GrupoMovimentacao;
+use Illuminate\Http\Request;
+
+class GrupoMovimentacaoController extends Controller
+{
+    public function index()
+    {
+        $grupos = GrupoMovimentacao::with('tiposMovimentacao')
+            ->ordenados()
+            ->get();
+            
+        return response()->json($grupos);
+    }
+    
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'codigo' => 'required|string|max:50|unique:grupos_movimentacao',
+            'nome' => 'required|string|max:100',
+            'descricao' => 'nullable|string',
+            'cor' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'icone' => 'nullable|string|max:50',
+            'finalidade' => 'required|in:OPERACIONAL,CONTROLE,TERCEIROS,AJUSTES',
+            'ordem_exibicao' => 'nullable|integer|min:0'
+        ]);
+        
+        $grupo = GrupoMovimentacao::create($validated);
+        
+        return response()->json($grupo, 201);
+    }
+    
+    public function show(GrupoMovimentacao $grupo)
+    {
+        $grupo->load('tiposMovimentacao');
+        return response()->json($grupo);
+    }
+    
+    public function update(Request $request, GrupoMovimentacao $grupo)
+    {
+        $validated = $request->validate([
+            'codigo' => 'required|string|max:50|unique:grupos_movimentacao,codigo,' . $grupo->id,
+            'nome' => 'required|string|max:100',
+            'descricao' => 'nullable|string',
+            'cor' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'icone' => 'nullable|string|max:50',
+            'finalidade' => 'required|in:OPERACIONAL,CONTROLE,TERCEIROS,AJUSTES',
+            'ordem_exibicao' => 'nullable|integer|min:0',
+            'ativo' => 'boolean'
+        ]);
+        
+        $grupo->update($validated);
+        
+        return response()->json($grupo);
+    }
+    
+    public function destroy(GrupoMovimentacao $grupo)
+    {
+        // Verificar se tem tipos associados
+        if ($grupo->tiposMovimentacao()->count() > 0) {
+            return response()->json([
+                'message' => 'Não é possível excluir grupo com tipos de movimentação associados'
+            ], 422);
+        }
+        
+        $grupo->delete();
+        
+        return response()->json(null, 204);
+    }
+}
+```
+
+---
+
+## 📊 **2. CADASTRO DE TIPOS DE MOVIMENTAÇÃO**
+
+### **Estrutura de Dados**
+```sql
+CREATE TABLE tipos_movimentacao (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  codigo VARCHAR(50) NOT NULL UNIQUE,
+  nome VARCHAR(100) NOT NULL,
+  grupo_id BIGINT NOT NULL,
+  natureza ENUM('ENTRADA', 'SAIDA', 'TRANSFERENCIA', 'AJUSTE') NOT NULL,
+  
+  -- Controle de impactos (operacionais apenas)
+  afeta_inventario_fisico BOOLEAN DEFAULT TRUE,
+  afeta_inventario_operacional BOOLEAN DEFAULT TRUE,
+  
+  -- Configurações
+  requer_aprovacao BOOLEAN DEFAULT FALSE,
+  requer_documento BOOLEAN DEFAULT FALSE,
+  permite_lote_misto BOOLEAN DEFAULT TRUE,
+  
+  -- Status permitidos
+  status_origem JSON NULL, -- ['disponivel', 'em_evento']
+  status_destino JSON NULL, -- ['disponivel', 'avariado']
+  
+  -- Configurações dinâmicas
+  campos_obrigatorios JSON NULL, -- ['fornecedor', 'documento']
+  campos_opcionais JSON NULL, -- ['observacoes', 'local']
+  validacoes_especiais JSON NULL, -- regras específicas
+  
+  ativo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (grupo_id) REFERENCES grupos_movimentacao(id)
+);
+```
+
+### **Dados Iniciais (Tipos Essenciais)**
+```sql
+INSERT INTO tipos_movimentacao (codigo, nome, grupo_id, natureza, campos_obrigatorios, validacoes_especiais) VALUES
+-- Operacionais
+('ENTRADA_COMPRA', 'Entrada por Compra', 1, 'ENTRADA', '["fornecedor", "documento"]', '{"documento": "required"}'),
+('ENTRADA_LOCACAO', 'Entrada Material Locado', 1, 'ENTRADA', '["fornecedor", "contrato"]', '{"prazo_devolucao": "required|date|after:today"}'),
+('SAIDA_EVENTO', 'Saída para Evento', 1, 'SAIDA', '["evento", "data_prevista_retorno"]', '{"estoque_suficiente": true}'),
+('RETORNO_EVENTO', 'Retorno de Evento', 1, 'ENTRADA', '["evento"]', '{"deve_existir_saida": true}'),
+('DEVOLUCAO_LOCACAO', 'Devolução Material Locado', 1, 'SAIDA', '["fornecedor"]', '{"material_disponivel": true}'),
+
+-- Controle de Qualidade
+('MOVIMENTACAO_AVARIA', 'Movimentação para Avaria', 2, 'TRANSFERENCIA', '["motivo", "responsavel"]', '{"fotos": "recommended"}'),
+('ENTRADA_MANUTENCAO', 'Entrada em Manutenção', 2, 'TRANSFERENCIA', '["tipo_manutencao", "previsao_conclusao"]', '{"previsao_futura": true}'),
+('SAIDA_MANUTENCAO', 'Saída de Manutenção', 2, 'TRANSFERENCIA', '["laudo_liberacao"]', '{"laudo": "required"}'),
+('REPARO_CONCLUIDO', 'Reparo Concluído', 2, 'TRANSFERENCIA', '["responsavel_reparo", "laudo"]', '{"laudo": "required"}'),
+('DESCARTE_AVARIA', 'Descarte por Avaria', 2, 'SAIDA', '["motivo_descarte", "responsavel"]', '{"aprovacao": "required"}'),
+
+-- Perdas e Sinistros
+('SAIDA_PERDA', 'Saída por Perda', 3, 'SAIDA', '["motivo_perda", "responsavel"]', '{"aprovacao": "required"}'),
+('SAIDA_ROUBO', 'Saída por Roubo', 3, 'SAIDA', '["boletim_ocorrencia", "delegacia"]', '{"bo": "required"}'),
+('SAIDA_SINISTRO', 'Saída por Sinistro', 3, 'SAIDA', '["tipo_sinistro", "descricao"]', '{"descricao": "required"}'),
+
+-- Locação e Terceiros
+('ENTRADA_CONSIGNACAO', 'Entrada em Consignação', 4, 'ENTRADA', '["consignante", "contrato"]', '{"contrato": "required"}'),
+('DEVOLUCAO_CONSIGNACAO', 'Devolução de Consignação', 4, 'SAIDA', '["consignante"]', '{"material_disponivel": true}'),
+('ENTRADA_COMODATO', 'Entrada em Comodato', 4, 'ENTRADA', '["comodante", "prazo_devolucao"]', '{"prazo_futuro": true}'),
+('DEVOLUCAO_COMODATO', 'Devolução de Comodato', 4, 'SAIDA', '["comodante"]', '{"material_disponivel": true}'),
+
+-- Ajustes
+('AJUSTE_POSITIVO', 'Ajuste Positivo', 5, 'AJUSTE', '["motivo", "responsavel"]', '{"justificativa": "required"}'),
+('AJUSTE_NEGATIVO', 'Ajuste Negativo', 5, 'AJUSTE', '["motivo", "responsavel"]', '{"justificativa": "required"}'),
+('INVENTARIO_FISICO', 'Inventário Físico', 5, 'AJUSTE', '["responsavel", "data_contagem"]', '{"contagem_obrigatoria": true}'),
+('RECLASSIFICACAO_STATUS', 'Reclassificação de Status', 5, 'AJUSTE', '["status_origem", "status_destino", "motivo"]', '{"status_validos": true}');
+```
+
+### **Model**
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class TipoMovimentacao extends Model
+{
+    protected $table = 'tipos_movimentacao';
+    
+    protected $fillable = [
+        'codigo', 'nome', 'grupo_id', 'natureza',
+        'afeta_inventario_fisico', 'afeta_inventario_operacional',
+        'requer_aprovacao', 'requer_documento', 'permite_lote_misto',
+        'status_origem', 'status_destino',
+        'campos_obrigatorios', 'campos_opcionais', 'validacoes_especiais',
+        'ativo'
+    ];
+    
+    protected $casts = [
+        'afeta_inventario_fisico' => 'boolean',
+        'afeta_inventario_operacional' => 'boolean',
+        'requer_aprovacao' => 'boolean',
+        'requer_documento' => 'boolean',
+        'permite_lote_misto' => 'boolean',
+        'ativo' => 'boolean',
+        'status_origem' => 'array',
+        'status_destino' => 'array',
+        'campos_obrigatorios' => 'array',
+        'campos_opcionais' => 'array',
+        'validacoes_especiais' => 'array'
+    ];
+    
+    // Relacionamentos
+    public function grupo()
+    {
+        return $this->belongsTo(GrupoMovimentacao::class, 'grupo_id');
+    }
+    
+    public function movimentacoes()
+    {
+        return $this->hasMany(Movimentacao::class, 'tipo_id');
+    }
+    
+    // Scopes
+    public function scopeAtivos($query)
+    {
+        return $query->where('ativo', true);
+    }
+    
+    public function scopePorGrupo($query, $grupoId)
+    {
+        return $query->where('grupo_id', $grupoId);
+    }
+    
+    public function scopePorNatureza($query, $natureza)
+    {
+        return $query->where('natureza', $natureza);
+    }
+    
+    // Methods
+    public function isCampoObrigatorio($campo)
+    {
+        return in_array($campo, $this->campos_obrigatorios ?? []);
+    }
+    
+    public function getValidacaoEspecial($campo)
+    {
+        return $this->validacoes_especiais[$campo] ?? null;
+    }
+}
+```
+
+### **Controller**
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\TipoMovimentacao;
+use App\Models\GrupoMovimentacao;
+use Illuminate\Http\Request;
+
+class TipoMovimentacaoController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = TipoMovimentacao::with('grupo');
+        
+        // Filtros
+        if ($request->has('grupo_id')) {
+            $query->porGrupo($request->grupo_id);
+        }
+        
+        if ($request->has('natureza')) {
+            $query->porNatureza($request->natureza);
+        }
+        
+        if ($request->has('ativo')) {
+            $query->where('ativo', $request->boolean('ativo'));
+        }
+        
+        $tipos = $query->orderBy('codigo')->get();
+        
+        return response()->json($tipos);
+    }
+    
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'codigo' => 'required|string|max:50|unique:tipos_movimentacao',
+            'nome' => 'required|string|max:100',
+            'grupo_id' => 'required|exists:grupos_movimentacao,id',
+            'natureza' => 'required|in:ENTRADA,SAIDA,TRANSFERENCIA,AJUSTE',
+            'afeta_inventario_fisico' => 'boolean',
+            'afeta_inventario_operacional' => 'boolean',
+            'requer_aprovacao' => 'boolean',
+            'requer_documento' => 'boolean',
+            'permite_lote_misto' => 'boolean',
+            'status_origem' => 'nullable|array',
+            'status_destino' => 'nullable|array',
+            'campos_obrigatorios' => 'nullable|array',
+            'campos_opcionais' => 'nullable|array',
+            'validacoes_especiais' => 'nullable|array'
+        ]);
+        
+        $tipo = TipoMovimentacao::create($validated);
+        $tipo->load('grupo');
+        
+        return response()->json($tipo, 201);
+    }
+    
+    public function show(TipoMovimentacao $tipo)
+    {
+        $tipo->load('grupo');
+        return response()->json($tipo);
+    }
+    
+    public function update(Request $request, TipoMovimentacao $tipo)
+    {
+        $validated = $request->validate([
+            'codigo' => 'required|string|max:50|unique:tipos_movimentacao,codigo,' . $tipo->id,
+            'nome' => 'required|string|max:100',
+            'grupo_id' => 'required|exists:grupos_movimentacao,id',
+            'natureza' => 'required|in:ENTRADA,SAIDA,TRANSFERENCIA,AJUSTE',
+            'afeta_inventario_fisico' => 'boolean',
+            'afeta_inventario_operacional' => 'boolean',
+            'requer_aprovacao' => 'boolean',
+            'requer_documento' => 'boolean',
+            'permite_lote_misto' => 'boolean',
+            'status_origem' => 'nullable|array',
+            'status_destino' => 'nullable|array',
+            'campos_obrigatorios' => 'nullable|array',
+            'campos_opcionais' => 'nullable|array',
+            'validacoes_especiais' => 'nullable|array',
+            'ativo' => 'boolean'
+        ]);
+        
+        $tipo->update($validated);
+        $tipo->load('grupo');
+        
+        return response()->json($tipo);
+    }
+    
+    public function destroy(TipoMovimentacao $tipo)
+    {
+        // Verificar se tem movimentações associadas
+        if ($tipo->movimentacoes()->count() > 0) {
+            return response()->json([
+                'message' => 'Não é possível excluir tipo com movimentações associadas'
+            ], 422);
+        }
+        
+        $tipo->delete();
+        
+        return response()->json(null, 204);
+    }
+    
+    public function porGrupo(GrupoMovimentacao $grupo)
+    {
+        $tipos = $grupo->tiposMovimentacao()->ativos()->orderBy('nome')->get();
+        return response()->json($tipos);
+    }
+}
+```
+
+---
+
+## 🏢 **3. CAMPO FORNECEDOR OPCIONAL**
+
+### **Modificação na Tabela Produtos**
+```sql
+ALTER TABLE produtos ADD COLUMN requer_fornecedor BOOLEAN DEFAULT FALSE;
+ALTER TABLE produtos ADD COLUMN sku_equivalente VARCHAR(50) NULL;
+ALTER TABLE produtos ADD INDEX idx_sku_equivalente (sku_equivalente);
+```
+
+### **Modificação na Tabela Movimentações**
+```sql
+ALTER TABLE movimentacao_itens ADD COLUMN fornecedor_informado VARCHAR(100) NULL;
+ALTER TABLE movimentacao_itens ADD COLUMN observacoes_fornecedor TEXT NULL;
+ALTER TABLE movimentacao_itens ADD INDEX idx_fornecedor_informado (fornecedor_informado);
+```
+
+### **Atualização do Model Produto**
+```php
+// Adicionar ao Model Produto existente
+protected $fillable = [
+    // ... campos existentes
+    'requer_fornecedor',
+    'sku_equivalente'
+];
+
+protected $casts = [
+    // ... casts existentes
+    'requer_fornecedor' => 'boolean'
+];
+
+// Método para buscar produtos equivalentes
+public function produtoEquivalente()
+{
+    if ($this->sku_equivalente) {
+        return static::where('sku', $this->sku_equivalente)->first();
+    }
+    return null;
+}
+
+// Método para buscar variantes
+public function variantes()
+{
+    return static::where('sku_equivalente', $this->sku)->get();
+}
+```
+
+### **API para Fornecedores Recentes**
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class FornecedorController extends Controller
+{
+    public function buscarPorProduto($sku)
+    {
+        // Fornecedores usados recentemente para este SKU
+        $recentes = DB::table('movimentacao_itens')
+            ->select('fornecedor_informado as nome', DB::raw('COUNT(*) as frequencia'), DB::raw('MAX(created_at) as ultima_vez'))
+            ->where('sku', $sku)
+            ->whereNotNull('fornecedor_informado')
+            ->where('created_at', '>=', now()->subMonths(3))
+            ->groupBy('fornecedor_informado')
+            ->orderByDesc('frequencia')
+            ->orderByDesc('ultima_vez')
+            ->limit(5)
+            ->get();
+        
+        // Fornecedores cadastrados (se existir tabela de fornecedores)
+        $cadastrados = collect();
+        if (Schema::hasTable('fornecedores')) {
+            $cadastrados = DB::table('fornecedores')
+                ->select('nome')
+                ->where('ativo', true)
+                ->orderBy('nome')
+                ->get();
+        }
+        
+        return response()->json([
+            'recentes' => $recentes,
+            'cadastrados' => $cadastrados,
+            'ultimo_usado' => $recentes->first()
+        ]);
+    }
+}
+```
+
+---
+
+## 🖥️ **4. INTERFACES FRONTEND**
+
+### **Página de Grupos de Movimentação (Vue.js)**
+```vue
+<template>
+  <div class="grupos-movimentacao">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Grupos de Movimentação</h1>
+      <button @click="abrirModal()" class="btn btn-primary">
+        <i class="fas fa-plus mr-2"></i>
+        Novo Grupo
+      </button>
+    </div>
+    
+    <!-- Lista de Grupos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div 
+        v-for="grupo in grupos" 
+        :key="grupo.id"
+        class="bg-white rounded-lg shadow-md p-6 border-l-4"
+        :style="{ borderLeftColor: grupo.cor }"
+      >
+        <!-- Header do Card -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center">
+            <span class="text-2xl mr-3">{{ grupo.icone }}</span>
+            <div>
+              <h3 class="font-semibold text-gray-900">{{ grupo.nome }}</h3>
+              <p class="text-sm text-gray-500">{{ grupo.codigo }}</p>
+            </div>
+          </div>
+          <div class="flex space-x-2">
+            <button @click="editarGrupo(grupo)" class="btn btn-sm btn-outline">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button @click="excluirGrupo(grupo)" class="btn btn-sm btn-danger">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Conteúdo -->
+        <p class="text-gray-600 text-sm mb-4">{{ grupo.descricao }}</p>
+        
+        <!-- Footer -->
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500">
+            {{ grupo.quantidade_tipos }} tipos cadastrados
+          </span>
+          <span 
+            class="px-2 py-1 rounded-full text-xs font-medium"
+            :class="grupo.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+          >
+            {{ grupo.ativo ? 'Ativo' : 'Inativo' }}
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal de Cadastro/Edição -->
+    <ModalGrupo 
+      v-if="modalAberto"
+      :grupo="grupoEdicao"
+      @salvar="salvarGrupo"
+      @fechar="fecharModal"
+    />
+  </div>
+</template>
+
+<script>
+import ModalGrupo from './components/ModalGrupo.vue'
+
+export default {
+  name: 'GruposMovimentacao',
+  components: {
+    ModalGrupo
+  },
+  data() {
+    return {
+      grupos: [],
+      modalAberto: false,
+      grupoEdicao: null,
+      loading: false
+    }
+  },
+  async mounted() {
+    await this.carregarGrupos()
+  },
+  methods: {
+    async carregarGrupos() {
+      this.loading = true
+      try {
+        const response = await this.$http.get('/api/grupos-movimentacao')
+        this.grupos = response.data
+      } catch (error) {
+        this.$toast.error('Erro ao carregar grupos')
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    abrirModal(grupo = null) {
+      this.grupoEdicao = grupo
+      this.modalAberto = true
+    },
+    
+    fecharModal() {
+      this.modalAberto = false
+      this.grupoEdicao = null
+    },
+    
+    async salvarGrupo(dados) {
+      try {
+        if (this.grupoEdicao) {
+          await this.$http.put(`/api/grupos-movimentacao/${this.grupoEdicao.id}`, dados)
+          this.$toast.success('Grupo atualizado com sucesso')
+        } else {
+          await this.$http.post('/api/grupos-movimentacao', dados)
+          this.$toast.success('Grupo criado com sucesso')
+        }
+        
+        await this.carregarGrupos()
+        this.fecharModal()
+      } catch (error) {
+        this.$toast.error('Erro ao salvar grupo')
+      }
+    },
+    
+    editarGrupo(grupo) {
+      this.abrirModal(grupo)
+    },
+    
+    async excluirGrupo(grupo) {
+      if (grupo.quantidade_tipos > 0) {
+        this.$toast.warning('Não é possível excluir grupo com tipos associados')
+        return
+      }
+      
+      if (confirm('Tem certeza que deseja excluir este grupo?')) {
+        try {
+          await this.$http.delete(`/api/grupos-movimentacao/${grupo.id}`)
+          this.$toast.success('Grupo excluído com sucesso')
+          await this.carregarGrupos()
+        } catch (error) {
+          this.$toast.error('Erro ao excluir grupo')
+        }
+      }
+    }
+  }
+}
+</script>
+```
+
+### **Página de Tipos de Movimentação**
+```vue
+<template>
+  <div class="tipos-movimentacao">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Tipos de Movimentação</h1>
+      <button @click="abrirModal()" class="btn btn-primary">
+        <i class="fas fa-plus mr-2"></i>
+        Novo Tipo
+      </button>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
+          <select v-model="filtros.grupo_id" @change="aplicarFiltros" class="input w-full">
+            <option value="">Todos os grupos</option>
+            <option v-for="grupo in grupos" :key="grupo.id" :value="grupo.id">
+              {{ grupo.icone }} {{ grupo.nome }}
+            </option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Natureza</label>
+          <select v-model="filtros.natureza" @change="aplicarFiltros" class="input w-full">
+            <option value="">Todas as naturezas</option>
+            <option value="ENTRADA">Entrada</option>
+            <option value="SAIDA">Saída</option>
+            <option value="TRANSFERENCIA">Transferência</option>
+            <option value="AJUSTE">Ajuste</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select v-model="filtros.ativo" @change="aplicarFiltros" class="input w-full">
+            <option value="">Todos</option>
+            <option value="true">Ativos</option>
+            <option value="false">Inativos</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+          <input 
+            v-model="filtros.busca" 
+            @input="aplicarFiltros"
+            type="text" 
+            class="input w-full" 
+            placeholder="Código ou nome..."
+          />
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tabela -->
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Código
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Nome
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Grupo
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Natureza
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Ações
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr v-for="tipo in tiposFiltrados" :key="tipo.id">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              {{ tipo.codigo }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ tipo.nome }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <span class="inline-flex items-center">
+                <span class="mr-1">{{ tipo.grupo.icone }}</span>
+                {{ tipo.grupo.nome }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span 
+                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                :class="getNaturezaClass(tipo.natureza)"
+              >
+                {{ tipo.natureza }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span 
+                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                :class="tipo.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+              >
+                {{ tipo.ativo ? 'Ativo' : 'Inativo' }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <div class="flex justify-end space-x-2">
+                <button @click="editarTipo(tipo)" class="btn btn-sm btn-outline">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button @click="duplicarTipo(tipo)" class="btn btn-sm btn-secondary">
+                  <i class="fas fa-copy"></i>
+                </button>
+                <button @click="excluirTipo(tipo)" class="btn btn-sm btn-danger">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Modal de Cadastro/Edição -->
+    <ModalTipo 
+      v-if="modalAberto"
+      :tipo="tipoEdicao"
+      :grupos="grupos"
+      @salvar="salvarTipo"
+      @fechar="fecharModal"
+    />
+  </div>
+</template>
+
+<script>
+import ModalTipo from './components/ModalTipo.vue'
+
+export default {
+  name: 'TiposMovimentacao',
+  components: {
+    ModalTipo
+  },
+  data() {
+    return {
+      tipos: [],
+      grupos: [],
+      modalAberto: false,
+      tipoEdicao: null,
+      filtros: {
+        grupo_id: '',
+        natureza: '',
+        ativo: '',
+        busca: ''
+      },
+      loading: false
+    }
+  },
+  computed: {
+    tiposFiltrados() {
+      let resultado = this.tipos
+      
+      if (this.filtros.busca) {
+        const busca = this.filtros.busca.toLowerCase()
+        resultado = resultado.filter(tipo => 
+          tipo.codigo.toLowerCase().includes(busca) ||
+          tipo.nome.toLowerCase().includes(busca)
+        )
+      }
+      
+      return resultado
+    }
+  },
+  async mounted() {
+    await Promise.all([
+      this.carregarGrupos(),
+      this.carregarTipos()
+    ])
+  },
+  methods: {
+    async carregarGrupos() {
+      try {
+        const response = await this.$http.get('/api/grupos-movimentacao')
+        this.grupos = response.data
+      } catch (error) {
+        this.$toast.error('Erro ao carregar grupos')
+      }
+    },
+    
+    async carregarTipos() {
+      this.loading = true
+      try {
+        const params = new URLSearchParams()
+        if (this.filtros.grupo_id) params.append('grupo_id', this.filtros.grupo_id)
+        if (this.filtros.natureza) params.append('natureza', this.filtros.natureza)
+        if (this.filtros.ativo) params.append('ativo', this.filtros.ativo)
+        
+        const response = await this.$http.get(`/api/tipos-movimentacao?${params}`)
+        this.tipos = response.data
+      } catch (error) {
+        this.$toast.error('Erro ao carregar tipos')
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    aplicarFiltros() {
+      this.carregarTipos()
+    },
+    
+    getNaturezaClass(natureza) {
+      const classes = {
+        'ENTRADA': 'bg-green-100 text-green-800',
+        'SAIDA': 'bg-red-100 text-red-800',
+        'TRANSFERENCIA': 'bg-blue-100 text-blue-800',
+        'AJUSTE': 'bg-yellow-100 text-yellow-800'
+      }
+      return classes[natureza] || 'bg-gray-100 text-gray-800'
+    },
+    
+    abrirModal(tipo = null) {
+      this.tipoEdicao = tipo
+      this.modalAberto = true
+    },
+    
+    fecharModal() {
+      this.modalAberto = false
+      this.tipoEdicao = null
+    },
+    
+    async salvarTipo(dados) {
+      try {
+        if (this.tipoEdicao) {
+          await this.$http.put(`/api/tipos-movimentacao/${this.tipoEdicao.id}`, dados)
+          this.$toast.success('Tipo atualizado com sucesso')
+        } else {
+          await this.$http.post('/api/tipos-movimentacao', dados)
+          this.$toast.success('Tipo criado com sucesso')
+        }
+        
+        await this.carregarTipos()
+        this.fecharModal()
+      } catch (error) {
+        this.$toast.error('Erro ao salvar tipo')
+      }
+    },
+    
+    editarTipo(tipo) {
+      this.abrirModal(tipo)
+    },
+    
+    duplicarTipo(tipo) {
+      const duplicado = { 
+        ...tipo, 
+        id: null, 
+        codigo: tipo.codigo + '_COPY',
+        nome: tipo.nome + ' (Cópia)'
+      }
+      this.abrirModal(duplicado)
+    },
+    
+    async excluirTipo(tipo) {
+      if (confirm('Tem certeza que deseja excluir este tipo?')) {
+        try {
+          await this.$http.delete(`/api/tipos-movimentacao/${tipo.id}`)
+          this.$toast.success('Tipo excluído com sucesso')
+          await this.carregarTipos()
+        } catch (error) {
+          this.$toast.error('Erro ao excluir tipo')
+        }
+      }
+    }
+  }
+}
+</script>
+```
+
+### **Modificação no Popup de Confirmação Existente**
+```vue
+<template>
+  <div class="modal-overlay" @click.self="fechar">
+    <div class="modal-content max-w-sm">
+      <div class="modal-header">
+        <h3 class="text-lg font-semibold">Confirmar Carregamento</h3>
+      </div>
+      
+      <div class="modal-body space-y-4">
+        <!-- Produto -->
+        <div>
+          <p class="text-sm text-gray-600">Produto:</p>
+          <p class="font-medium">{{ produto.sku }}</p>
+          <p class="text-sm text-gray-500">{{ produto.nome }}</p>
+        </div>
+        
+        <!-- Quantidade -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Quantidade *
+          </label>
+          <input 
+            v-model="quantidade"
+            type="number"
+            class="input w-full"
+            min="1"
+            required
+          />
+        </div>
+        
+        <!-- Campo Fornecedor (Condicional) -->
+        <div v-if="produto.requer_fornecedor">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Fornecedor
+            <span class="text-xs text-gray-500">(opcional)</span>
+          </label>
+          <select v-model="fornecedorSelecionado" class="input w-full">
+            <option value="">Selecione ou deixe vazio...</option>
+            
+            <!-- Fornecedores Recentes -->
+            <optgroup v-if="fornecedores.recentes.length" label="🕒 Usados Recentemente">
+              <option 
+                v-for="fornecedor in fornecedores.recentes" 
+                :key="fornecedor.nome"
+                :value="fornecedor.nome"
+              >
+                ⭐ {{ fornecedor.nome }} ({{ fornecedor.frequencia }}x)
+              </option>
+            </optgroup>
+            
+            <!-- Fornecedores Cadastrados -->
+            <optgroup v-if="fornecedores.cadastrados.length" label="📋 Outros Cadastrados">
+              <option 
+                v-for="fornecedor in fornecedores.cadastrados" 
+                :key="fornecedor.nome"
+                :value="fornecedor.nome"
+              >
+                {{ fornecedor.nome }}
+              </option>
+            </optgroup>
+          </select>
+          
+          <!-- Dica -->
+          <p class="text-xs text-gray-500 mt-1">
+            💡 Deixe vazio se for material próprio
+          </p>
+        </div>
+        
+        <!-- Localização (se existir) -->
+        <div v-if="produto.localizacao">
+          <p class="text-sm text-gray-600">Localização:</p>
+          <p class="text-sm font-medium">{{ produto.localizacao }}</p>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button @click="fechar" class="btn btn-outline">
+          Cancelar
+        </button>
+        <button @click="confirmar" class="btn btn-primary">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'PopupConfirmacao',
+  props: {
+    produto: {
+      type: Object,
+      required: true
+    },
+    quantidadeInicial: {
+      type: Number,
+      default: 1
+    }
+  },
+  data() {
+    return {
+      quantidade: this.quantidadeInicial,
+      fornecedorSelecionado: '',
+      fornecedores: {
+        recentes: [],
+        cadastrados: [],
+        ultimo_usado: null
+      }
+    }
+  },
+  async mounted() {
+    if (this.produto.requer_fornecedor) {
+      await this.carregarFornecedores()
+    }
+  },
+  methods: {
+    async carregarFornecedores() {
+      try {
+        const response = await this.$http.get(`/api/fornecedores/produto/${this.produto.sku}`)
+        this.fornecedores = response.data
+        
+        // Pré-selecionar último usado se houver
+        if (this.fornecedores.ultimo_usado) {
+          this.fornecedorSelecionado = this.fornecedores.ultimo_usado.nome
+        }
+      } catch (error) {
+        console.error('Erro ao carregar fornecedores:', error)
+      }
+    },
+    
+    confirmar() {
+      const dados = {
+        produto: this.produto,
+        quantidade: this.quantidade,
+        fornecedor_informado: this.fornecedorSelecionado || null
+      }
+      
+      this.$emit('confirmar', dados)
+    },
+    
+    fechar() {
+      this.$emit('fechar')
+    }
+  }
+}
+</script>
+```
+
+---
+
+## 🛠️ **5. ESTRUTURA DE LOTES (PREPARAÇÃO)**
+
+### **Tabelas para Próximas Fases**
+```sql
+-- Criar tabelas mas não usar ainda
+CREATE TABLE lotes_produtos (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  produto_id BIGINT NOT NULL,
+  codigo_lote VARCHAR(50) NOT NULL,
+  tipo_propriedade ENUM('PROPRIO', 'LOCADO', 'CONSIGNADO', 'COMODATO') NOT NULL,
+  proprietario_id BIGINT NULL, -- referência a fornecedores
+  proprietario_nome VARCHAR(100) NULL, -- cache do nome
+  
+  -- Dados específicos
+  contrato_id BIGINT NULL,
+  data_entrada DATE NOT NULL,
+  data_vencimento DATE NULL,
+  
+  -- Localização
+  localizacao VARCHAR(50) NULL,
+  
+  -- Controle
+  ativo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at
