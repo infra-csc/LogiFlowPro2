@@ -1020,27 +1020,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check for movements in progress or paused
+      // Check for movements in progress
       const { db } = await import("./db");
       const { movements } = await import("@shared/schema");
-      const { eq, and, or } = await import("drizzle-orm");
+      const { eq, and } = await import("drizzle-orm");
 
       const activeMovements = await db.select()
         .from(movements)
         .where(
           and(
             eq(movements.loadingOrderId, req.params.id),
-            or(
-              eq(movements.status, "in_progress"),
-              eq(movements.status, "paused")
-            )
+            eq(movements.status, "in_progress")
           )
         );
 
       if (activeMovements.length > 0) {
         return res.json({ 
           canEdit: false, 
-          reason: `Existem ${activeMovements.length} movimentação(ões) em andamento ou pausada(s) vinculadas a esta ordem`,
+          reason: `Existem ${activeMovements.length} movimentação(ões) em andamento vinculadas a esta ordem`,
           activeMovements: activeMovements.map((m: any) => ({
             id: m.id,
             movementNumber: m.movementNumber,
@@ -1070,26 +1067,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check for movements in progress or paused
+      // Check for movements in progress
       const { db } = await import("./db");
       const { movements } = await import("@shared/schema");
-      const { eq, and, or } = await import("drizzle-orm");
+      const { eq, and } = await import("drizzle-orm");
 
       const activeMovements = await db.select()
         .from(movements)
         .where(
           and(
             eq(movements.loadingOrderId, req.params.id),
-            or(
-              eq(movements.status, "in_progress"),
-              eq(movements.status, "paused")
-            )
+            eq(movements.status, "in_progress")
           )
         );
 
       if (activeMovements.length > 0) {
         return res.status(400).json({ 
-          error: `Não é possível editar. Existem ${activeMovements.length} movimentação(ões) em andamento ou pausada(s) vinculadas a esta ordem`
+          error: `Não é possível editar. Existem ${activeMovements.length} movimentação(ões) em andamento vinculadas a esta ordem`
         });
       }
 
