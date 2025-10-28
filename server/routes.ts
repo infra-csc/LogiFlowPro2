@@ -1004,12 +1004,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if loading order can be edited
+  app.get("/api/loading-orders/:id/can-edit", async (req, res) => {
+    try {
+      const order = await storage.getLoadingOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Loading order not found" });
+      }
+
+      // Cannot edit completed or cancelled orders
+      if (order.status === "completed" || order.status === "cancelled") {
+        return res.json({ 
+          canEdit: false, 
+          reason: "Ordens concluídas ou canceladas não podem ser editadas" 
+        });
+      }
+
+      // Check for movements in progress or paused
+      const { db } = await import("@db");
+      const { movements } = await import("@shared/schema");
+      const { eq, and, or } = await import("drizzle-orm");
+
+      const activeMovements = await db.select()
+        .from(movements)
+        .where(
+          and(
+            eq(movements.loadingOrderId, req.params.id),
+            or(
+              eq(movements.status, "in_progress"),
+              eq(movements.status, "paused")
+            )
+          )
+        );
+
+      if (activeMovements.length > 0) {
+        return res.json({ 
+          canEdit: false, 
+          reason: `Existem ${activeMovements.length} movimentação(ões) em andamento ou pausada(s) vinculadas a esta ordem`,
+          activeMovements: activeMovements.map(m => ({
+            id: m.id,
+            movementNumber: m.movementNumber,
+            status: m.status
+          }))
+        });
+      }
+
+      res.json({ canEdit: true });
+    } catch (error) {
+      console.error("Error checking if loading order can be edited:", error);
+      res.status(500).json({ error: "Failed to check edit permission" });
+    }
+  });
+
   app.patch("/api/loading-orders/:id", async (req, res) => {
     try {
+      const order = await storage.getLoadingOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Loading order not found" });
+      }
+
+      // Cannot edit completed or cancelled orders
+      if (order.status === "completed" || order.status === "cancelled") {
+        return res.status(400).json({ 
+          error: "Ordens concluídas ou canceladas não podem ser editadas" 
+        });
+      }
+
+      // Check for movements in progress or paused
+      const { db } = await import("@db");
+      const { movements } = await import("@shared/schema");
+      const { eq, and, or } = await import("drizzle-orm");
+
+      const activeMovements = await db.select()
+        .from(movements)
+        .where(
+          and(
+            eq(movements.loadingOrderId, req.params.id),
+            or(
+              eq(movements.status, "in_progress"),
+              eq(movements.status, "paused")
+            )
+          )
+        );
+
+      if (activeMovements.length > 0) {
+        return res.status(400).json({ 
+          error: `Não é possível editar. Existem ${activeMovements.length} movimentação(ões) em andamento ou pausada(s) vinculadas a esta ordem`
+        });
+      }
+
       const data = insertLoadingOrderSchema.partial().parse(req.body);
-      const order = await storage.updateLoadingOrder(req.params.id, data);
-      res.json(order);
+      const updatedOrder = await storage.updateLoadingOrder(req.params.id, data);
+      res.json(updatedOrder);
     } catch (error) {
+      console.error("Error updating loading order:", error);
       res.status(400).json({ error: "Invalid loading order data" });
     }
   });
