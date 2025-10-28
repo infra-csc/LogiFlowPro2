@@ -759,8 +759,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Loading Orders
-  async getLoadingOrders(): Promise<LoadingOrder[]> {
-    return await db.select().from(loadingOrders).orderBy(desc(loadingOrders.createdAt));
+  async getLoadingOrders(): Promise<any[]> {
+    const results = await db
+      .select({
+        id: loadingOrders.id,
+        eventId: loadingOrders.eventId,
+        orderNumber: loadingOrders.orderNumber,
+        status: loadingOrders.status,
+        plannedStartTime: loadingOrders.plannedStartTime,
+        plannedEndTime: loadingOrders.plannedEndTime,
+        actualStartTime: loadingOrders.actualStartTime,
+        actualEndTime: loadingOrders.actualEndTime,
+        loadingDate: loadingOrders.loadingDate,
+        unloadingDate: loadingOrders.unloadingDate,
+        createdBy: loadingOrders.createdBy,
+        notes: loadingOrders.notes,
+        createdAt: loadingOrders.createdAt,
+        updatedAt: loadingOrders.updatedAt,
+        event: events,
+      })
+      .from(loadingOrders)
+      .leftJoin(events, eq(loadingOrders.eventId, events.id))
+      .orderBy(desc(loadingOrders.createdAt));
+    
+    return results;
   }
 
   async getLoadingOrder(id: string): Promise<LoadingOrder | undefined> {
