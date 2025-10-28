@@ -26,6 +26,8 @@ import type { LoadingOrder, InsertLoadingOrder, Event, MaterialRequest, Trip } f
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 interface LoadingOrderDialogProps {
   open: boolean;
@@ -63,6 +65,12 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
   const { data: allRequests } = useQuery<MaterialRequest[]>({ queryKey: ["/api/requests"] });
   const { data: allTrips } = useQuery<Trip[]>({ queryKey: ["/api/trips"] });
+
+  // Check if order can be edited
+  const { data: canEditData } = useQuery<{ canEdit: boolean; reason?: string; activeMovements?: any[] }>({
+    queryKey: ["/api/loading-orders", order?.id, "can-edit"],
+    enabled: !!order?.id && open,
+  });
 
   const approvedRequests = allRequests?.filter(
     (req) => 
@@ -116,15 +124,17 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
 
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<InsertLoadingOrder>) => {
-      return apiRequest("PATCH", `/api/loading-orders/${order?.id}`, data);
+      const response = await apiRequest("PATCH", `/api/loading-orders/${order?.id}`, data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/loading-orders"] });
       toast({ description: "Ordem de carregamento atualizada com sucesso" });
       onOpenChange(false);
     },
-    onError: () => {
-      toast({ description: "Falha ao atualizar ordem de carregamento", variant: "destructive" });
+    onError: (error: any) => {
+      const message = error?.message || "Falha ao atualizar ordem de carregamento";
+      toast({ description: message, variant: "destructive" });
     },
   });
 
@@ -151,8 +161,15 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     );
   };
 
+  const canEdit = !order || (canEditData?.canEdit !== false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canEdit) {
+      toast({ description: "Esta ordem não pode ser editada no momento", variant: "destructive" });
+      return;
+    }
 
     if (!formData.eventId || !formData.orderNumber || 
         !formData.plannedStartTime || !formData.plannedEndTime ||
@@ -197,6 +214,25 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
           </DialogDescription>
         </DialogHeader>
 
+        {order && canEditData && !canEditData.canEdit && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {canEditData.reason}
+              {canEditData.activeMovements && canEditData.activeMovements.length > 0 && (
+                <div className="mt-2">
+                  <p className="font-medium">Movimentações ativas:</p>
+                  <ul className="list-disc list-inside mt-1">
+                    {canEditData.activeMovements.map((mov: any) => (
+                      <li key={mov.id}>{mov.movementNumber} - {mov.status}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -227,6 +263,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   value={formData.orderNumber}
                   onChange={(e) => setFormData({ ...formData, orderNumber: e.target.value })}
                   placeholder="Ex: LO-001"
+                  disabled={!canEdit}
                   data-testid="input-order-number"
                 />
               </div>
@@ -240,6 +277,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   type="datetime-local"
                   value={formData.plannedStartTime}
                   onChange={(e) => setFormData({ ...formData, plannedStartTime: e.target.value })}
+                  disabled={!canEdit}
                   data-testid="input-planned-start"
                 />
               </div>
@@ -251,6 +289,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   type="datetime-local"
                   value={formData.plannedEndTime}
                   onChange={(e) => setFormData({ ...formData, plannedEndTime: e.target.value })}
+                  disabled={!canEdit}
                   data-testid="input-planned-end"
                 />
               </div>
@@ -263,6 +302,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 value={formData.createdBy}
                 onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
                 placeholder="Nome do responsável"
+                disabled={!canEdit}
                 data-testid="input-created-by"
               />
             </div>
@@ -274,6 +314,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Observações adicionais..."
+                disabled={!canEdit}
                 data-testid="textarea-notes"
               />
             </div>
@@ -370,7 +411,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
             </Button>
             <Button
               type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={createMutation.isPending || updateMutation.isPending || !canEdit}
               data-testid="button-submit"
             >
               {createMutation.isPending || updateMutation.isPending

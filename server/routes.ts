@@ -1021,7 +1021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for movements in progress or paused
-      const { db } = await import("@db");
+      const { db } = await import("./db");
       const { movements } = await import("@shared/schema");
       const { eq, and, or } = await import("drizzle-orm");
 
@@ -1041,7 +1041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ 
           canEdit: false, 
           reason: `Existem ${activeMovements.length} movimentação(ões) em andamento ou pausada(s) vinculadas a esta ordem`,
-          activeMovements: activeMovements.map(m => ({
+          activeMovements: activeMovements.map((m: any) => ({
             id: m.id,
             movementNumber: m.movementNumber,
             status: m.status
@@ -1071,7 +1071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for movements in progress or paused
-      const { db } = await import("@db");
+      const { db } = await import("./db");
       const { movements } = await import("@shared/schema");
       const { eq, and, or } = await import("drizzle-orm");
 
