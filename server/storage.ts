@@ -1381,7 +1381,7 @@ export class DatabaseStorage implements IStorage {
 
   // AI Optimization
   async createOptimizationRun(run: InsertOptimizationRun): Promise<OptimizationRun> {
-    const [created] = await db.insert(optimizationRuns).values(run).returning();
+    const [created] = await db.insert(optimizationRuns).values(run as any).returning();
     return created;
   }
 
@@ -1472,7 +1472,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(movementTypesConfig.groupId, filters.groupId));
     }
     if (filters?.nature) {
-      conditions.push(eq(movementTypesConfig.nature, filters.nature));
+      conditions.push(eq(movementTypesConfig.nature, filters.nature as any));
     }
     if (filters?.active !== undefined) {
       conditions.push(eq(movementTypesConfig.active, filters.active));
@@ -1493,13 +1493,13 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createMovementTypeConfig(typeConfig: InsertMovementTypeConfig): Promise<MovementTypeConfig> {
-    const [created] = await db.insert(movementTypesConfig).values(typeConfig).returning();
+    const [created] = await db.insert(movementTypesConfig).values(typeConfig as any).returning();
     return created;
   }
   
   async updateMovementTypeConfig(id: string, typeConfig: Partial<InsertMovementTypeConfig>): Promise<MovementTypeConfig> {
     const [updated] = await db.update(movementTypesConfig)
-      .set({ ...typeConfig, updatedAt: new Date() })
+      .set({ ...typeConfig, updatedAt: new Date() } as any)
       .where(eq(movementTypesConfig.id, id))
       .returning();
     return updated;

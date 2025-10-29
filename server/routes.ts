@@ -36,6 +36,8 @@ import {
   insertCommentSchema,
   insertNotificationSchema,
   insertNotificationSettingsSchema,
+  insertMovementGroupSchema,
+  insertMovementTypeConfigSchema,
   movements,
 } from "@shared/schema";
 import {
@@ -2037,6 +2039,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // ========== PHASE 1: Movement Groups & Types Config ==========
+  
+  // Movement Groups
+  app.get("/api/movement-groups", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const groups = await storage.getMovementGroups();
+      res.json(groups);
+    } catch (error) {
+      console.error("Error fetching movement groups:", error);
+      res.status(500).json({ error: "Failed to fetch movement groups" });
+    }
+  });
+
+  app.get("/api/movement-groups/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const group = await storage.getMovementGroup(req.params.id);
+      if (!group) {
+        return res.status(404).json({ error: "Movement group not found" });
+      }
+      res.json(group);
+    } catch (error) {
+      console.error("Error fetching movement group:", error);
+      res.status(500).json({ error: "Failed to fetch movement group" });
+    }
+  });
+
+  app.post("/api/movement-groups", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const data = insertMovementGroupSchema.parse(req.body);
+      const group = await storage.createMovementGroup(data);
+      res.json(group);
+    } catch (error) {
+      console.error("Error creating movement group:", error);
+      res.status(500).json({ error: "Failed to create movement group" });
+    }
+  });
+
+  app.patch("/api/movement-groups/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const data = insertMovementGroupSchema.partial().parse(req.body);
+      const group = await storage.updateMovementGroup(req.params.id, data);
+      res.json(group);
+    } catch (error) {
+      console.error("Error updating movement group:", error);
+      res.status(500).json({ error: "Failed to update movement group" });
+    }
+  });
+
+  app.delete("/api/movement-groups/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      await storage.deleteMovementGroup(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting movement group:", error);
+      res.status(500).json({ error: "Failed to delete movement group" });
+    }
+  });
+
+  // Movement Types Config
+  app.get("/api/movement-types-config", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const filters: any = {};
+      if (req.query.groupId) filters.groupId = req.query.groupId as string;
+      if (req.query.nature) filters.nature = req.query.nature as string;
+      if (req.query.active !== undefined) filters.active = req.query.active === 'true';
+      
+      const types = await storage.getMovementTypesConfig(filters);
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching movement types config:", error);
+      res.status(500).json({ error: "Failed to fetch movement types config" });
+    }
+  });
+
+  app.get("/api/movement-types-config/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const typeConfig = await storage.getMovementTypeConfig(req.params.id);
+      if (!typeConfig) {
+        return res.status(404).json({ error: "Movement type config not found" });
+      }
+      res.json(typeConfig);
+    } catch (error) {
+      console.error("Error fetching movement type config:", error);
+      res.status(500).json({ error: "Failed to fetch movement type config" });
+    }
+  });
+
+  app.post("/api/movement-types-config", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const data = insertMovementTypeConfigSchema.parse(req.body);
+      const typeConfig = await storage.createMovementTypeConfig(data);
+      res.json(typeConfig);
+    } catch (error) {
+      console.error("Error creating movement type config:", error);
+      res.status(500).json({ error: "Failed to create movement type config" });
+    }
+  });
+
+  app.patch("/api/movement-types-config/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const data = insertMovementTypeConfigSchema.partial().parse(req.body);
+      const typeConfig = await storage.updateMovementTypeConfig(req.params.id, data);
+      res.json(typeConfig);
+    } catch (error) {
+      console.error("Error updating movement type config:", error);
+      res.status(500).json({ error: "Failed to update movement type config" });
+    }
+  });
+
+  app.delete("/api/movement-types-config/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      await storage.deleteMovementTypeConfig(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting movement type config:", error);
+      res.status(500).json({ error: "Failed to delete movement type config" });
+    }
+  });
+
+  // Supplier tracking
+  app.get("/api/products/:sku/recent-suppliers", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const months = req.query.months ? parseInt(req.query.months as string) : 3;
+      const suppliers = await storage.getRecentSuppliersBySku(req.params.sku, months);
+      res.json(suppliers);
+    } catch (error) {
+      console.error("Error fetching recent suppliers:", error);
+      res.status(500).json({ error: "Failed to fetch recent suppliers" });
     }
   });
 
