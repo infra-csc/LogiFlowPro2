@@ -114,6 +114,28 @@ export const productStatusEnum = pgEnum("product_status", [
   "lost"
 ]);
 
+// Movement configuration enums (Phase 1)
+export const movementGroupPurposeEnum = pgEnum("movement_group_purpose", [
+  "operational",
+  "quality_control",
+  "third_party",
+  "adjustments"
+]);
+
+export const movementNatureEnum = pgEnum("movement_nature", [
+  "inbound",
+  "outbound",
+  "transfer",
+  "adjustment"
+]);
+
+export const batchOwnershipTypeEnum = pgEnum("batch_ownership_type", [
+  "owned",
+  "rented",
+  "consigned",
+  "commodatum"
+]);
+
 // Users table (Authentication)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -233,6 +255,9 @@ export const products = pgTable("products", {
   currentStock: integer("current_stock").default(0),
   imageUrl: text("image_url"),
   alternativeProductIds: text("alternative_product_ids").array(),
+  // Phase 1 additions
+  requiresSupplier: boolean("requires_supplier").notNull().default(false),
+  equivalentSku: text("equivalent_sku"), // For linking variants
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 
@@ -312,6 +337,74 @@ export const docks = pgTable("docks", {
   capacity: integer("capacity").notNull().default(1),
   restrictions: text("restrictions"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
+// Movement Groups table (Phase 1)
+export const movementGroups = pgTable("movement_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").notNull().default("#6b7280"),
+  icon: text("icon").notNull().default("📦"),
+  purpose: movementGroupPurposeEnum("purpose").notNull(),
+  displayOrder: integer("display_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
+// Movement Types Config table (Phase 1)
+export const movementTypesConfig = pgTable("movement_types_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  groupId: varchar("group_id").notNull().references(() => movementGroups.id),
+  nature: movementNatureEnum("nature").notNull(),
+  
+  // Control impacts
+  affectsPhysicalInventory: boolean("affects_physical_inventory").notNull().default(true),
+  affectsOperationalInventory: boolean("affects_operational_inventory").notNull().default(true),
+  
+  // Configuration
+  requiresApproval: boolean("requires_approval").notNull().default(false),
+  requiresDocument: boolean("requires_document").notNull().default(false),
+  allowsMixedBatch: boolean("allows_mixed_batch").notNull().default(true),
+  
+  // Dynamic configurations (JSON)
+  allowedSourceStatuses: jsonb("allowed_source_statuses").$type<string[]>(),
+  allowedDestinationStatuses: jsonb("allowed_destination_statuses").$type<string[]>(),
+  requiredFields: jsonb("required_fields").$type<string[]>(),
+  optionalFields: jsonb("optional_fields").$type<string[]>(),
+  specialValidations: jsonb("special_validations").$type<Record<string, any>>(),
+  
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
+// Batch Lots table (Phase 2 preparation)
+export const batchLots = pgTable("batch_lots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  batchCode: text("batch_code").notNull(),
+  ownershipType: batchOwnershipTypeEnum("ownership_type").notNull(),
+  
+  // Owner (for third-party material)
+  ownerId: varchar("owner_id"), // FK to suppliers (future table)
+  ownerName: text("owner_name"), // Cache of name
+  
+  // Specific data
+  contractId: varchar("contract_id"),
+  entryDate: timestamp("entry_date").notNull(),
+  expiryDate: timestamp("expiry_date"),
+  
+  // Location
+  location: text("location"),
+  
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
 });
 
 // Trips table (Planejamento de Transporte)
@@ -435,7 +528,9 @@ export const movements = pgTable("movements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   movementNumber: text("movement_number").notNull().unique(),
   name: text("name").notNull(),
-  type: movementTypeEnum("type").notNull(),
+  // Phase 1: Support both legacy enum and new configurable types
+  type: movementTypeEnum("type"), // Now optional when movementTypeConfigId is set
+  movementTypeConfigId: varchar("movement_type_config_id").references(() => movementTypesConfig.id),
   status: movementStatusEnum("status").notNull().default("created"),
   loadingOrderId: varchar("loading_order_id").references(() => loadingOrders.id),
   eventId: varchar("event_id").references(() => events.id), // Deprecated: use movementEvents table for multiple events
@@ -476,6 +571,9 @@ export const movementItems = pgTable("movement_items", {
   scanned: boolean("scanned").default(false),
   location: text("location"),
   notes: text("notes"),
+  // Phase 1 additions
+  supplierName: text("supplier_name"), // Supplier tracking
+  supplierNotes: text("supplier_notes"), // Notes about supplier
   processedAt: timestamp("processed_at").notNull().default(sql`now()`)
 });
 
@@ -819,6 +917,25 @@ export const docksRelations = relations(docks, ({ many }) => ({
   trips: many(trips)
 }));
 
+export const movementGroupsRelations = relations(movementGroups, ({ many }) => ({
+  movementTypes: many(movementTypesConfig)
+}));
+
+export const movementTypesConfigRelations = relations(movementTypesConfig, ({ one, many }) => ({
+  group: one(movementGroups, {
+    fields: [movementTypesConfig.groupId],
+    references: [movementGroups.id]
+  }),
+  movements: many(movements)
+}));
+
+export const batchLotsRelations = relations(batchLots, ({ one }) => ({
+  product: one(products, {
+    fields: [batchLots.productId],
+    references: [products.id]
+  })
+}));
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   userRoles: many(userRoles),
   comments: many(comments),
@@ -941,6 +1058,24 @@ export const insertDriverSchema = createInsertSchema(drivers).omit({
 export const insertDockSchema = createInsertSchema(docks).omit({
   id: true,
   createdAt: true
+});
+
+export const insertMovementGroupSchema = createInsertSchema(movementGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertMovementTypeConfigSchema = createInsertSchema(movementTypesConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertBatchLotSchema = createInsertSchema(batchLots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
 });
 
 export const insertTripSchema = createInsertSchema(trips, {
@@ -1111,6 +1246,15 @@ export type InsertDriver = z.infer<typeof insertDriverSchema>;
 
 export type Dock = typeof docks.$inferSelect;
 export type InsertDock = z.infer<typeof insertDockSchema>;
+
+export type MovementGroup = typeof movementGroups.$inferSelect;
+export type InsertMovementGroup = z.infer<typeof insertMovementGroupSchema>;
+
+export type MovementTypeConfig = typeof movementTypesConfig.$inferSelect;
+export type InsertMovementTypeConfig = z.infer<typeof insertMovementTypeConfigSchema>;
+
+export type BatchLot = typeof batchLots.$inferSelect;
+export type InsertBatchLot = z.infer<typeof insertBatchLotSchema>;
 
 export type Trip = typeof trips.$inferSelect;
 export type InsertTrip = z.infer<typeof insertTripSchema>;
