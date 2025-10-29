@@ -372,15 +372,14 @@ export function AppSidebar() {
                     <SidebarMenuSub>
                       {productItems.map((item) => (
                         <SidebarMenuSubItem key={item.title}>
-                          <Link href={item.url}>
-                            <SidebarMenuSubButton 
-                              isActive={location === item.url}
-                              data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                            >
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </SidebarMenuSubButton>
-                          </Link>
+                          <SidebarMenuSubButton 
+                            href={item.url}
+                            isActive={location === item.url}
+                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>
