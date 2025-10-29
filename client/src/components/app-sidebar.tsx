@@ -19,7 +19,8 @@ import {
   CheckSquare,
   Upload,
   Bell,
-  BarChart3
+  BarChart3,
+  Link2 as LinkIcon
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -129,6 +130,16 @@ const productItems = [
     title: "Listagem",
     url: "/products",
     icon: Package,
+  },
+  {
+    title: "Variantes",
+    url: "/products/variants",
+    icon: LinkIcon,
+  },
+  {
+    title: "Fornecedores",
+    url: "/suppliers",
+    icon: Users,
   },
   {
     title: "Upload em Lote",
@@ -361,16 +372,15 @@ export function AppSidebar() {
                     <SidebarMenuSub>
                       {productItems.map((item) => (
                         <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={location === item.url}
-                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <Link href={item.url}>
+                          <Link href={item.url}>
+                            <SidebarMenuSubButton 
+                              isActive={location === item.url}
+                              data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                            >
                               <item.icon className="h-4 w-4" />
                               <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
+                            </SidebarMenuSubButton>
+                          </Link>
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>

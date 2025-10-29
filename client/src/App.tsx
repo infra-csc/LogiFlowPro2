@@ -23,6 +23,8 @@ import MovementDetails from "@/pages/movement-details";
 import Returns from "@/pages/returns";
 import Products from "@/pages/products";
 import ProductUpload from "@/pages/product-upload";
+import ProductVariants from "@/pages/product-variants";
+import Suppliers from "@/pages/suppliers";
 import EventUpload from "@/pages/event-upload";
 import TripUpload from "@/pages/trip-upload";
 import Kits from "@/pages/kits";
@@ -65,6 +67,8 @@ function Router() {
       <ProtectedRoute path="/movements" component={Movements} />
       <ProtectedRoute path="/movement-approvals" component={MovementApprovals} />
       <ProtectedRoute path="/returns" component={Returns} />
+      <ProtectedRoute path="/suppliers" component={Suppliers} />
+      <ProtectedRoute path="/products/variants" component={ProductVariants} />
       <ProtectedRoute path="/products/upload" component={ProductUpload} />
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/kits" component={Kits} />

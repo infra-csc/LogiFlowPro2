@@ -6,6 +6,7 @@ import {
   events,
   kits,
   bomLines,
+  suppliers,
   products,
   materialRequests,
   requestItems,
@@ -118,6 +119,8 @@ import {
   type InsertMovementTypeConfig,
   type BatchLot,
   type InsertBatchLot,
+  type Supplier,
+  type InsertSupplier,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -137,6 +140,13 @@ export interface IStorage {
   getBomLinesByKit(kitId: string): Promise<BomLine[]>;
   createBomLine(bomLine: InsertBomLine): Promise<BomLine>;
   deleteBomLinesByKit(kitId: string): Promise<void>;
+
+  // Suppliers
+  getSuppliers(): Promise<Supplier[]>;
+  getSupplier(id: string): Promise<Supplier | undefined>;
+  createSupplier(supplier: InsertSupplier): Promise<Supplier>;
+  updateSupplier(id: string, supplier: Partial<InsertSupplier>): Promise<Supplier>;
+  deleteSupplier(id: string): Promise<void>;
 
   // Products
   getProducts(): Promise<Product[]>;
@@ -400,6 +410,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBomLinesByKit(kitId: string): Promise<void> {
     await db.delete(bomLines).where(eq(bomLines.kitId, kitId));
+  }
+
+  // Suppliers
+  async getSuppliers(): Promise<Supplier[]> {
+    return await db.select().from(suppliers).orderBy(desc(suppliers.createdAt));
+  }
+
+  async getSupplier(id: string): Promise<Supplier | undefined> {
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
+    return supplier || undefined;
+  }
+
+  async createSupplier(supplier: InsertSupplier): Promise<Supplier> {
+    const [created] = await db.insert(suppliers).values(supplier).returning();
+    return created;
+  }
+
+  async updateSupplier(id: string, supplier: Partial<InsertSupplier>): Promise<Supplier> {
+    const [updated] = await db.update(suppliers).set(supplier).where(eq(suppliers.id, id)).returning();
+    return updated;
+  }
+
+  async deleteSupplier(id: string): Promise<void> {
+    await db.delete(suppliers).where(eq(suppliers.id, id));
   }
 
   // Products

@@ -245,6 +245,19 @@ export const bomLines = pgTable("bom_lines", {
   notes: text("notes")
 });
 
+// Suppliers table
+export const suppliers = pgTable("suppliers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  contactPerson: text("contact_person"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  notes: text("notes"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
 // Products table
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1047,6 +1060,11 @@ export const insertBomLineSchema = createInsertSchema(bomLines).omit({
   id: true
 });
 
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+  id: true,
+  createdAt: true
+});
+
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
   createdAt: true
@@ -1250,6 +1268,9 @@ export type InsertKit = z.infer<typeof insertKitSchema>;
 
 export type BomLine = typeof bomLines.$inferSelect;
 export type InsertBomLine = z.infer<typeof insertBomLineSchema>;
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
