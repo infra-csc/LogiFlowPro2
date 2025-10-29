@@ -32,6 +32,17 @@ Preferred communication style: Simple, everyday language.
 - **Transport Planning**: Overhauled system with vehicle type management, detailed trip planning with multiple destinations, and a dual-view display (list and calendar/agenda view) for trips. Calendar view categorizes trips by loading and unloading dates with distinct visual indicators.
 - **AI-Powered Optimization**: Advanced optimization system for vehicle loading and route planning. Vehicle loading optimization uses 3D bin packing algorithms (First-Fit Decreasing Height strategy) to maximize space utilization and weight distribution. Route optimization employs nearest neighbor heuristic for multi-stop trip planning with distance, duration, and fuel estimates. Features optimization run tracking, confidence scoring, warnings, recommendations, and detailed loading sequences with layer-based positioning.
 - **Reports Module - Stock Simulation**: Comprehensive stock simulation system for proactive shortage identification. Aggregates material needs from multiple events and material requests, compares against current inventory levels, and identifies potential shortages before event execution. Features multi-select filters (events, requests, date range, status), status classification (FALTA/CRÍTICO/ADEQUADO), drill-down by event breakdown, Excel export with multiple worksheets, and real-time search/filtering capabilities.
+- **Product Variants & Equivalencies System (MVP)**: Core system for tracking material ownership with automatic SKU resolution. Features include:
+  - **Product Types**: PRINCIPAL (master SKUs) and VARIANTE (supplier-specific SKUs with automatic resolution to principals)
+  - **Ownership Tracking**: Three types - owned, rented, third_party with visual indicators (🟡 LOCADO / 🔵 TERCEIROS)
+  - **Smart Modal**: Conditional supplier fields appear when scanning rented/third_party products with validation
+  - **Supplier Autocomplete**: Recent supplier suggestions via getRecentSuppliers() API based on historical movement data
+  - **Visual Badges**: Color-coded ownership indicators in movement item lists showing property type and supplier name
+  - **Unified Accounting**: All variants count toward principal product while maintaining full traceability via scannedSku field
+  - **Database Schema**: product_type enum, equivalent_sku field, movementItems fields (scannedSku, ownerName, ownerType)
+  - **Backend Logic**: getProductBySku(), getTargetProduct() (resolves equivalencies), getRecentSuppliers(), updated createMovementItem()
+  - **Sample Data**: Principal products (CAD-001, MESA-001) with variants (CAD-LOC-001 rented, CAD-TERC-001 third_party)
+  - **Future Enhancements**: Dedicated management pages, detailed ownership reports, bulk variant import, advanced supplier analytics
 - **Configurable Movement Types System (Phase 1)**: Fully implemented configurable movement types system that organizes warehouse movements into groups and types. Features include:
   - **Movement Groups**: 5 pre-configured groups (Operações Logísticas, Controle de Qualidade, Terceiros, Ajustes e Correções, Transferências Internas) with purpose classification, color coding, and emoji icons. CRUD operations via card-based UI.
   - **Movement Types Config**: ~20 pre-seeded movement types with configurable properties: name, description, nature (entrada/saída/transferência/ajuste), group assignment, supplier tracking (supplier_name, supplier_notes), product variant support (equivalent_sku), and **requires_approval** flag for approval workflow control. Table-based UI with filters by group, nature, and active status.
@@ -40,23 +51,6 @@ Preferred communication style: Simple, everyday language.
   - **Frontend**: Three responsive pages (/config/movement-groups, /config/movement-types, /movement-approvals) with full CRUD, filtering, and navigation integration via collapsible "Aprovações" submenu grouping requisitions and movements. Movement creation dialog uses configurable types with visual indicator (⚠️) for approval-required types. Movement list displays movementTypeConfig.name instead of legacy type enum.
   - **Approval Workflow**: Movements with requires_approval=true are created with status "pending_approval" and bypass inventory changes. Approval action changes status to "created" and records approver/timestamp. Rejection changes status to "cancelled" with required reason. Both actions create audit log entries.
   - **Future Phases**: System prepared for batch/lot tracking with batch_lots table and ownership types (próprio, terceiro, consignado).
-
-## Planned Features
-
-### Product Variants & Equivalencies System (Phase 2)
-Comprehensive system for tracking material ownership (próprio/locado/consignado) while maintaining unified accounting in loading orders. See detailed implementation plan in `docs/PRODUCT_VARIANTS_PLAN.md`.
-
-**Key Capabilities:**
-- **Product Types**: PRINCIPAL (master SKUs used in orders) and VARIANTE (specific SKUs with supplier tracking)
-- **Smart Scanner**: Automatically resolves variants to principals during loading operations
-- **Conditional Forms**: Dynamic modal behavior - simple confirmation for owned products, expanded form with mandatory supplier field for rented/consigned products
-- **Unified Accounting**: All variants count toward principal product in order progress, maintaining full traceability
-- **Supplier Tracking**: Historical tracking of recent suppliers with intelligent suggestions
-- **Visual Indicators**: Color-coded badges (🟢 próprio / 🟡 locado / 🔵 consignado) throughout UI
-- **Advanced Reporting**: Material breakdown by ownership type, supplier usage analysis, complete audit trail
-
-**Status**: 📋 Documented - Ready for implementation when needed  
-**Estimated Effort**: 30-45 minutes
 
 ## External Dependencies
 
