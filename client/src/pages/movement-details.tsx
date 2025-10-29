@@ -239,8 +239,22 @@ export default function MovementDetails() {
     const itemsToConsider = movement?.loadingOrderId ? allRelatedMovementItems : movementItems;
 
     return loadingOrderItems.map((orderItem) => {
+      // Get the SKU of the expected product
+      const expectedProductSku = orderItem.product.sku;
+      
       const loadedQuantity = itemsToConsider
-        .filter((item) => item.productId === orderItem.productId)
+        .filter((item) => {
+          // Direct match by productId
+          if (item.productId === orderItem.productId) return true;
+          
+          // Check if the loaded item is a variant of the expected product
+          const loadedProduct = products.find(p => p.id === item.productId);
+          if (loadedProduct?.productType === "variante" && loadedProduct.equivalentSku === expectedProductSku) {
+            return true;
+          }
+          
+          return false;
+        })
         .reduce((sum, item) => sum + item.quantity, 0);
 
       return {
@@ -251,7 +265,7 @@ export default function MovementDetails() {
         remaining: Math.max(0, orderItem.consolidatedQuantity - loadedQuantity),
       };
     });
-  }, [loadingOrderItems, movementItems, movement?.loadingOrderId, allRelatedMovementItems]);
+  }, [loadingOrderItems, movementItems, movement?.loadingOrderId, allRelatedMovementItems, products]);
 
   // Calculate overall progress
   const totalExpected = expectedItems.reduce((sum, item) => sum + item.expectedQuantity, 0);
