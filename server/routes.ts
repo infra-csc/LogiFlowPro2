@@ -1427,10 +1427,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Movement not found" });
       }
       
-      // Only allow adding items if movement is in progress or pending approval
-      if (movement.status !== "in_progress" && movement.status !== "pending_approval") {
+      // Only allow adding items if movement is in progress
+      if (movement.status !== "in_progress") {
         return res.status(400).json({
-          error: "Items can only be added to movements in progress or pending approval",
+          error: "Items can only be added to movements in progress",
         });
       }
 
@@ -1561,7 +1561,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate status with Zod
-      const statusSchema = z.object({ status: z.string() });
+      const statusSchema = z.object({ 
+        status: z.enum(["created", "pending_approval", "in_progress", "paused", "completed", "cancelled"]) 
+      });
       const { status } = statusSchema.parse(req.body);
 
       const previousStatus = movement.status;

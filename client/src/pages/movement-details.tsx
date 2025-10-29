@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -328,6 +329,9 @@ export default function MovementDetails() {
       .slice(0, 10); // Limit to 10 suggestions
   }, [searchQuery, products]);
 
+  // Determine if the movement can be edited (items can be added/modified/deleted)
+  const isEditable = movement?.status === "in_progress";
+
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       const res = await apiRequest("PATCH", `/api/movements/${id}/status`, { status: newStatus });
@@ -520,6 +524,16 @@ export default function MovementDetails() {
 
   const handleAddItem = () => {
     console.log('handleAddItem called', { selectedProduct: selectedProduct?.name, showConfirmDialog });
+    
+    if (!isEditable) {
+      toast({
+        title: "Não é possível adicionar produtos",
+        description: "A movimentação precisa estar em andamento para registrar produtos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!selectedProduct) return;
     // Open confirmation dialog instead of adding directly
     setShowConfirmDialog(true);
@@ -527,6 +541,16 @@ export default function MovementDetails() {
   };
 
   const handleConfirmAddItem = () => {
+    if (!isEditable) {
+      toast({
+        title: "Não é possível adicionar produtos",
+        description: "A movimentação precisa estar em andamento para registrar produtos.",
+        variant: "destructive",
+      });
+      setShowConfirmDialog(false);
+      return;
+    }
+    
     if (!selectedProduct) return;
     
     // Validate supplier for rented/consigned products
@@ -796,7 +820,20 @@ export default function MovementDetails() {
       )}
 
       {/* Scanner */}
-      {(movement.status === "in_progress" || movement.status === "paused") && (
+      {!isEditable && movement?.status && (
+        <Alert className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {movement.status === "pending_approval" && "Movimentação pendente de aprovação. Aguarde a aprovação para registrar produtos."}
+            {movement.status === "paused" && "Movimentação pausada. Clique em 'Retomar Movimentação' para continuar registrando produtos."}
+            {movement.status === "completed" && "Movimentação finalizada. Não é possível adicionar ou modificar produtos."}
+            {movement.status === "cancelled" && "Movimentação cancelada. Não é possível adicionar ou modificar produtos."}
+            {movement.status === "created" && "Clique em 'Iniciar Movimentação' para começar a registrar produtos."}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isEditable && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1188,10 +1225,10 @@ export default function MovementDetails() {
                               variant="outline"
                               size="icon"
                               onClick={() => decrementItemMutation.mutate(item.productId)}
-                              disabled={decrementItemMutation.isPending}
+                              disabled={!isEditable || decrementItemMutation.isPending}
                               data-testid={`button-decrement-${item.productId}`}
                               className="flex-shrink-0 h-8 w-8"
-                              title="Remover 1 unidade"
+                              title={!isEditable ? "Movimentação precisa estar em andamento" : "Remover 1 unidade"}
                             >
                               <Minus className="h-4 w-4" />
                             </Button>
@@ -1199,10 +1236,10 @@ export default function MovementDetails() {
                               variant="outline"
                               size="icon"
                               onClick={() => removeItemMutation.mutate(item.productId)}
-                              disabled={removeItemMutation.isPending}
+                              disabled={!isEditable || removeItemMutation.isPending}
                               data-testid={`button-remove-${item.productId}`}
                               className="flex-shrink-0 h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                              title="Remover item completo"
+                              title={!isEditable ? "Movimentação precisa estar em andamento" : "Remover item completo"}
                             >
                               <X className="h-4 w-4" />
                             </Button>
