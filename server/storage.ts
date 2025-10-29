@@ -40,6 +40,9 @@ import {
   optimizationRuns,
   loadingOptimizations,
   routeOptimizations,
+  movementGroups,
+  movementTypesConfig,
+  batchLots,
   type Event,
   type InsertEvent,
   type Kit,
@@ -109,6 +112,12 @@ import {
   type InsertLoadingOptimization,
   type RouteOptimization,
   type InsertRouteOptimization,
+  type MovementGroup,
+  type InsertMovementGroup,
+  type MovementTypeConfig,
+  type InsertMovementTypeConfig,
+  type BatchLot,
+  type InsertBatchLot,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -312,6 +321,23 @@ export interface IStorage {
   getLoadingOptimizationsByLoadingOrder(loadingOrderId: string): Promise<any[]>;
   createRouteOptimization(optimization: InsertRouteOptimization): Promise<RouteOptimization>;
   getRouteOptimizationsByTrip(tripId: string): Promise<any[]>;
+  
+  // Movement Groups (Phase 1)
+  getMovementGroups(): Promise<MovementGroup[]>;
+  getMovementGroup(id: string): Promise<MovementGroup | undefined>;
+  createMovementGroup(group: InsertMovementGroup): Promise<MovementGroup>;
+  updateMovementGroup(id: string, group: Partial<InsertMovementGroup>): Promise<MovementGroup>;
+  deleteMovementGroup(id: string): Promise<void>;
+  
+  // Movement Types Config (Phase 1)
+  getMovementTypesConfig(filters?: { groupId?: string; nature?: string; active?: boolean }): Promise<MovementTypeConfig[]>;
+  getMovementTypeConfig(id: string): Promise<MovementTypeConfig | undefined>;
+  createMovementTypeConfig(typeConfig: InsertMovementTypeConfig): Promise<MovementTypeConfig>;
+  updateMovementTypeConfig(id: string, typeConfig: Partial<InsertMovementTypeConfig>): Promise<MovementTypeConfig>;
+  deleteMovementTypeConfig(id: string): Promise<void>;
+  
+  // Supplier tracking (Phase 1)
+  getRecentSuppliersBySku(sku: string, months?: number): Promise<Array<{ name: string; frequency: number; lastUsed: Date }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1404,6 +1430,111 @@ export class DatabaseStorage implements IStorage {
       ORDER BY optrun.created_at DESC
     `);
     return result.rows;
+  }
+  
+  // Movement Groups (Phase 1)
+  async getMovementGroups(): Promise<MovementGroup[]> {
+    return await db.select()
+      .from(movementGroups)
+      .orderBy(movementGroups.displayOrder, movementGroups.name);
+  }
+  
+  async getMovementGroup(id: string): Promise<MovementGroup | undefined> {
+    const [group] = await db.select()
+      .from(movementGroups)
+      .where(eq(movementGroups.id, id));
+    return group || undefined;
+  }
+  
+  async createMovementGroup(group: InsertMovementGroup): Promise<MovementGroup> {
+    const [created] = await db.insert(movementGroups).values(group).returning();
+    return created;
+  }
+  
+  async updateMovementGroup(id: string, group: Partial<InsertMovementGroup>): Promise<MovementGroup> {
+    const [updated] = await db.update(movementGroups)
+      .set({ ...group, updatedAt: new Date() })
+      .where(eq(movementGroups.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteMovementGroup(id: string): Promise<void> {
+    await db.delete(movementGroups).where(eq(movementGroups.id, id));
+  }
+  
+  // Movement Types Config (Phase 1)
+  async getMovementTypesConfig(filters?: { groupId?: string; nature?: string; active?: boolean }): Promise<MovementTypeConfig[]> {
+    let query = db.select().from(movementTypesConfig);
+    
+    const conditions = [];
+    if (filters?.groupId) {
+      conditions.push(eq(movementTypesConfig.groupId, filters.groupId));
+    }
+    if (filters?.nature) {
+      conditions.push(eq(movementTypesConfig.nature, filters.nature));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(movementTypesConfig.active, filters.active));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(movementTypesConfig.code);
+  }
+  
+  async getMovementTypeConfig(id: string): Promise<MovementTypeConfig | undefined> {
+    const [typeConfig] = await db.select()
+      .from(movementTypesConfig)
+      .where(eq(movementTypesConfig.id, id));
+    return typeConfig || undefined;
+  }
+  
+  async createMovementTypeConfig(typeConfig: InsertMovementTypeConfig): Promise<MovementTypeConfig> {
+    const [created] = await db.insert(movementTypesConfig).values(typeConfig).returning();
+    return created;
+  }
+  
+  async updateMovementTypeConfig(id: string, typeConfig: Partial<InsertMovementTypeConfig>): Promise<MovementTypeConfig> {
+    const [updated] = await db.update(movementTypesConfig)
+      .set({ ...typeConfig, updatedAt: new Date() })
+      .where(eq(movementTypesConfig.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteMovementTypeConfig(id: string): Promise<void> {
+    await db.delete(movementTypesConfig).where(eq(movementTypesConfig.id, id));
+  }
+  
+  // Supplier tracking (Phase 1)
+  async getRecentSuppliersBySku(sku: string, months: number = 3): Promise<Array<{ name: string; frequency: number; lastUsed: Date }>> {
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - months);
+    
+    const result = await db.execute(sql`
+      SELECT 
+        supplier_name as name,
+        COUNT(*) as frequency,
+        MAX(processed_at) as last_used
+      FROM movement_items
+      WHERE product_id IN (
+        SELECT id FROM products WHERE sku = ${sku}
+      )
+      AND supplier_name IS NOT NULL
+      AND processed_at >= ${cutoffDate.toISOString()}
+      GROUP BY supplier_name
+      ORDER BY frequency DESC, last_used DESC
+      LIMIT 10
+    `);
+    
+    return result.rows.map((row: any) => ({
+      name: row.name,
+      frequency: parseInt(row.frequency),
+      lastUsed: new Date(row.last_used)
+    }));
   }
 }
 
