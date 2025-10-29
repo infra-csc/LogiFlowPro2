@@ -516,7 +516,7 @@ export default function MovementDetails() {
       quantity,
       scannedSku: scannedSku || selectedProduct.sku,
       ownerName: selectedProduct.requiresSupplier ? ownerName : undefined,
-      ownerType: selectedProduct.requiresSupplier ? ownerType : "owned",
+      ownerType: selectedProduct.requiresSupplier ? selectedProduct.ownership : "owned",
     });
     setShowConfirmDialog(false);
   };
