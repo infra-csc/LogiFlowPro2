@@ -2516,6 +2516,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Inventory Overview - Aggregated stock views with filtering
+  app.get("/api/inventory/overview", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const filters = {
+        search: req.query.search as string | undefined,
+        periodPreset: req.query.periodPreset as 'week' | 'month' | 'quarter' | 'year' | undefined,
+        periodStart: req.query.periodStart ? new Date(req.query.periodStart as string) : undefined,
+        periodEnd: req.query.periodEnd ? new Date(req.query.periodEnd as string) : undefined,
+        location: req.query.location as string | undefined,
+        category: req.query.category as string | undefined,
+        ownerType: req.query.ownerType as string | undefined,
+        ownerName: req.query.ownerName as string | undefined,
+        status: req.query.status as string | undefined,
+        groupBy: (req.query.groupBy as string || 'product') as 'product' | 'location' | 'owner' | 'status' | 'category'
+      };
+
+      const overview = await storage.getInventoryOverview(filters);
+      res.json(overview);
+    } catch (error) {
+      console.error("Error fetching inventory overview:", error);
+      res.status(500).json({ error: "Failed to fetch inventory overview" });
+    }
+  });
+
   // Register AI Optimization routes
   registerOptimizationRoutes(app);
 

@@ -70,11 +70,6 @@ const mainMenuItems = [
     icon: ClipboardList,
   },
   {
-    title: "Estoque",
-    url: "/inventory",
-    icon: Warehouse,
-  },
-  {
     title: "Ordens de Carregamento",
     url: "/loading-orders",
     icon: FileStack,
@@ -88,6 +83,19 @@ const mainMenuItems = [
     title: "Devoluções",
     url: "/returns",
     icon: RotateCcw,
+  },
+];
+
+const inventoryItems = [
+  {
+    title: "Posição de Estoque",
+    url: "/inventory",
+    icon: Warehouse,
+  },
+  {
+    title: "Visões de Estoque",
+    url: "/inventory/views",
+    icon: BarChart3,
   },
 ];
 
@@ -246,6 +254,36 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton data-testid="button-inventory-menu">
+                      <Warehouse className="h-4 w-4" />
+                      <span>Estoque</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {inventoryItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton 
+                            asChild 
+                            isActive={location === item.url}
+                            data-testid={`link-inventory-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                          >
+                            <Link href={item.url}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
               
               <Collapsible defaultOpen className="group/collapsible">
                 <SidebarMenuItem>

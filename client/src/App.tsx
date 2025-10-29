@@ -44,6 +44,7 @@ import StockPositionSimulation from "@/pages/stock-position-simulation";
 import MovementGroups from "@/pages/movement-groups";
 import MovementTypesConfig from "@/pages/movement-types-config";
 import MovementApprovals from "@/pages/movement-approvals";
+import InventoryViews from "@/pages/inventory-views";
 
 function Router() {
   return (
@@ -58,6 +59,7 @@ function Router() {
       <ProtectedRoute path="/approvals" component={Approvals} />
       <ProtectedRoute path="/requests/:id" component={RequestDetails} />
       <ProtectedRoute path="/requests" component={Requests} />
+      <ProtectedRoute path="/inventory/views" component={InventoryViews} />
       <ProtectedRoute path="/inventory" component={Inventory} />
       <ProtectedRoute path="/trips/upload" component={TripUpload} />
       <ProtectedRoute path="/trips" component={Trips} />
