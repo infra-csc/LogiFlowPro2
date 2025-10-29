@@ -25,6 +25,7 @@ import type { Product, InsertProduct } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
 import { ImageIcon, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProductDialogProps {
   open: boolean;
@@ -43,6 +44,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     ownership: "owned",
     productType: "principal",
     equivalentSku: undefined,
+    requiresSupplier: false,
     unit: "unit",
     weight: undefined,
     dimensions: "",
@@ -68,6 +70,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         ownership: product?.ownership || "owned",
         productType: product?.productType || "principal",
         equivalentSku: product?.equivalentSku || undefined,
+        requiresSupplier: product?.requiresSupplier || false,
         unit: product?.unit || "unit",
         weight: product?.weight || undefined,
         dimensions: product?.dimensions || "",
@@ -207,6 +210,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       ownership: formData.ownership as any || "owned",
       productType: formData.productType as any || "principal",
       equivalentSku: formData.productType === "variante" ? formData.equivalentSku : undefined,
+      requiresSupplier: formData.requiresSupplier || false,
       unit: formData.unit || "unit",
       weight: formData.weight,
       dimensions: formData.dimensions,
@@ -313,6 +317,23 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 </Select>
               </div>
             )}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="requiresSupplier"
+              checked={formData.requiresSupplier}
+              onCheckedChange={(checked) => 
+                setFormData({ ...formData, requiresSupplier: checked as boolean })
+              }
+              data-testid="checkbox-requires-supplier"
+            />
+            <Label 
+              htmlFor="requiresSupplier" 
+              className="text-sm font-normal cursor-pointer"
+            >
+              Requer registro de fornecedor nas movimentações
+            </Label>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
