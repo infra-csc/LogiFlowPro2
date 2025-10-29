@@ -89,9 +89,9 @@ export default function InventoryViews() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-6 border-b">
         <div>
-          <h1 className="text-3xl font-bold">Vis\u00f5es de Estoque</h1>
+          <h1 className="text-3xl font-bold">Visões de Estoque</h1>
           <p className="text-muted-foreground mt-1">
-            An\u00e1lise de estoque por localiza\u00e7\u00e3o, propriet\u00e1rio e status
+            Análise de estoque por localização, proprietário e status
           </p>
         </div>
       </div>
@@ -104,7 +104,7 @@ export default function InventoryViews() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Filter className="h-5 w-5" />
-                  <CardTitle className="text-lg">Filtros Avan\u00e7ados</CardTitle>
+                  <CardTitle className="text-lg">Filtros Avançados</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -137,7 +137,7 @@ export default function InventoryViews() {
                       Busca
                     </label>
                     <Input
-                      placeholder="SKU, nome, c\u00f3digo de barras..."
+                      placeholder="SKU, nome, código de barras..."
                       value={filters.search}
                       onChange={(e) => handleFilterChange('search', e.target.value)}
                       data-testid="input-search"
@@ -148,17 +148,17 @@ export default function InventoryViews() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      Per\u00edodo
+                      Período
                     </label>
                     <Select value={filters.periodPreset} onValueChange={(v) => handleFilterChange('periodPreset', v)}>
                       <SelectTrigger data-testid="select-period">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="week">\u00daltima semana</SelectItem>
-                        <SelectItem value="month">\u00daltimo m\u00eas</SelectItem>
-                        <SelectItem value="quarter">\u00daltimo trimestre</SelectItem>
-                        <SelectItem value="year">\u00daltimo ano</SelectItem>
+                        <SelectItem value="week">Última semana</SelectItem>
+                        <SelectItem value="month">Último mês</SelectItem>
+                        <SelectItem value="quarter">Último trimestre</SelectItem>
+                        <SelectItem value="year">Último ano</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -167,7 +167,7 @@ export default function InventoryViews() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Categoria</label>
                     <Input
-                      placeholder="Estrutura, Ilumina\u00e7\u00e3o..."
+                      placeholder="Estrutura, Iluminação..."
                       value={filters.category}
                       onChange={(e) => handleFilterChange('category', e.target.value)}
                       data-testid="input-category"
@@ -178,10 +178,10 @@ export default function InventoryViews() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
-                      Localiza\u00e7\u00e3o
+                      Localização
                     </label>
                     <Input
-                      placeholder="Galp\u00e3o A, Em tr\u00e2nsito..."
+                      placeholder="Galpão A, Em trânsito..."
                       value={filters.location}
                       onChange={(e) => handleFilterChange('location', e.target.value)}
                       data-testid="input-location"
@@ -197,11 +197,11 @@ export default function InventoryViews() {
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="physical" data-testid="tab-physical">
                 <MapPin className="h-4 w-4 mr-2" />
-                Estoque F\u00edsico
+                Estoque Físico
               </TabsTrigger>
               <TabsTrigger value="ownership" data-testid="tab-ownership">
                 <Users className="h-4 w-4 mr-2" />
-                Por Propriet\u00e1rio
+                Por Proprietário
               </TabsTrigger>
               <TabsTrigger value="status" data-testid="tab-status">
                 <Activity className="h-4 w-4 mr-2" />
@@ -269,7 +269,7 @@ function InventoryView({ data, isLoading, dimension }: InventoryViewProps) {
         <CardContent className="py-12 text-center">
           <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground">
-            Nenhuma movimenta\u00e7\u00e3o encontrada para os filtros selecionados
+            Nenhuma movimentação encontrada para os filtros selecionados
           </p>
         </CardContent>
       </Card>
@@ -320,7 +320,7 @@ function InventoryGroupCard({ group, dimension }: InventoryGroupCardProps) {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                   <TrendingDown className="h-4 w-4 text-destructive" />
-                  <span>Sa\u00eddas: <strong className="text-foreground">{group.totalOutbound}</strong></span>
+                  <span>Saídas: <strong className="text-foreground">{group.totalOutbound}</strong></span>
                 </div>
               </div>
               <div className="text-right pl-4 border-l">
@@ -384,7 +384,7 @@ function ProductRow({ product }: ProductRowProps) {
             <div className="text-lg font-semibold text-chart-4">{product.inbound}</div>
           </div>
           <div className="text-center min-w-[80px]">
-            <div className="text-sm text-muted-foreground">Sa\u00eddas</div>
+            <div className="text-sm text-muted-foreground">Saídas</div>
             <div className="text-lg font-semibold text-destructive">{product.outbound}</div>
           </div>
           <div className="text-center min-w-[80px]">
@@ -397,14 +397,14 @@ function ProductRow({ product }: ProductRowProps) {
             onClick={() => setShowMovements(!showMovements)}
             data-testid={`button-show-movements-${product.productId}`}
           >
-            {showMovements ? 'Ocultar' : 'Ver'} Movimenta\u00e7\u00f5es
+            {showMovements ? 'Ocultar' : 'Ver'} Movimentações
           </Button>
         </div>
       </div>
 
       {showMovements && product.movements && product.movements.length > 0 && (
         <div className="mt-4 pt-4 border-t space-y-2">
-          <h5 className="text-sm font-medium mb-2">Hist\u00f3rico de Movimenta\u00e7\u00f5es</h5>
+          <h5 className="text-sm font-medium mb-2">Histórico de Movimentações</h5>
           {product.movements.slice(0, 10).map((movement: any, idx: number) => (
             <div
               key={idx}
@@ -412,7 +412,7 @@ function ProductRow({ product }: ProductRowProps) {
             >
               <div className="flex items-center gap-2">
                 <Badge variant={movement.direction === 'in' ? 'default' : 'destructive'}>
-                  {movement.direction === 'in' ? 'Entrada' : 'Sa\u00edda'}
+                  {movement.direction === 'in' ? 'Entrada' : 'Saída'}
                 </Badge>
                 <span className="text-muted-foreground">
                   {movement.date ? format(new Date(movement.date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}

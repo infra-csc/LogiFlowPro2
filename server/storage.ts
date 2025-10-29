@@ -1888,11 +1888,11 @@ export class DatabaseStorage implements IStorage {
           mtc.nature as movement_nature,
           mi.quantity,
           CASE 
-            WHEN mtc.nature = 'entrada' THEN mi.quantity
+            WHEN mtc.nature = 'inbound' THEN mi.quantity
             ELSE 0
           END as inbound_qty,
           CASE 
-            WHEN mtc.nature = 'saida' THEN mi.quantity
+            WHEN mtc.nature = 'outbound' THEN mi.quantity
             ELSE 0
           END as outbound_qty,
           ${groupByField} as group_key,
@@ -1921,7 +1921,7 @@ export class DatabaseStorage implements IStorage {
             'date', movement_date,
             'nature', movement_nature,
             'quantity', quantity,
-            'direction', CASE WHEN movement_nature = 'entrada' THEN 'in' ELSE 'out' END,
+            'direction', CASE WHEN movement_nature = 'inbound' THEN 'in' ELSE 'out' END,
             'location', location,
             'ownerType', owner_type,
             'ownerName', owner_name
