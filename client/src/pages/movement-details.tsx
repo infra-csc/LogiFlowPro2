@@ -35,7 +35,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSidebar } from "@/components/ui/sidebar";
-import type { Movement, MovementItem, Product, LoadingOrderItem } from "@shared/schema";
+import type { Movement, MovementItem, Product, LoadingOrderItem, MovementTypeConfig } from "@shared/schema";
 
 type MovementWithDetails = Movement & {
   loadingOrder?: {
@@ -51,6 +51,7 @@ type MovementWithDetails = Movement & {
     name: string;
     sku: string;
   }>;
+  movementTypeConfig?: MovementTypeConfig;
 };
 
 type LoadingOrderItemWithProduct = LoadingOrderItem & {
@@ -565,6 +566,11 @@ export default function MovementDetails() {
               {movement.movementNumber}
             </h1>
             <p className="text-muted-foreground">{movement.name}</p>
+            {movement.movementTypeConfig && (
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">Tipo:</span> {movement.movementTypeConfig.name}
+              </p>
+            )}
             {movement.loadingOrder && (
               <p className="text-sm text-muted-foreground">
                 Ordem: {movement.loadingOrder.orderNumber}

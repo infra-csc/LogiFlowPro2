@@ -954,8 +954,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMovement(id: string): Promise<Movement | undefined> {
-    const [movement] = await db.select().from(movements).where(eq(movements.id, id));
-    if (!movement) return undefined;
+    const movementData = await db.query.movements.findFirst({
+      where: eq(movements.id, id),
+      with: {
+        movementTypeConfig: {
+          with: {
+            group: true
+          }
+        }
+      }
+    });
+    
+    if (!movementData) return undefined;
     
     // Get associated events
     const eventRelations = await db
@@ -964,7 +974,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(movementEvents)
       .leftJoin(events, eq(movementEvents.eventId, events.id))
-      .where(eq(movementEvents.movementId, movement.id));
+      .where(eq(movementEvents.movementId, movementData.id));
     
     // Get associated trips
     const tripRelations = await db
@@ -973,10 +983,10 @@ export class DatabaseStorage implements IStorage {
       })
       .from(movementTrips)
       .leftJoin(trips, eq(movementTrips.tripId, trips.id))
-      .where(eq(movementTrips.movementId, movement.id));
+      .where(eq(movementTrips.movementId, movementData.id));
     
     return {
-      ...movement,
+      ...movementData,
       events: eventRelations.map(r => r.event).filter(Boolean),
       trips: tripRelations.map(r => r.trip).filter(Boolean),
     } as any;
