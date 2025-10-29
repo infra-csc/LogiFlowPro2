@@ -586,17 +586,34 @@ export default function MovementDetails() {
     if (!showConfirmDialog) return;
     
     const handleDialogKeyPress = (e: KeyboardEvent) => {
-      // Ignore if target is within a Select component (to allow selection with Enter)
       const target = e.target as HTMLElement;
-      if (target?.closest('[role="combobox"]') || target?.closest('[role="option"]')) {
+      
+      // Check if any Select dropdown is currently open (they render in portals)
+      const hasOpenSelect = document.querySelector('[data-radix-select-content][data-state="open"]');
+      if (hasOpenSelect) {
+        // Let Select handle its own Enter key for item selection
+        return;
+      }
+      
+      // Also ignore if target is within Select-related elements
+      if (
+        target?.closest('[role="combobox"]') || 
+        target?.closest('[role="option"]') ||
+        target?.closest('[data-radix-select-trigger]') ||
+        target?.closest('[data-radix-select-content]') ||
+        target?.closest('[data-radix-select-viewport]') ||
+        target?.closest('[data-radix-select-item]')
+      ) {
         return;
       }
       
       if (e.key === "Enter") {
         e.preventDefault();
+        e.stopPropagation();
         handleConfirmAddItem();
       } else if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         handleCancelAddItem();
       }
     };
