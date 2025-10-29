@@ -1427,10 +1427,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Movement not found" });
       }
       
-      // Only allow adding items if movement is in progress
-      if (movement.status !== "in_progress") {
+      // Only allow adding items if movement is in progress or pending approval
+      if (movement.status !== "in_progress" && movement.status !== "pending_approval") {
         return res.status(400).json({
-          error: "Items can only be added to movements in progress",
+          error: "Items can only be added to movements in progress or pending approval",
         });
       }
 
