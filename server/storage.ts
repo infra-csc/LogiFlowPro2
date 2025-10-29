@@ -45,6 +45,7 @@ import {
   movementGroups,
   movementTypesConfig,
   batchLots,
+  inventorySnapshots,
   type Event,
   type InsertEvent,
   type Kit,
@@ -1742,6 +1743,238 @@ export class DatabaseStorage implements IStorage {
       frequency: parseInt(row.frequency),
       lastUsed: new Date(row.last_used)
     }));
+  }
+
+  // Inventory Aggregation (Phase 1)
+  async getInventoryOverview(filters: {
+    search?: string;
+    periodPreset?: 'week' | 'month' | 'quarter' | 'year';
+    periodStart?: Date;
+    periodEnd?: Date;
+    location?: string;
+    category?: string;
+    ownerType?: string;
+    ownerName?: string;
+    status?: string;
+    groupBy: 'product' | 'location' | 'owner' | 'status' | 'category';
+  }): Promise<Array<{
+    // Grouping key
+    groupKey: string;
+    groupLabel: string;
+    // Aggregated data
+    products: Array<{
+      productId: string;
+      sku: string;
+      name: string;
+      category: string | null;
+      imageUrl: string | null;
+      inbound: number;
+      outbound: number;
+      balance: number;
+      lastMovementDate: Date | null;
+      movements: Array<{
+        id: string;
+        date: Date;
+        type: string;
+        quantity: number;
+        direction: 'in' | 'out';
+        location: string | null;
+        ownerType: string | null;
+        ownerName: string | null;
+      }>;
+    }>;
+    // Summary
+    totalInbound: number;
+    totalOutbound: number;
+    totalBalance: number;
+  }>> {
+    // Calculate date range based on preset
+    let startDate = filters.periodStart;
+    let endDate = filters.periodEnd || new Date();
+    
+    if (filters.periodPreset) {
+      const now = new Date();
+      endDate = now;
+      switch (filters.periodPreset) {
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          break;
+        case 'quarter':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+          break;
+      }
+    }
+
+    // Build SQL query for inventory aggregation
+    const groupByField = filters.groupBy === 'product' ? 'p.id' :
+                        filters.groupBy === 'location' ? 'mi.location' :
+                        filters.groupBy === 'owner' ? `COALESCE(mi.owner_type || ' - ' || mi.owner_name, mi.owner_type, 'Não especificado')` :
+                        filters.groupBy === 'status' ? 'm.status' :
+                        'p.category';
+
+    const groupLabelField = filters.groupBy === 'product' ? 'p.name' :
+                           filters.groupBy === 'location' ? `COALESCE(mi.location, 'Sem localização')` :
+                           filters.groupBy === 'owner' ? `COALESCE(mi.owner_type || ' - ' || mi.owner_name, mi.owner_type, 'Não especificado')` :
+                           filters.groupBy === 'status' ? 'm.status' :
+                           `COALESCE(p.category, 'Sem categoria')`;
+
+    // Build WHERE conditions
+    const whereConditions = [];
+    const params: any[] = [];
+    
+    if (filters.search) {
+      whereConditions.push(`(p.sku ILIKE $${params.length + 1} OR p.name ILIKE $${params.length + 1} OR p.barcode ILIKE $${params.length + 1})`);
+      params.push(`%${filters.search}%`);
+    }
+    
+    if (startDate) {
+      whereConditions.push(`m.started_at >= $${params.length + 1}`);
+      params.push(startDate.toISOString());
+    }
+    
+    if (endDate) {
+      whereConditions.push(`m.started_at <= $${params.length + 1}`);
+      params.push(endDate.toISOString());
+    }
+    
+    if (filters.location) {
+      whereConditions.push(`mi.location = $${params.length + 1}`);
+      params.push(filters.location);
+    }
+    
+    if (filters.category) {
+      whereConditions.push(`p.category = $${params.length + 1}`);
+      params.push(filters.category);
+    }
+    
+    if (filters.ownerType) {
+      whereConditions.push(`mi.owner_type = $${params.length + 1}`);
+      params.push(filters.ownerType);
+    }
+    
+    if (filters.ownerName) {
+      whereConditions.push(`mi.owner_name = $${params.length + 1}`);
+      params.push(filters.ownerName);
+    }
+    
+    if (filters.status) {
+      whereConditions.push(`m.status = $${params.length + 1}`);
+      params.push(filters.status);
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    // Query to get aggregated inventory data
+    const query = sql.raw(`
+      WITH movement_directions AS (
+        SELECT 
+          mi.product_id,
+          p.sku,
+          p.name,
+          p.category,
+          p.image_url,
+          mi.location,
+          mi.owner_type,
+          mi.owner_name,
+          m.status,
+          m.id as movement_id,
+          m.started_at as movement_date,
+          mtc.nature as movement_nature,
+          mi.quantity,
+          CASE 
+            WHEN mtc.nature = 'entrada' THEN mi.quantity
+            ELSE 0
+          END as inbound_qty,
+          CASE 
+            WHEN mtc.nature = 'saida' THEN mi.quantity
+            ELSE 0
+          END as outbound_qty,
+          ${groupByField} as group_key,
+          ${groupLabelField} as group_label
+        FROM movement_items mi
+        INNER JOIN products p ON mi.product_id = p.id
+        INNER JOIN movements m ON mi.movement_id = m.id
+        LEFT JOIN movement_types_config mtc ON m.movement_type_config_id = mtc.id
+        ${whereClause}
+      )
+      SELECT 
+        group_key,
+        group_label,
+        product_id,
+        sku,
+        name,
+        category,
+        image_url,
+        SUM(inbound_qty) as total_inbound,
+        SUM(outbound_qty) as total_outbound,
+        SUM(inbound_qty) - SUM(outbound_qty) as balance,
+        MAX(movement_date) as last_movement_date,
+        json_agg(
+          json_build_object(
+            'id', movement_id,
+            'date', movement_date,
+            'nature', movement_nature,
+            'quantity', quantity,
+            'direction', CASE WHEN movement_nature = 'entrada' THEN 'in' ELSE 'out' END,
+            'location', location,
+            'ownerType', owner_type,
+            'ownerName', owner_name
+          ) ORDER BY movement_date DESC
+        ) as movements
+      FROM movement_directions
+      GROUP BY group_key, group_label, product_id, sku, name, category, image_url
+      ORDER BY group_label, name
+    `);
+
+    const result = await db.execute(query);
+
+    // Group results by groupKey
+    const grouped = new Map<string, any>();
+    
+    for (const row of result.rows as any[]) {
+      const key = row.group_key || 'ungrouped';
+      
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          groupKey: key,
+          groupLabel: row.group_label || 'Não especificado',
+          products: [],
+          totalInbound: 0,
+          totalOutbound: 0,
+          totalBalance: 0
+        });
+      }
+      
+      const group = grouped.get(key);
+      const inbound = parseInt(row.total_inbound) || 0;
+      const outbound = parseInt(row.total_outbound) || 0;
+      const balance = parseInt(row.balance) || 0;
+      
+      group.products.push({
+        productId: row.product_id,
+        sku: row.sku,
+        name: row.name,
+        category: row.category,
+        imageUrl: row.image_url,
+        inbound,
+        outbound,
+        balance,
+        lastMovementDate: row.last_movement_date ? new Date(row.last_movement_date) : null,
+        movements: Array.isArray(row.movements) ? row.movements : []
+      });
+      
+      group.totalInbound += inbound;
+      group.totalOutbound += outbound;
+      group.totalBalance += balance;
+    }
+    
+    return Array.from(grouped.values());
   }
 }
 
