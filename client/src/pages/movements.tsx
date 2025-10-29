@@ -22,7 +22,7 @@ import { useLocation } from "wouter";
 import { MovementDialog } from "@/components/movement-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Movement, LoadingOrder, Event, Dock, Trip } from "@shared/schema";
+import type { Movement, LoadingOrder, Event, Dock, Trip, MovementTypeConfig } from "@shared/schema";
 
 type MovementWithRelations = Movement & {
   loadingOrder?: LoadingOrder;
@@ -30,6 +30,7 @@ type MovementWithRelations = Movement & {
   dock?: Dock;
   events?: Event[];
   trips?: Trip[];
+  movementTypeConfig?: MovementTypeConfig;
 };
 
 const getStatusColor = (status: string) => {
@@ -52,19 +53,6 @@ const getStatusLabel = (status: string) => {
     cancelled: "Cancelada",
   };
   return labels[status] || status;
-};
-
-const getTypeLabel = (type: string) => {
-  const labels: Record<string, string> = {
-    outbound_event: "Saída para Evento",
-    inbound_event: "Retorno de Evento",
-    inbound_purchase: "Entrada Produto Comprado",
-    inbound_rental: "Entrada Produto Locado",
-    outbound_rental_return: "Devolução Produto Locado",
-    internal_transfer: "Transferência Interna",
-    inventory_adjustment: "Ajuste de Inventário",
-  };
-  return labels[type] || type;
 };
 
 const formatDuration = (minutes?: number | null) => {
@@ -103,6 +91,10 @@ export default function Movements() {
     queryKey: ["/api/docks"],
   });
 
+  const { data: movementTypes = [] } = useQuery<MovementTypeConfig[]>({
+    queryKey: ["/api/movement-types-config"],
+  });
+
   // Aplicar filtros
   const filteredMovements = useMemo(() => {
     return movements.filter((movement) => {
@@ -131,7 +123,7 @@ export default function Movements() {
       }
 
       // Filtro por tipo
-      if (filterType && movement.type !== filterType) {
+      if (filterType && movement.movementTypeConfigId !== filterType) {
         return false;
       }
 
@@ -300,13 +292,11 @@ export default function Movements() {
                       <SelectValue placeholder="Todos os tipos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="outbound_event">Saída para Evento</SelectItem>
-                      <SelectItem value="inbound_event">Retorno de Evento</SelectItem>
-                      <SelectItem value="inbound_purchase">Entrada Produto Comprado</SelectItem>
-                      <SelectItem value="inbound_rental">Entrada Produto Locado</SelectItem>
-                      <SelectItem value="outbound_rental_return">Devolução Produto Locado</SelectItem>
-                      <SelectItem value="internal_transfer">Transferência Interna</SelectItem>
-                      <SelectItem value="inventory_adjustment">Ajuste de Inventário</SelectItem>
+                      {movementTypes.filter(mt => mt.active).map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -400,7 +390,7 @@ export default function Movements() {
                     
                     <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
                       <div>
-                        <span className="font-medium">Tipo:</span> {getTypeLabel(movement.type)}
+                        <span className="font-medium">Tipo:</span> {movement.movementTypeConfig?.name || "-"}
                       </div>
                       {movement.loadingOrder && (
                         <div>
