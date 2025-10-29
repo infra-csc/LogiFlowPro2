@@ -500,8 +500,6 @@ export default function MovementDetails() {
   const handleConfirmAddItem = () => {
     if (!selectedProduct) return;
     
-    console.log('DEBUG - ownerName:', ownerName, 'requiresSupplier:', selectedProduct.requiresSupplier);
-    
     // Validate supplier for rented/consigned products
     if (selectedProduct.requiresSupplier && !ownerName.trim()) {
       toast({
@@ -555,6 +553,12 @@ export default function MovementDetails() {
     if (!showConfirmDialog) return;
     
     const handleDialogKeyPress = (e: KeyboardEvent) => {
+      // Ignore if target is within a Select component (to allow selection with Enter)
+      const target = e.target as HTMLElement;
+      if (target?.closest('[role="combobox"]') || target?.closest('[role="option"]')) {
+        return;
+      }
+      
       if (e.key === "Enter") {
         e.preventDefault();
         handleConfirmAddItem();
@@ -1236,10 +1240,7 @@ export default function MovementDetails() {
                     <Label htmlFor="ownerName" className="text-sm font-medium mb-2 block">
                       Proprietário/Fornecedor *
                     </Label>
-                    <Select value={ownerName} onValueChange={(value) => {
-                      console.log('Select onValueChange called with:', value);
-                      setOwnerName(value);
-                    }}>
+                    <Select value={ownerName} onValueChange={setOwnerName}>
                       <SelectTrigger id="ownerName" data-testid="select-owner-name">
                         <SelectValue placeholder="Selecione o fornecedor..." />
                       </SelectTrigger>
