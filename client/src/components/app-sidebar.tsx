@@ -142,6 +142,19 @@ const reportItems = [
   },
 ];
 
+const movementTypeItems = [
+  {
+    title: "Grupos de Movimentação",
+    url: "/config/movement-groups",
+    icon: Boxes,
+  },
+  {
+    title: "Tipos de Movimentação",
+    url: "/config/movement-types",
+    icon: FileStack,
+  },
+];
+
 const configItems = [
   {
     title: "Notificações",
@@ -368,6 +381,36 @@ export function AppSidebar() {
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       {configItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton 
+                            asChild 
+                            isActive={location === item.url}
+                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                          >
+                            <Link href={item.url}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+              
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton data-testid="button-movement-types-menu">
+                      <FileStack className="h-4 w-4" />
+                      <span>Tipos de Movimentação</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {movementTypeItems.map((item) => (
                         <SidebarMenuSubItem key={item.title}>
                           <SidebarMenuSubButton 
                             asChild 

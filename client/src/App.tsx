@@ -39,6 +39,8 @@ import VehicleTypes from "@/pages/vehicle-types";
 import NotificationSettingsPage from "@/pages/notification-settings";
 import StockSimulation from "@/pages/stock-simulation";
 import StockPositionSimulation from "@/pages/stock-position-simulation";
+import MovementGroups from "@/pages/movement-groups";
+import MovementTypesConfig from "@/pages/movement-types-config";
 
 function Router() {
   return (
@@ -74,6 +76,8 @@ function Router() {
       <ProtectedRoute path="/notification-settings" component={NotificationSettingsPage} />
       <ProtectedRoute path="/reports/stock-simulation" component={StockSimulation} />
       <ProtectedRoute path="/reports/stock-position-simulation" component={StockPositionSimulation} />
+      <ProtectedRoute path="/config/movement-groups" component={MovementGroups} />
+      <ProtectedRoute path="/config/movement-types" component={MovementTypesConfig} />
       <Route component={NotFound} />
     </Switch>
   );
