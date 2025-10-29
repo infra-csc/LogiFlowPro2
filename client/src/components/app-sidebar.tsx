@@ -76,6 +76,11 @@ const mainMenuItems = [
     icon: FileStack,
   },
   {
+    title: "Aprovações de Movimentações",
+    url: "/movement-approvals",
+    icon: CheckSquare,
+  },
+  {
     title: "Devoluções",
     url: "/returns",
     icon: RotateCcw,
