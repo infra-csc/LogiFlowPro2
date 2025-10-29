@@ -1250,7 +1250,6 @@ export default function MovementDetails() {
                     <p className="text-xs text-muted-foreground mt-2">
                       ⚠️ Campo obrigatório para rastreamento de material de terceiros
                     </p>
-                    </div>
                   </div>
                 </div>
               )}
