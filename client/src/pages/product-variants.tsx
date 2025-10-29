@@ -1,16 +1,8 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -19,91 +11,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { insertProductSchema, type Product } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Link as LinkIcon, Package } from "lucide-react";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-
-const formSchema = insertProductSchema.extend({
-  equivalentSku: z.string().min(1, "SKU principal é obrigatório para variantes"),
-});
+import { type Product } from "@shared/schema";
+import { Link as LinkIcon, Package } from "lucide-react";
 
 export default function ProductVariantsPage() {
-  const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      sku: "",
-      name: "",
-      barcode: "",
-      productType: "variante",
-      requiresSupplier: true,
-      ownership: "rented",
-      equivalentSku: "",
-      description: "",
-      unit: "unit",
-      minimumStock: 0,
-      currentStock: 0,
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const res = await apiRequest("POST", "/api/products", data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to create variant");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Variante criada com sucesso" });
-      setDialogOpen(false);
-      form.reset();
-    },
-    onError: (error: Error) => {
-      toast({ 
-        title: "Erro ao criar variante", 
-        description: error.message,
-        variant: "destructive" 
-      });
-    },
-  });
-
-  const handleSubmit = (data: z.infer<typeof formSchema>) => {
-    createMutation.mutate(data);
-  };
-
-  // Filter principal products for the select
-  const principalProducts = products.filter(p => p.productType === "principal");
 
   // Group variants by their principal product
   const variantsByPrincipal = products
@@ -135,177 +51,9 @@ export default function ProductVariantsPage() {
             <div>
               <CardTitle className="text-3xl font-bold">Variantes de Produtos</CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                Gerencie as variantes de produtos (locados, terceiros) vinculadas aos produtos principais
+                Consulta de variantes de produtos (locados, terceiros) vinculadas aos produtos principais
               </p>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-add-variant">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Variante
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Nova Variante de Produto</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="equivalentSku"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Produto Principal *</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-principal-product">
-                                <SelectValue placeholder="Selecione o produto principal" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {principalProducts.map(product => (
-                                <SelectItem key={product.id} value={product.sku}>
-                                  {product.sku} - {product.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Produto ao qual esta variante pertence
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="sku"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>SKU da Variante *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="CAD-LOC-001" {...field} data-testid="input-variant-sku" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="barcode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Código de Barras</FormLabel>
-                            <FormControl>
-                              <Input placeholder="7891234560011" {...field} value={field.value || ""} data-testid="input-barcode" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome da Variante *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Cadeira Tiffany Branca (Locada)" {...field} data-testid="input-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="ownership"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Propriedade *</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-ownership">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="rented">Locado</SelectItem>
-                              <SelectItem value="third_party">Terceiros</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Informações adicionais" {...field} value={field.value || ""} data-testid="input-description" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="requiresSupplier"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between p-4 border rounded-lg">
-                          <div>
-                            <FormLabel>Requer Fornecedor</FormLabel>
-                            <FormDescription>
-                              Obriga informar fornecedor ao adicionar em movimentações
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="switch-requires-supplier"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setDialogOpen(false);
-                          form.reset();
-                        }}
-                        data-testid="button-cancel"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
-                        {createMutation.isPending ? "Criando..." : "Criar Variante"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
           </div>
         </CardHeader>
         <CardContent>
