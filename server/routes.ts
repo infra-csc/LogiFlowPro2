@@ -1370,6 +1370,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Movement Approvals
+  app.get("/api/movements/pending-approval", async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const pendingMovements = await storage.listPendingMovements();
+      res.json(pendingMovements);
+    } catch (error) {
+      console.error("Failed to fetch pending movements:", error);
+      res.status(500).json({ error: "Failed to fetch pending movements" });
+    }
+  });
+
+  app.post("/api/movements/:id/approve", async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) {
+        return res.status(404).json({ error: "Movement not found" });
+      }
+
+      if (movement.status !== "pending_approval") {
+        return res.status(400).json({
+          error: "Only pending movements can be approved",
+        });
+      }
+
+      const approved = await storage.approveMovement(req.params.id, req.user.id);
+      
+      // Log audit trail
+      await storage.createAuditLog({
+        entityType: "movement",
+        entityId: req.params.id,
+        action: "approve",
+        userId: req.user.id,
+        reason: "Movement approved",
+      });
+
+      res.json(approved);
+    } catch (error) {
+      console.error("Failed to approve movement:", error);
+      res.status(500).json({ error: "Failed to approve movement" });
+    }
+  });
+
+  app.post("/api/movements/:id/reject", async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { reason } = req.body;
+      if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
+        return res.status(400).json({
+          error: "Rejection reason is required",
+        });
+      }
+
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) {
+        return res.status(404).json({ error: "Movement not found" });
+      }
+
+      if (movement.status !== "pending_approval") {
+        return res.status(400).json({
+          error: "Only pending movements can be rejected",
+        });
+      }
+
+      const rejected = await storage.rejectMovement(
+        req.params.id,
+        req.user.id,
+        reason.trim()
+      );
+      
+      // Log audit trail
+      await storage.createAuditLog({
+        entityType: "movement",
+        entityId: req.params.id,
+        action: "reject",
+        userId: req.user.id,
+        reason: `Movement rejected: ${reason.trim()}`,
+      });
+
+      res.json(rejected);
+    } catch (error) {
+      console.error("Failed to reject movement:", error);
+      res.status(500).json({ error: "Failed to reject movement" });
+    }
+  });
+
   // Returns
   app.get("/api/returns", async (req, res) => {
     try {

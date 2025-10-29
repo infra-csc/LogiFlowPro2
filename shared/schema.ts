@@ -871,6 +871,10 @@ export const movementsRelations = relations(movements, ({ one, many }) => ({
     fields: [movements.dockId],
     references: [docks.id]
   }),
+  movementTypeConfig: one(movementTypesConfig, {
+    fields: [movements.movementTypeConfigId],
+    references: [movementTypesConfig.id]
+  }),
   items: many(movementItems),
   movementEvents: many(movementEvents),
   movementTrips: many(movementTrips)
