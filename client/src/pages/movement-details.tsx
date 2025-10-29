@@ -1219,7 +1219,13 @@ export default function MovementDetails() {
       </div>
 
       {/* Modal de Confirmação */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <Dialog 
+        open={showConfirmDialog} 
+        onOpenChange={(open) => {
+          console.log('Dialog onOpenChange:', open);
+          setShowConfirmDialog(open);
+        }}
+      >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-2xl">Confirmar Adição de Item</DialogTitle>

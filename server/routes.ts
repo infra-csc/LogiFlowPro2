@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
+import { z } from "zod";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
