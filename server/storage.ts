@@ -1028,8 +1028,24 @@ export class DatabaseStorage implements IStorage {
   async createMovementWithEvents(movementData: InsertMovementWithEvents): Promise<Movement> {
     const { eventIds, tripIds, ...movementInsert } = movementData;
     
-    // Create the movement
-    const [created] = await db.insert(movements).values(movementInsert as any).returning();
+    // Check if movement type requires approval
+    let finalStatus = movementInsert.status || "created";
+    
+    if (movementInsert.movementTypeConfigId) {
+      const typeConfig = await db.query.movementTypesConfig.findFirst({
+        where: eq(movementTypesConfig.id, movementInsert.movementTypeConfigId)
+      });
+      
+      if (typeConfig?.requiresApproval) {
+        finalStatus = "pending_approval";
+      }
+    }
+    
+    // Create the movement with the determined status
+    const [created] = await db.insert(movements).values({
+      ...movementInsert,
+      status: finalStatus
+    } as any).returning();
     
     // Create the junction records for events
     if (eventIds && eventIds.length > 0) {
@@ -1056,6 +1072,76 @@ export class DatabaseStorage implements IStorage {
 
   async updateMovement(id: string, movement: Partial<InsertMovement>): Promise<Movement> {
     const [updated] = await db.update(movements).set({...movement, updatedAt: sql`now()`}).where(eq(movements.id, id)).returning();
+    return updated;
+  }
+
+  // Movement Approvals
+  async listPendingMovements(): Promise<Movement[]> {
+    const movementsData = await db.query.movements.findMany({
+      where: eq(movements.status, "pending_approval"),
+      with: {
+        movementTypeConfig: {
+          with: {
+            group: true
+          }
+        }
+      },
+      orderBy: [desc(movements.createdAt)]
+    });
+
+    const movementsWithRelations = await Promise.all(
+      movementsData.map(async (movement) => {
+        const eventRelations = await db
+          .select({
+            event: events,
+          })
+          .from(movementEvents)
+          .leftJoin(events, eq(movementEvents.eventId, events.id))
+          .where(eq(movementEvents.movementId, movement.id));
+        
+        const tripRelations = await db
+          .select({
+            trip: trips,
+          })
+          .from(movementTrips)
+          .leftJoin(trips, eq(movementTrips.tripId, trips.id))
+          .where(eq(movementTrips.movementId, movement.id));
+        
+        return {
+          ...movement,
+          events: eventRelations.map(r => r.event).filter(Boolean),
+          trips: tripRelations.map(r => r.trip).filter(Boolean),
+        };
+      })
+    );
+    
+    return movementsWithRelations as any;
+  }
+
+  async approveMovement(id: string, approvedBy: string): Promise<Movement> {
+    const [updated] = await db.update(movements)
+      .set({
+        status: "created",
+        approvedBy,
+        approvedAt: new Date(),
+        updatedAt: sql`now()`
+      })
+      .where(eq(movements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async rejectMovement(id: string, rejectedBy: string, rejectionReason: string): Promise<Movement> {
+    const [updated] = await db.update(movements)
+      .set({
+        status: "cancelled",
+        rejectedBy,
+        rejectedAt: new Date(),
+        rejectionReason,
+        updatedAt: sql`now()`
+      })
+      .where(eq(movements.id, id))
+      .returning();
     return updated;
   }
 
