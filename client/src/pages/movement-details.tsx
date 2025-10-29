@@ -118,6 +118,7 @@ export default function MovementDetails() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showEditStatusDialog, setShowEditStatusDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
@@ -544,10 +545,12 @@ export default function MovementDetails() {
       ownerType: selectedProduct.requiresSupplier ? selectedProduct.ownership : "owned",
     });
     setShowConfirmDialog(false);
+    setIsSelectOpen(false); // Reset Select state
   };
 
   const handleCancelAddItem = () => {
     setShowConfirmDialog(false);
+    setIsSelectOpen(false); // Reset Select state
     // Return focus to quantity input
     setTimeout(() => quantityInputRef.current?.focus(), 100);
   };
@@ -586,24 +589,8 @@ export default function MovementDetails() {
     if (!showConfirmDialog) return;
     
     const handleDialogKeyPress = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      
-      // Check if any Select dropdown is currently open (they render in portals)
-      const hasOpenSelect = document.querySelector('[data-radix-select-content][data-state="open"]');
-      if (hasOpenSelect) {
-        // Let Select handle its own Enter key for item selection
-        return;
-      }
-      
-      // Also ignore if target is within Select-related elements
-      if (
-        target?.closest('[role="combobox"]') || 
-        target?.closest('[role="option"]') ||
-        target?.closest('[data-radix-select-trigger]') ||
-        target?.closest('[data-radix-select-content]') ||
-        target?.closest('[data-radix-select-viewport]') ||
-        target?.closest('[data-radix-select-item]')
-      ) {
+      // If Select is open, don't handle Enter
+      if (isSelectOpen) {
         return;
       }
       
@@ -620,7 +607,7 @@ export default function MovementDetails() {
     
     window.addEventListener("keydown", handleDialogKeyPress);
     return () => window.removeEventListener("keydown", handleDialogKeyPress);
-  }, [showConfirmDialog, selectedProduct, quantity]);
+  }, [showConfirmDialog, selectedProduct, quantity, isSelectOpen]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -1298,7 +1285,11 @@ export default function MovementDetails() {
                     <Label htmlFor="ownerName" className="text-sm font-medium mb-2 block">
                       Proprietário/Fornecedor *
                     </Label>
-                    <Select value={ownerName} onValueChange={setOwnerName}>
+                    <Select 
+                      value={ownerName} 
+                      onValueChange={setOwnerName}
+                      onOpenChange={setIsSelectOpen}
+                    >
                       <SelectTrigger id="ownerName" data-testid="select-owner-name">
                         <SelectValue placeholder="Selecione o fornecedor..." />
                       </SelectTrigger>
