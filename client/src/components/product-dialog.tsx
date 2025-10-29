@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -41,6 +41,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     name: "",
     description: "",
     ownership: "owned",
+    productType: "principal",
+    equivalentSku: undefined,
     unit: "unit",
     weight: undefined,
     dimensions: "",
@@ -48,6 +50,12 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     location: "",
     minimumStock: 0,
     currentStock: 0,
+  });
+
+  // Fetch all products for principal product selection
+  const { data: allProducts } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+    enabled: open,
   });
 
   // Reset form data when dialog opens or product changes
@@ -58,6 +66,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         name: product?.name || "",
         description: product?.description || "",
         ownership: product?.ownership || "owned",
+        productType: product?.productType || "principal",
+        equivalentSku: product?.equivalentSku || undefined,
         unit: product?.unit || "unit",
         weight: product?.weight || undefined,
         dimensions: product?.dimensions || "",
@@ -69,6 +79,9 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       setImageUrl(product?.imageUrl || null);
     }
   }, [open, product]);
+
+  // Get list of principal products for variant selection
+  const principalProducts = allProducts?.filter(p => p.productType === "principal" && p.id !== product?.id) || [];
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertProduct) => {
@@ -181,11 +194,19 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       return;
     }
 
+    // Validate variant has a principal product selected
+    if (formData.productType === "variante" && !formData.equivalentSku) {
+      toast({ description: "Selecione o produto principal para esta variante", variant: "destructive" });
+      return;
+    }
+
     const submitData: InsertProduct = {
       sku: formData.sku,
       name: formData.name,
       description: formData.description,
       ownership: formData.ownership as any || "owned",
+      productType: formData.productType as any || "principal",
+      equivalentSku: formData.productType === "variante" ? formData.equivalentSku : undefined,
       unit: formData.unit || "unit",
       weight: formData.weight,
       dimensions: formData.dimensions,
@@ -247,6 +268,51 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
               rows={2}
               data-testid="input-description"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="productType">Tipo de Produto</Label>
+              <Select 
+                value={formData.productType as string}
+                onValueChange={(value) => {
+                  setFormData({ 
+                    ...formData, 
+                    productType: value as any,
+                    equivalentSku: value === "principal" ? undefined : formData.equivalentSku
+                  });
+                }}
+              >
+                <SelectTrigger data-testid="select-product-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="principal">Principal</SelectItem>
+                  <SelectItem value="variante">Variante</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.productType === "variante" && (
+              <div className="space-y-2">
+                <Label htmlFor="equivalentSku">Produto Principal *</Label>
+                <Select 
+                  value={formData.equivalentSku || ""}
+                  onValueChange={(value) => setFormData({ ...formData, equivalentSku: value })}
+                >
+                  <SelectTrigger data-testid="select-principal-product">
+                    <SelectValue placeholder="Selecione o produto principal..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {principalProducts.map((p) => (
+                      <SelectItem key={p.id} value={p.sku}>
+                        {p.sku} - {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-4">
