@@ -379,19 +379,24 @@ export default function Movements() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-3">
                       <Badge className={getStatusColor(movement.status)}>
                         {getStatusLabel(movement.status)}
                       </Badge>
-                      <h3 className="font-semibold text-lg" data-testid={`text-movement-name-${movement.id}`}>
-                        {movement.movementNumber} | {movement.name}
-                      </h3>
+                      <div>
+                        <h3 className="font-bold text-2xl mb-1" data-testid={`text-movement-name-${movement.id}`}>
+                          {movement.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {movement.movementNumber}
+                          {movement.movementTypeConfig && (
+                            <span> • {movement.movementTypeConfig.name}</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-                      <div>
-                        <span className="font-medium">Tipo:</span> {movement.movementTypeConfig?.name || "-"}
-                      </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground pl-14">
                       {movement.loadingOrder && (
                         <div>
                           <span className="font-medium">Ordem:</span> {movement.loadingOrder.orderNumber}
