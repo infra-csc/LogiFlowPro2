@@ -1236,11 +1236,14 @@ export default function MovementDetails() {
                     <Label htmlFor="ownerName" className="text-sm font-medium mb-2 block">
                       Proprietário/Fornecedor *
                     </Label>
-                    <Select value={ownerName} onValueChange={setOwnerName}>
+                    <Select value={ownerName} onValueChange={(value) => {
+                      console.log('Select onValueChange called with:', value);
+                      setOwnerName(value);
+                    }}>
                       <SelectTrigger id="ownerName" data-testid="select-owner-name">
                         <SelectValue placeholder="Selecione o fornecedor..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" sideOffset={4}>
                         {suppliers.filter(s => s.name).map((supplier) => (
                           <SelectItem key={supplier.id} value={supplier.name}>
                             {supplier.name}
