@@ -356,7 +356,6 @@ export default function MovementDetails() {
       setScannedSku("");
       setQuantity(1);
       setOwnerName("");
-      setOwnerType("rented");
       setSearchQuery("");
       setShowSuggestions(false);
       toast({
