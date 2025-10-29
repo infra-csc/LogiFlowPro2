@@ -29,21 +29,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { LoadingOrder, Dock, Event, Trip, Movement } from "@shared/schema";
+import type { LoadingOrder, Dock, Event, Trip, Movement, MovementTypeConfig } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  type: z.enum([
-    "outbound_event",
-    "inbound_event",
-    "inbound_purchase",
-    "inbound_rental",
-    "outbound_rental_return",
-    "internal_transfer",
-    "inventory_adjustment",
-  ]),
+  movementTypeConfigId: z.string().min(1, "Tipo de movimentação é obrigatório"),
   eventIds: z.array(z.string()).min(1, "Selecione pelo menos um evento"),
   tripIds: z.array(z.string()).optional(),
   loadingOrderId: z.string().optional(),
@@ -62,16 +54,6 @@ interface MovementDialogProps {
   children: React.ReactNode;
   movement?: MovementWithRelations;
 }
-
-const typeLabels: Record<string, string> = {
-  outbound_event: "Saída para Evento",
-  inbound_event: "Retorno de Evento",
-  inbound_purchase: "Entrada Produto Comprado",
-  inbound_rental: "Entrada Produto Locado",
-  outbound_rental_return: "Devolução Produto Locado",
-  internal_transfer: "Transferência Interna",
-  inventory_adjustment: "Ajuste de Inventário",
-};
 
 export function MovementDialog({ children, movement }: MovementDialogProps) {
   const [open, setOpen] = useState(false);
@@ -94,11 +76,17 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     queryKey: ["/api/trips"],
   });
 
+  const { data: movementTypes = [] } = useQuery<MovementTypeConfig[]>({
+    queryKey: ["/api/movement-types-config"],
+  });
+
+  const activeMovementTypes = movementTypes.filter(mt => mt.active);
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      type: "outbound_event",
+      movementTypeConfigId: "",
       eventIds: [],
       tripIds: [],
       loadingOrderId: undefined,
@@ -112,7 +100,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     if (movement && open) {
       form.reset({
         name: movement.name,
-        type: movement.type as any,
+        movementTypeConfigId: movement.movementTypeConfigId || "",
         eventIds: movement.events?.map(e => e.id) || [],
         tripIds: movement.trips?.map(t => t.id) || [],
         loadingOrderId: movement.loadingOrderId ?? undefined,
@@ -137,10 +125,11 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
         description: "A movimentação foi criada com sucesso.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/movements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements/pending-approval"] });
       setOpen(false);
       form.reset({
         name: "",
-        type: "outbound_event",
+        movementTypeConfigId: "",
         eventIds: [],
         tripIds: [],
         loadingOrderId: undefined,
@@ -233,20 +222,21 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
 
             <FormField
               control={form.control}
-              name="type"
+              name="movementTypeConfigId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de Movimentação</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-movement-type">
-                        <SelectValue />
+                        <SelectValue placeholder="Selecione o tipo..." />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.entries(typeLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
+                      {activeMovementTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
+                          {type.requiresApproval && " ⚠️"}
                         </SelectItem>
                       ))}
                     </SelectContent>
