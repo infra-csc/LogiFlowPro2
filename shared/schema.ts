@@ -1156,7 +1156,7 @@ export const insertMovementSchema = createInsertSchema(movements).omit({
 });
 
 export const insertMovementWithEventsSchema = insertMovementSchema.extend({
-  eventIds: z.array(z.string()).min(1, "Selecione pelo menos um evento"),
+  eventIds: z.array(z.string()).optional().default([]),
   tripIds: z.array(z.string()).optional()
 });
 

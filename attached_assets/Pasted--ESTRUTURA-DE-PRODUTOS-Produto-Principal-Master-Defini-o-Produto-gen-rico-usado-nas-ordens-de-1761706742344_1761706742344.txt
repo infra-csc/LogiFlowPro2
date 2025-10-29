@@ -1,0 +1,138 @@
+🏗️ ESTRUTURA DE PRODUTOS
+Produto Principal (Master)
+Definição: Produto genérico usado nas ordens de carregamento
+Características:
+SKU único (ex: BTQ30_3000)
+Contém especificações técnicas (peso, dimensões, categoria)
+Tipo: PRINCIPAL
+Não requer informação de fornecedor
+Produto Variante (Específico)
+Definição: Versão específica do produto principal com propriedade diferente
+Características:
+SKU único diferenciado (ex: BTQ30_3000_LOC, BTQ30_3000_CONS)
+Referencia o SKU do produto principal
+Tipo: VARIANTE
+Requer informação obrigatória de fornecedor/proprietário
+🔄 FLUXO OPERACIONAL
+1. Criação de Ordens
+Entrada: Sempre utilizar SKUs principais (genéricos)
+Exemplo: Ordem solicita BTQ30_3000 - 40 unidades
+Benefício: Não precisa saber origem na criação da ordem
+2. Processo de Carregamento
+Escaneamento de Produto Próprio
+Operador escaneia: BTQ30_3000
+├── Sistema identifica: Produto principal
+├── Ação: Abre modal de confirmação simples
+├── Campos: Apenas quantidade
+└── Resultado: Contabiliza diretamente para BTQ30_3000 na ordem
+Escaneamento de Produto Locado
+Operador escaneia: BTQ30_3000_LOC
+├── Sistema identifica: Produto variante que requer fornecedor
+├── Ação: Abre modal de confirmação expandido
+├── Campos obrigatórios: Quantidade + Proprietário/Fornecedor
+├── Sistema busca: SKU equivalente (BTQ30_3000)
+└── Resultado: Contabiliza para BTQ30_3000 na ordem + registra proprietário
+3. Lógica de Equivalência
+Regra: Todo produto variante possui referência ao produto principal
+Contabilização: Quantidade sempre soma no produto principal da ordem
+Rastreabilidade: Mantém registro do SKU real utilizado e proprietário informado
+🖥️ INTERFACE DO USUÁRIO
+Modal de Confirmação - Produto Próprio
+Elementos visuais:
+├── Badge verde: "🟢 PRÓPRIO"
+├── SKU e nome do produto
+├── Campo quantidade (obrigatório)
+└── Botão confirmar
+Modal de Confirmação - Produto Locado
+Elementos visuais:
+├── Badge amarelo: "🟡 LOCADO"
+├── SKU variante e nome do produto
+├── Indicação: "Contabilizado como: [SKU_PRINCIPAL]"
+├── Campo quantidade (obrigatório)
+├── Campo proprietário (obrigatório)
+│   ├── Lista de fornecedores usados recentemente
+│   ├── Lista de fornecedores cadastrados
+│   └── Pré-seleção do último usado
+├── Dica: "Obrigatório para rastreamento de material de terceiros"
+└── Botão confirmar (desabilitado se proprietário não informado)
+Painel de Itens da Ordem (Esquerdo)
+Exibição:
+├── SKU principal: BTQ30_3000
+├── Nome: Box Truss Q30 3000mm
+├── Progresso: 25/40 (62.5%)
+├── Barra visual de progresso
+└── Status: "Faltam 15 unidades" ou "Completo" ou "Excesso: +5"
+Painel de Itens Carregados (Direito)
+Exibição detalhada:
+├── Item 1: 🟢 BTQ30_3000 - 15x (Próprio)
+├── Item 2: 🟡 BTQ30_3000_LOC - 10x (Locado - Fornecedor XYZ)
+├── Agrupamento: "💡 Total para BTQ30_3000: 25 unidades"
+└── Ações: Editar quantidade, remover item
+📊 REGRAS DE CONTABILIZAÇÃO
+Algoritmo de Equivalência
+Produto escaneado é principal?
+
+SIM: Contabilizar diretamente na ordem
+NÃO: Verificar se é variante
+Produto é variante?
+
+SIM: Buscar SKU equivalente e contabilizar no principal
+NÃO: Erro - produto não encontrado na ordem
+Atualização em tempo real
+
+Toda adição/remoção atualiza instantaneamente o painel da ordem
+Cálculo automático de progresso e status
+Validações
+Produto locado: Proprietário obrigatório
+Produto próprio: Proprietário não solicitado
+Quantidade: Sempre maior que zero
+Equivalência: Produto variante deve ter referência válida
+🔍 RASTREABILIDADE E AUDITORIA
+Registro Completo
+Para cada item carregado, sistema registra:
+├── SKU real escaneado (BTQ30_3000_LOC)
+├── SKU contabilizado na ordem (BTQ30_3000)
+├── Quantidade movimentada
+├── Proprietário informado (se aplicável)
+├── Data/hora da movimentação
+├── Usuário responsável
+└── Ordem de carregamento associada
+Relatórios Disponíveis
+Por evento: Material próprio vs locado utilizado
+Por fornecedor: Frequência de uso e quantidades
+Por produto: Histórico de proprietários informados
+Auditoria: Rastreamento completo de movimentações
+⚙️ CONFIGURAÇÃO E MANUTENÇÃO
+Cadastro de Equivalências
+Administrador define quais SKUs são equivalentes
+Validação: Produto principal deve existir antes de criar variantes
+Flexibilidade: Um principal pode ter múltiplas variantes
+Exemplo:
+Principal: BTQ30_3000
+Variantes: BTQ30_3000_LOC, BTQ30_3000_CONS, BTQ30_3000_FORN_A
+Gestão de Fornecedores
+Histórico automático: Sistema aprende fornecedores mais usados
+Sugestões inteligentes: Pré-seleção baseada em frequência
+Cadastro dinâmico: Permite informar novos fornecedores durante operação
+✅ BENEFÍCIOS DA SOLUÇÃO
+Operacionais
+Compatibilidade total com ordens existentes
+Processo simples para operadores
+Rastreabilidade completa sem complexidade adicional
+Flexibilidade para novos tipos de propriedade
+Gerenciais
+Visibilidade de custos por fornecedor
+Controle de material de terceiros
+Relatórios precisos de utilização
+Auditoria completa de movimentações
+Técnicos
+Implementação não-invasiva no sistema atual
+Escalabilidade para novos fornecedores
+Manutenção simples de equivalências
+Performance adequada com índices otimizados
+🎯 RESUMO EXECUTIVO
+Problema: Produtos próprios e locados têm SKUs diferentes, mas devem ser contabilizados juntos nas ordens.
+
+Solução: Sistema de equivalência que mapeia produtos variantes (locados) para produtos principais (usados nas ordens), com coleta obrigatória de proprietário para material de terceiros.
+
+Resultado: Rastreabilidade total mantendo simplicidade operacional e compatibilidade com processos existentes

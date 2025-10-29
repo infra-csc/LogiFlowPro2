@@ -36,7 +36,7 @@ import { X } from "lucide-react";
 const formSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   movementTypeConfigId: z.string().min(1, "Tipo de movimentação é obrigatório"),
-  eventIds: z.array(z.string()).min(1, "Selecione pelo menos um evento"),
+  eventIds: z.array(z.string()).optional().default([]),
   tripIds: z.array(z.string()).optional(),
   loadingOrderId: z.string().optional(),
   vehiclePlate: z.string().optional(),
@@ -266,7 +266,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
 
                 return (
                   <FormItem>
-                    <FormLabel>Eventos</FormLabel>
+                    <FormLabel>Eventos (Opcional)</FormLabel>
                     <div className="space-y-2">
                       {selectedEvents.length > 0 && (
                         <div className="flex flex-wrap gap-2">
