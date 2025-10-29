@@ -275,6 +275,7 @@ export const products = pgTable("products", {
   sku: text("sku").notNull().unique(),
   name: text("name").notNull(),
   description: text("description"),
+  category: text("category"), // For filtering: Estrutura, Iluminação, Som, etc
   ownership: ownershipTypeEnum("ownership").notNull().default("owned"),
   unit: text("unit").notNull().default("unit"),
   weight: decimal("weight", { precision: 10, scale: 2 }),
@@ -629,6 +630,25 @@ export const movementAuditLogs = pgTable("movement_audit_logs", {
   metadata: jsonb("metadata"), // Action-specific data (product, quantity, SKU, supplier, etc.)
   context: jsonb("context"), // Additional context (previous/new values for status changes, etc.)
   occurredAt: timestamp("occurred_at").notNull().default(sql`now()`)
+});
+
+// Inventory Snapshots table - Cached balances for performance
+export const inventorySnapshots = pgTable("inventory_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  // Dimension keys (null means "all")
+  location: text("location"), // Physical dimension: warehouse A, B, in transit, etc
+  ownerType: text("owner_type"), // Ownership dimension: owned, rented, third_party
+  ownerName: text("owner_name"), // Specific supplier name
+  status: text("status"), // Status dimension: available, in_event, in_transit, maintenance, etc
+  // Balances
+  inboundQuantity: integer("inbound_quantity").notNull().default(0), // Total entradas
+  outboundQuantity: integer("outbound_quantity").notNull().default(0), // Total saídas
+  currentBalance: integer("current_balance").notNull().default(0), // Saldo atual
+  // Metadata
+  lastMovementDate: timestamp("last_movement_date"), // Last movement affecting this snapshot
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 
 // Inventory Movements table
@@ -1219,6 +1239,12 @@ export const insertMovementItemSchema = createInsertSchema(movementItems).omit({
 export const insertMovementAuditLogSchema = createInsertSchema(movementAuditLogs).omit({
   id: true,
   occurredAt: true
+});
+
+export const insertInventorySnapshotSchema = createInsertSchema(inventorySnapshots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
 });
 
 export const insertMovementTripSchema = createInsertSchema(movementTrips).omit({
