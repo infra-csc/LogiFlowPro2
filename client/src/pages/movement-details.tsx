@@ -500,6 +500,8 @@ export default function MovementDetails() {
   const handleConfirmAddItem = () => {
     if (!selectedProduct) return;
     
+    console.log('DEBUG - ownerName:', ownerName, 'requiresSupplier:', selectedProduct.requiresSupplier);
+    
     // Validate supplier for rented/consigned products
     if (selectedProduct.requiresSupplier && !ownerName.trim()) {
       toast({
