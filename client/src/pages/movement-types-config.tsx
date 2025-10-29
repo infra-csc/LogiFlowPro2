@@ -42,6 +42,7 @@ export default function MovementTypesConfigPage() {
       nature: "transfer",
       affectsPhysicalInventory: true,
       affectsOperationalInventory: true,
+      affectsPatrimonialInventory: true,
       requiresApproval: false,
       requiresDocument: false,
       allowsMixedBatch: true,
@@ -134,6 +135,7 @@ export default function MovementTypesConfigPage() {
       nature: "transfer",
       affectsPhysicalInventory: true,
       affectsOperationalInventory: true,
+      affectsPatrimonialInventory: true,
       requiresApproval: false,
       requiresDocument: false,
       allowsMixedBatch: true,
@@ -151,6 +153,7 @@ export default function MovementTypesConfigPage() {
       nature: type.nature,
       affectsPhysicalInventory: type.affectsPhysicalInventory,
       affectsOperationalInventory: type.affectsOperationalInventory,
+      affectsPatrimonialInventory: (type as any).affectsPatrimonialInventory ?? true,
       requiresApproval: type.requiresApproval,
       requiresDocument: type.requiresDocument,
       allowsMixedBatch: type.allowsMixedBatch,
@@ -271,6 +274,7 @@ export default function MovementTypesConfigPage() {
               <TableHead>Natureza</TableHead>
               <TableHead className="text-center">Estoque Físico</TableHead>
               <TableHead className="text-center">Estoque Operacional</TableHead>
+              <TableHead className="text-center">Estoque Patrimonial</TableHead>
               <TableHead className="text-center">Aprovação</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -279,13 +283,13 @@ export default function MovementTypesConfigPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : filteredTypes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   Nenhum tipo encontrado
                 </TableCell>
               </TableRow>
@@ -312,6 +316,9 @@ export default function MovementTypesConfigPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {type.affectsOperationalInventory ? "✓" : "—"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {(type as any).affectsPatrimonialInventory ? "✓" : "—"}
                     </TableCell>
                     <TableCell className="text-center">
                       {type.requiresApproval ? "✓" : "—"}
@@ -455,7 +462,7 @@ export default function MovementTypesConfigPage() {
 
               <div className="space-y-3 rounded-lg border p-4">
                 <h4 className="font-medium">Configurações de Estoque</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="affectsPhysicalInventory"
@@ -494,6 +501,28 @@ export default function MovementTypesConfigPage() {
                             checked={field.value}
                             onCheckedChange={field.onChange}
                             data-testid="switch-operational"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="affectsPatrimonialInventory"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel>Afeta Estoque Patrimonial</FormLabel>
+                          <FormDescription className="text-xs">
+                            Altera patrimônio próprio
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-patrimonial"
                           />
                         </FormControl>
                       </FormItem>
