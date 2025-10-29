@@ -141,6 +141,8 @@ export interface IStorage {
   // Products
   getProducts(): Promise<Product[]>;
   getProduct(id: string): Promise<Product | undefined>;
+  getProductBySku(sku: string): Promise<Product | undefined>;
+  getTargetProduct(scannedSku: string): Promise<{ product: Product; isVariant: boolean } | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
 
@@ -241,6 +243,7 @@ export interface IStorage {
   createMovementItem(item: InsertMovementItem): Promise<MovementItem>;
   decrementMovementItemQuantity(id: string): Promise<MovementItem | null>;
   deleteMovementItem(id: string): Promise<void>;
+  getRecentSuppliers(limit?: number): Promise<string[]>;
 
   // Inventory Movements
   getInventoryMovements(): Promise<InventoryMovement[]>;
@@ -417,6 +420,40 @@ export class DatabaseStorage implements IStorage {
   async updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product> {
     const [updated] = await db.update(products).set(product).where(eq(products.id, id)).returning();
     return updated;
+  }
+
+  async getProductBySku(sku: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.sku, sku));
+    return product || undefined;
+  }
+
+  async getTargetProduct(scannedSku: string): Promise<{ product: Product; isVariant: boolean } | undefined> {
+    // First, try to find the product by scanned SKU
+    const scannedProduct = await this.getProductBySku(scannedSku);
+    
+    if (!scannedProduct) {
+      return undefined;
+    }
+    
+    // If it's a variant, resolve to the principal product
+    if (scannedProduct.productType === 'variante' && scannedProduct.equivalentSku) {
+      const principalProduct = await this.getProductBySku(scannedProduct.equivalentSku);
+      
+      if (!principalProduct) {
+        throw new Error(`Principal product not found for variant ${scannedSku}`);
+      }
+      
+      return {
+        product: principalProduct,
+        isVariant: true
+      };
+    }
+    
+    // It's already a principal product
+    return {
+      product: scannedProduct,
+      isVariant: false
+    };
   }
 
   // Material Requests
@@ -1190,6 +1227,25 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMovementItem(id: string): Promise<void> {
     await db.delete(movementItems).where(eq(movementItems.id, id));
+  }
+
+  async getRecentSuppliers(limit: number = 10): Promise<string[]> {
+    const recent = await db
+      .selectDistinct({ ownerName: movementItems.ownerName })
+      .from(movementItems)
+      .where(
+        and(
+          sql`${movementItems.ownerName} IS NOT NULL`,
+          sql`${movementItems.ownerType} IS NOT NULL`,
+          sql`${movementItems.ownerType} != 'proprio'`
+        )
+      )
+      .orderBy(desc(movementItems.processedAt))
+      .limit(limit);
+    
+    return recent
+      .map(r => r.ownerName)
+      .filter((name): name is string => name !== null);
   }
 
   // Inventory Movements

@@ -329,6 +329,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Product Variants - specific routes MUST come before generic :id route
+  app.get("/api/products/by-sku/:sku", async (req, res) => {
+    try {
+      const product = await storage.getProductBySku(req.params.sku);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      res.json(product);
+    } catch (error) {
+      console.error("Error fetching product by SKU:", error);
+      res.status(500).json({ error: "Failed to fetch product" });
+    }
+  });
+
+  app.get("/api/products/target/:sku", async (req, res) => {
+    try {
+      const result = await storage.getTargetProduct(req.params.sku);
+      if (!result) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error resolving target product:", error);
+      res.status(500).json({ error: "Failed to resolve product" });
+    }
+  });
+
+  app.get("/api/suppliers/recent", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const suppliers = await storage.getRecentSuppliers(limit);
+      res.json(suppliers);
+    } catch (error) {
+      console.error("Error fetching recent suppliers:", error);
+      res.status(500).json({ error: "Failed to fetch recent suppliers" });
+    }
+  });
+
   app.get("/api/products/:id", async (req, res) => {
     try {
       const product = await storage.getProduct(req.params.id);
