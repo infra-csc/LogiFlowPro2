@@ -519,9 +519,11 @@ export default function MovementDetails() {
   };
 
   const handleAddItem = () => {
+    console.log('handleAddItem called', { selectedProduct: selectedProduct?.name, showConfirmDialog });
     if (!selectedProduct) return;
     // Open confirmation dialog instead of adding directly
     setShowConfirmDialog(true);
+    console.log('Dialog should be opening now');
   };
 
   const handleConfirmAddItem = () => {
@@ -966,7 +968,9 @@ export default function MovementDetails() {
                         onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
+                            console.log('Enter pressed on quantity input');
                             e.preventDefault();
+                            e.stopPropagation();
                             handleAddItem();
                           }
                         }}
