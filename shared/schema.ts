@@ -365,6 +365,7 @@ export const movementTypesConfig = pgTable("movement_types_config", {
   // Control impacts
   affectsPhysicalInventory: boolean("affects_physical_inventory").notNull().default(true),
   affectsOperationalInventory: boolean("affects_operational_inventory").notNull().default(true),
+  affectsPatrimonialInventory: boolean("affects_patrimonial_inventory").notNull().default(true),
   
   // Configuration
   requiresApproval: boolean("requires_approval").notNull().default(false),
