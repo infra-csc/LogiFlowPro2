@@ -1824,48 +1824,45 @@ export class DatabaseStorage implements IStorage {
                            filters.groupBy === 'status' ? 'm.status' :
                            `COALESCE(p.category, 'Sem categoria')`;
 
-    // Build WHERE conditions
+    // Build WHERE conditions (using direct string interpolation with proper escaping)
     const whereConditions = [];
-    const params: any[] = [];
     
     if (filters.search) {
-      whereConditions.push(`(p.sku ILIKE $${params.length + 1} OR p.name ILIKE $${params.length + 1} OR p.barcode ILIKE $${params.length + 1})`);
-      params.push(`%${filters.search}%`);
+      const searchTerm = filters.search.replace(/'/g, "''"); // Escape single quotes
+      whereConditions.push(`(p.sku ILIKE '%${searchTerm}%' OR p.name ILIKE '%${searchTerm}%' OR p.barcode ILIKE '%${searchTerm}%')`);
     }
     
     if (startDate) {
-      whereConditions.push(`m.started_at >= $${params.length + 1}`);
-      params.push(startDate.toISOString());
+      whereConditions.push(`m.started_at >= '${startDate.toISOString()}'`);
     }
     
     if (endDate) {
-      whereConditions.push(`m.started_at <= $${params.length + 1}`);
-      params.push(endDate.toISOString());
+      whereConditions.push(`m.started_at <= '${endDate.toISOString()}'`);
     }
     
     if (filters.location) {
-      whereConditions.push(`mi.location = $${params.length + 1}`);
-      params.push(filters.location);
+      const location = filters.location.replace(/'/g, "''");
+      whereConditions.push(`mi.location = '${location}'`);
     }
     
     if (filters.category) {
-      whereConditions.push(`p.category = $${params.length + 1}`);
-      params.push(filters.category);
+      const category = filters.category.replace(/'/g, "''");
+      whereConditions.push(`p.category = '${category}'`);
     }
     
     if (filters.ownerType) {
-      whereConditions.push(`mi.owner_type = $${params.length + 1}`);
-      params.push(filters.ownerType);
+      const ownerType = filters.ownerType.replace(/'/g, "''");
+      whereConditions.push(`mi.owner_type = '${ownerType}'`);
     }
     
     if (filters.ownerName) {
-      whereConditions.push(`mi.owner_name = $${params.length + 1}`);
-      params.push(filters.ownerName);
+      const ownerName = filters.ownerName.replace(/'/g, "''");
+      whereConditions.push(`mi.owner_name = '${ownerName}'`);
     }
     
     if (filters.status) {
-      whereConditions.push(`m.status = $${params.length + 1}`);
-      params.push(filters.status);
+      const status = filters.status.replace(/'/g, "''");
+      whereConditions.push(`m.status = '${status}'`);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
