@@ -44,16 +44,24 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
+const approvalItems = [
+  {
+    title: "Requisições",
+    url: "/approvals",
+    icon: ClipboardList,
+  },
+  {
+    title: "Movimentações",
+    url: "/movement-approvals",
+    icon: FileStack,
+  },
+];
+
 const mainMenuItems = [
   {
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
-  },
-  {
-    title: "Aprovações",
-    url: "/approvals",
-    icon: CheckSquare,
   },
   {
     title: "Requisição de Materiais",
@@ -74,11 +82,6 @@ const mainMenuItems = [
     title: "Movimentações",
     url: "/movements",
     icon: FileStack,
-  },
-  {
-    title: "Aprovações de Movimentações",
-    url: "/movement-approvals",
-    icon: CheckSquare,
   },
   {
     title: "Devoluções",
@@ -232,6 +235,36 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton data-testid="button-approvals-menu">
+                      <CheckSquare className="h-4 w-4" />
+                      <span>Aprovações</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {approvalItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton 
+                            asChild 
+                            isActive={location === item.url}
+                            data-testid={`link-approvals-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                          >
+                            <Link href={item.url}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
               
               <Collapsible defaultOpen className="group/collapsible">
                 <SidebarMenuItem>
