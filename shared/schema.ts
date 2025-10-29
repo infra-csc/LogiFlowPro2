@@ -142,6 +142,17 @@ export const batchOwnershipTypeEnum = pgEnum("batch_ownership_type", [
   "commodatum"
 ]);
 
+export const movementAuditActionEnum = pgEnum("movement_audit_action", [
+  "item_added",
+  "item_removed",
+  "item_quantity_changed",
+  "status_changed",
+  "movement_created",
+  "movement_updated",
+  "note_added",
+  "loading_order_linked"
+]);
+
 // Users table (Authentication)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -606,6 +617,18 @@ export const movementItems = pgTable("movement_items", {
   supplierName: text("supplier_name"),
   supplierNotes: text("supplier_notes"),
   processedAt: timestamp("processed_at").notNull().default(sql`now()`)
+});
+
+// Movement Audit Logs table
+export const movementAuditLogs = pgTable("movement_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  movementId: varchar("movement_id").notNull().references(() => movements.id, { onDelete: "cascade" }),
+  action: movementAuditActionEnum("action").notNull(),
+  actorId: varchar("actor_id").references(() => users.id),
+  actorName: text("actor_name").notNull(), // Snapshot of actor name
+  metadata: jsonb("metadata"), // Action-specific data (product, quantity, SKU, supplier, etc.)
+  context: jsonb("context"), // Additional context (previous/new values for status changes, etc.)
+  occurredAt: timestamp("occurred_at").notNull().default(sql`now()`)
 });
 
 // Inventory Movements table
@@ -1193,6 +1216,11 @@ export const insertMovementItemSchema = createInsertSchema(movementItems).omit({
   processedAt: true
 });
 
+export const insertMovementAuditLogSchema = createInsertSchema(movementAuditLogs).omit({
+  id: true,
+  occurredAt: true
+});
+
 export const insertMovementTripSchema = createInsertSchema(movementTrips).omit({
   id: true,
   createdAt: true
@@ -1334,6 +1362,9 @@ export type InsertMovementTrip = z.infer<typeof insertMovementTripSchema>;
 
 export type MovementItem = typeof movementItems.$inferSelect;
 export type InsertMovementItem = z.infer<typeof insertMovementItemSchema>;
+
+export type MovementAuditLog = typeof movementAuditLogs.$inferSelect;
+export type InsertMovementAuditLog = z.infer<typeof insertMovementAuditLogSchema>;
 
 export type InventoryMovement = typeof inventoryMovements.$inferSelect;
 export type InsertInventoryMovement = z.infer<typeof insertInventoryMovementSchema>;

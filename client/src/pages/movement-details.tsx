@@ -39,11 +39,16 @@ import {
   Keyboard,
   Maximize2,
   Minimize2,
+  Edit,
+  Clock,
+  User,
+  FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSidebar } from "@/components/ui/sidebar";
-import type { Movement, MovementItem, Product, LoadingOrderItem, MovementTypeConfig } from "@shared/schema";
+import { format } from "date-fns";
+import type { Movement, MovementItem, Product, LoadingOrderItem, MovementTypeConfig, MovementAuditLog } from "@shared/schema";
 
 type MovementWithDetails = Movement & {
   loadingOrder?: {
@@ -111,6 +116,8 @@ export default function MovementDetails() {
   const [ownerName, setOwnerName] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showEditStatusDialog, setShowEditStatusDialog] = useState(false);
+  const [newStatus, setNewStatus] = useState<string>("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
@@ -142,6 +149,16 @@ export default function MovementDetails() {
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
+  });
+
+  const { data: auditLogs = [] } = useQuery<MovementAuditLog[]>({
+    queryKey: ["/api/movements", id, "audit-logs"],
+    queryFn: async () => {
+      const res = await fetch(`/api/movements/${id}/audit-logs`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch audit logs");
+      return res.json();
+    },
+    enabled: !!id,
   });
 
   const { data: loadingOrderItems = [] } = useQuery<LoadingOrderItemWithProduct[]>({
@@ -312,7 +329,7 @@ export default function MovementDetails() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
-      const res = await apiRequest("PATCH", `/api/movements/${id}`, { status: newStatus });
+      const res = await apiRequest("PATCH", `/api/movements/${id}/status`, { status: newStatus });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to update status");
@@ -321,7 +338,14 @@ export default function MovementDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movements", id] });
-      toast({ title: "Status atualizado" });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
+      setShowEditStatusDialog(false);
+      setNewStatus("");
+      toast({
+        title: "Status atualizado",
+        description: "O status da movimentação foi atualizado com sucesso.",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -352,6 +376,7 @@ export default function MovementDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
       setSelectedProduct(null);
       setScannedSku("");
       setQuantity(1);
@@ -426,6 +451,7 @@ export default function MovementDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
       toast({
         title: "Item removido completamente",
         description: "O item foi removido da movimentação.",
@@ -548,6 +574,13 @@ export default function MovementDetails() {
     }
   }, [selectedProduct]);
 
+  // Pre-populate status when edit dialog opens
+  useEffect(() => {
+    if (showEditStatusDialog && movement) {
+      setNewStatus(movement.status);
+    }
+  }, [showEditStatusDialog, movement]);
+
   // Handle Enter key in confirmation dialog
   useEffect(() => {
     if (!showConfirmDialog) return;
@@ -657,6 +690,14 @@ export default function MovementDetails() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowEditStatusDialog(true)}
+            data-testid="button-edit-status"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Editar Status
+          </Button>
           {movement.status === "created" && (
             <Button
               onClick={handleStartMovement}
@@ -1301,6 +1342,125 @@ export default function MovementDetails() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Status Dialog */}
+      <Dialog open={showEditStatusDialog} onOpenChange={setShowEditStatusDialog}>
+        <DialogContent data-testid="dialog-edit-status">
+          <DialogHeader>
+            <DialogTitle>Editar Status da Movimentação</DialogTitle>
+            <DialogDescription>
+              Selecione o novo status para esta movimentação
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="new-status" className="mb-2 block">Novo Status</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger id="new-status" data-testid="select-new-status">
+                  <SelectValue placeholder="Selecione o status..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created">Criada</SelectItem>
+                  <SelectItem value="in_progress">Em Andamento</SelectItem>
+                  <SelectItem value="paused">Pausada</SelectItem>
+                  <SelectItem value="completed">Finalizada</SelectItem>
+                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditStatusDialog(false);
+                setNewStatus("");
+              }}
+              data-testid="button-cancel-edit-status"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (newStatus) {
+                  updateStatusMutation.mutate(newStatus);
+                }
+              }}
+              disabled={!newStatus || updateStatusMutation.isPending}
+              data-testid="button-confirm-edit-status"
+            >
+              {updateStatusMutation.isPending ? "Atualizando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Action History Section */}
+      {!focusMode && auditLogs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Histórico de Ações
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-4">
+                {auditLogs.map((log) => {
+                  const getActionIcon = () => {
+                    switch (log.action) {
+                      case "item_added": return <Plus className="h-4 w-4 text-green-600" />;
+                      case "item_removed": return <Minus className="h-4 w-4 text-red-600" />;
+                      case "status_changed": return <FileText className="h-4 w-4 text-blue-600" />;
+                      default: return <Clock className="h-4 w-4 text-gray-600" />;
+                    }
+                  };
+
+                  const getActionDescription = () => {
+                    const metadata = log.metadata as any;
+                    const context = log.context as any;
+                    
+                    switch (log.action) {
+                      case "item_added":
+                        return `Adicionou ${metadata?.quantity}x ${metadata?.productName} (SKU: ${metadata?.sku})${metadata?.ownerName ? ` - ${metadata.ownerName}` : ""}`;
+                      case "item_removed":
+                        return `Removeu ${metadata?.quantity}x ${metadata?.productName} (SKU: ${metadata?.sku})${metadata?.ownerName ? ` - ${metadata.ownerName}` : ""}`;
+                      case "status_changed":
+                        return `Alterou status de ${getStatusLabel(context?.previousStatus)} para ${getStatusLabel(context?.newStatus)}`;
+                      default:
+                        return log.action;
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={log.id}
+                      className="flex gap-3 p-3 border rounded-lg hover-elevate"
+                      data-testid={`audit-log-${log.id}`}
+                    >
+                      <div className="mt-1">{getActionIcon()}</div>
+                      <div className="flex-1">
+                        <p className="font-medium">{getActionDescription()}</p>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {log.actorName}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(log.occurredAt), "dd/MM/yyyy HH:mm")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

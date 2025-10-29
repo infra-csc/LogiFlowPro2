@@ -27,6 +27,7 @@ import {
   insertMovementSchema,
   insertMovementWithEventsSchema,
   insertMovementItemSchema,
+  insertMovementAuditLogSchema,
   insertInventoryMovementSchema,
   insertReturnSchema,
   insertUserSchema,
@@ -1368,6 +1369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const data = insertMovementSchema.partial().parse(req.body);
+      const previousStatus = movement.status;
       
       // Validate status transitions
       if (data.status && data.status !== movement.status) {
@@ -1396,6 +1398,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updated = await storage.updateMovement(req.params.id, data);
+      
+      // Create audit log if status changed
+      if (data.status && data.status !== previousStatus) {
+        await storage.createMovementAuditLog({
+          movementId: req.params.id,
+          action: "status_changed",
+          actorId: req.user?.id || null,
+          actorName: req.user?.name || "Sistema",
+          context: {
+            previousStatus,
+            newStatus: data.status,
+          },
+        });
+      }
+      
       res.json(updated);
     } catch (error) {
       res.status(400).json({ error: "Invalid movement data" });
@@ -1428,6 +1445,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Override movementId to ensure it matches the URL param
       const itemData = { ...data, movementId: req.params.id };
       const item = await storage.createMovementItem(itemData);
+
+      // Get product details for audit log
+      const product = await storage.getProduct(item.productId);
+
+      // Create audit log for item addition
+      await storage.createMovementAuditLog({
+        movementId: req.params.id,
+        action: "item_added",
+        actorId: req.user?.id || null,
+        actorName: req.user?.name || "Sistema",
+        metadata: {
+          productId: item.productId,
+          productName: product?.name || "Unknown",
+          quantity: item.quantity,
+          sku: product?.sku || "",
+          ownerName: item.ownerName || undefined,
+          ownerType: item.ownerType || undefined,
+        },
+      });
+
       res.status(201).json(item);
     } catch (error) {
       res.status(400).json({ error: "Invalid movement item data" });
@@ -1472,10 +1509,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get item details before deletion for audit log
+      const movementItems = await storage.getMovementItems(req.params.id);
+      const itemToDelete = movementItems.find(item => item.id === req.params.itemId);
+      
+      if (itemToDelete) {
+        // Get product details
+        const product = await storage.getProduct(itemToDelete.productId);
+        
+        // Create audit log for item removal
+        await storage.createMovementAuditLog({
+          movementId: req.params.id,
+          action: "item_removed",
+          actorId: req.user?.id || null,
+          actorName: req.user?.name || "Sistema",
+          metadata: {
+            productId: itemToDelete.productId,
+            productName: product?.name || "Unknown",
+            quantity: itemToDelete.quantity,
+            sku: product?.sku || "",
+            ownerName: itemToDelete.ownerName || undefined,
+            ownerType: itemToDelete.ownerType || undefined,
+          },
+        });
+      }
+
       await storage.deleteMovementItem(req.params.itemId);
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ error: "Failed to remove movement item" });
+    }
+  });
+
+  // Movement Audit Logs
+  app.get("/api/movements/:id/audit-logs", async (req, res) => {
+    try {
+      const logs = await storage.getMovementAuditLogs(req.params.id);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Update Movement Status
+  app.patch("/api/movements/:id/status", async (req, res) => {
+    try {
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) {
+        return res.status(404).json({ error: "Movement not found" });
+      }
+
+      // Validate status with Zod
+      const statusSchema = z.object({ status: z.string() });
+      const { status } = statusSchema.parse(req.body);
+
+      const previousStatus = movement.status;
+      
+      // Update movement status
+      const updated = await storage.updateMovement(req.params.id, { status });
+
+      // Create audit log for status change
+      await storage.createMovementAuditLog({
+        movementId: req.params.id,
+        action: "status_changed",
+        actorId: req.user?.id || null,
+        actorName: req.user?.name || "Sistema",
+        context: {
+          previousStatus,
+          newStatus: status,
+        },
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update movement status:", error);
+      res.status(500).json({ error: "Failed to update movement status" });
     }
   });
 

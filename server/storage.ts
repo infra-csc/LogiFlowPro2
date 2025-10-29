@@ -26,6 +26,7 @@ import {
   movementEvents,
   movementTrips,
   movementItems,
+  movementAuditLogs,
   inventoryMovements,
   returns,
   auditLogs,
@@ -83,6 +84,8 @@ import {
   type InsertMovementWithEvents,
   type MovementItem,
   type InsertMovementItem,
+  type MovementAuditLog,
+  type InsertMovementAuditLog,
   type InventoryMovement,
   type InsertInventoryMovement,
   type Return,
@@ -254,6 +257,10 @@ export interface IStorage {
   decrementMovementItemQuantity(id: string): Promise<MovementItem | null>;
   deleteMovementItem(id: string): Promise<void>;
   getRecentSuppliers(limit?: number): Promise<string[]>;
+
+  // Movement Audit Logs
+  createMovementAuditLog(log: InsertMovementAuditLog): Promise<MovementAuditLog>;
+  getMovementAuditLogs(movementId: string): Promise<MovementAuditLog[]>;
 
   // Inventory Movements
   getInventoryMovements(): Promise<InventoryMovement[]>;
@@ -1280,6 +1287,20 @@ export class DatabaseStorage implements IStorage {
     return recent
       .map(r => r.ownerName)
       .filter((name): name is string => name !== null);
+  }
+
+  // Movement Audit Logs
+  async createMovementAuditLog(log: InsertMovementAuditLog): Promise<MovementAuditLog> {
+    const [created] = await db.insert(movementAuditLogs).values(log).returning();
+    return created;
+  }
+
+  async getMovementAuditLogs(movementId: string): Promise<MovementAuditLog[]> {
+    return await db
+      .select()
+      .from(movementAuditLogs)
+      .where(eq(movementAuditLogs.movementId, movementId))
+      .orderBy(desc(movementAuditLogs.occurredAt));
   }
 
   // Inventory Movements
