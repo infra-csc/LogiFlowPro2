@@ -109,7 +109,7 @@ export default function MovementDetails() {
   const [scannedSku, setScannedSku] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [ownerName, setOwnerName] = useState("");
-  const [ownerType, setOwnerType] = useState<"proprio" | "locado" | "consignado">("proprio");
+  const [ownerType, setOwnerType] = useState<"owned" | "rented" | "third_party">("rented");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -200,6 +200,8 @@ export default function MovementDetails() {
       totalQuantity: number; 
       itemIds: string[];
       isNotInOrder: boolean;
+      ownerTypes: Set<string>;
+      owners: Set<string>;
     }>();
 
     movementItems.forEach((item) => {
@@ -207,6 +209,8 @@ export default function MovementDetails() {
       if (existing) {
         existing.totalQuantity += item.quantity;
         existing.itemIds.push(item.id);
+        if (item.ownerType) existing.ownerTypes.add(item.ownerType);
+        if (item.ownerName) existing.owners.add(item.ownerName);
       } else {
         // Check if this product is not in the loading order (only when there is a loading order)
         const isNotInOrder = movement?.loadingOrderId 
@@ -218,6 +222,8 @@ export default function MovementDetails() {
           totalQuantity: item.quantity,
           itemIds: [item.id],
           isNotInOrder,
+          ownerTypes: new Set(item.ownerType ? [item.ownerType] : []),
+          owners: new Set(item.ownerName ? [item.ownerName] : []),
         });
       }
     });
@@ -338,7 +344,7 @@ export default function MovementDetails() {
       setScannedSku("");
       setQuantity(1);
       setOwnerName("");
-      setOwnerType("proprio");
+      setOwnerType("rented");
       setSearchQuery("");
       setShowSuggestions(false);
       toast({
@@ -498,7 +504,7 @@ export default function MovementDetails() {
       quantity,
       scannedSku: scannedSku || selectedProduct.sku,
       ownerName: selectedProduct.requiresSupplier ? ownerName : undefined,
-      ownerType: selectedProduct.requiresSupplier ? ownerType : "proprio",
+      ownerType: selectedProduct.requiresSupplier ? ownerType : "owned",
     });
     setShowConfirmDialog(false);
   };
@@ -1077,7 +1083,7 @@ export default function MovementDetails() {
                         data-testid={`item-${item.productId}`}
                       >
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium">{product?.name || "Produto desconhecido"}</p>
                             {item.isNotInOrder && (
                               <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-400 dark:border-amber-600">
@@ -1085,10 +1091,27 @@ export default function MovementDetails() {
                                 Produto não consta na ordem
                               </Badge>
                             )}
+                            {item.ownerTypes.has("rented") && (
+                              <Badge variant="outline" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500">
+                                🟡 LOCADO
+                              </Badge>
+                            )}
+                            {item.ownerTypes.has("third_party") && (
+                              <Badge variant="outline" className="bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500">
+                                🔵 TERCEIROS
+                              </Badge>
+                            )}
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            SKU: {product?.sku || "-"}
-                          </p>
+                          <div className="flex items-center gap-4 flex-wrap">
+                            <p className="text-sm text-muted-foreground">
+                              SKU: {product?.sku || "-"}
+                            </p>
+                            {item.owners.size > 0 && (
+                              <p className="text-sm text-muted-foreground">
+                                Fornecedor: {Array.from(item.owners).join(", ")}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <Badge variant="outline" className="text-lg px-4 py-1">
                           {item.totalQuantity}x
@@ -1206,8 +1229,8 @@ export default function MovementDetails() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="locado">Locado</SelectItem>
-                          <SelectItem value="consignado">Consignado</SelectItem>
+                          <SelectItem value="rented">Locado</SelectItem>
+                          <SelectItem value="third_party">Terceiros</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
