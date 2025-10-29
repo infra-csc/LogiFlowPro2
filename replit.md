@@ -41,6 +41,23 @@ Preferred communication style: Simple, everyday language.
   - **Approval Workflow**: Movements with requires_approval=true are created with status "pending_approval" and bypass inventory changes. Approval action changes status to "created" and records approver/timestamp. Rejection changes status to "cancelled" with required reason. Both actions create audit log entries.
   - **Future Phases**: System prepared for batch/lot tracking with batch_lots table and ownership types (próprio, terceiro, consignado).
 
+## Planned Features
+
+### Product Variants & Equivalencies System (Phase 2)
+Comprehensive system for tracking material ownership (próprio/locado/consignado) while maintaining unified accounting in loading orders. See detailed implementation plan in `docs/PRODUCT_VARIANTS_PLAN.md`.
+
+**Key Capabilities:**
+- **Product Types**: PRINCIPAL (master SKUs used in orders) and VARIANTE (specific SKUs with supplier tracking)
+- **Smart Scanner**: Automatically resolves variants to principals during loading operations
+- **Conditional Forms**: Dynamic modal behavior - simple confirmation for owned products, expanded form with mandatory supplier field for rented/consigned products
+- **Unified Accounting**: All variants count toward principal product in order progress, maintaining full traceability
+- **Supplier Tracking**: Historical tracking of recent suppliers with intelligent suggestions
+- **Visual Indicators**: Color-coded badges (🟢 próprio / 🟡 locado / 🔵 consignado) throughout UI
+- **Advanced Reporting**: Material breakdown by ownership type, supplier usage analysis, complete audit trail
+
+**Status**: 📋 Documented - Ready for implementation when needed  
+**Estimated Effort**: 30-45 minutes
+
 ## External Dependencies
 
 - **Database**: Neon Serverless PostgreSQL, Drizzle Kit.
