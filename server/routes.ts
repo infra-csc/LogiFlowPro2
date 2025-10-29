@@ -1171,6 +1171,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Movement Approvals - Must come BEFORE /api/movements/:id
+  app.get("/api/movements/pending-approval", async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const pendingMovements = await storage.listPendingMovements();
+      res.json(pendingMovements);
+    } catch (error) {
+      console.error("Failed to fetch pending movements:", error);
+      res.status(500).json({ error: "Failed to fetch pending movements" });
+    }
+  });
+
   app.get("/api/movements/:id", async (req, res) => {
     try {
       const movement = await storage.getMovement(req.params.id);
@@ -1367,21 +1382,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ error: "Failed to remove movement item" });
-    }
-  });
-
-  // Movement Approvals
-  app.get("/api/movements/pending-approval", async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      
-      const pendingMovements = await storage.listPendingMovements();
-      res.json(pendingMovements);
-    } catch (error) {
-      console.error("Failed to fetch pending movements:", error);
-      res.status(500).json({ error: "Failed to fetch pending movements" });
     }
   });
 
