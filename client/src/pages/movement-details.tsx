@@ -109,17 +109,15 @@ export default function MovementDetails() {
   const [scannedSku, setScannedSku] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [ownerName, setOwnerName] = useState("");
-  const [ownerType, setOwnerType] = useState<"owned" | "rented" | "third_party">("rented");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fetch recent suppliers
-  const { data: recentSuppliers = [] } = useQuery<string[]>({
-    queryKey: ["/api/suppliers/recent"],
-    enabled: !!selectedProduct?.requiresSupplier,
+  // Fetch all suppliers
+  const { data: suppliers = [] } = useQuery<Array<{id: string, name: string}>>({
+    queryKey: ["/api/suppliers"],
   });
 
   const { data: movement, isLoading } = useQuery<MovementWithDetails>({
@@ -1233,44 +1231,25 @@ export default function MovementDetails() {
                     </p>
                   </div>
                   
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="ownerType" className="text-sm font-medium mb-2 block">
-                        Tipo de Propriedade *
-                      </Label>
-                      <Select value={ownerType} onValueChange={(value) => setOwnerType(value as typeof ownerType)}>
-                        <SelectTrigger id="ownerType" data-testid="select-owner-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="rented">Locado</SelectItem>
-                          <SelectItem value="third_party">Terceiros</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="ownerName" className="text-sm font-medium mb-2 block">
-                        Proprietário/Fornecedor *
-                      </Label>
-                      <Input
-                        id="ownerName"
-                        value={ownerName}
-                        onChange={(e) => setOwnerName(e.target.value)}
-                        placeholder="Digite ou selecione o fornecedor"
-                        data-testid="input-owner-name"
-                        list="recent-suppliers"
-                      />
-                      {recentSuppliers.length > 0 && (
-                        <datalist id="recent-suppliers">
-                          {recentSuppliers.map((supplier, idx) => (
-                            <option key={idx} value={supplier} />
-                          ))}
-                        </datalist>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        ⚠️ Campo obrigatório para rastreamento de material de terceiros
-                      </p>
+                  <div>
+                    <Label htmlFor="ownerName" className="text-sm font-medium mb-2 block">
+                      Proprietário/Fornecedor *
+                    </Label>
+                    <Select value={ownerName} onValueChange={setOwnerName}>
+                      <SelectTrigger id="ownerName" data-testid="select-owner-name">
+                        <SelectValue placeholder="Selecione o fornecedor..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliers.filter(s => s.name).map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.name}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ⚠️ Campo obrigatório para rastreamento de material de terceiros
+                    </p>
                     </div>
                   </div>
                 </div>
