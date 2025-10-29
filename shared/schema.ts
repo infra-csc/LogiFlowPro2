@@ -75,6 +75,7 @@ export const movementTypeEnum = pgEnum("movement_type", [
 
 export const movementStatusEnum = pgEnum("movement_status", [
   "created",
+  "pending_approval",
   "in_progress",
   "paused",
   "completed",
@@ -542,6 +543,12 @@ export const movements = pgTable("movements", {
   completedAt: timestamp("completed_at"),
   totalDuration: integer("total_duration"), // em minutos
   createdBy: text("created_by").notNull(),
+  // Approval fields
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: varchar("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
