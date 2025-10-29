@@ -7,6 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -98,12 +106,21 @@ export default function MovementDetails() {
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
   const [loadedSearchQuery, setLoadedSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [scannedSku, setScannedSku] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
+  const [ownerName, setOwnerName] = useState("");
+  const [ownerType, setOwnerType] = useState<"proprio" | "locado" | "consignado">("proprio");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Fetch recent suppliers
+  const { data: recentSuppliers = [] } = useQuery<string[]>({
+    queryKey: ["/api/suppliers/recent"],
+    enabled: !!selectedProduct?.requiresSupplier,
+  });
 
   const { data: movement, isLoading } = useQuery<MovementWithDetails>({
     queryKey: ["/api/movements", id],
@@ -298,7 +315,13 @@ export default function MovementDetails() {
   });
 
   const addItemMutation = useMutation({
-    mutationFn: async (data: { productId: string; quantity: number }) => {
+    mutationFn: async (data: { 
+      productId: string; 
+      quantity: number;
+      scannedSku?: string;
+      ownerName?: string;
+      ownerType?: string;
+    }) => {
       const res = await apiRequest("POST", `/api/movements/${id}/items`, {
         movementId: id,
         ...data,
@@ -312,7 +335,10 @@ export default function MovementDetails() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
       setSelectedProduct(null);
+      setScannedSku("");
       setQuantity(1);
+      setOwnerName("");
+      setOwnerType("proprio");
       setSearchQuery("");
       setShowSuggestions(false);
       toast({
@@ -456,9 +482,23 @@ export default function MovementDetails() {
 
   const handleConfirmAddItem = () => {
     if (!selectedProduct) return;
+    
+    // Validate supplier for rented/consigned products
+    if (selectedProduct.requiresSupplier && !ownerName.trim()) {
+      toast({
+        title: "Proprietário obrigatório",
+        description: "Informe o proprietário/fornecedor para produtos locados ou consignados.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     addItemMutation.mutate({
       productId: selectedProduct.id,
       quantity,
+      scannedSku: scannedSku || selectedProduct.sku,
+      ownerName: selectedProduct.requiresSupplier ? ownerName : undefined,
+      ownerType: selectedProduct.requiresSupplier ? ownerType : "proprio",
     });
     setShowConfirmDialog(false);
   };
@@ -1143,6 +1183,61 @@ export default function MovementDetails() {
                   </div>
                 )}
               </div>
+
+              {/* Owner/Supplier fields for rented/consigned products */}
+              {selectedProduct.requiresSupplier && (
+                <div className="p-6 bg-yellow-500/10 rounded-lg border-2 border-yellow-500">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500">
+                      🟡 {selectedProduct.ownership === 'rented' ? 'LOCADO' : 'CONSIGNADO'}
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">
+                      Rastreamento de material de terceiros
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="ownerType" className="text-sm font-medium mb-2 block">
+                        Tipo de Propriedade *
+                      </Label>
+                      <Select value={ownerType} onValueChange={(value) => setOwnerType(value as typeof ownerType)}>
+                        <SelectTrigger id="ownerType" data-testid="select-owner-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="locado">Locado</SelectItem>
+                          <SelectItem value="consignado">Consignado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="ownerName" className="text-sm font-medium mb-2 block">
+                        Proprietário/Fornecedor *
+                      </Label>
+                      <Input
+                        id="ownerName"
+                        value={ownerName}
+                        onChange={(e) => setOwnerName(e.target.value)}
+                        placeholder="Digite ou selecione o fornecedor"
+                        data-testid="input-owner-name"
+                        list="recent-suppliers"
+                      />
+                      {recentSuppliers.length > 0 && (
+                        <datalist id="recent-suppliers">
+                          {recentSuppliers.map((supplier, idx) => (
+                            <option key={idx} value={supplier} />
+                          ))}
+                        </datalist>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        ⚠️ Campo obrigatório para rastreamento de material de terceiros
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {willExceedExpected && (
                 <div className="p-4 bg-destructive/20 border-2 border-destructive rounded-lg">
