@@ -102,6 +102,11 @@ export const ownershipTypeEnum = pgEnum("ownership_type", [
   "third_party"
 ]);
 
+export const productTypeEnum = pgEnum("product_type", [
+  "principal",
+  "variante"
+]);
+
 export const productStatusEnum = pgEnum("product_status", [
   "available",
   "reserved",
@@ -256,9 +261,10 @@ export const products = pgTable("products", {
   currentStock: integer("current_stock").default(0),
   imageUrl: text("image_url"),
   alternativeProductIds: text("alternative_product_ids").array(),
-  // Phase 1 additions
+  // Product Variants System (Phase 2)
+  productType: productTypeEnum("product_type").notNull().default("principal"),
   requiresSupplier: boolean("requires_supplier").notNull().default(false),
-  equivalentSku: text("equivalent_sku"), // For linking variants
+  equivalentSku: text("equivalent_sku"), // SKU of principal product (for variants)
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
 
@@ -579,9 +585,13 @@ export const movementItems = pgTable("movement_items", {
   scanned: boolean("scanned").default(false),
   location: text("location"),
   notes: text("notes"),
-  // Phase 1 additions
-  supplierName: text("supplier_name"), // Supplier tracking
-  supplierNotes: text("supplier_notes"), // Notes about supplier
+  // Product Variants System (Phase 2)
+  scannedSku: text("scanned_sku"), // Actual SKU that was scanned
+  ownerType: text("owner_type"), // 'proprio', 'locado', 'consignado'
+  ownerName: text("owner_name"), // Owner/supplier name
+  // Legacy supplier tracking (deprecated, use ownerName/ownerType)
+  supplierName: text("supplier_name"),
+  supplierNotes: text("supplier_notes"),
   processedAt: timestamp("processed_at").notNull().default(sql`now()`)
 });
 
