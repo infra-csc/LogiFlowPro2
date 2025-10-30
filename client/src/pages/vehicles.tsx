@@ -115,10 +115,12 @@ export default function Vehicles() {
     setIsCreateOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setIsCreateOpen(false);
-    setEditingVehicle(null);
-    form.reset();
+  const handleOpenChange = (open: boolean) => {
+    setIsCreateOpen(open);
+    if (!open) {
+      setEditingVehicle(null);
+      form.reset();
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -149,7 +151,7 @@ export default function Vehicles() {
             Gerencie os veículos da frota
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={handleCloseDialog}>
+        <Dialog open={isCreateOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-vehicle">
               <Plus className="h-4 w-4 mr-2" />
@@ -433,7 +435,7 @@ export default function Vehicles() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleCloseDialog}
+                    onClick={() => handleOpenChange(false)}
                     data-testid="button-cancel"
                   >
                     Cancelar
