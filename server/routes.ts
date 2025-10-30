@@ -757,6 +757,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/drivers/:id", async (req, res) => {
+    try {
+      const data = insertDriverSchema.partial().parse(req.body);
+      const driver = await storage.updateDriver(req.params.id, data);
+      res.json(driver);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid driver data" });
+    }
+  });
+
+  app.delete("/api/drivers/:id", async (req, res) => {
+    try {
+      await storage.deleteDriver(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete driver" });
+    }
+  });
+
+  // Upload CNH image
+  app.post("/api/drivers/:id/cnh-upload", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const driverId = req.params.id;
+      const file = req.file;
+      const fileExtension = file.originalname.split(".").pop();
+      const fileName = `cnh_${driverId}_${Date.now()}.${fileExtension}`;
+
+      // Upload to object storage
+      await uploadFile(file.buffer, fileName, file.mimetype);
+      const url = await getFileUrl(fileName);
+
+      // Update driver with CNH image URL
+      const driver = await storage.updateDriver(driverId, { cnhImageUrl: url });
+
+      res.json({ url, driver });
+    } catch (error) {
+      console.error("CNH upload error:", error);
+      res.status(500).json({ error: "Failed to upload CNH image" });
+    }
+  });
+
   // Docks
   app.get("/api/docks", async (req, res) => {
     try {

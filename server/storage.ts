@@ -194,6 +194,7 @@ export interface IStorage {
   getDriver(id: string): Promise<Driver | undefined>;
   createDriver(driver: InsertDriver): Promise<Driver>;
   updateDriver(id: string, driver: Partial<InsertDriver>): Promise<Driver>;
+  deleteDriver(id: string): Promise<void>;
 
   // Docks
   getDocks(): Promise<Dock[]>;
@@ -764,6 +765,10 @@ export class DatabaseStorage implements IStorage {
   async updateDriver(id: string, driver: Partial<InsertDriver>): Promise<Driver> {
     const [updated] = await db.update(drivers).set(driver).where(eq(drivers.id, id)).returning();
     return updated;
+  }
+
+  async deleteDriver(id: string): Promise<void> {
+    await db.delete(drivers).where(eq(drivers.id, id));
   }
 
   // Docks
