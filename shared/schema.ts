@@ -382,7 +382,12 @@ export const vehicles = pgTable("vehicles", {
 export const drivers = pgTable("drivers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  license: text("license").notNull(),
+  cpf: text("cpf").notNull().unique(),
+  rg: text("rg"),
+  sex: text("sex"), // "M" ou "F"
+  birthDate: text("birth_date"), // Format: YYYY-MM-DD
+  license: text("license").notNull().unique(), // Número da CNH
+  cnhImageUrl: text("cnh_image_url"), // URL da imagem da CNH no object storage
   phone: text("phone").notNull(),
   available: boolean("available").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
