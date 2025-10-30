@@ -51,6 +51,15 @@ Preferred communication style: Simple, everyday language.
   - **Frontend**: Three responsive pages (/config/movement-groups, /config/movement-types, /movement-approvals) with full CRUD, filtering, and navigation integration via collapsible "Aprovações" submenu grouping requisitions and movements. Movement creation dialog uses configurable types with visual indicator (⚠️) for approval-required types. Movement list displays movementTypeConfig.name instead of legacy type enum.
   - **Approval Workflow**: Movements with requires_approval=true are created with status "pending_approval" and bypass inventory changes. Approval action changes status to "created" and records approver/timestamp. Rejection changes status to "cancelled" with required reason. Both actions create audit log entries.
   - **Future Phases**: System prepared for batch/lot tracking with batch_lots table and ownership types (próprio, terceiro, consignado).
+- **Movement Details UI Enhancements**: Scanner interface disabled when movement status is not "in_progress". Alert messages guide users based on status (pending_approval, paused, completed, cancelled, created). Prevents accidental additions/modifications with client-side and server-side validation.
+- **Prototype: Product Status & Location Control** (29/10/2025): Initial implementation of product status and location management system. Features include:
+  - **Product Statuses**: CRUD interface for managing product lifecycle states (Disponível, Reservado, Em Evento, etc.) with type classification (operational, physical, blocking), color coding, icon selection, movement permission control, and display ordering
+  - **Locations**: CRUD interface for managing physical locations (Galpões, Áreas Especiais, Externas) with type classification, hierarchical structure support (parent location), capacity limits, and responsible user assignment
+  - **Database Schema**: New tables (product_statuses, locations) with enums (product_status_type, location_type). Includes 8 pre-seeded status examples and 7 location examples
+  - **API Endpoints**: RESTful routes (/api/product-statuses, /api/locations) with GET/POST/PATCH operations, authentication requirements
+  - **UI Integration**: Pages accessible via Config menu (/config/product-statuses, /config/locations) with table views, search functionality, inline editing dialogs
+  - **Documentation**: Full specification archived in docs/controle-status-movimentacoes.md outlining future phases for integration with movement types system
+  - **Future Development**: Integration with movement types to enable status/location change rules, validation workflows, and automated state transitions during warehouse operations
 
 ## External Dependencies
 

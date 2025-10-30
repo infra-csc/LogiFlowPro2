@@ -1,0 +1,307 @@
+# 🔧 **DESENVOLVIMENTO: Controle de Status nas Movimentações**
+
+## 🎯 **CAMPOS A ADICIONAR NO CADASTRO**
+
+### **Seção: Controle de Status**
+
+#### **Alteração de Status**
+```
+┌─────────────────────────────────────────────────┐
+│ 📊 CONTROLE DE STATUS                           │
+│                                                 │
+│ ☑️ Esta movimentação altera status do produto   │
+│                                                 │
+│ Status de Origem Permitidos:                    │
+│ ☑️ Disponível  ☑️ Reservado  ☐ Em evento       │
+│ ☐ Em trânsito ☐ Em manutenção ☐ Avariado      │
+│                                                 │
+│ Status de Destino:                              │
+│ 🔽 [Selecionar status...        ▼]             │
+│   ├─ Disponível                                │
+│   ├─ Reservado                                 │
+│   ├─ Em evento                                 │
+│   ├─ Em trânsito                               │
+│   ├─ Em manutenção                             │
+│   ├─ Avariado                                  │
+│   ├─ Bloqueado                                 │
+│   └─ Descartado                                │
+│                                                │
+│ 💡 Dica: Deixe vazio se não altera status      │
+└─────────────────────────────────────────────────┘
+```
+
+#### **Localização (para movimentações físicas)**
+```
+┌─────────────────────────────────────────────────┐
+│ 📍 CONTROLE DE LOCALIZAÇÃO                      │
+│                                                 │
+│ ☑️ Esta movimentação altera localização         │
+│                                                 │
+│ Localização de Origem:                          │
+│ 🔽 [Qualquer localização    ▼]                 │
+│   ├─ Qualquer localização                      │
+│   ├─ Galpão A                                  │
+│   ├─ Galpão B                                  │
+│   ├─ Área de Manutenção                        │
+│   ├─ Área de Avarias                           │
+│   └─ Em Evento                                 │
+│                                                 │
+│ Localização de Destino:                         │
+│ 🔽 [Selecionar destino...   ▼]                 │
+│   ├─ Galpão A                                  │
+│   ├─ Galpão B                                  │
+│   ├─ Área de Manutenção                        │
+│   ├─ Área de Avarias                           │
+│   ├─ Em Evento                                 │
+│   ├─ Em Trânsito                               │
+│   └─ Fora da Empresa                           │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## 📦 **ESTRUTURA DE DADOS NECESSÁRIA**
+
+### **Tabela: status_produtos**
+```
+Cadastro de Status Possíveis:
+├─ ID, Código, Nome, Descrição
+├─ Cor (para interface)
+├─ Ícone (para interface)
+├─ Tipo (operacional, físico, bloqueio)
+├─ Permite movimentação (sim/não)
+├─ Ordem de exibição
+└─ Ativo (sim/não)
+```
+
+### **Tabela: localizacoes**
+```
+Cadastro de Localizações:
+├─ ID, Código, Nome, Descrição
+├─ Tipo (galpão, área_especial, externo)
+├─ Localização pai (hierarquia)
+├─ Capacidade máxima
+├─ Responsável
+└─ Ativo (sim/não)
+```
+
+### **Modificação: tipos_movimentacao**
+```
+Campos Adicionais:
+├─ altera_status_produto (sim/não)
+├─ status_origem_permitidos (array)
+├─ status_destino_obrigatorio (texto)
+├─ altera_localizacao (sim/não)
+├─ localizacao_origem_permitidas (array)
+├─ localizacao_destino_obrigatoria (texto)
+├─ validacoes_status (JSON)
+└─ regras_especiais (JSON)
+```
+
+---
+
+## 🖥️ **INTERFACE DO CADASTRO**
+
+### **Aba: Configurações Básicas** (existente)
+- Código, Nome, Grupo, Natureza
+- Impactos nos estoques
+
+### **Aba: Controle de Status** (nova)
+
+#### **Seção 1: Status do Produto**
+```
+Configuração de Status:
+├─ Toggle: "Esta movimentação altera status"
+├─ Multi-select: "Status de origem permitidos"
+├─ Select: "Status de destino obrigatório"
+├─ Text area: "Regras especiais de status"
+└─ Preview: "Exemplo: Disponível → Em evento"
+```
+
+#### **Seção 2: Localização Física**
+```
+Configuração de Localização:
+├─ Toggle: "Esta movimentação altera localização"
+├─ Select: "Localização de origem"
+├─ Select: "Localização de destino"
+├─ Toggle: "Requer confirmação de localização"
+└─ Preview: "Exemplo: Galpão A → Em evento"
+```
+
+#### **Seção 3: Validações Especiais**
+```
+Regras Customizadas:
+├─ "Produto deve estar disponível há mais de X dias"
+├─ "Requer aprovação se valor > R$ X"
+├─ "Bloquear se produto em manutenção recente"
+├─ "Alertar se localização diferente do esperado"
+└─ "Validar se evento existe e está ativo"
+```
+
+### **Aba: Campos Dinâmicos** (existente, expandida)
+- Campos obrigatórios
+- Campos opcionais
+- **NOVO**: Campos condicionais por status
+
+---
+
+## 💡 **EXEMPLOS DE CONFIGURAÇÃO**
+
+### **Saída para Evento**
+```
+Controle de Status:
+├─ ✅ Altera status: SIM
+├─ Status origem: [Disponível, Reservado]
+├─ Status destino: "Em evento"
+├─ ✅ Altera localização: SIM
+├─ Localização origem: [Galpão A, Galpão B]
+├─ Localização destino: "Em evento"
+└─ Validação: "Evento deve estar ativo"
+```
+
+### **Entrada em Manutenção**
+```
+Controle de Status:
+├─ ✅ Altera status: SIM
+├─ Status origem: [Disponível, Avariado]
+├─ Status destino: "Em manutenção"
+├─ ✅ Altera localização: SIM
+├─ Localização origem: [Qualquer]
+├─ Localização destino: "Área de Manutenção"
+└─ Validação: "Requer ordem de serviço"
+```
+
+### **Retorno de Evento**
+```
+Controle de Status:
+├─ ✅ Altera status: SIM
+├─ Status origem: [Em evento]
+├─ Status destino: "Disponível"
+├─ ✅ Altera localização: SIM
+├─ Localização origem: [Em evento]
+├─ Localização destino: "Galpão A"
+└─ Validação: "Verificar se evento foi finalizado"
+```
+
+### **Compra de Material**
+```
+Controle de Status:
+├─ ✅ Altera status: SIM
+├─ Status origem: [Nenhum - produto novo]
+├─ Status destino: "Disponível"
+├─ ✅ Altera localização: SIM
+├─ Localização origem: [Externa]
+├─ Localização destino: "Galpão A"
+└─ Validação: "Requer nota fiscal"
+```
+
+---
+
+## 🔄 **FLUXO DE VALIDAÇÃO**
+
+### **Durante o Cadastro da Movimentação**
+```
+Validações Automáticas:
+├─ 1. Verificar se produto está no status permitido
+├─ 2. Verificar se localização atual é válida
+├─ 3. Validar regras especiais do tipo
+├─ 4. Confirmar disponibilidade de destino
+├─ 5. Aplicar alterações de status/localização
+└─ 6. Registrar histórico de mudanças
+```
+
+### **Alertas e Bloqueios**
+```
+Sistema de Alertas:
+├─ 🔴 BLOQUEIO: Status não permitido
+├─ 🟡 AVISO: Localização inesperada
+├─ 🔵 INFO: Produto será movido para manutenção
+├─ ⚪ CONFIRMAÇÃO: Alterar status para "Em evento"?
+└─ 🟢 SUCESSO: Status alterado com sucesso
+```
+
+---
+
+## 📈 **RELATÓRIOS IMPACTADOS**
+
+### **Relatório de Movimentações**
+```
+Colunas Adicionais:
+├─ Status Anterior
+├─ Status Atual
+├─ Localização Anterior
+├─ Localização Atual
+├─ Tempo no Status Anterior
+├─ Responsável pela Alteração
+└─ Observações da Mudança
+```
+
+### **Relatório de Status por Produto**
+```
+Informações:
+├─ Histórico completo de mudanças de status
+├─ Tempo médio em cada status
+├─ Produtos "presos" em status específico
+├─ Alertas de produtos sem movimentação
+└─ Análise de fluxo de status
+```
+
+### **Relatório de Localização**
+```
+Informações:
+├─ Movimentações físicas por período
+├─ Produtos por localização atual
+├─ Histórico de mudanças de local
+├─ Ocupação por área/galpão
+└─ Produtos "perdidos" (localização indefinida)
+```
+
+---
+
+## 🎯 **BENEFÍCIOS DA IMPLEMENTAÇÃO**
+
+### **Operacionais**
+- ✅ **Rastreabilidade completa** de status e localização
+- ✅ **Validações automáticas** evitam erros
+- ✅ **Visibilidade real** do que está disponível
+- ✅ **Alertas proativos** de problemas
+
+### **Gerenciais**
+- ✅ **Relatórios precisos** de utilização
+- ✅ **Análise de fluxo** operacional
+- ✅ **Identificação de gargalos** no processo
+- ✅ **Otimização** de recursos e espaço
+
+### **Técnicos**
+- ✅ **Flexibilidade** para novos status
+- ✅ **Configuração** sem código
+- ✅ **Integração** com sistema existente
+- ✅ **Escalabilidade** para crescimento
+
+---
+
+## 🔧 **IMPLEMENTAÇÃO SUGERIDA**
+
+### **Fase 1: Estrutura Base**
+1. Criar tabelas de status e localizações
+2. Adicionar campos no cadastro de tipos
+3. Implementar validações básicas
+
+### **Fase 2: Interface**
+1. Desenvolver aba de controle de status
+2. Criar seletores de status/localização
+3. Implementar preview de configuração
+
+### **Fase 3: Validações**
+1. Implementar regras de validação
+2. Criar sistema de alertas
+3. Desenvolver histórico de mudanças
+
+### **Fase 4: Relatórios**
+1. Adaptar relatórios existentes
+2. Criar novos relatórios de status
+3. Implementar dashboards de acompanhamento
+
+---
+
+**Status:** Documento arquivado - Protótipos criados em 29/10/2025

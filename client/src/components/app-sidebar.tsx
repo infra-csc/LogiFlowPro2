@@ -218,6 +218,16 @@ const configItems = [
     url: "/config/docks",
     icon: DockIcon,
   },
+  {
+    title: "Status de Produtos",
+    url: "/config/product-statuses",
+    icon: CheckSquare,
+  },
+  {
+    title: "Localizações",
+    url: "/config/locations",
+    icon: Warehouse,
+  },
 ];
 
 export function AppSidebar() {

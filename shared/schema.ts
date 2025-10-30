@@ -153,6 +153,20 @@ export const movementAuditActionEnum = pgEnum("movement_audit_action", [
   "loading_order_linked"
 ]);
 
+// Product Status Control enums (prototype)
+export const productStatusTypeEnum = pgEnum("product_status_type", [
+  "operational", // Para uso operacional normal
+  "physical", // Estado físico do produto
+  "blocking" // Bloqueios administrativos
+]);
+
+export const locationTypeEnum = pgEnum("location_type", [
+  "warehouse", // Galpão/armazém
+  "special_area", // Área especial (manutenção, avarias)
+  "external", // Fora da empresa
+  "event" // Em evento
+]);
+
 // Users table (Authentication)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1589,3 +1603,56 @@ export type InsertLoadingOptimization = z.infer<typeof insertLoadingOptimization
 
 export type RouteOptimization = typeof routeOptimizations.$inferSelect;
 export type InsertRouteOptimization = z.infer<typeof insertRouteOptimizationSchema>;
+
+// ===== PROTOTYPES: Product Status & Location Control =====
+
+// Product Statuses (prototype)
+export const productStatuses = pgTable("product_statuses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: productStatusTypeEnum("type").notNull().default("operational"),
+  color: text("color").notNull().default("#64748b"), // Cor para UI (hex)
+  icon: text("icon").default("circle"), // Nome do ícone lucide-react
+  allowsMovement: boolean("allows_movement").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
+// Locations (prototype)
+export const locations = pgTable("locations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: locationTypeEnum("type").notNull().default("warehouse"),
+  parentLocationId: varchar("parent_location_id").references((): any => locations.id),
+  maxCapacity: integer("max_capacity"), // Capacidade máxima (opcional)
+  responsibleUserId: varchar("responsible_user_id").references(() => users.id),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
+});
+
+// Insert schemas
+export const insertProductStatusSchema = createInsertSchema(productStatuses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertLocationSchema = createInsertSchema(locations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+// Types
+export type ProductStatus = typeof productStatuses.$inferSelect;
+export type InsertProductStatus = z.infer<typeof insertProductStatusSchema>;
+
+export type Location = typeof locations.$inferSelect;
+export type InsertLocation = z.infer<typeof insertLocationSchema>;

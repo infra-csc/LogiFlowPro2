@@ -24,6 +24,8 @@ import Returns from "@/pages/returns";
 import Products from "@/pages/products";
 import ProductUpload from "@/pages/product-upload";
 import ProductVariants from "@/pages/product-variants";
+import ProductStatuses from "@/pages/product-statuses";
+import Locations from "@/pages/locations";
 import Suppliers from "@/pages/suppliers";
 import EventUpload from "@/pages/event-upload";
 import TripUpload from "@/pages/trip-upload";
@@ -86,6 +88,8 @@ function Router() {
       <ProtectedRoute path="/reports/stock-position-simulation" component={StockPositionSimulation} />
       <ProtectedRoute path="/config/movement-groups" component={MovementGroups} />
       <ProtectedRoute path="/config/movement-types" component={MovementTypesConfig} />
+      <ProtectedRoute path="/config/product-statuses" component={ProductStatuses} />
+      <ProtectedRoute path="/config/locations" component={Locations} />
       <Route component={NotFound} />
     </Switch>
   );

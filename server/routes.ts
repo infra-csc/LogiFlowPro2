@@ -2552,6 +2552,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Reports routes
   registerReportsRoutes(app);
 
+  // ===== PROTOTYPES: Product Statuses & Locations =====
+
+  // Product Statuses
+  app.get("/api/product-statuses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { productStatuses } = await import("@shared/schema");
+      const { desc } = await import("drizzle-orm");
+      const statuses = await db.select().from(productStatuses).orderBy(desc(productStatuses.displayOrder));
+      res.json(statuses);
+    } catch (error) {
+      console.error("Error fetching product statuses:", error);
+      res.status(500).json({ error: "Failed to fetch product statuses" });
+    }
+  });
+
+  app.post("/api/product-statuses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { productStatuses } = await import("@shared/schema");
+      const [created] = await db.insert(productStatuses).values(req.body).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating product status:", error);
+      res.status(400).json({ error: "Failed to create product status" });
+    }
+  });
+
+  app.patch("/api/product-statuses/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { productStatuses } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const [updated] = await db
+        .update(productStatuses)
+        .set(req.body)
+        .where(eq(productStatuses.id, req.params.id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating product status:", error);
+      res.status(400).json({ error: "Failed to update product status" });
+    }
+  });
+
+  // Locations
+  app.get("/api/locations", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { locations } = await import("@shared/schema");
+      const { desc } = await import("drizzle-orm");
+      const locs = await db.select().from(locations).orderBy(desc(locations.createdAt));
+      res.json(locs);
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+      res.status(500).json({ error: "Failed to fetch locations" });
+    }
+  });
+
+  app.post("/api/locations", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { locations } = await import("@shared/schema");
+      const [created] = await db.insert(locations).values(req.body).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating location:", error);
+      res.status(400).json({ error: "Failed to create location" });
+    }
+  });
+
+  app.patch("/api/locations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { locations } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const [updated] = await db
+        .update(locations)
+        .set(req.body)
+        .where(eq(locations.id, req.params.id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating location:", error);
+      res.status(400).json({ error: "Failed to update location" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
