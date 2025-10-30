@@ -392,7 +392,11 @@ export default function MovementDetails() {
         title: "Item adicionado",
         description: "O item foi adicionado à movimentação.",
       });
-      searchInputRef.current?.focus();
+      // Focus back on scanner input for next product
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }, 100);
     },
     onError: (error: Error) => {
       toast({
