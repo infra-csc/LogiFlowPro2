@@ -167,12 +167,16 @@ export default function UsersPage() {
     },
   });
 
-  const filteredUsers = users.filter(
-    (user) =>
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesApproval =
+      approvalFilter === "all" || 
+      (user.approvalStatus || "approved") === approvalFilter;
+    return matchesSearch && matchesApproval;
+  });
 
   const handleSubmit = (data: UserFormData) => {
     createMutation.mutate(data);
@@ -185,6 +189,79 @@ export default function UsersPage() {
     });
   };
 
+  const handleApprove = (user: Omit<User, "password">) => {
+    if (confirm(`Aprovar usuário ${user.name}?`)) {
+      approveMutation.mutate(user.id);
+    }
+  };
+
+  const handleReject = (user: Omit<User, "password">) => {
+    setSelectedUser(user);
+    setIsRejectDialogOpen(true);
+  };
+
+  const submitRejection = () => {
+    if (!selectedUser) return;
+    
+    const trimmedReason = rejectionReason.trim();
+    if (!trimmedReason) {
+      toast({
+        title: "Erro",
+        description: "O motivo da rejeição é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    rejectMutation.mutate({
+      userId: selectedUser.id,
+      reason: trimmedReason,
+    });
+  };
+
+  const getApprovalBadge = (user: Omit<User, "password">) => {
+    const status = user.approvalStatus || "approved";
+    if (status === "pending") {
+      return (
+        <Badge 
+          variant="outline" 
+          className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-400"
+          data-testid={`badge-approval-pending-${user.id}`}
+        >
+          <Clock className="mr-1 h-3 w-3" />
+          Pendente
+        </Badge>
+      );
+    }
+    if (status === "approved") {
+      return (
+        <Badge 
+          variant="outline" 
+          className="bg-green-500/15 text-green-700 dark:text-green-400"
+          data-testid={`badge-approval-approved-${user.id}`}
+        >
+          <CheckCircle className="mr-1 h-3 w-3" />
+          Aprovado
+        </Badge>
+      );
+    }
+    if (status === "rejected") {
+      return (
+        <Badge 
+          variant="outline" 
+          className="bg-red-500/15 text-red-700 dark:text-red-400"
+          data-testid={`badge-approval-rejected-${user.id}`}
+        >
+          <XCircle className="mr-1 h-3 w-3" />
+          Rejeitado
+        </Badge>
+      );
+    }
+    return null;
+  };
+
+  const pendingCount = users.filter((u) => (u.approvalStatus || "approved") === "pending").length;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -192,10 +269,22 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold">Usuários</h1>
           <p className="text-muted-foreground">Gerencie os usuários do sistema</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-user">
-          <UserPlus className="mr-2 h-4 w-4" />
-          Novo Usuário
-        </Button>
+        <div className="flex gap-2 items-center">
+          {pendingCount > 0 && (
+            <Badge 
+              variant="outline" 
+              className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 text-base px-3 py-1"
+              data-testid="badge-pending-count"
+            >
+              <Clock className="mr-2 h-4 w-4" />
+              {pendingCount} {pendingCount === 1 ? "pendente" : "pendentes"}
+            </Badge>
+          )}
+          <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-user">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Novo Usuário
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -206,7 +295,7 @@ export default function UsersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
+          <div className="mb-4 space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -217,6 +306,43 @@ export default function UsersPage() {
                 data-testid="input-search-users"
               />
             </div>
+            <div className="flex gap-2">
+              <Button
+                variant={approvalFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setApprovalFilter("all")}
+                data-testid="filter-approval-all"
+              >
+                Todos
+              </Button>
+              <Button
+                variant={approvalFilter === "pending" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setApprovalFilter("pending")}
+                data-testid="filter-approval-pending"
+              >
+                <Clock className="mr-1 h-3 w-3" />
+                Pendentes
+              </Button>
+              <Button
+                variant={approvalFilter === "approved" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setApprovalFilter("approved")}
+                data-testid="filter-approval-approved"
+              >
+                <CheckCircle className="mr-1 h-3 w-3" />
+                Aprovados
+              </Button>
+              <Button
+                variant={approvalFilter === "rejected" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setApprovalFilter("rejected")}
+                data-testid="filter-approval-rejected"
+              >
+                <XCircle className="mr-1 h-3 w-3" />
+                Rejeitados
+              </Button>
+            </div>
           </div>
 
           <Table>
@@ -225,63 +351,101 @@ export default function UsersPage() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Usuário</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Aprovação</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Ações</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={6} className="text-center">
                     Carregando...
                   </TableCell>
                 </TableRow>
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Nenhum usuário encontrado
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={user.active ? "default" : "secondary"}
-                        data-testid={`badge-status-${user.id}`}
-                      >
-                        {user.active ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setIsRolesDialogOpen(true);
-                          }}
-                          data-testid={`button-manage-roles-${user.id}`}
+                filteredUsers.map((user) => {
+                  const approvalStatus = user.approvalStatus || "approved";
+                  return (
+                    <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{getApprovalBadge(user)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={user.active ? "default" : "secondary"}
+                          data-testid={`badge-status-${user.id}`}
                         >
-                          <Shield className="mr-2 h-3 w-3" />
-                          Papéis
-                        </Button>
-                        <Button
-                          variant={user.active ? "outline" : "default"}
-                          size="sm"
-                          onClick={() => toggleUserActive(user)}
-                          data-testid={`button-toggle-active-${user.id}`}
-                        >
-                          {user.active ? "Desativar" : "Ativar"}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          {user.active ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2 justify-end flex-wrap">
+                          {approvalStatus === "pending" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                                onClick={() => handleApprove(user)}
+                                data-testid={`button-approve-${user.id}`}
+                              >
+                                <CheckCircle className="mr-1 h-3 w-3" />
+                                Aprovar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                onClick={() => handleReject(user)}
+                                data-testid={`button-reject-${user.id}`}
+                              >
+                                <XCircle className="mr-1 h-3 w-3" />
+                                Rejeitar
+                              </Button>
+                            </>
+                          )}
+                          {approvalStatus === "approved" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setIsRolesDialogOpen(true);
+                                }}
+                                data-testid={`button-manage-roles-${user.id}`}
+                              >
+                                <Shield className="mr-2 h-3 w-3" />
+                                Papéis
+                              </Button>
+                              <Button
+                                variant={user.active ? "outline" : "default"}
+                                size="sm"
+                                onClick={() => toggleUserActive(user)}
+                                data-testid={`button-toggle-active-${user.id}`}
+                              >
+                                {user.active ? "Desativar" : "Ativar"}
+                              </Button>
+                            </>
+                          )}
+                          {approvalStatus === "rejected" && user.rejectionReason && (
+                            <span className="text-sm text-red-600 dark:text-red-400">
+                              Motivo: {user.rejectionReason}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -408,6 +572,57 @@ export default function UsersPage() {
           }}
         />
       )}
+
+      {/* Reject User Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent data-testid="dialog-reject-user">
+          <DialogHeader>
+            <DialogTitle>Rejeitar Usuário</DialogTitle>
+            <DialogDescription>
+              Informe o motivo da rejeição de {selectedUser?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="rejection-reason" className="text-sm font-medium">
+                Motivo da Rejeição
+              </label>
+              <Textarea
+                id="rejection-reason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Ex: Documentação incompleta, dados inválidos..."
+                className="mt-2"
+                data-testid="textarea-rejection-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsRejectDialogOpen(false);
+                setRejectionReason("");
+                setSelectedUser(null);
+              }}
+              data-testid="button-cancel-reject"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={submitRejection}
+              disabled={rejectMutation.isPending}
+              data-testid="button-confirm-reject"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              {rejectMutation.isPending ? "Rejeitando..." : "Confirmar Rejeição"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

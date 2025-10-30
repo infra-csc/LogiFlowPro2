@@ -21,7 +21,14 @@ Preferred communication style: Simple, everyday language.
 - **Architectural Patterns**: Separation of concerns (client/server/shared), type sharing, Repository pattern, Zod schemas from Drizzle, ORM relations.
 
 ### Key Features
-- **Authentication & Authorization**: Session-based authentication using Passport.js (local strategy), bcrypt for password hashing, `express-session` with PostgreSQL store, role-based access control (RBAC), and password recovery.
+- **Authentication & Authorization**: Session-based authentication using Passport.js (local strategy), bcrypt for password hashing, `express-session` with PostgreSQL store, role-based access control (RBAC), password recovery, and user approval system.
+- **User Approval System** (30/10/2025): Comprehensive user registration approval workflow with role-based access control. Features include:
+  - **Approval Workflow**: New registrations create users with `approvalStatus='pending'`. Existing users automatically approved via migration. Login blocked for non-approved users with informative error message.
+  - **Database Schema**: Extended users table with approval fields: `approvalStatus` enum (pending/approved/rejected), `approvedBy`, `approvedAt`, `rejectedBy`, `rejectedAt`, `rejectionReason`
+  - **Backend API**: RESTful endpoints for user management - GET /api/users (list all users with approval info), PATCH /api/users/:id/approve (approve user), PATCH /api/users/:id/reject (reject with reason)
+  - **Frontend UI** (/config/users): Enhanced users page with approval controls including status badges (pending/approved/rejected with icons), filter buttons by approval status, pending count indicator in header, approve/reject action buttons for pending users, rejection reason dialog with required explanation, and comprehensive table displaying username, name, email, approval status, active status, and contextual actions
+  - **Security**: Approval actions record approver/rejecter user ID and timestamp. Rejection requires reason for audit trail. Middleware prevents login attempts from non-approved users.
+  - **Future Enhancements**: Email notifications for approval/rejection, bulk approval operations, approval delegation, detailed audit reports
 - **Material Request Management**: Supports creation, approval workflows (approve-all, approve-partial, reject-all), item list management with product/kit addition, status tracking, and event requisition window enforcement.
 - **Loading Orders**: Consolidates approved material requests into picking lists, supporting parametric kit expansion (BOM), grouping identical products, and tracking source breakdown. Features a multi-stage status workflow.
 - **Warehouse Movements (Carga e Descarga)**: Manages loading/unloading operations with a scanner interface. Supports various movement types, status transitions, real-time item tracking, and multi-event association. Provides detailed views for expected vs. loaded items, product search, and comprehensive filtering.
