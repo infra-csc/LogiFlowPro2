@@ -51,6 +51,27 @@ export default function RolesPage() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const { toast } = useToast();
 
+  const populatePermissionsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/permissions/populate");
+      return await res.json();
+    },
+    onSuccess: (data: { success: boolean; created: number; updated: number; total: number }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/permissions"] });
+      toast({
+        title: "Permissões atualizadas",
+        description: `${data.created} criadas, ${data.updated} atualizadas. Total: ${data.total} permissões.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar permissões",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: roles = [], isLoading } = useQuery<Role[]>({
     queryKey: ["/api/roles"],
   });
@@ -127,10 +148,21 @@ export default function RolesPage() {
           <h1 className="text-3xl font-bold">Papéis e Permissões</h1>
           <p className="text-muted-foreground">Gerencie papéis e permissões do sistema</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-role">
-          <Shield className="mr-2 h-4 w-4" />
-          Novo Papel
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => populatePermissionsMutation.mutate()}
+            disabled={populatePermissionsMutation.isPending}
+            data-testid="button-populate-permissions"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {populatePermissionsMutation.isPending ? "Atualizando..." : "Atualizar Permissões"}
+          </Button>
+          <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-role">
+            <Shield className="mr-2 h-4 w-4" />
+            Novo Papel
+          </Button>
+        </div>
       </div>
 
       <Card>
