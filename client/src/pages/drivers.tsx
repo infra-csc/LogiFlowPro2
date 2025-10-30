@@ -42,16 +42,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-const driverFormSchema = z.object({
+const driverFormSchema = insertDriverSchema.extend({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   cpf: z.string().length(11, "CPF deve ter 11 dígitos"),
-  rg: z.string().optional(),
-  sex: z.string().optional(),
-  birthDate: z.string().optional(),
   license: z.string().min(5, "Número da CNH é obrigatório"),
-  cnhImageUrl: z.string().optional(),
   phone: z.string().min(10, "Telefone é obrigatório"),
-  available: z.boolean().default(true),
+}).omit({
+  id: true,
+  createdAt: true,
 });
 
 type DriverFormData = z.infer<typeof driverFormSchema>;
@@ -71,9 +69,9 @@ export default function DriversPage() {
     defaultValues: {
       name: "",
       cpf: "",
-      rg: "",
-      sex: "",
-      birthDate: "",
+      rg: undefined,
+      sex: undefined,
+      birthDate: undefined,
       license: "",
       phone: "",
       available: true,
@@ -180,12 +178,26 @@ export default function DriversPage() {
 
   const handleEdit = (driver: Driver) => {
     setSelectedDriver(driver);
+    
+    // Normalize birthDate from ISO format to YYYY-MM-DD for date input
+    let normalizedBirthDate = "";
+    if (driver.birthDate) {
+      try {
+        const date = new Date(driver.birthDate);
+        if (!isNaN(date.getTime())) {
+          normalizedBirthDate = date.toISOString().split('T')[0];
+        }
+      } catch (e) {
+        console.error("Error parsing birth date:", e);
+      }
+    }
+    
     form.reset({
       name: driver.name,
       cpf: driver.cpf,
-      rg: driver.rg || "",
-      sex: driver.sex || "",
-      birthDate: driver.birthDate || "",
+      rg: driver.rg || undefined,
+      sex: driver.sex || undefined,
+      birthDate: normalizedBirthDate || undefined,
       license: driver.license,
       phone: driver.phone,
       available: driver.available,
@@ -360,7 +372,7 @@ export default function DriversPage() {
                   name="rg"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>RG</FormLabel>
+                      <FormLabel>RG (Opcional)</FormLabel>
                       <FormControl>
                         <Input {...field} value={field.value || ""} placeholder="123456789" data-testid="input-driver-rg" />
                       </FormControl>
@@ -374,7 +386,7 @@ export default function DriversPage() {
                   name="sex"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Sexo</FormLabel>
+                      <FormLabel>Sexo (Opcional)</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger data-testid="select-driver-sex">
@@ -396,7 +408,7 @@ export default function DriversPage() {
                   name="birthDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Data de Nascimento</FormLabel>
+                      <FormLabel>Data de Nascimento (Opcional)</FormLabel>
                       <FormControl>
                         <Input {...field} value={field.value || ""} type="date" data-testid="input-driver-birthdate" />
                       </FormControl>
