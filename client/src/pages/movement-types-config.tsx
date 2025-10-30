@@ -14,10 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertMovementTypeConfigSchema, type MovementGroup, type MovementTypeConfig, type InsertMovementTypeConfig } from "@shared/schema";
+import { insertMovementTypeConfigSchema, type MovementGroup, type MovementTypeConfig, type InsertMovementTypeConfig, type ProductStatus, type Location } from "@shared/schema";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const formSchema = insertMovementTypeConfigSchema.extend({
   id: z.string().optional(),
@@ -46,6 +47,12 @@ export default function MovementTypesConfigPage() {
       requiresApproval: false,
       requiresDocument: false,
       allowsMixedBatch: true,
+      changesProductStatus: false,
+      allowedSourceProductStatuses: null,
+      targetProductStatusId: null,
+      changesLocation: false,
+      allowedSourceLocations: null,
+      targetLocationId: null,
       active: true,
     },
   });
@@ -56,6 +63,14 @@ export default function MovementTypesConfigPage() {
 
   const { data: types = [], isLoading } = useQuery<MovementTypeConfig[]>({
     queryKey: ["/api/movement-types-config"],
+  });
+
+  const { data: productStatuses = [] } = useQuery<ProductStatus[]>({
+    queryKey: ["/api/product-statuses"],
+  });
+
+  const { data: locations = [] } = useQuery<Location[]>({
+    queryKey: ["/api/locations"],
   });
 
   const createMutation = useMutation({
@@ -139,6 +154,12 @@ export default function MovementTypesConfigPage() {
       requiresApproval: false,
       requiresDocument: false,
       allowsMixedBatch: true,
+      changesProductStatus: false,
+      allowedSourceProductStatuses: null,
+      targetProductStatusId: null,
+      changesLocation: false,
+      allowedSourceLocations: null,
+      targetLocationId: null,
       active: true,
     });
     setIsDialogOpen(true);
@@ -157,6 +178,12 @@ export default function MovementTypesConfigPage() {
       requiresApproval: type.requiresApproval,
       requiresDocument: type.requiresDocument,
       allowsMixedBatch: type.allowsMixedBatch,
+      changesProductStatus: (type as any).changesProductStatus ?? false,
+      allowedSourceProductStatuses: (type as any).allowedSourceProductStatuses ?? null,
+      targetProductStatusId: (type as any).targetProductStatusId ?? null,
+      changesLocation: (type as any).changesLocation ?? false,
+      allowedSourceLocations: (type as any).allowedSourceLocations ?? null,
+      targetLocationId: (type as any).targetLocationId ?? null,
       active: type.active,
     });
     setIsDialogOpen(true);
@@ -169,10 +196,22 @@ export default function MovementTypesConfigPage() {
   }
 
   function onSubmit(values: FormValues) {
+    const data = {
+      ...values,
+      targetProductStatusId: !values.changesProductStatus ? null : 
+        (values.targetProductStatusId === "none" ? null : values.targetProductStatusId),
+      targetLocationId: !values.changesLocation ? null : 
+        (values.targetLocationId === "none" ? null : values.targetLocationId),
+      allowedSourceProductStatuses: !values.changesProductStatus ? null : 
+        (values.allowedSourceProductStatuses?.length === 0 ? null : values.allowedSourceProductStatuses),
+      allowedSourceLocations: !values.changesLocation ? null : 
+        (values.allowedSourceLocations?.length === 0 ? null : values.allowedSourceLocations),
+    };
+
     if (editingType) {
-      updateMutation.mutate({ id: editingType.id, data: values });
+      updateMutation.mutate({ id: editingType.id, data });
     } else {
-      createMutation.mutate(values);
+      createMutation.mutate(data);
     }
   }
 
@@ -591,6 +630,212 @@ export default function MovementTypesConfigPage() {
                     )}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Controle de Status do Produto</h4>
+                  <FormField
+                    control={form.control}
+                    name="changesProductStatus"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2">
+                        <FormLabel className="text-sm font-normal">Ativo</FormLabel>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-changes-product-status"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {form.watch("changesProductStatus") && (
+                  <div className="grid grid-cols-2 gap-4 pt-3">
+                    <FormField
+                      control={form.control}
+                      name="allowedSourceProductStatuses"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status de Origem Permitidos</FormLabel>
+                          <FormDescription className="text-xs">
+                            Deixe vazio para permitir todos
+                          </FormDescription>
+                          <FormControl>
+                            <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                              {productStatuses.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">Nenhum status cadastrado</p>
+                              ) : (
+                                productStatuses.map((status) => (
+                                  <div key={status.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      checked={field.value?.includes(status.id) ?? false}
+                                      onCheckedChange={(checked) => {
+                                        const currentValues = field.value || [];
+                                        if (checked) {
+                                          field.onChange([...currentValues, status.id]);
+                                        } else {
+                                          field.onChange(currentValues.filter(id => id !== status.id));
+                                        }
+                                      }}
+                                      data-testid={`checkbox-source-status-${status.id}`}
+                                    />
+                                    <label className="text-sm flex items-center gap-2">
+                                      <span>{status.icon}</span>
+                                      <span>{status.name}</span>
+                                    </label>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="targetProductStatusId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status de Destino</FormLabel>
+                          <FormDescription className="text-xs">
+                            Status final após a movimentação
+                          </FormDescription>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value || "none"}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-target-status">
+                                <SelectValue placeholder="Selecione o status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhum (manter atual)</SelectItem>
+                              {productStatuses.map((status) => (
+                                <SelectItem key={status.id} value={status.id}>
+                                  {status.icon} {status.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Controle de Localização</h4>
+                  <FormField
+                    control={form.control}
+                    name="changesLocation"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2">
+                        <FormLabel className="text-sm font-normal">Ativo</FormLabel>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-changes-location"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {form.watch("changesLocation") && (
+                  <div className="grid grid-cols-2 gap-4 pt-3">
+                    <FormField
+                      control={form.control}
+                      name="allowedSourceLocations"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Localizações de Origem Permitidas</FormLabel>
+                          <FormDescription className="text-xs">
+                            Deixe vazio para permitir todas
+                          </FormDescription>
+                          <FormControl>
+                            <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                              {locations.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">Nenhuma localização cadastrada</p>
+                              ) : (
+                                locations.map((location) => (
+                                  <div key={location.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      checked={field.value?.includes(location.id) ?? false}
+                                      onCheckedChange={(checked) => {
+                                        const currentValues = field.value || [];
+                                        if (checked) {
+                                          field.onChange([...currentValues, location.id]);
+                                        } else {
+                                          field.onChange(currentValues.filter(id => id !== location.id));
+                                        }
+                                      }}
+                                      data-testid={`checkbox-source-location-${location.id}`}
+                                    />
+                                    <label className="text-sm flex items-center gap-2">
+                                      <span>{location.name}</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {location.type === 'warehouse' ? '📦 Galpão' :
+                                         location.type === 'special_area' ? '⚡ Área Especial' : '🌐 Externa'}
+                                      </Badge>
+                                    </label>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="targetLocationId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Localização de Destino</FormLabel>
+                          <FormDescription className="text-xs">
+                            Localização final após a movimentação
+                          </FormDescription>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value || "none"}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-target-location">
+                                <SelectValue placeholder="Selecione a localização" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhuma (manter atual)</SelectItem>
+                              {locations.map((location) => (
+                                <SelectItem key={location.id} value={location.id}>
+                                  {location.name}
+                                  {' - '}
+                                  {location.type === 'warehouse' ? '📦 Galpão' :
+                                   location.type === 'special_area' ? '⚡ Área Especial' : '🌐 Externa'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
 
               <FormField
