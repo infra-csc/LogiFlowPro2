@@ -1,87 +1,48 @@
 # EventFlow Logistics - Event Material Management System
 
 ## Overview
-EventFlow Logistics is a comprehensive web application for managing event logistics, focusing on material requisition, inventory tracking, multi-vehicle loading, and reverse logistics. It operates under an "event umbrella" model, organizing all material requests, trips, and returns by event for efficient coordination. The system targets planning, operations, scenography, warehouse, driving, and inventory management teams. Its primary purpose is to streamline event material management, reduce operational overhead, and provide real-time visibility across all logistical phases through features like cutoff deadlines, parametric kit explosion, time-phased inventory projection, and detailed damage/loss tracking for returns.
+EventFlow Logistics is a web application designed to streamline event material management, from requisition and inventory tracking to multi-vehicle loading and reverse logistics. It operates under an "event umbrella" model, organizing all material-related activities by event. The system aims to reduce operational overhead, provide real-time visibility, and support various teams including planning, operations, scenography, warehouse, driving, and inventory management. Key capabilities include cutoff deadlines, parametric kit explosion, time-phased inventory projection, and detailed damage/loss tracking for returns. The project's ambition is to optimize event logistics through comprehensive, integrated management.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend
-- **Frameworks**: React 18 with TypeScript, Vite, Wouter.
-- **UI/UX**: Desktop-first responsive design using Radix UI and shadcn/ui (New York style) with Tailwind CSS. Incorporates Material Design principles, a custom dark blue/light blue/pink/purple color palette, and the Inter font. Prioritizes information density, keyboard-first interaction, semantic color-coded status badges, data tables, and minimal use of modals.
-- **State Management**: TanStack Query for server state, React Hook Form with Zod for form validation.
+### UI/UX Decisions
+The frontend utilizes React 18 with TypeScript and Vite. It features a desktop-first responsive design based on Radix UI and shadcn/ui (New York style) with Tailwind CSS. Design principles include Material Design, a custom dark blue/light blue/pink/purple color palette, and the Inter font. Emphasis is placed on information density, keyboard-first interaction, semantic color-coded status badges, data tables, and minimal modal usage.
 
-### Backend
-- **Runtime**: Node.js with Express.js, TypeScript (ES Modules).
-- **API Design**: RESTful API with JSON, route registration, storage layer abstraction, request logging, centralized error handling.
-- **Database**: Drizzle ORM, Neon serverless PostgreSQL with WebSocket support, connection pooling, schema-first design with migrations.
-- **Schema Design Highlights**: Event-centric data model, material requests with area segmentation, trips linked to events/vehicles/drivers/docks, parametric kit system, detailed inventory movement tracking, return records with damage/loss, audit logs, PostgreSQL enums for status.
-- **Architectural Patterns**: Separation of concerns (client/server/shared), type sharing, Repository pattern, Zod schemas from Drizzle, ORM relations.
+### Technical Implementations
+- **Frontend**: State management is handled by TanStack Query for server state and React Hook Form with Zod for form validation.
+- **Backend**: Built with Node.js, Express.js, and TypeScript (ES Modules). It exposes a RESTful API with JSON, featuring route registration, a storage layer abstraction, request logging, and centralized error handling.
+- **Database**: Drizzle ORM is used with Neon serverless PostgreSQL, supporting WebSocket and connection pooling. The design is schema-first with migrations.
+- **Authentication & Authorization**: Session-based authentication via Passport.js (local strategy), bcrypt for password hashing, `express-session` with PostgreSQL store, role-based access control (RBAC), password recovery, and a user approval system.
+- **Key Features**:
+    - **Material Request Management**: Supports creation, approval workflows (approve-all, approve-partial, reject-all), item list management, status tracking, and event requisition window enforcement.
+    - **Loading Orders**: Consolidates approved material requests into picking lists, including parametric kit expansion (BOM), grouping identical products, and tracking source breakdown.
+    - **Warehouse Movements**: Manages loading/unloading operations with a scanner interface, supporting various movement types, status transitions, real-time item tracking, and multi-event association.
+    - **Product & Kit Management**: Provides dialogs for editing products and kits, including image upload.
+    - **Bulk Import System**: Allows Excel-based bulk import for events, products, and transport planning with data preview, validation, and error reporting.
+    - **Notification System**: Comprehensive system with @mention support, in-app notifications, preferences panel, and dashboard display.
+    - **Transport Planning**: Manages vehicle types and detailed trip planning with multiple destinations, offering both list and calendar views.
+    - **AI-Powered Optimization**: Incorporates 3D bin packing algorithms (First-Fit Decreasing Height) for vehicle loading and nearest neighbor heuristic for route planning, providing distance, duration, fuel estimates, and detailed loading sequences.
+    - **Reports Module - Stock Simulation**: Proactive shortage identification by aggregating material needs, comparing against inventory, and identifying potential shortages. Features multi-select filters, status classification (FALTA/CRÍTICO/ADEQUADO), drill-down, and Excel export.
+    - **Product Variants & Equivalencies System**: Tracks material ownership (owned, rented, third_party) and automatically resolves supplier-specific SKUs to principal SKUs, ensuring traceability.
+    - **Configurable Movement Types System**: Organizes warehouse movements into customizable groups and types, supporting configurable properties like nature, approval requirements, and supplier tracking. Includes a dedicated approval workflow for movements.
+    - **Product Status & Location Control System**: Manages product lifecycle states (statuses) and physical locations, allowing for CRUD operations and integration with movement types to control permitted source and target statuses/locations.
+    - **Driver Management**: Manages driver registration, including CNH document upload, with full CRUD functionality and CNH validation.
+    - **User Approval System**: Manages user registration approval workflows with role-based access control, allowing for pending, approved, and rejected statuses with audit trails.
 
-### Key Features
-- **Authentication & Authorization**: Session-based authentication using Passport.js (local strategy), bcrypt for password hashing, `express-session` with PostgreSQL store, role-based access control (RBAC), password recovery, and user approval system.
-- **User Approval System** (30/10/2025): Comprehensive user registration approval workflow with role-based access control. Features include:
-  - **Approval Workflow**: New registrations create users with `approvalStatus='pending'`. Existing users automatically approved via migration. Login blocked for non-approved users with informative error message.
-  - **Database Schema**: Extended users table with approval fields: `approvalStatus` enum (pending/approved/rejected), `approvedBy`, `approvedAt`, `rejectedBy`, `rejectedAt`, `rejectionReason`
-  - **Backend API**: RESTful endpoints for user management - GET /api/users (list all users with approval info), PATCH /api/users/:id/approve (approve user), PATCH /api/users/:id/reject (reject with reason)
-  - **Frontend UI** (/config/users): Enhanced users page with approval controls including status badges (pending/approved/rejected with icons), filter buttons by approval status, pending count indicator in header, approve/reject action buttons for pending users, rejection reason dialog with required explanation, and comprehensive table displaying username, name, email, approval status, active status, and contextual actions
-  - **Security**: Approval actions record approver/rejecter user ID and timestamp. Rejection requires reason for audit trail. Middleware prevents login attempts from non-approved users.
-  - **Future Enhancements**: Email notifications for approval/rejection, bulk approval operations, approval delegation, detailed audit reports
-- **Material Request Management**: Supports creation, approval workflows (approve-all, approve-partial, reject-all), item list management with product/kit addition, status tracking, and event requisition window enforcement.
-- **Loading Orders**: Consolidates approved material requests into picking lists, supporting parametric kit expansion (BOM), grouping identical products, and tracking source breakdown. Features a multi-stage status workflow.
-- **Warehouse Movements (Carga e Descarga)**: Manages loading/unloading operations with a scanner interface. Supports various movement types, status transitions, real-time item tracking, and multi-event association. Provides detailed views for expected vs. loaded items, product search, and comprehensive filtering.
-- **Product & Kit Management**: Dialogs for editing products and kits, including image upload functionality.
-- **Bulk Import System**: Excel-based bulk import for events, products, and transport planning (trips). Features file upload, data preview with validation, automatic type conversion, detailed error reporting, and partial import support.
-- **Event Enhancements**: Events include `sku`, `requestWindowStart`, and `requestWindowEnd` fields to control material requisition periods.
-- **Notification System**: Comprehensive system with @mention support in comments, in-app notifications with unread count indicator, notification preferences panel for email settings, and dashboard display. Supports mark-as-read functionality and real-time updates.
-- **Transport Planning**: Overhauled system with vehicle type management, detailed trip planning with multiple destinations, and a dual-view display (list and calendar/agenda view) for trips. Calendar view categorizes trips by loading and unloading dates with distinct visual indicators.
-- **AI-Powered Optimization**: Advanced optimization system for vehicle loading and route planning. Vehicle loading optimization uses 3D bin packing algorithms (First-Fit Decreasing Height strategy) to maximize space utilization and weight distribution. Route optimization employs nearest neighbor heuristic for multi-stop trip planning with distance, duration, and fuel estimates. Features optimization run tracking, confidence scoring, warnings, recommendations, and detailed loading sequences with layer-based positioning.
-- **Reports Module - Stock Simulation**: Comprehensive stock simulation system for proactive shortage identification. Aggregates material needs from multiple events and material requests, compares against current inventory levels, and identifies potential shortages before event execution. Features multi-select filters (events, requests, date range, status), status classification (FALTA/CRÍTICO/ADEQUADO), drill-down by event breakdown, Excel export with multiple worksheets, and real-time search/filtering capabilities.
-- **Product Variants & Equivalencies System (MVP)**: Core system for tracking material ownership with automatic SKU resolution. Features include:
-  - **Product Types**: PRINCIPAL (master SKUs) and VARIANTE (supplier-specific SKUs with automatic resolution to principals)
-  - **Ownership Tracking**: Three types - owned, rented, third_party with visual indicators (🟡 LOCADO / 🔵 TERCEIROS)
-  - **Smart Modal**: Conditional supplier fields appear when scanning rented/third_party products with validation
-  - **Supplier Autocomplete**: Recent supplier suggestions via getRecentSuppliers() API based on historical movement data
-  - **Visual Badges**: Color-coded ownership indicators in movement item lists showing property type and supplier name
-  - **Unified Accounting**: All variants count toward principal product while maintaining full traceability via scannedSku field
-  - **Database Schema**: product_type enum, equivalent_sku field, movementItems fields (scannedSku, ownerName, ownerType)
-  - **Backend Logic**: getProductBySku(), getTargetProduct() (resolves equivalencies), getRecentSuppliers(), updated createMovementItem()
-  - **Sample Data**: Principal products (CAD-001, MESA-001) with variants (CAD-LOC-001 rented, CAD-TERC-001 third_party)
-  - **Future Enhancements**: Dedicated management pages, detailed ownership reports, bulk variant import, advanced supplier analytics
-- **Configurable Movement Types System (Phase 1)**: Fully implemented configurable movement types system that organizes warehouse movements into groups and types. Features include:
-  - **Movement Groups**: 5 pre-configured groups (Operações Logísticas, Controle de Qualidade, Terceiros, Ajustes e Correções, Transferências Internas) with purpose classification, color coding, and emoji icons. CRUD operations via card-based UI.
-  - **Movement Types Config**: ~20 pre-seeded movement types with configurable properties: name, description, nature (entrada/saída/transferência/ajuste), group assignment, supplier tracking (supplier_name, supplier_notes), product variant support (equivalent_sku), and **requires_approval** flag for approval workflow control. Table-based UI with filters by group, nature, and active status.
-  - **Database Schema**: New enums (movement_group_purpose, movement_nature, batch_ownership_type, movement_status with pending_approval), tables (movement_groups, movement_types_config, batch_lots), and backward-compatible movement_type_config_id field in movements table. Approval tracking fields (approved_by, approved_at, rejected_by, rejected_at, rejection_reason) in movements table.
-  - **Backend**: Storage layer with CRUD methods, REST API endpoints with validation, and seed script for initial data population. Approval workflow methods (listPendingMovements, approveMovement, rejectMovement) with authenticated endpoints.
-  - **Frontend**: Three responsive pages (/config/movement-groups, /config/movement-types, /movement-approvals) with full CRUD, filtering, and navigation integration via collapsible "Aprovações" submenu grouping requisitions and movements. Movement creation dialog uses configurable types with visual indicator (⚠️) for approval-required types. Movement list displays movementTypeConfig.name instead of legacy type enum.
-  - **Approval Workflow**: Movements with requires_approval=true are created with status "pending_approval" and bypass inventory changes. Approval action changes status to "created" and records approver/timestamp. Rejection changes status to "cancelled" with required reason. Both actions create audit log entries.
-  - **Future Phases**: System prepared for batch/lot tracking with batch_lots table and ownership types (próprio, terceiro, consignado).
-- **Movement Details UI Enhancements**: Scanner interface disabled when movement status is not "in_progress". Alert messages guide users based on status (pending_approval, paused, completed, cancelled, created). Prevents accidental additions/modifications with client-side and server-side validation.
-- **Product Status & Location Control System** (30/10/2025): Comprehensive system for managing product lifecycle states and physical locations with integration into movement types. Features include:
-  - **Product Statuses**: CRUD interface for managing product lifecycle states (Disponível, Reservado, Em Evento, etc.) with type classification (operational, physical, blocking), color coding, icon selection, movement permission control, and display ordering
-  - **Locations**: CRUD interface for managing physical locations (Galpões, Áreas Especiais, Externas) with type classification, hierarchical structure support (parent location), capacity limits, and responsible user assignment
-  - **Database Schema**: New tables (product_statuses, locations) with enums (product_status_type, location_type). Includes 8 pre-seeded status examples and 7 location examples. Movement types config extended with Phase 1 fields
-  - **Phase 1 Implementation (30/10/2025)**: Extended movement_types_config table with status and location control fields:
-    - `changes_product_status` (boolean): Indicates if movement changes product status
-    - `allowed_source_product_statuses` (jsonb array): List of permitted source status IDs
-    - `target_product_status_id` (varchar FK): Target status after movement
-    - `changes_location` (boolean): Indicates if movement changes location
-    - `allowed_source_locations` (jsonb array): List of permitted source location IDs
-    - `target_location_id` (varchar FK): Target location after movement
-  - **API Integration**: RESTful routes (/api/product-statuses, /api/locations, /api/movement-types-config) with GET/POST/PATCH operations supporting new fields
-  - **UI Integration**: Pages accessible via Config menu (/config/product-statuses, /config/locations) with table views, search functionality, inline editing dialogs
-  - **Documentation**: Full specification archived in docs/controle-status-movimentacoes.md
-  - **Next Phases**: Phase 2 (UI for configuring status/location in movement types), Phase 3 (validation logic during movements), Phase 4 (reports and dashboards)
+### System Design Choices
+- **Data Model**: Event-centric with robust schemas for material requests, trips, inventory movements, returns, and audit logs. Utilizes PostgreSQL enums for status management.
+- **Architectural Patterns**: Employs separation of concerns (client/server/shared), type sharing between frontend and backend, and the Repository pattern. Zod schemas are derived from Drizzle for validation.
 
 ## External Dependencies
 
-- **Database**: Neon Serverless PostgreSQL, Drizzle Kit.
+- **Database**: Neon Serverless PostgreSQL.
 - **UI Components**: Radix UI, cmdk, embla-carousel-react, date-fns, lucide-react.
 - **Development Tools**: Vite plugins (@replit/vite-plugin-runtime-error-modal, @replit/vite-plugin-cartographer, @replit/vite-plugin-dev-banner).
-- **Form & Validation**: React Hook Form, Zod, @hookform/resolvers.
-- **Styling**: Tailwind CSS, PostCSS, class-variance-authority, clsx, tailwind-merge.
+- **Form & Validation**: React Hook Form, Zod.
+- **Styling**: Tailwind CSS, PostCSS.
 - **Authentication**: Passport.js, express-session, connect-pg-simple, bcrypt.
-- **Object Storage**: Replit Object Storage (Google Cloud Storage).
-- **Excel Export**: SheetJS (xlsx) for multi-worksheet Excel report generation.
+- **Object Storage**: Replit Object Storage (utilizing Google Cloud Storage).
+- **Excel Export**: SheetJS (xlsx).
