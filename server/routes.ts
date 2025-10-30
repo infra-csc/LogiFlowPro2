@@ -1904,6 +1904,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Populate/Update all system permissions
+  app.post("/api/permissions/populate", async (req, res) => {
+    try {
+      const allPermissions = [
+        // Operações
+        { page: 'dashboard', displayName: 'Dashboard', category: 'Operações' },
+        { page: 'events', displayName: 'Eventos', category: 'Operações' },
+        { page: 'requests', displayName: 'Requisições de Materiais', category: 'Operações' },
+        { page: 'loading-orders', displayName: 'Ordens de Carregamento', category: 'Operações' },
+        { page: 'movements', displayName: 'Movimentações', category: 'Operações' },
+        { page: 'trips', displayName: 'Viagens', category: 'Operações' },
+        
+        // Estoque
+        { page: 'inventory', displayName: 'Posição de Estoque', category: 'Estoque' },
+        { page: 'inventory-views', displayName: 'Visões de Estoque', category: 'Estoque' },
+        { page: 'products', displayName: 'Produtos', category: 'Estoque' },
+        { page: 'kits', displayName: 'Kits', category: 'Estoque' },
+        { page: 'product-variants', displayName: 'Variantes de Produtos', category: 'Estoque' },
+        { page: 'suppliers', displayName: 'Fornecedores', category: 'Estoque' },
+        
+        // Aprovações
+        { page: 'approvals', displayName: 'Aprovações de Requisições', category: 'Aprovações' },
+        { page: 'movement-approvals', displayName: 'Aprovações de Movimentações', category: 'Aprovações' },
+        
+        // Relatórios
+        { page: 'stock-simulation', displayName: 'Simulação de Estoque', category: 'Relatórios' },
+        { page: 'stock-position-simulation', displayName: 'Simulação de Posição', category: 'Relatórios' },
+        { page: 'returns', displayName: 'Devoluções e Avarias', category: 'Relatórios' },
+        
+        // Uploads e Importações
+        { page: 'event-upload', displayName: 'Upload de Eventos', category: 'Importações' },
+        { page: 'product-upload', displayName: 'Upload de Produtos', category: 'Importações' },
+        { page: 'trip-upload', displayName: 'Upload de Viagens', category: 'Importações' },
+        
+        // Configurações
+        { page: 'config', displayName: 'Configurações Gerais', category: 'Configurações' },
+        { page: 'users', displayName: 'Usuários', category: 'Configurações' },
+        { page: 'roles', displayName: 'Papéis e Permissões', category: 'Configurações' },
+        { page: 'docks', displayName: 'Docas', category: 'Configurações' },
+        { page: 'vehicle-types', displayName: 'Tipos de Veículos', category: 'Configurações' },
+        { page: 'movement-groups', displayName: 'Grupos de Movimentação', category: 'Configurações' },
+        { page: 'movement-types-config', displayName: 'Tipos de Movimentação', category: 'Configurações' },
+        { page: 'product-statuses', displayName: 'Status de Produtos', category: 'Configurações' },
+        { page: 'locations', displayName: 'Localizações', category: 'Configurações' },
+        
+        // Notificações
+        { page: 'notification-settings', displayName: 'Configurações de Notificações', category: 'Notificações' },
+      ];
+
+      const existing = await storage.getPermissions();
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      for (const perm of allPermissions) {
+        const exists = existing.find((p) => p.page === perm.page);
+        
+        if (exists) {
+          // Update display name if changed
+          if (exists.displayName !== perm.displayName) {
+            await storage.updatePermission(exists.id, { displayName: perm.displayName });
+            updatedCount++;
+          }
+        } else {
+          // Create new permission
+          await storage.createPermission({
+            page: perm.page,
+            displayName: perm.displayName,
+            canView: false,
+            canCreate: false,
+            canEdit: false,
+            canDelete: false,
+          });
+          createdCount++;
+        }
+      }
+
+      res.json({
+        success: true,
+        created: createdCount,
+        updated: updatedCount,
+        total: allPermissions.length,
+      });
+    } catch (error) {
+      console.error("Error populating permissions:", error);
+      res.status(500).json({ error: "Failed to populate permissions" });
+    }
+  });
+
   // User Roles
   app.get("/api/users/:userId/roles", async (req, res) => {
     try {
