@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Role, Permission, RolePermission } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -331,46 +331,70 @@ function RolePermissionsDialog({
     enabled: isOpen,
   });
 
-  const updatePermissionMutation = useMutation({
-    mutationFn: async ({
-      permissionId,
-      canView,
-      canCreate,
-      canEdit,
-      canDelete,
-    }: {
-      permissionId: string;
-      canView: boolean;
-      canCreate: boolean;
-      canEdit: boolean;
-      canDelete: boolean;
-    }) => {
-      // Find existing role permission
-      const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permissionId);
+  // Local state to track changes before saving
+  const [localChanges, setLocalChanges] = useState<Record<string, {
+    canView: boolean;
+    canCreate: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+  }>>({});
 
-      if (existing) {
-        // Update existing
-        const res = await apiRequest("PATCH", `/api/role-permissions/${existing.id}`, {
-          canView,
-          canCreate,
-          canEdit,
-          canDelete,
-        });
-        return await res.json();
-      } else {
-        // Create new
-        const res = await apiRequest("POST", `/api/roles/${role.id}/permissions`, {
-          permissionId,
-          canView,
-          canCreate,
-          canEdit,
-          canDelete,
-        });
-        return await res.json();
-      }
+  // Reset local changes when modal opens or rolePermissions change
+  useEffect(() => {
+    if (isOpen && rolePermissions.length > 0) {
+      const initial: typeof localChanges = {};
+      rolePermissions.forEach(rp => {
+        initial[rp.permissionId] = {
+          canView: rp.canView,
+          canCreate: rp.canCreate,
+          canEdit: rp.canEdit,
+          canDelete: rp.canDelete,
+        };
+      });
+      setLocalChanges(initial);
+    }
+  }, [isOpen, rolePermissions]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      // Batch all updates together
+      const updates = await Promise.all(
+        permissions.map(async (permission) => {
+          const localValue = localChanges[permission.id];
+          if (!localValue) return null;
+
+          const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permission.id);
+
+          if (existing) {
+            // Update existing
+            const res = await apiRequest("PATCH", `/api/role-permissions/${existing.id}`, localValue);
+            return await res.json();
+          } else {
+            // Create new
+            const res = await apiRequest("POST", `/api/roles/${role.id}/permissions`, {
+              permissionId: permission.id,
+              ...localValue,
+            });
+            return await res.json();
+          }
+        })
+      );
+      return updates.filter(u => u !== null);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles", role.id, "permissions"] });
+      toast({
+        title: "Permissões atualizadas",
+        description: "As permissões foram salvas com sucesso.",
+      });
+      onClose();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao salvar permissões",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -379,27 +403,28 @@ function RolePermissionsDialog({
     field: "canView" | "canCreate" | "canEdit" | "canDelete",
     value: boolean
   ) => {
-    const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permissionId);
-    const current = existing || {
-      canView: false,
-      canCreate: false,
-      canEdit: false,
-      canDelete: false,
-    };
-
-    updatePermissionMutation.mutate({
-      permissionId,
-      canView: field === "canView" ? value : current.canView,
-      canCreate: field === "canCreate" ? value : current.canCreate,
-      canEdit: field === "canEdit" ? value : current.canEdit,
-      canDelete: field === "canDelete" ? value : current.canDelete,
-    });
+    setLocalChanges(prev => ({
+      ...prev,
+      [permissionId]: {
+        ...(prev[permissionId] || {
+          canView: false,
+          canCreate: false,
+          canEdit: false,
+          canDelete: false,
+        }),
+        [field]: value,
+      },
+    }));
   };
 
   const getPermissionValue = (
     permissionId: string,
     field: "canView" | "canCreate" | "canEdit" | "canDelete"
   ): boolean => {
+    // Check local changes first, then fall back to server data
+    const local = localChanges[permissionId];
+    if (local) return local[field];
+    
     const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permissionId);
     return existing ? existing[field] : false;
   };
@@ -413,23 +438,23 @@ function RolePermissionsDialog({
   // Toggle all permissions for a specific field
   const handleToggleAll = (field: "canView" | "canCreate" | "canEdit" | "canDelete") => {
     const newValue = !areAllChecked(field);
+    const updates: typeof localChanges = {};
+    
     permissions.forEach((permission) => {
-      const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permission.id);
-      const current = existing || {
+      const current = localChanges[permission.id] || {
         canView: false,
         canCreate: false,
         canEdit: false,
         canDelete: false,
       };
 
-      updatePermissionMutation.mutate({
-        permissionId: permission.id,
-        canView: field === "canView" ? newValue : current.canView,
-        canCreate: field === "canCreate" ? newValue : current.canCreate,
-        canEdit: field === "canEdit" ? newValue : current.canEdit,
-        canDelete: field === "canDelete" ? newValue : current.canDelete,
-      });
+      updates[permission.id] = {
+        ...current,
+        [field]: newValue,
+      };
     });
+
+    setLocalChanges(prev => ({ ...prev, ...updates }));
   };
 
   return (
@@ -538,8 +563,20 @@ function RolePermissionsDialog({
         </div>
 
         <DialogFooter>
-          <Button onClick={onClose} data-testid="button-close-permissions">
-            Fechar
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={saveMutation.isPending}
+            data-testid="button-cancel-permissions"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            data-testid="button-save-permissions"
+          >
+            {saveMutation.isPending ? "Salvando..." : "Salvar Permissões"}
           </Button>
         </DialogFooter>
       </DialogContent>
