@@ -49,40 +49,25 @@ import {
 } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 
+// Legacy function - now replaced by POST /api/permissions/populate endpoint
+// Keeping minimal initialization for backward compatibility
 async function initializeDefaultPermissions() {
   try {
+    // Check if any permissions exist
     const permissions = await storage.getPermissions();
     
-    // Define default permissions for each page
-    const defaultPermissions = [
-      { page: "dashboard", displayName: "Dashboard" },
-      { page: "events", displayName: "Eventos" },
-      { page: "requests", displayName: "Requisição de Materiais" },
-      { page: "inventory", displayName: "Estoque" },
-      { page: "trips", displayName: "Planejamento de Viagens" },
-      { page: "returns", displayName: "Devoluções" },
-      { page: "products", displayName: "Produtos" },
-      { page: "kits", displayName: "Kits & BOM" },
-      { page: "config_users", displayName: "Usuários" },
-      { page: "config_roles", displayName: "Papéis e Permissões" },
-      { page: "config_vehicles", displayName: "Veículos" },
-      { page: "config_drivers", displayName: "Motoristas" },
-      { page: "config_docks", displayName: "Docas" },
-    ];
-
-    // Create missing permissions
-    for (const perm of defaultPermissions) {
-      const exists = permissions.find((p) => p.page === perm.page);
-      if (!exists) {
-        await storage.createPermission({
-          page: perm.page,
-          displayName: perm.displayName,
-          canView: false,
-          canCreate: false,
-          canEdit: false,
-          canDelete: false,
-        });
-      }
+    if (permissions.length === 0) {
+      // Only create basic dashboard permission if nothing exists
+      // Admin should use the "Atualizar Permissões" button to populate all
+      await storage.createPermission({
+        page: "dashboard",
+        displayName: "Dashboard",
+        canView: false,
+        canCreate: false,
+        canEdit: false,
+        canDelete: false,
+      });
+      console.log("⚠️  Initial dashboard permission created. Please use 'Atualizar Permissões' button in Roles page to populate all permissions.");
     }
   } catch (error) {
     console.error("Error initializing default permissions:", error);
@@ -1912,8 +1897,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { page: 'dashboard', displayName: 'Dashboard', category: 'Operações' },
         { page: 'events', displayName: 'Eventos', category: 'Operações' },
         { page: 'requests', displayName: 'Requisições de Materiais', category: 'Operações' },
+        { page: 'request-details', displayName: 'Detalhes de Requisição', category: 'Operações' },
         { page: 'loading-orders', displayName: 'Ordens de Carregamento', category: 'Operações' },
+        { page: 'loading-order-details', displayName: 'Detalhes de Ordem', category: 'Operações' },
         { page: 'movements', displayName: 'Movimentações', category: 'Operações' },
+        { page: 'movement-details', displayName: 'Detalhes de Movimentação', category: 'Operações' },
         { page: 'trips', displayName: 'Viagens', category: 'Operações' },
         
         // Estoque
@@ -1926,6 +1914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Aprovações
         { page: 'approvals', displayName: 'Aprovações de Requisições', category: 'Aprovações' },
+        { page: 'approval-detail', displayName: 'Detalhes de Aprovação', category: 'Aprovações' },
         { page: 'movement-approvals', displayName: 'Aprovações de Movimentações', category: 'Aprovações' },
         
         // Relatórios
@@ -1951,6 +1940,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Notificações
         { page: 'notification-settings', displayName: 'Configurações de Notificações', category: 'Notificações' },
+        
+        // Autenticação (páginas públicas - não exigem permissão, mas listadas para completude)
+        { page: 'auth-page', displayName: 'Login/Registro', category: 'Autenticação' },
+        { page: 'forgot-password', displayName: 'Esqueci Senha', category: 'Autenticação' },
+        { page: 'reset-password', displayName: 'Redefinir Senha', category: 'Autenticação' },
       ];
 
       const existing = await storage.getPermissions();

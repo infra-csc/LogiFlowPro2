@@ -6,8 +6,11 @@ const allPermissions = [
   { page: 'dashboard', displayName: 'Dashboard', category: 'Operações' },
   { page: 'events', displayName: 'Eventos', category: 'Operações' },
   { page: 'requests', displayName: 'Requisições de Materiais', category: 'Operações' },
+  { page: 'request-details', displayName: 'Detalhes de Requisição', category: 'Operações' },
   { page: 'loading-orders', displayName: 'Ordens de Carregamento', category: 'Operações' },
+  { page: 'loading-order-details', displayName: 'Detalhes de Ordem', category: 'Operações' },
   { page: 'movements', displayName: 'Movimentações', category: 'Operações' },
+  { page: 'movement-details', displayName: 'Detalhes de Movimentação', category: 'Operações' },
   { page: 'trips', displayName: 'Viagens', category: 'Operações' },
   
   // Estoque
@@ -20,6 +23,7 @@ const allPermissions = [
   
   // Aprovações
   { page: 'approvals', displayName: 'Aprovações de Requisições', category: 'Aprovações' },
+  { page: 'approval-detail', displayName: 'Detalhes de Aprovação', category: 'Aprovações' },
   { page: 'movement-approvals', displayName: 'Aprovações de Movimentações', category: 'Aprovações' },
   
   // Relatórios
@@ -45,6 +49,11 @@ const allPermissions = [
   
   // Notificações
   { page: 'notification-settings', displayName: 'Configurações de Notificações', category: 'Notificações' },
+  
+  // Autenticação (páginas públicas - não exigem permissão, mas listadas para completude)
+  { page: 'auth-page', displayName: 'Login/Registro', category: 'Autenticação' },
+  { page: 'forgot-password', displayName: 'Esqueci Senha', category: 'Autenticação' },
+  { page: 'reset-password', displayName: 'Redefinir Senha', category: 'Autenticação' },
 ];
 
 async function seedPermissions() {
