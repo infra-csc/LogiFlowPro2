@@ -1977,6 +1977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { page: 'users', displayName: 'Usuários', category: 'Configurações' },
         { page: 'roles', displayName: 'Papéis e Permissões', category: 'Configurações' },
         { page: 'docks', displayName: 'Docas', category: 'Configurações' },
+        { page: 'drivers', displayName: 'Motoristas', category: 'Configurações' },
         { page: 'vehicle-types', displayName: 'Tipos de Veículos', category: 'Configurações' },
         { page: 'movement-groups', displayName: 'Grupos de Movimentação', category: 'Configurações' },
         { page: 'movement-types-config', displayName: 'Tipos de Movimentação', category: 'Configurações' },
