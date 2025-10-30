@@ -14,7 +14,7 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<Omit<User, "password">, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<Omit<User, "password">, Error, RegisterData>;
+  registerMutation: UseMutationResult<{ message: string }, Error, RegisterData>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -59,11 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/register", credentials);
       return await res.json();
     },
-    onSuccess: (user: Omit<User, "password">) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: (data: { message: string }) => {
       toast({
         title: "Cadastro realizado com sucesso",
-        description: `Bem-vindo, ${user.name}!`,
+        description: data.message,
       });
     },
     onError: (error: Error) => {
