@@ -52,14 +52,21 @@ Preferred communication style: Simple, everyday language.
   - **Approval Workflow**: Movements with requires_approval=true are created with status "pending_approval" and bypass inventory changes. Approval action changes status to "created" and records approver/timestamp. Rejection changes status to "cancelled" with required reason. Both actions create audit log entries.
   - **Future Phases**: System prepared for batch/lot tracking with batch_lots table and ownership types (próprio, terceiro, consignado).
 - **Movement Details UI Enhancements**: Scanner interface disabled when movement status is not "in_progress". Alert messages guide users based on status (pending_approval, paused, completed, cancelled, created). Prevents accidental additions/modifications with client-side and server-side validation.
-- **Prototype: Product Status & Location Control** (29/10/2025): Initial implementation of product status and location management system. Features include:
+- **Product Status & Location Control System** (30/10/2025): Comprehensive system for managing product lifecycle states and physical locations with integration into movement types. Features include:
   - **Product Statuses**: CRUD interface for managing product lifecycle states (Disponível, Reservado, Em Evento, etc.) with type classification (operational, physical, blocking), color coding, icon selection, movement permission control, and display ordering
   - **Locations**: CRUD interface for managing physical locations (Galpões, Áreas Especiais, Externas) with type classification, hierarchical structure support (parent location), capacity limits, and responsible user assignment
-  - **Database Schema**: New tables (product_statuses, locations) with enums (product_status_type, location_type). Includes 8 pre-seeded status examples and 7 location examples
-  - **API Endpoints**: RESTful routes (/api/product-statuses, /api/locations) with GET/POST/PATCH operations, authentication requirements
+  - **Database Schema**: New tables (product_statuses, locations) with enums (product_status_type, location_type). Includes 8 pre-seeded status examples and 7 location examples. Movement types config extended with Phase 1 fields
+  - **Phase 1 Implementation (30/10/2025)**: Extended movement_types_config table with status and location control fields:
+    - `changes_product_status` (boolean): Indicates if movement changes product status
+    - `allowed_source_product_statuses` (jsonb array): List of permitted source status IDs
+    - `target_product_status_id` (varchar FK): Target status after movement
+    - `changes_location` (boolean): Indicates if movement changes location
+    - `allowed_source_locations` (jsonb array): List of permitted source location IDs
+    - `target_location_id` (varchar FK): Target location after movement
+  - **API Integration**: RESTful routes (/api/product-statuses, /api/locations, /api/movement-types-config) with GET/POST/PATCH operations supporting new fields
   - **UI Integration**: Pages accessible via Config menu (/config/product-statuses, /config/locations) with table views, search functionality, inline editing dialogs
-  - **Documentation**: Full specification archived in docs/controle-status-movimentacoes.md outlining future phases for integration with movement types system
-  - **Future Development**: Integration with movement types to enable status/location change rules, validation workflows, and automated state transitions during warehouse operations
+  - **Documentation**: Full specification archived in docs/controle-status-movimentacoes.md
+  - **Next Phases**: Phase 2 (UI for configuring status/location in movement types), Phase 3 (validation logic during movements), Phase 4 (reports and dashboards)
 
 ## External Dependencies
 
