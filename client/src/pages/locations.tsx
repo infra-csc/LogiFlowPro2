@@ -281,8 +281,8 @@ export default function LocationsPage() {
                         <FormItem>
                           <FormLabel>Localização Pai</FormLabel>
                           <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || undefined}
+                            onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                            value={field.value || "none"}
                           >
                             <FormControl>
                               <SelectTrigger data-testid="select-parent">
@@ -290,7 +290,7 @@ export default function LocationsPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Nenhuma (raiz)</SelectItem>
+                              <SelectItem value="none">Nenhuma (raiz)</SelectItem>
                               {locations
                                 .filter(l => l.id !== editingLocation?.id)
                                 .map(location => (
