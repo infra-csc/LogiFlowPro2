@@ -753,7 +753,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const driver = await storage.createDriver(data);
       res.status(201).json(driver);
     } catch (error) {
-      res.status(400).json({ error: "Invalid driver data" });
+      console.error("Driver creation error:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid driver data", details: error.errors });
+      } else {
+        res.status(400).json({ error: "Invalid driver data" });
+      }
     }
   });
 
@@ -763,7 +768,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const driver = await storage.updateDriver(req.params.id, data);
       res.json(driver);
     } catch (error) {
-      res.status(400).json({ error: "Invalid driver data" });
+      console.error("Driver update error:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid driver data", details: error.errors });
+      } else {
+        res.status(400).json({ error: "Invalid driver data" });
+      }
     }
   });
 
