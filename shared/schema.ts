@@ -418,6 +418,16 @@ export const movementTypesConfig = pgTable("movement_types_config", {
   requiresDocument: boolean("requires_document").notNull().default(false),
   allowsMixedBatch: boolean("allows_mixed_batch").notNull().default(true),
   
+  // Status Control (Phase 1 - Product Status & Location Control)
+  changesProductStatus: boolean("changes_product_status").notNull().default(false),
+  allowedSourceProductStatuses: jsonb("allowed_source_product_statuses").$type<string[]>(),
+  targetProductStatusId: varchar("target_product_status_id").references(() => productStatuses.id),
+  
+  // Location Control (Phase 1 - Product Status & Location Control)
+  changesLocation: boolean("changes_location").notNull().default(false),
+  allowedSourceLocations: jsonb("allowed_source_locations").$type<string[]>(),
+  targetLocationId: varchar("target_location_id").references(() => locations.id),
+  
   // Dynamic configurations (JSON)
   allowedSourceStatuses: jsonb("allowed_source_statuses").$type<string[]>(),
   allowedDestinationStatuses: jsonb("allowed_destination_statuses").$type<string[]>(),
