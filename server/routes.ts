@@ -795,12 +795,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const driverId = req.params.id;
       const file = req.file;
-      const fileExtension = file.originalname.split(".").pop();
-      const fileName = `cnh_${driverId}_${Date.now()}.${fileExtension}`;
+      const fileName = `cnh_${driverId}_${Date.now()}.${file.originalname.split(".").pop()}`;
 
       // Upload to object storage
-      await uploadFile(file.buffer, fileName, file.mimetype);
-      const url = await getFileUrl(fileName);
+      const objectStorageService = new ObjectStorageService();
+      const url = await objectStorageService.uploadObjectEntity(file.buffer, fileName);
 
       // Update driver with CNH image URL
       const driver = await storage.updateDriver(driverId, { cnhImageUrl: url });
