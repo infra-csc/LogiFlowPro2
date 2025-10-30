@@ -371,6 +371,14 @@ export const vehicles = pgTable("vehicles", {
   plate: text("plate").notNull().unique(),
   vehicleTypeId: varchar("vehicle_type_id").references(() => vehicleTypes.id),
   type: text("type").notNull(), // Manter por compatibilidade
+  model: text("model"), // Modelo do veículo
+  // Medidas do baú
+  cargoHeight: decimal("cargo_height", { precision: 10, scale: 2 }),
+  cargoWidth: decimal("cargo_width", { precision: 10, scale: 2 }),
+  cargoLength: decimal("cargo_length", { precision: 10, scale: 2 }),
+  // Placas
+  truckPlate: text("truck_plate"), // Chapa cavalo
+  trailerPlate: text("trailer_plate"), // Chapa carreta
   maxWeight: decimal("max_weight", { precision: 10, scale: 2 }),
   maxVolume: decimal("max_volume", { precision: 10, scale: 2 }),
   dimensions: text("dimensions"),

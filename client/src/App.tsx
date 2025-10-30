@@ -40,6 +40,7 @@ import Approvals from "@/pages/approvals";
 import ApprovalDetail from "@/pages/approval-detail";
 import Docks from "@/pages/docks";
 import Drivers from "@/pages/drivers";
+import Vehicles from "@/pages/vehicles";
 import VehicleTypes from "@/pages/vehicle-types";
 import NotificationSettingsPage from "@/pages/notification-settings";
 import StockSimulation from "@/pages/stock-simulation";
@@ -81,7 +82,7 @@ function Router() {
       <ProtectedRoute path="/config/users" component={UsersPage} />
       <ProtectedRoute path="/config/roles" component={RolesPage} />
       <ProtectedRoute path="/config/vehicle-types" component={VehicleTypes} />
-      <ProtectedRoute path="/config/vehicles" component={Config} />
+      <ProtectedRoute path="/config/vehicles" component={Vehicles} />
       <ProtectedRoute path="/config/drivers" component={Drivers} />
       <ProtectedRoute path="/config/docks" component={Docks} />
       <ProtectedRoute path="/notification-settings" component={NotificationSettingsPage} />
