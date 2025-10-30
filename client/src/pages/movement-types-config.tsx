@@ -65,13 +65,16 @@ export default function MovementTypesConfigPage() {
     queryKey: ["/api/movement-types-config"],
   });
 
-  const { data: productStatuses = [] } = useQuery<ProductStatus[]>({
+  const { data: allProductStatuses = [] } = useQuery<ProductStatus[]>({
     queryKey: ["/api/product-statuses"],
   });
 
-  const { data: locations = [] } = useQuery<Location[]>({
+  const { data: allLocations = [] } = useQuery<Location[]>({
     queryKey: ["/api/locations"],
   });
+
+  const productStatuses = allProductStatuses.filter(s => s.active);
+  const locations = allLocations.filter(l => l.active);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertMovementTypeConfig) => {
