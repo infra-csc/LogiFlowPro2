@@ -53,6 +53,14 @@ export function setupAuth(app: Express): void {
           return done(null, false, { message: "Usuário inativo" });
         }
 
+        if ((user as any).approvalStatus === 'pending') {
+          return done(null, false, { message: "Usuário aguardando aprovação" });
+        }
+
+        if ((user as any).approvalStatus === 'rejected') {
+          return done(null, false, { message: "Usuário foi rejeitado" });
+        }
+
         const isValid = await comparePasswords(password, user.password);
         if (!isValid) {
           return done(null, false, { message: "Usuário ou senha inválidos" });
@@ -113,7 +121,7 @@ export function setupAuth(app: Express): void {
         });
       }
 
-      // Create user with hashed password
+      // Create user with hashed password and pending status
       const hashedPassword = await hashPassword(password);
       const user = await storage.createUser({
         username,
@@ -123,13 +131,9 @@ export function setupAuth(app: Express): void {
         active: true
       });
 
-      // Auto-login after registration
-      req.login(user, (err) => {
-        if (err) return next(err);
-        
-        // Remove password from response
-        const { password: _, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
+      // Return success message without auto-login
+      res.status(201).json({ 
+        message: "Cadastro realizado com sucesso! Aguarde a aprovação de um administrador para acessar o sistema." 
       });
     } catch (error) {
       console.error("Registration error:", error);

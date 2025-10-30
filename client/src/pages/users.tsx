@@ -30,12 +30,14 @@ import {
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, UserPlus, Shield } from "lucide-react";
+import { Plus, Search, UserPlus, Shield, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
 
 const userSchema = z.object({
   username: z.string().min(3, "Usuário deve ter no mínimo 3 caracteres"),
@@ -49,9 +51,12 @@ type UserFormData = z.infer<typeof userSchema>;
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [approvalFilter, setApprovalFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRolesDialogOpen, setIsRolesDialogOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Omit<User, "password"> | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const { toast } = useToast();
 
   const { data: users = [], isLoading } = useQuery<Omit<User, "password">[]>({
@@ -112,6 +117,51 @@ export default function UsersPage() {
       toast({
         title: "Erro ao atualizar usuário",
         description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}/approve`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Usuário aprovado",
+        description: "O usuário pode acessar o sistema agora.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao aprovar usuário.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}/reject`, { reason });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setIsRejectDialogOpen(false);
+      setRejectionReason("");
+      setSelectedUser(null);
+      toast({
+        title: "Usuário rejeitado",
+        description: "O usuário foi notificado.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao rejeitar usuário.",
         variant: "destructive",
       });
     },

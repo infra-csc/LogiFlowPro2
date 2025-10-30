@@ -167,14 +167,26 @@ export const locationTypeEnum = pgEnum("location_type", [
   "event" // Em evento
 ]);
 
+export const userApprovalStatusEnum = pgEnum("user_approval_status", [
+  "pending",
+  "approved",
+  "rejected"
+]);
+
 // Users table (Authentication)
-export const users = pgTable("users", {
+export const users: any = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   active: boolean("active").notNull().default(true),
+  approvalStatus: userApprovalStatusEnum("approval_status").notNull().default("pending"),
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: varchar("rejected_by"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
 });

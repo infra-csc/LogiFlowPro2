@@ -2658,6 +2658,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Management
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { users } = await import("@shared/schema");
+      const { desc } = await import("drizzle-orm");
+      const allUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        name: users.name,
+        email: users.email,
+        active: users.active,
+        approvalStatus: users.approvalStatus,
+        approvedBy: users.approvedBy,
+        approvedAt: users.approvedAt,
+        rejectedBy: users.rejectedBy,
+        rejectedAt: users.rejectedAt,
+        rejectionReason: users.rejectionReason,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      }).from(users).orderBy(desc(users.createdAt));
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/users/:id/approve", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { users } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const userId = req.params.id;
+      const approverId = (req.user as any).id;
+
+      const [updated] = await db
+        .update(users)
+        .set({
+          approvalStatus: 'approved',
+          approvedBy: approverId,
+          approvedAt: new Date(),
+          rejectedBy: null,
+          rejectedAt: null,
+          rejectionReason: null,
+        } as any)
+        .where(eq(users.id, userId))
+        .returning({
+          id: users.id,
+          username: users.username,
+          name: users.name,
+          email: users.email,
+          active: users.active,
+          approvalStatus: users.approvalStatus,
+          approvedBy: users.approvedBy,
+          approvedAt: users.approvedAt,
+          createdAt: users.createdAt,
+        });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error approving user:", error);
+      res.status(500).json({ error: "Failed to approve user" });
+    }
+  });
+
+  app.patch("/api/users/:id/reject", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { users } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const userId = req.params.id;
+      const rejecterId = (req.user as any).id;
+      const { reason } = req.body;
+
+      const [updated] = await db
+        .update(users)
+        .set({
+          approvalStatus: 'rejected',
+          rejectedBy: rejecterId,
+          rejectedAt: new Date(),
+          rejectionReason: reason || null,
+          approvedBy: null,
+          approvedAt: null,
+        } as any)
+        .where(eq(users.id, userId))
+        .returning({
+          id: users.id,
+          username: users.username,
+          name: users.name,
+          email: users.email,
+          active: users.active,
+          approvalStatus: users.approvalStatus,
+          rejectedBy: users.rejectedBy,
+          rejectedAt: users.rejectedAt,
+          rejectionReason: users.rejectionReason,
+          createdAt: users.createdAt,
+        });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error rejecting user:", error);
+      res.status(500).json({ error: "Failed to reject user" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
