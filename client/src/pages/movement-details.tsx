@@ -536,8 +536,11 @@ export default function MovementDetails() {
     
     if (!selectedProduct) return;
     // Open confirmation dialog instead of adding directly
-    setShowConfirmDialog(true);
-    console.log('Dialog should be opening now');
+    // Use setTimeout to ensure the dialog opens after the Enter key event is fully processed
+    setTimeout(() => {
+      setShowConfirmDialog(true);
+      console.log('Dialog should be opening now');
+    }, 0);
   };
 
   const handleConfirmAddItem = () => {
