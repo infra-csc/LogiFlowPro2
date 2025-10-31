@@ -2,8 +2,9 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy } from "lucide-react";
-import { useState, useMemo } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,6 +79,7 @@ export default function RequestDetails() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [notes, setNotes] = useState("");
 
   const { data: request, isLoading } = useQuery<MaterialRequest>({
     queryKey: ["/api/requests", id],
@@ -212,6 +214,33 @@ export default function RequestDetails() {
     },
   });
 
+  const updateNotesMutation = useMutation({
+    mutationFn: async (notesValue: string) => {
+      return apiRequest("PATCH", `/api/requests/${id}`, { notes: notesValue || null });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests", id] });
+      toast({
+        title: "Observações atualizadas",
+        description: "As observações foram salvas com sucesso",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as observações",
+      });
+    },
+  });
+
+  // Sync notes state with request data
+  useEffect(() => {
+    if (request) {
+      setNotes(request.notes || "");
+    }
+  }, [request]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -238,6 +267,12 @@ export default function RequestDetails() {
   const handleSubmit = () => {
     submitMutation.mutate();
   };
+
+  const handleSaveNotes = () => {
+    updateNotesMutation.mutate(notes);
+  };
+
+  const notesChanged = notes !== (request.notes || "");
 
   return (
     <div className="p-6 space-y-6">
@@ -356,14 +391,35 @@ export default function RequestDetails() {
               </span>
             </div>
           )}
-          {request.notes && (
-            <div className="space-y-2 pt-2 border-t">
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Observações:</span>
-              <p className="text-sm" data-testid="text-notes">
-                {request.notes}
-              </p>
+              {canEdit && notesChanged && (
+                <Button
+                  size="sm"
+                  onClick={handleSaveNotes}
+                  disabled={updateNotesMutation.isPending}
+                  data-testid="button-save-notes"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {updateNotesMutation.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              )}
             </div>
-          )}
+            {canEdit ? (
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Adicione observações sobre a requisição (opcional)"
+                data-testid="input-edit-notes"
+                rows={3}
+              />
+            ) : (
+              <p className="text-sm" data-testid="text-notes">
+                {request.notes || "Nenhuma observação"}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
