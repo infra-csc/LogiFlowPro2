@@ -622,25 +622,30 @@ export default function MovementDetails() {
     if (!showConfirmDialog) return;
     
     const handleDialogKeyPress = (e: KeyboardEvent) => {
+      console.log('Dialog keydown:', e.key, 'isSelectOpen:', isSelectOpen);
+      
       // If Select is open, don't handle Enter
       if (isSelectOpen) {
+        console.log('Select is open, ignoring keydown');
         return;
       }
       
       if (e.key === "Enter") {
+        console.log('Enter pressed in dialog, confirming...');
         e.preventDefault();
         e.stopPropagation();
         handleConfirmAddItem();
       } else if (e.key === "Escape") {
+        console.log('Escape pressed in dialog, canceling...');
         e.preventDefault();
         e.stopPropagation();
         handleCancelAddItem();
       }
     };
     
-    window.addEventListener("keydown", handleDialogKeyPress);
-    return () => window.removeEventListener("keydown", handleDialogKeyPress);
-  }, [showConfirmDialog, selectedProduct, quantity, isSelectOpen]);
+    window.addEventListener("keydown", handleDialogKeyPress, true); // Use capture phase
+    return () => window.removeEventListener("keydown", handleDialogKeyPress, true);
+  }, [showConfirmDialog, selectedProduct, quantity, isSelectOpen, handleConfirmAddItem, handleCancelAddItem]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -1270,7 +1275,30 @@ export default function MovementDetails() {
           setShowConfirmDialog(open);
         }}
       >
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent 
+          className="sm:max-w-[600px]"
+          onKeyDown={(e) => {
+            console.log('DialogContent keydown:', e.key, 'isSelectOpen:', isSelectOpen);
+            
+            // Ignore if Select dropdown is open
+            if (isSelectOpen) {
+              console.log('Select is open, ignoring keydown');
+              return;
+            }
+            
+            if (e.key === 'Enter') {
+              console.log('Enter pressed in DialogContent, confirming...');
+              e.preventDefault();
+              e.stopPropagation();
+              handleConfirmAddItem();
+            } else if (e.key === 'Escape') {
+              console.log('Escape pressed in DialogContent, canceling...');
+              e.preventDefault();
+              e.stopPropagation();
+              handleCancelAddItem();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="text-2xl">Confirmar Adição de Item</DialogTitle>
             <DialogDescription>
