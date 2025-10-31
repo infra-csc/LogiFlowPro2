@@ -602,6 +602,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/requests/:id/duplicate", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { eventId, area, notes } = req.body;
+      
+      if (!eventId || !area) {
+        return res.status(400).json({ error: "Event and area are required" });
+      }
+
+      // Fetch original request
+      const originalRequest = await storage.getMaterialRequest(req.params.id);
+      if (!originalRequest) {
+        return res.status(404).json({ error: "Original request not found" });
+      }
+
+      // Fetch event to validate request window
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+
+      // Validate request window if it exists
+      if (event.requestWindowStart && event.requestWindowEnd) {
+        const now = new Date();
+        const windowStart = new Date(event.requestWindowStart);
+        const windowEnd = new Date(event.requestWindowEnd);
+        
+        if (now < windowStart) {
+          return res.status(400).json({ 
+            error: "Requisições para este evento ainda não estão permitidas",
+            windowStart: windowStart.toISOString(),
+            windowEnd: windowEnd.toISOString()
+          });
+        }
+        
+        if (now > windowEnd) {
+          return res.status(400).json({ 
+            error: "O período de requisição para este evento já foi encerrado",
+            windowStart: windowStart.toISOString(),
+            windowEnd: windowEnd.toISOString()
+          });
+        }
+      }
+
+      // Create new request
+      const newRequest = await storage.createMaterialRequest({
+        eventId,
+        area,
+        notes,
+        status: "draft",
+        requestedBy: req.user?.id || "sistema",
+      });
+
+      // Fetch original items
+      const originalItems = await storage.getRequestItems(req.params.id);
+
+      // Copy items without approval data
+      for (const item of originalItems) {
+        await storage.createRequestItem({
+          requestId: newRequest.id,
+          productId: item.productId,
+          kitId: item.kitId,
+          quantity: item.quantity,
+          notes: item.notes,
+          approvalStatus: "pending",
+          kitParameters: item.kitParameters,
+        });
+      }
+
+      res.status(201).json(newRequest);
+    } catch (error) {
+      console.error("Error duplicating request:", error);
+      res.status(500).json({ error: "Failed to duplicate request" });
+    }
+  });
+
   // Request Items
   app.get("/api/requests/:id/items", async (req, res) => {
     try {
