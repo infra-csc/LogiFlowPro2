@@ -328,8 +328,15 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
               name="tripIds"
               render={({ field }) => {
                 const selectedTripIds = field.value || [];
-                const selectedTrips = trips.filter(t => selectedTripIds.includes(t.id));
-                const unselectedTrips = trips.filter(t => !selectedTripIds.includes(t.id));
+                const selectedEventIds = form.watch('eventIds') || [];
+                
+                // Filter trips: if events are selected, only show trips from those events
+                const filteredTrips = selectedEventIds.length > 0
+                  ? trips.filter(t => selectedEventIds.includes(t.eventId))
+                  : trips;
+                
+                const selectedTrips = filteredTrips.filter(t => selectedTripIds.includes(t.id));
+                const unselectedTrips = filteredTrips.filter(t => !selectedTripIds.includes(t.id));
 
                 const handleTripSelect = (tripId: string) => {
                   const newIds = [...selectedTripIds, tripId];
@@ -341,32 +348,41 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                   field.onChange(newIds);
                 };
 
+                // Helper to get event name for a trip
+                const getEventName = (trip: Trip) => {
+                  const event = events.find(e => e.id === trip.eventId);
+                  return event?.name || 'Evento não encontrado';
+                };
+
                 return (
                   <FormItem>
                     <FormLabel>Viagens (Opcional)</FormLabel>
                     <div className="space-y-2">
                       {selectedTrips.length > 0 && (
                         <div className="flex flex-wrap gap-2">
-                          {selectedTrips.map((trip) => (
-                            <Badge
-                              key={trip.id}
-                              variant="secondary"
-                              className="gap-1 pr-1"
-                              data-testid={`badge-trip-${trip.id}`}
-                            >
-                              {trip.description || `Viagem ${trip.id.substring(0, 8)}`}
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-4 w-4 p-0 hover:bg-transparent"
-                                onClick={() => handleTripRemove(trip.id)}
-                                data-testid={`button-remove-trip-${trip.id}`}
+                          {selectedTrips.map((trip) => {
+                            const eventName = getEventName(trip);
+                            return (
+                              <Badge
+                                key={trip.id}
+                                variant="secondary"
+                                className="gap-1 pr-1"
+                                data-testid={`badge-trip-${trip.id}`}
                               >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </Badge>
-                          ))}
+                                {eventName} - {trip.description || `Viagem ${trip.id.substring(0, 8)}`}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-4 w-4 p-0 hover:bg-transparent"
+                                  onClick={() => handleTripRemove(trip.id)}
+                                  data-testid={`button-remove-trip-${trip.id}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </Badge>
+                            );
+                          })}
                         </div>
                       )}
                       {unselectedTrips.length > 0 && (
@@ -380,17 +396,25 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {unselectedTrips.map((trip) => (
-                              <SelectItem key={trip.id} value={trip.id}>
-                                {trip.description || `Viagem ${trip.id.substring(0, 8)}`}
-                              </SelectItem>
-                            ))}
+                            {unselectedTrips.map((trip) => {
+                              const eventName = getEventName(trip);
+                              return (
+                                <SelectItem key={trip.id} value={trip.id}>
+                                  {eventName} - {trip.description || `Viagem ${trip.id.substring(0, 8)}`}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       )}
                       {unselectedTrips.length === 0 && selectedTrips.length > 0 && (
                         <p className="text-sm text-muted-foreground">
                           Todas as viagens disponíveis foram selecionadas
+                        </p>
+                      )}
+                      {selectedEventIds.length > 0 && filteredTrips.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          Nenhuma viagem disponível para os eventos selecionados
                         </p>
                       )}
                     </div>
@@ -403,26 +427,44 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
             <FormField
               control={form.control}
               name="loadingOrderId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ordem de Carregamento (Opcional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-loading-order">
-                        <SelectValue placeholder="Selecione uma ordem (opcional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {approvedOrders.map((order) => (
-                        <SelectItem key={order.id} value={order.id}>
-                          {order.orderNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const selectedEventIds = form.watch('eventIds') || [];
+                
+                // Filter loading orders: if events are selected, only show orders from those events
+                const filteredOrders = selectedEventIds.length > 0
+                  ? approvedOrders.filter(order => selectedEventIds.includes(order.eventId))
+                  : approvedOrders;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Ordem de Carregamento (Opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-loading-order">
+                          <SelectValue placeholder="Selecione uma ordem (opcional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {filteredOrders.map((order) => {
+                          const event = events.find(e => e.id === order.eventId);
+                          const eventName = event?.name || 'Evento não encontrado';
+                          return (
+                            <SelectItem key={order.id} value={order.id}>
+                              {eventName} - {order.orderNumber}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {selectedEventIds.length > 0 && filteredOrders.length === 0 && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Nenhuma ordem de carregamento aprovada para os eventos selecionados
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
