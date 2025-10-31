@@ -2,7 +2,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy } from "lucide-react";
 import { useState, useMemo } from "react";
 import {
   AlertDialog,
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AddItemDialog } from "@/components/add-item-dialog";
+import { DuplicateRequestDialog } from "@/components/duplicate-request-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge as SharedStatusBadge } from "@/components/status-badge";
@@ -76,6 +77,7 @@ export default function RequestDetails() {
   const { toast } = useToast();
   const [showAddItem, setShowAddItem] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
 
   const { data: request, isLoading } = useQuery<MaterialRequest>({
     queryKey: ["/api/requests", id],
@@ -258,6 +260,16 @@ export default function RequestDetails() {
         </div>
 
         <div className="flex gap-2">
+          {items.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowDuplicateDialog(true)}
+              data-testid="button-duplicate-request"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Duplicar
+            </Button>
+          )}
           {canEdit && (
             <>
               <Button
@@ -470,6 +482,15 @@ export default function RequestDetails() {
         open={showAddItem}
         onOpenChange={setShowAddItem}
         requestId={id!}
+      />
+
+      {/* Duplicate Request Dialog */}
+      <DuplicateRequestDialog
+        open={showDuplicateDialog}
+        onOpenChange={setShowDuplicateDialog}
+        requestId={id!}
+        currentArea={request.area}
+        itemCount={items.length}
       />
     </div>
   );
