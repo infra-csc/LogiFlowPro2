@@ -274,7 +274,7 @@ export default function RequestDetails() {
                 data-testid="button-submit-approval"
               >
                 <Send className="h-4 w-4 mr-2" />
-                Submeter para Aprovação
+                Enviar
               </Button>
             </>
           )}
@@ -344,6 +344,14 @@ export default function RequestDetails() {
               </span>
             </div>
           )}
+          {request.notes && (
+            <div className="space-y-2 pt-2 border-t">
+              <span className="text-sm text-muted-foreground">Observações:</span>
+              <p className="text-sm" data-testid="text-notes">
+                {request.notes}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -403,6 +411,12 @@ export default function RequestDetails() {
                         <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-sm">
                           <p className="font-medium text-destructive">Motivo da rejeição:</p>
                           <p className="text-destructive/90 mt-1">{item.rejectionReason}</p>
+                        </div>
+                      )}
+                      {item.notes && (
+                        <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
+                          <p className="font-medium text-muted-foreground">Observações:</p>
+                          <p className="mt-1" data-testid={`text-item-notes-${item.id}`}>{item.notes}</p>
                         </div>
                       )}
                     </div>

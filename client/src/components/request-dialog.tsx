@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
   const [formData, setFormData] = useState({
     eventId: request?.eventId || "",
     area: request?.area || "",
+    notes: request?.notes || "",
   });
 
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
@@ -148,6 +150,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     const submitData: InsertMaterialRequest = {
       eventId: formData.eventId,
       area: formData.area,
+      notes: formData.notes || undefined,
       status: "draft",
       requestedBy: user?.id || "sistema",
     };
@@ -230,6 +233,18 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
               onChange={(e) => setFormData({ ...formData, area: e.target.value })}
               placeholder="Ex: Cenografia Palco Principal"
               data-testid="input-area"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Observações</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Observações sobre a requisição (opcional)"
+              data-testid="input-notes"
+              rows={3}
             />
           </div>
 

@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +35,7 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
   const [productId, setProductId] = useState("");
   const [kitId, setKitId] = useState("");
   const [quantity, setQuantity] = useState("1");
+  const [notes, setNotes] = useState("");
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -46,7 +48,7 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { requestId: string; productId?: string; kitId?: string; quantity: number }) => {
+    mutationFn: async (data: { requestId: string; productId?: string; kitId?: string; quantity: number; notes?: string }) => {
       return await apiRequest("POST", `/api/requests/${requestId}/items`, data);
     },
     onSuccess: () => {
@@ -71,6 +73,7 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
     setProductId("");
     setKitId("");
     setQuantity("1");
+    setNotes("");
     setItemType("product");
   };
 
@@ -110,6 +113,7 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
       productId: itemType === "product" ? productId : undefined,
       kitId: itemType === "kit" ? kitId : undefined,
       quantity: qty,
+      notes: notes || undefined,
     });
   };
 
@@ -158,6 +162,18 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
                   data-testid="input-quantity"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Observações</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Observações sobre o item (opcional)"
+                  data-testid="input-notes"
+                  rows={2}
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="kit" className="space-y-4 mt-4">
@@ -186,6 +202,18 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   data-testid="input-kit-quantity"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kit-notes">Observações</Label>
+                <Textarea
+                  id="kit-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Observações sobre o item (opcional)"
+                  data-testid="input-kit-notes"
+                  rows={2}
                 />
               </div>
             </TabsContent>
