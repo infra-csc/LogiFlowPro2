@@ -665,12 +665,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const item of originalItems) {
         await storage.createRequestItem({
           requestId: newRequest.id,
-          productId: item.productId,
-          kitId: item.kitId,
+          productId: item.productId || undefined,
+          kitId: item.kitId || undefined,
           quantity: item.quantity,
-          notes: item.notes,
+          notes: item.notes || undefined,
           approvalStatus: "pending",
-          kitParameters: item.kitParameters,
+          kitParameters: item.kitParameters as any,
         });
       }
 
