@@ -565,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check ownership (only owner can edit their draft requests)
-      if (currentRequest.status === "draft" && !canEditResource(req.user, currentRequest.requestedBy)) {
+      if (currentRequest.status === "draft" && !(await canEditResource(req.user, currentRequest.requestedBy))) {
         return res.status(403).json({ 
           error: "Acesso negado",
           message: "Apenas o criador pode editar esta requisição"
@@ -629,7 +629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check ownership (only owner can delete their draft requests)
-      if (!canEditResource(req.user, currentRequest.requestedBy)) {
+      if (!(await canEditResource(req.user, currentRequest.requestedBy))) {
         return res.status(403).json({ 
           error: "Acesso negado",
           message: "Apenas o criador pode excluir esta requisição"
@@ -1021,7 +1021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check ownership (only owner can edit their trips)
-      if (!canEditResource(req.user, currentTrip.createdBy)) {
+      if (!(await canEditResource(req.user, currentTrip.createdBy))) {
         return res.status(403).json({ 
           error: "Acesso negado",
           message: "Apenas o criador pode editar esta viagem"
@@ -1361,7 +1361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check ownership (only owner can edit their orders)
-      if (!canEditResource(req.user, order.createdBy)) {
+      if (!(await canEditResource(req.user, order.createdBy))) {
         return res.status(403).json({ 
           error: "Acesso negado",
           message: "Apenas o criador pode editar esta ordem"
@@ -1588,7 +1588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check ownership (only owner can edit their movements in created status)
-      if (movement.status === "created" && !canEditResource(req.user, movement.createdBy)) {
+      if (movement.status === "created" && !(await canEditResource(req.user, movement.createdBy))) {
         return res.status(403).json({ 
           error: "Acesso negado",
           message: "Apenas o criador pode editar esta movimentação"

@@ -1,15 +1,18 @@
 import type { Request, Response, NextFunction } from "express";
 import type { User } from "@shared/schema";
+import { db } from "./db";
+import { userRoles, roles } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Check if user has ownership or admin rights over a resource
  */
-export function canEditResource(user: User | undefined, resourceCreatorId: string | null): boolean {
+export async function canEditResource(user: User | undefined, resourceCreatorId: string | null): Promise<boolean> {
   if (!user) return false;
   
-  // Admin can edit everything
-  // TODO: Implement proper role checking when roles are fully integrated
-  // For now, check if user has admin-like permissions
+  // Check if user is admin - admins can edit everything
+  const isUserAdmin = await isAdmin(user);
+  if (isUserAdmin) return true;
   
   // Owner can edit their own resources
   if (resourceCreatorId && user.id === resourceCreatorId) {
@@ -23,7 +26,7 @@ export function canEditResource(user: User | undefined, resourceCreatorId: strin
  * Check if user can delete a resource
  * Currently same logic as edit, but kept separate for future flexibility
  */
-export function canDeleteResource(user: User | undefined, resourceCreatorId: string | null): boolean {
+export async function canDeleteResource(user: User | undefined, resourceCreatorId: string | null): Promise<boolean> {
   return canEditResource(user, resourceCreatorId);
 }
 
@@ -42,7 +45,8 @@ export function checkOwnership(
 
       const creatorId = await getResourceCreator(req);
       
-      if (!canEditResource(req.user, creatorId)) {
+      const canEdit = await canEditResource(req.user, creatorId);
+      if (!canEdit) {
         return res.status(403).json({ 
           error: "Acesso negado",
           message: "Você não tem permissão para editar este recurso. Apenas o criador ou administradores podem realizar esta ação."
@@ -59,14 +63,25 @@ export function checkOwnership(
 
 /**
  * Check if user has admin role
- * TODO: Integrate with actual role system
  */
 export async function isAdmin(user: User | undefined): Promise<boolean> {
   if (!user) return false;
   
-  // TODO: Query user roles from database
-  // For now, return false - ownership will be the primary check
-  return false;
+  try {
+    // Query user roles from database
+    const userRoleRecords = await db
+      .select({ roleName: roles.name })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(eq(userRoles.userId, user.id))
+      .execute();
+    
+    // Check if any of the user's roles is 'admin'
+    return userRoleRecords.some(record => record.roleName === 'admin');
+  } catch (error) {
+    console.error("Error checking admin status:", error);
+    return false;
+  }
 }
 
 /**

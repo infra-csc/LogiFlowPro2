@@ -6,6 +6,9 @@ EventFlow Logistics is a web application designed to streamline event material m
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (2025-11-01)
+- **Ownership-Based Permissions (Phase 1)**: Implemented resource ownership control where only the creator (or admins) can edit/delete resources. Converted requestedBy/createdBy fields from text to FK references to users.id. Created server/ownership.ts with canEditResource/canDeleteResource utilities that check admin role OR resource ownership. Updated all POST routes to auto-populate creator from authenticated user. Added ownership checks to PATCH/DELETE routes for requests, trips, loading orders, and movements. Updated frontend request-details page to show/hide edit/delete buttons based on ownership verification.
+
 ## System Architecture
 
 ### UI/UX Decisions
