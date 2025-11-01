@@ -48,6 +48,7 @@ import {
   ObjectNotFoundError,
 } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
+import { checkOwnership, canEditResource } from "./ownership";
 
 // Legacy function - now replaced by POST /api/permissions/populate endpoint
 // Keeping minimal initialization for backward compatibility
@@ -503,10 +504,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/requests", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
       const data = insertMaterialRequestSchema.parse(req.body);
       
+      // Set requestedBy to current user
+      const requestData = {
+        ...data,
+        requestedBy: req.user!.id
+      };
+      
       // Validate request window if event has it configured
-      const event = await storage.getEvent(data.eventId);
+      const event = await storage.getEvent(requestData.eventId);
       if (!event) {
         return res.status(404).json({ error: "Event not found" });
       }
@@ -534,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const request = await storage.createMaterialRequest(data);
+      const request = await storage.createMaterialRequest(requestData);
       res.status(201).json(request);
     } catch (error) {
       res.status(400).json({ error: "Invalid request data" });
@@ -543,17 +554,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/requests/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
+      // Get the current request to check ownership
+      const currentRequest = await storage.getMaterialRequest(req.params.id);
+      if (!currentRequest) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Check ownership (only owner can edit their draft requests)
+      if (currentRequest.status === "draft" && !canEditResource(req.user, currentRequest.requestedBy)) {
+        return res.status(403).json({ 
+          error: "Acesso negado",
+          message: "Apenas o criador pode editar esta requisição"
+        });
+      }
+
       const data = insertMaterialRequestSchema.partial().parse(req.body);
       
       // If status is being changed to pending_approval, validate request window and set submittedAt
       const updateData: any = { ...data };
       if (data.status === "pending_approval") {
-        // Get the current request to find its event
-        const currentRequest = await storage.getMaterialRequest(req.params.id);
-        if (!currentRequest) {
-          return res.status(404).json({ error: "Request not found" });
-        }
-        
         // Validate request window if event has it configured
         const event = await storage.getEvent(currentRequest.eventId);
         if (!event) {
@@ -595,6 +618,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/requests/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
+      // Get the current request to check ownership
+      const currentRequest = await storage.getMaterialRequest(req.params.id);
+      if (!currentRequest) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Check ownership (only owner can delete their draft requests)
+      if (!canEditResource(req.user, currentRequest.requestedBy)) {
+        return res.status(403).json({ 
+          error: "Acesso negado",
+          message: "Apenas o criador pode excluir esta requisição"
+        });
+      }
+
       await storage.deleteMaterialRequest(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -934,9 +975,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/trips", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
       const { destinations, ...tripData } = req.body;
       const data = insertTripSchema.parse(tripData);
-      const trip = await storage.createTrip(data);
+      
+      // Set createdBy to current user
+      const tripDataWithOwner = {
+        ...data,
+        createdBy: req.user!.id
+      };
+      
+      const trip = await storage.createTrip(tripDataWithOwner);
       
       // Save destinations if provided
       if (destinations && Array.isArray(destinations) && destinations.length > 0) {
@@ -958,6 +1010,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/trips/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
+      // Get the current trip to check ownership
+      const currentTrip = await storage.getTrip(req.params.id);
+      if (!currentTrip) {
+        return res.status(404).json({ error: "Trip not found" });
+      }
+
+      // Check ownership (only owner can edit their trips)
+      if (!canEditResource(req.user, currentTrip.createdBy)) {
+        return res.status(403).json({ 
+          error: "Acesso negado",
+          message: "Apenas o criador pode editar esta viagem"
+        });
+      }
+
       const { destinations, ...tripData } = req.body;
       const data = insertTripSchema.partial().parse(tripData);
       const trip = await storage.updateTrip(req.params.id, data);
@@ -1186,12 +1256,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/loading-orders", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
       const { consolidateLoadingOrderItems } = await import("./loadingOrderUtils");
       
       const orderData = insertLoadingOrderSchema.parse(req.body);
       const requestIds: string[] = req.body.requestIds || [];
 
-      const order = await storage.createLoadingOrder(orderData);
+      // Set createdBy to current user
+      const orderDataWithOwner = {
+        ...orderData,
+        createdBy: req.user!.id
+      };
+
+      const order = await storage.createLoadingOrder(orderDataWithOwner);
 
       for (const requestId of requestIds) {
         await storage.createLoadingOrderRequest({
@@ -1271,9 +1351,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/loading-orders/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
       const order = await storage.getLoadingOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Loading order not found" });
+      }
+
+      // Check ownership (only owner can edit their orders)
+      if (!canEditResource(req.user, order.createdBy)) {
+        return res.status(403).json({ 
+          error: "Acesso negado",
+          message: "Apenas o criador pode editar esta ordem"
+        });
       }
 
       // Cannot edit completed or cancelled orders
@@ -1423,6 +1515,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/movements", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
       const data = insertMovementWithEventsSchema.parse(req.body);
       
       // Validate loading order if provided
@@ -1465,8 +1561,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sequence = String(existingToday.length + 1).padStart(3, '0');
       const movementNumber = `MVT-${dateStr}-${sequence}`;
       
-      // Get current user
-      const createdBy = req.user?.name || "System";
+      // Set createdBy to current user ID
+      const createdBy = req.user!.id;
       
       const movement = await storage.createMovementWithEvents({
         ...data,
@@ -1482,9 +1578,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/movements/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
       const movement = await storage.getMovement(req.params.id);
       if (!movement) {
         return res.status(404).json({ error: "Movement not found" });
+      }
+
+      // Check ownership (only owner can edit their movements in created status)
+      if (movement.status === "created" && !canEditResource(req.user, movement.createdBy)) {
+        return res.status(403).json({ 
+          error: "Acesso negado",
+          message: "Apenas o criador pode editar esta movimentação"
+        });
       }
 
       const data = insertMovementSchema.partial().parse(req.body);
