@@ -259,9 +259,10 @@ export default function RequestDetails() {
     );
   }
 
-  // Check if user can edit (must be owner and status must be draft)
+  // Check if user can edit (must be owner or admin, and status must be draft)
   const isOwner = user && request.requestedBy === user.id;
-  const canEdit = request.status === "draft" && isOwner;
+  const isAdmin = user && (user as any).isAdmin === true;
+  const canEdit = request.status === "draft" && (isOwner || isAdmin);
 
   const handleDelete = () => {
     deleteMutation.mutate();

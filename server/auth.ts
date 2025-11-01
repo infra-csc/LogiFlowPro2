@@ -172,10 +172,39 @@ export function setupAuth(app: Express): void {
   });
 
   // Get current user
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
-    res.json(req.user);
+    
+    try {
+      // Get user roles
+      const { db } = await import("./db");
+      const { userRoles, roles } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const userRoleRecords = await db
+        .select({ roleName: roles.name })
+        .from(userRoles)
+        .innerJoin(roles, eq(userRoles.roleId, roles.id))
+        .where(eq(userRoles.userId, req.user!.id))
+        .execute();
+      
+      const roleNames = userRoleRecords.map(r => r.roleName);
+      
+      res.json({
+        ...req.user,
+        roles: roleNames,
+        isAdmin: roleNames.includes('admin')
+      });
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      // Return user without roles if there's an error
+      res.json({
+        ...req.user,
+        roles: [],
+        isAdmin: false
+      });
+    }
   });
 }
