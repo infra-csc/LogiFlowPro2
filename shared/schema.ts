@@ -325,9 +325,9 @@ export const materialRequests = pgTable("material_requests", {
   eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   area: text("area").notNull(),
   status: requestStatusEnum("status").notNull().default("draft"),
-  requestedBy: text("requested_by").notNull(),
+  requestedBy: varchar("requested_by").notNull().references(() => users.id),
   submittedAt: timestamp("submitted_at"),
-  approvedBy: text("approved_by"),
+  approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
   rejectionReason: text("rejection_reason"),
   cutoffTime: timestamp("cutoff_time"),
@@ -517,6 +517,7 @@ export const trips = pgTable("trips", {
   actualEnd: timestamp("actual_end"),
   
   status: tripStatusEnum("status").notNull().default("planned"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });
@@ -562,7 +563,7 @@ export const loadingOrders = pgTable("loading_orders", {
   actualEndTime: timestamp("actual_end_time"),
   loadingDate: timestamp("loading_date"),
   unloadingDate: timestamp("unloading_date"),
-  createdBy: text("created_by").notNull(),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
@@ -622,7 +623,7 @@ export const movements = pgTable("movements", {
   pausedAt: timestamp("paused_at"),
   completedAt: timestamp("completed_at"),
   totalDuration: integer("total_duration"), // em minutos
-  createdBy: text("created_by").notNull(),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
   // Approval fields
   approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
