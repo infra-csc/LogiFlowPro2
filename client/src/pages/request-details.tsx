@@ -22,6 +22,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge as SharedStatusBadge } from "@/components/status-badge";
 import type { Event } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 type RequestItem = {
   id: string;
@@ -76,6 +77,7 @@ export default function RequestDetails() {
   const { id } = useParams();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showAddItem, setShowAddItem] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
@@ -257,7 +259,9 @@ export default function RequestDetails() {
     );
   }
 
-  const canEdit = request.status === "draft";
+  // Check if user can edit (must be owner and status must be draft)
+  const isOwner = user && request.requestedBy === user.id;
+  const canEdit = request.status === "draft" && isOwner;
 
   const handleDelete = () => {
     deleteMutation.mutate();
