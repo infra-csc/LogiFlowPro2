@@ -1473,6 +1473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const movements = await storage.getMovements();
       res.json(movements);
     } catch (error) {
+      console.error("Failed to fetch movements:", error);
       res.status(500).json({ error: "Failed to fetch movements" });
     }
   });
