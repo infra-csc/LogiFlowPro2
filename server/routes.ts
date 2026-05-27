@@ -48,7 +48,7 @@ import {
   ObjectNotFoundError,
 } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { checkOwnership, canEditResource } from "./ownership";
+import { checkOwnership, canEditResource, isAdmin } from "./ownership";
 
 // Legacy function - now replaced by POST /api/permissions/populate endpoint
 // Keeping minimal initialization for backward compatibility
@@ -352,9 +352,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/suppliers/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+      if (!(await isAdmin(req.user))) {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Apenas administradores podem excluir fornecedores"
+        });
+      }
       await storage.deleteSupplier(req.params.id);
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting supplier:", error);
       res.status(500).json({ error: "Failed to delete supplier" });
     }
   });
@@ -564,8 +574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Request not found" });
       }
 
-      // Check ownership (only owner can edit their draft requests)
-      if (currentRequest.status === "draft" && !(await canEditResource(req.user, currentRequest.requestedBy))) {
+      // Check ownership - owner or admin can edit; status-changing actions
+      // (approve/reject) have their own dedicated routes with separate auth
+      if (!(await canEditResource(req.user, currentRequest.requestedBy))) {
         return res.status(403).json({ 
           error: "Acesso negado",
           message: "Apenas o criador pode editar esta requisição"
@@ -573,7 +584,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const data = insertMaterialRequestSchema.partial().parse(req.body);
-      
+
+      // Block privileged status transitions on this generic edit route.
+      // Only the owner self-submitting (draft -> pending_approval) is allowed.
+      // Approve/reject must go through their dedicated routes.
+      const ALLOWED_STATUSES_HERE = new Set(["draft", "pending_approval"]);
+      if (data.status !== undefined && !ALLOWED_STATUSES_HERE.has(data.status)) {
+        return res.status(403).json({
+          error: "Transição de status não permitida",
+          message: "Use as rotas de aprovação/rejeição para alterar este status"
+        });
+      }
+
       // If status is being changed to pending_approval, validate request window and set submittedAt
       const updateData: any = { ...data };
       if (data.status === "pending_approval") {
@@ -734,6 +756,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/requests/:id/items", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
+      const parentRequest = await storage.getMaterialRequest(req.params.id);
+      if (!parentRequest) {
+        return res.status(404).json({ error: "Requisição não encontrada" });
+      }
+
+      if (!(await canEditResource(req.user, parentRequest.requestedBy))) {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Apenas o criador da requisição pode adicionar itens"
+        });
+      }
+
       const data = insertRequestItemSchema.parse(req.body);
       // Force requestId to match the URL parameter
       const item = await storage.createRequestItem({
@@ -742,15 +780,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.status(201).json(item);
     } catch (error) {
+      console.error("Error creating request item:", error);
       res.status(400).json({ error: "Invalid item data" });
     }
   });
 
   app.delete("/api/request-items/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
+      // Get item -> parent request -> check ownership of the parent request
+      const item = await storage.getRequestItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ error: "Item não encontrado" });
+      }
+
+      const parentRequest = await storage.getMaterialRequest(item.requestId);
+      if (!parentRequest) {
+        return res.status(404).json({ error: "Requisição não encontrada" });
+      }
+
+      if (!(await canEditResource(req.user, parentRequest.requestedBy))) {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Apenas o criador da requisição pode excluir seus itens"
+        });
+      }
+
       await storage.deleteRequestItem(req.params.id);
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting request item:", error);
       res.status(500).json({ error: "Failed to delete item" });
     }
   });
@@ -899,9 +961,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/drivers/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+      if (!(await isAdmin(req.user))) {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Apenas administradores podem excluir motoristas"
+        });
+      }
       await storage.deleteDriver(req.params.id);
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting driver:", error);
       res.status(500).json({ error: "Failed to delete driver" });
     }
   });

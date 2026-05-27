@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+  <html lang="pt-BR">
+  <head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4; margin: 2cm; }
+    body { font-family: Arial, sans-serif; font-size: 11pt; color: #1a1a2e; line-height: 1.6; }
+    h1 { font-size: 22pt; color: #0f3460; border-bottom: 3px solid #e94560; padding-bottom: 8px; margin-bottom: 6px; }
+    h2 { font-size: 15pt; color: #0f3460; margin-top: 22px; margin-bottom: 4px; border-left: 5px solid #e94560; padding-left: 10px; }
+    h3 { font-size: 12pt; color: #16213e; margin-top: 14px; margin-bottom: 2px; }
+    p { margin: 6px 0 10px 0; text-align: justify; }
+    ul { margin: 4px 0 10px 18px; }
+    li { margin-bottom: 4px; }
+    .subtitle { color: #555; font-size: 12pt; margin-top: 2px; margin-bottom: 20px; }
+    .box { background: #f0f4ff; border-left: 4px solid #0f3460; padding: 10px 14px; margin: 12px 0; border-radius: 4px; }
+    .flow { background: #fff8f0; border-left: 4px solid #e94560; padding: 10px 14px; margin: 12px 0; border-radius: 4px; }
+    .tip { background: #f0fff4; border-left: 4px solid #27ae60; padding: 10px 14px; margin: 12px 0; border-radius: 4px; }
+    .page-break { page-break-before: always; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10pt; }
+    th { background: #0f3460; color: white; padding: 7px 10px; text-align: left; }
+    td { padding: 6px 10px; border-bottom: 1px solid #ddd; }
+    tr:nth-child(even) td { background: #f5f7ff; }
+  </style>
+  </head>
+  <body>
+
+  <h1>EventFlow Logistics</h1>
+  <p class="subtitle">Como o sistema funciona — Guia completo de lógica operacional</p>
+
+  <h2>1. A Ideia Central do Sistema</h2>
+  <p>O EventFlow é organizado ao redor de <strong>eventos</strong>. Um evento pode ser um show, uma feira, uma exposição ou qualquer acontecimento que precise de materiais e logística. Tudo no sistema — pedidos, carregamentos, viagens, movimentações de estoque — está ligado a um evento específico.</p>
+  <p>A grande vantagem dessa abordagem é que dá para saber, a qualquer momento, quais materiais foram pedidos para qual evento, quem os separou, em qual caminhão foram, e se voltaram corretamente ao estoque depois.</p>
+  <div class="box">
+  <strong>Resumo da lógica central:</strong> Evento → Pedido de materiais → Aprovação → Separação no armazém → Carregamento no veículo → Transporte → Devolução ao estoque.
+  </div>
+
+  <h2>2. Cadastro de Eventos</h2>
+  <p>Antes de qualquer coisa, o evento precisa existir no sistema. No cadastro, são definidas três datas importantes:</p>
+  <ul>
+    <li><strong>Data de montagem</strong> — quando a equipe começa a montar o cenário e precisa dos materiais no local.</li>
+    <li><strong>Data do evento</strong> — quando o evento acontece de fato.</li>
+    <li><strong>Data de desmontagem</strong> — quando tudo precisa ser recolhido e devolvido ao armazém.</li>
+  </ul>
+  <p>Além das datas, define-se um <strong>prazo de corte</strong>: é o último dia em que as equipes podem fazer pedidos de materiais para esse evento. Após esse prazo, o sistema bloqueia novos pedidos automaticamente. Isso evita surpresas de última hora para o armazém.</p>
+
+  <h2>3. Pedidos de Materiais</h2>
+  <p>Com o evento criado, as equipes (cenografia, produção, operação, etc.) fazem seus <strong>pedidos de materiais</strong>. Cada pedido diz: "Para o evento X, na área Y, eu preciso dos seguintes itens."</p>
+
+  <h3>Fluxo de aprovação do pedido</h3>
+  <div class="flow">
+    <strong>1. Rascunho</strong> — O solicitante monta a lista de itens e ainda pode editar livremente.<br>
+    <strong>2. Pendente</strong> — O pedido é enviado para aprovação. Não pode mais ser editado pelo solicitante.<br>
+    <strong>3. Aprovado / Rejeitado</strong> — O responsável analisa e decide. Pode aprovar tudo, aprovar apenas alguns itens (aprovação parcial) ou rejeitar tudo.
+  </div>
+  <p>Na aprovação parcial, o aprovador entra item a item e decide quais quantidades liberar. Se um item for reduzido ou negado, o solicitante vê claramente o que foi aprovado versus o que foi pedido.</p>
+
+  <h2>4. Produtos e Kits (Materiais do Armazém)</h2>
+  <p>O sistema mantém um catálogo de todos os produtos disponíveis. Cada produto tem peso, dimensões, quantidade em estoque e tipo de posse (se é próprio, alugado ou de terceiros).</p>
+  <p>Além dos produtos individuais, existem os <strong>kits</strong>. Um kit é uma combinação de produtos. Por exemplo, "Kit Palco A" pode conter 10 estruturas metálicas, 4 painéis de LED e 2 suportes. Quando alguém pede um "Kit Palco A", o sistema automaticamente expande isso nos itens individuais na hora de montar a lista de separação.</p>
+
+  <div class="tip">
+  <strong>Variantes e equivalências:</strong> O sistema também permite cadastrar produtos equivalentes. Se um produto de um fornecedor for idêntico ao produto principal, eles podem ser vinculados. Isso ajuda na rastreabilidade e na substituição quando necessário.
+  </div>
+
+  <div class="page-break"></div>
+
+  <h2>5. Ordens de Carregamento</h2>
+  <p>Depois que os pedidos são aprovados, eles precisam sair do armazém. É aqui que entra a <strong>Ordem de Carregamento</strong>.</p>
+  <p>A ordem de carregamento consolida todos os pedidos aprovados de um evento em uma única <strong>lista de separação</strong> (picking list). O armazenista usa essa lista para coletar os itens nas prateleiras e deixá-los prontos para embarque.</p>
+  <p>Se dois pedidos diferentes pediram o mesmo produto, eles aparecem agrupados na lista, mostrando a quantidade total e de onde cada parte vem. O sistema acompanha o progresso da separação em tempo real — qual percentual dos itens já foi separado.</p>
+
+  <h3>Otimização de carregamento</h3>
+  <p>O sistema tem uma funcionalidade inteligente que analisa o peso e o volume de todos os itens e sugere a <strong>ordem ideal de carregamento</strong> no veículo — quais itens vão primeiro (mais pesados e maiores no fundo), quais ficam por cima. Isso maximiza o uso do espaço e evita danos aos materiais.</p>
+
+  <h2>6. Transporte e Viagens</h2>
+  <p>Com os materiais separados, é hora de planejar o transporte. O sistema gerencia <strong>viagens</strong> com as seguintes informações:</p>
+  <ul>
+    <li>Qual veículo será usado (com suas capacidades de peso e volume)</li>
+    <li>Qual motorista conduzirá</li>
+    <li>Quais os destinos e a sequência de paradas</li>
+    <li>Horários previstos de saída e chegada</li>
+  </ul>
+
+  <h3>Otimização de rotas</h3>
+  <p>Para viagens com múltiplas paradas, o sistema calcula automaticamente a <strong>melhor ordem para visitar os destinos</strong>, estimando a distância total, o tempo de viagem e o consumo de combustível. Isso ajuda a economizar tempo e custos de transporte.</p>
+  <p>As viagens podem ser visualizadas em forma de lista ou em um <strong>calendário visual</strong>, facilitando o planejamento semanal.</p>
+
+  <h2>7. Movimentações de Estoque</h2>
+  <p>Cada vez que um produto entra, sai ou muda de lugar no armazém, isso é registrado como uma <strong>movimentação</strong>. O sistema distingue três tipos principais:</p>
+
+  <table>
+    <tr><th>Tipo</th><th>O que significa</th><th>Exemplo</th></tr>
+    <tr><td>Entrada</td><td>Produto chegando ao armazém</td><td>Devolução após evento, compra nova</td></tr>
+    <tr><td>Saída</td><td>Produto saindo do armazém</td><td>Carregamento para evento</td></tr>
+    <tr><td>Transferência interna</td><td>Produto mudando de local dentro do armazém</td><td>Mover da doca A para prateleira B</td></tr>
+  </table>
+
+  <p>Cada tipo de movimentação é configurável e define como afeta os diferentes "contadores" de estoque — o estoque físico (o que realmente está no armazém), o operacional (o que está comprometido para eventos) e o patrimonial (para fins contábeis).</p>
+
+  <h3>Fluxo de aprovação de movimentações sensíveis</h3>
+  <p>Algumas movimentações (como baixas por perda ou descarte de material) requerem aprovação antes de serem confirmadas. O sistema tem um fluxo específico para isso, garantindo controle sobre operações que afetam o patrimônio da empresa.</p>
+
+  <div class="page-break"></div>
+
+  <h2>8. Devoluções</h2>
+  <p>Após o evento, os materiais precisam voltar ao armazém. O módulo de devoluções registra o retorno de cada item, permitindo:</p>
+  <ul>
+    <li>Confirmar quais itens voltaram</li>
+    <li>Registrar itens danificados (com descrição do dano)</li>
+    <li>Registrar perdas (itens que não voltaram)</li>
+    <li>Dar baixa nas quantidades corretas no estoque</li>
+  </ul>
+  <p>Esse rastreamento é fundamental para controle patrimonial e para cobrar responsabilidades em caso de danos ou perdas.</p>
+
+  <h2>9. Simulação e Relatórios</h2>
+  <p>O sistema tem uma funcionalidade poderosa de <strong>simulação de estoque</strong>. Ele olha para todos os eventos futuros, soma todas as necessidades de materiais aprovadas, e compara com o estoque atual. O resultado mostra proativamente:</p>
+  <ul>
+    <li><strong>ADEQUADO</strong> — Tem estoque suficiente para atender o evento.</li>
+    <li><strong>CRÍTICO</strong> — O estoque está baixo, há risco.</li>
+    <li><strong>FALTA</strong> — Não tem estoque suficiente. É necessário providenciar o material.</li>
+  </ul>
+  <p>Isso permite que o time de logística se antecipe a problemas antes que eles aconteçam, em vez de descobrir a falta de material na véspera do evento.</p>
+  <p>Os relatórios podem ser exportados para Excel para análise externa ou apresentações.</p>
+
+  <h2>10. Controle de Acesso e Usuários</h2>
+  <p>O sistema tem um controle rigoroso de quem pode fazer o quê. O processo funciona assim:</p>
+
+  <h3>Cadastro e aprovação</h3>
+  <p>Novos usuários se cadastram, mas só conseguem acessar o sistema após um administrador aprovar o cadastro. Isso evita acessos não autorizados.</p>
+
+  <h3>Papéis e permissões</h3>
+  <p>Cada usuário tem um <strong>papel</strong> (ex: Operador de Armazém, Supervisor, Gestor de Logística, Administrador). Cada papel define o que o usuário pode ver, criar, editar e excluir em cada módulo do sistema.</p>
+
+  <h3>Regra de propriedade</h3>
+  <p>Além das permissões por papel, existe uma regra importante: <strong>cada recurso pertence a quem o criou</strong>. Um pedido criado por Maria só pode ser editado ou excluído pela própria Maria ou por um administrador. Isso evita que pessoas alterem o trabalho dos outros por acidente.</p>
+
+  <h2>11. Notificações</h2>
+  <p>O sistema avisa os usuários sobre eventos importantes através de um sistema de notificações interno. É possível mencionar outros usuários em comentários usando "@nome", e a pessoa mencionada recebe uma notificação. Cada usuário pode configurar quais tipos de notificação deseja receber.</p>
+
+  <h2>12. Importações em Massa</h2>
+  <p>Para facilitar a vida de quem precisa cadastrar muitos dados de uma vez, o sistema aceita importação via <strong>planilha Excel</strong> para:</p>
+  <ul>
+    <li>Cadastro de eventos</li>
+    <li>Cadastro de produtos</li>
+    <li>Planejamento de transporte</li>
+  </ul>
+  <p>O sistema valida os dados antes de importar e mostra um relatório de erros, linha por linha, caso alguma informação esteja incorreta.</p>
+
+  <h2>Resumo Geral do Fluxo</h2>
+  <div class="box">
+  <strong>O ciclo completo de um evento no sistema:</strong><br><br>
+  1. Cadastrar o evento com datas e prazo de corte<br>
+  2. Equipes fazem pedidos de materiais dentro do prazo<br>
+  3. Supervisores aprovam os pedidos (total ou parcialmente)<br>
+  4. Armazém recebe a ordem de carregamento e separa os itens<br>
+  5. Logística planeja a viagem com veículo e motorista<br>
+  6. Materiais são carregados e transportados ao local do evento<br>
+  7. Evento acontece<br>
+  8. Equipe registra a devolução dos materiais, incluindo danos ou perdas<br>
+  9. Estoque é atualizado automaticamente<br>
+  10. Relatórios ficam disponíveis para análise posterior
+  </div>
+
+  </body>
+  </html>

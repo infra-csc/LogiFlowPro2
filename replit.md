@@ -9,6 +9,14 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (2025-11-01)
 - **Ownership-Based Permissions (Phase 1)**: Implemented resource ownership control where only the creator (or admins) can edit/delete resources. Converted requestedBy/createdBy fields from text to FK references to users.id. Created server/ownership.ts with canEditResource/canDeleteResource utilities that check admin role OR resource ownership. Updated all POST routes to auto-populate creator from authenticated user. Added ownership checks to PATCH/DELETE routes for requests, trips, loading orders, and movements. Updated frontend request-details page to show/hide edit/delete buttons based on ownership verification.
 
+## Security Fixes (2026-05-27)
+- **DELETE /api/request-items/:id**: Added authentication check and ownership verification via parent request lookup. Only the request creator (or admin) can delete its items.
+- **DELETE /api/suppliers/:id**: Now requires authentication and admin role.
+- **DELETE /api/drivers/:id**: Now requires authentication and admin role.
+- **PATCH /api/requests/:id**: Removed conditional ownership check (was only enforced for `draft` status). Now always validates owner/admin. Also blocks direct status transitions to approved/rejected — only `draft` and `pending_approval` are allowed here; privileged transitions must go through their dedicated approve/reject routes.
+- **POST /api/requests/:id/items**: Added authentication + ownership check (owner of the parent request or admin only).
+- Added `getRequestItem(id)` to storage layer (interface + implementation) to support parent-request lookup for ownership validation.
+
 ## System Architecture
 
 ### UI/UX Decisions
