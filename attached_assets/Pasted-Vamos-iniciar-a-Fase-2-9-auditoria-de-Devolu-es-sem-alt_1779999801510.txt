@@ -1,0 +1,297 @@
+Vamos iniciar a Fase 2.9 — auditoria de Devoluções, sem alteração de código.
+
+Objetivo:
+Mapear todas as rotas, telas, botões, regras de status, permissões atuais e riscos do módulo de Devoluções antes de aplicar RBAC.
+
+Contexto:
+Já concluímos:
+
+* Fase 2.1: infraestrutura de RBAC.
+* Fase 2.2: rotas administrativas/configuração admin-only.
+* Fase 2.3: logística protegida.
+* Fase 2.4: catálogo com escrita admin-only.
+* Fase 2.5/2.6: Loading Orders protegidas com Admin, Logística, Almoxarifado e Supervisor.
+* Fase 2.8: Movimentações protegidas e front alinhado.
+* Fase 2.8.4: audit log no decremento de item de movimentação.
+
+Agora vamos preparar o módulo de Devoluções, mas sem alterar código ainda.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar front-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não criar roles.
+* Não renomear roles.
+* Não aplicar requireRole/requireAnyRole.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar sidebar.
+* Não alterar ProtectedRoute.
+* Não consumir permissions/role_permissions.
+* Apenas auditar e propor.
+
+Tarefa 1 — Auditar rotas de Devoluções
+
+Liste todas as rotas relacionadas a devoluções/returns, incluindo, se existirem:
+
+* GET /api/returns
+* GET /api/returns/:id
+* GET /api/returns/:id/items
+* GET /api/returns/:id/audit-logs
+* POST /api/returns
+* PATCH /api/returns/:id
+* DELETE /api/returns/:id
+* POST /api/returns/:id/items
+* PATCH /api/returns/:id/items/:itemId
+* DELETE /api/returns/:id/items/:itemId
+* POST /api/returns/:id/process
+* POST /api/returns/:id/approve
+* POST /api/returns/:id/reject
+* POST /api/returns/:id/cancel
+* POST /api/returns/:id/complete
+* qualquer rota de status, processamento, aprovação, rejeição, itens, estoque ou auditoria
+
+Para cada rota, informar:
+
+* método
+* path
+* arquivo/linha aproximada
+* o que faz
+* middleware atual
+* se exige requireAuth
+* se exige requireAnyRole
+* se usa req.isAuthenticated inline
+* se não tem proteção
+* se altera dados ou só lê
+* se altera estoque
+* se altera status
+* se depende de status atual
+* payload esperado
+* resposta esperada
+* papel sugerido
+* risco se liberar demais
+* risco se bloquear demais
+
+Tarefa 2 — Identificar holes críticos
+
+Classifique cada rota em:
+
+1. Crítico:
+
+* anônimo consegue criar/editar/processar/aprovar/rejeitar/cancelar devolução
+* rota altera estoque ou status sem middleware
+* rota altera itens sem role gate
+
+2. Médio:
+
+* rota exige login, mas qualquer usuário logado consegue executar ação sensível
+* rota usa auth inline inconsistente
+* rota tem regra de status fraca
+* rota expõe fila sensível para qualquer logado
+
+3. Baixo:
+
+* rota apenas leitura com requireAuth
+* rota já protegida adequadamente
+* rota sem impacto operacional direto
+
+Entregar uma lista priorizada dos riscos encontrados.
+
+Tarefa 3 — Auditar regras de negócio e status
+
+Mapeie:
+
+* quais status existem para devoluções
+* quais transições são permitidas
+* quem hoje consegue executar cada transição
+* se existe aprovação/rejeição
+* se existe processamento de devolução
+* se existe cancelamento
+* se existe conclusão/finalização
+* se existe impacto em estoque
+* se existe log/audit trail
+* se existem validações para impedir alteração depois de processada/concluída/cancelada
+
+Se houver enums ou constantes de status, listar onde estão definidos.
+
+Tarefa 4 — Auditar impacto em estoque
+
+Mapear:
+
+* em qual momento a devolução impacta estoque
+* se o estoque volta para disponibilidade
+* se existe separação entre item danificado, perdido, devolvido ou disponível
+* se existe vínculo com movimentação, loading-order, requisição ou produto
+* se há risco de duplicar estoque ao processar a mesma devolução mais de uma vez
+* se há trava para impedir reprocessamento
+
+Informar se alguma rota precisa de RBAC mais forte por alterar estoque.
+
+Tarefa 5 — Auditar front-end de Devoluções
+
+Mapeie todos os arquivos do front que consomem devoluções, por exemplo:
+
+* página de lista de devoluções
+* página de detalhes
+* dialogs/modais de criação/edição
+* componentes de processamento
+* componentes de aprovação/rejeição
+* componentes de itens
+* botões de cancelar/concluir/processar
+* visualização de audit logs
+
+Para cada ação visual, informar:
+
+* arquivo
+* botão/ação
+* endpoint chamado
+* quem deveria ver
+* quem deveria apenas visualizar
+* se hoje está visível para qualquer usuário logado
+* helper de front sugerido
+
+Tarefa 6 — Propor matriz específica de Devoluções
+
+Criar matriz com os papéis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Ações mínimas:
+
+* Ver devoluções
+* Ver detalhe
+* Ver itens
+* Ver audit logs
+* Criar devolução
+* Editar devolução
+* Adicionar item
+* Editar item
+* Remover item
+* Processar devolução
+* Aprovar devolução
+* Rejeitar devolução
+* Cancelar devolução
+* Concluir/finalizar devolução
+* Alterar status livremente
+* Excluir, se existir
+
+Proposta inicial, sujeita à auditoria:
+
+* Admin: tudo.
+* Almoxarifado: processar devoluções, gerenciar itens e ações que impactam estoque.
+* Supervisor: aprovar/rejeitar, se houver fluxo de aprovação.
+* Logística: participar apenas se devolução estiver ligada a transporte, viagem ou loading-order.
+* Usuário comum: leitura por enquanto, se o back já permitir.
+
+Se essa proposta não combinar com a estrutura real do código, explicar e propor alternativa.
+
+Tarefa 7 — Propor escopo seguro para Fase 2.10
+
+Com base na auditoria, propor uma Fase 2.10 pequena e segura.
+
+Separar em:
+
+A) Rotas que devem ser corrigidas imediatamente
+
+* holes críticos
+* rotas sem middleware
+* rotas de processamento/status abertas
+
+B) Rotas que podem receber RBAC agora
+
+* baixo risco
+* papel claro
+
+C) Rotas que devem aguardar decisão
+
+* regra de negócio ambígua
+* papel não claro
+* dependência de status ou estoque
+
+D) Rotas que devem ficar apenas requireAuth por enquanto
+
+* leitura geral
+* consulta operacional
+
+Tarefa 8 — Propor helpers de front futuros
+
+Sugerir helpers no client/src/lib/authz.ts, sem implementar ainda, como:
+
+* userCanCreateReturn
+* userCanEditReturn
+* userCanManageReturnItems
+* userCanProcessReturn
+* userCanApproveReturn
+* userCanRejectReturn
+* userCanCancelReturn
+* userCanCompleteReturn
+* userCanViewReturnAuditLogs
+
+Para cada helper, dizer quais roles ele deveria aceitar.
+
+Tarefa 9 — Plano de testes futuro
+
+Propor smoke tests para quando implementarmos, separando:
+
+Anônimo:
+
+* deve receber 401 em qualquer escrita/status/processamento.
+
+Admin:
+
+* deve conseguir tudo.
+
+Almoxarifado:
+
+* deve conseguir ações operacionais e de estoque conforme matriz.
+
+Supervisor:
+
+* deve conseguir aprovar/rejeitar, se houver fluxo de aprovação.
+
+Logística:
+
+* deve conseguir apenas ações ligadas a logística, se aplicável.
+
+Usuário comum:
+
+* deve conseguir leitura, se mantida.
+* deve receber 403 nas escritas.
+
+Tarefa 10 — Decisões que dependem de mim
+
+Listar claramente o que preciso aprovar antes de codar, por exemplo:
+
+* Usuário comum pode visualizar todas as devoluções?
+* Almoxarifado pode processar qualquer devolução?
+* Supervisor aprova devoluções ou não existe aprovação nesse fluxo?
+* Logística participa de devoluções?
+* Quem pode cancelar devolução?
+* Quem pode concluir/finalizar devolução?
+* Quem pode editar devolução depois de processada?
+* Audit logs de devolução devem ser visíveis para todos ou só Admin/Supervisor?
+* Devolução impacta estoque automaticamente em qual status?
+* Existe risco de reprocessamento e duplicidade de estoque?
+
+Entrega final:
+Quero uma resposta estruturada com:
+
+1. Rotas de devoluções auditadas.
+2. Holes críticos encontrados.
+3. Regras de status/transição encontradas.
+4. Impacto em estoque.
+5. Componentes front auditados.
+6. Matriz específica de Devoluções.
+7. Escopo recomendado para Fase 2.10.
+8. Rotas que NÃO devem ser mexidas ainda.
+9. Helpers de front sugeridos.
+10. Plano de testes.
+11. Decisões pendentes para eu aprovar.
+12. Confirmação de que nenhum código foi alterado.
