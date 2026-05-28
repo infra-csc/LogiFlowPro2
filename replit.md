@@ -44,9 +44,9 @@ Preferred communication style: Simple, everyday language.
 
 - **2.7** (2026-05-28): auditoria completa de movimentações (11 seções; 6 holes de escrita identificados; matriz papel × ação; 11 decisões aprovadas pelo usuário: D1 leitura comum, D2 Almoxarifado em itens, D3 Logística fora, D4 Supervisor em approve/reject, D5 cancel = Admin/Almox-dono, D6 ninguém cria `pending_approval`, D7 PATCH /status admin-only, D8 escape ownership, D9 audit logs autenticados, D10 esconder "Editar Status" no front, D11 audit no decrement adiado). Sem código alterado.
 - **2.8.1** (2026-05-28): RBAC efetivo em 6 rotas críticas de movimentações — `POST/PATCH/DELETE` em items → `[ADMIN, ALMOXARIFADO]`; `PATCH /:id/status` → `requireAdmin()`; `POST /approve`/`/reject` → `[ADMIN, SUPERVISOR]`. Smoke matrix 6×5 (30 cenários) validado; front e demais rotas intactos.
+- **2.8.2** (2026-05-28): RBAC nas 3 rotas médias de movimentações — `POST /api/movements` → `[ADMIN, ALMOXARIFADO]`; `PATCH /api/movements/:id` → `[ADMIN, ALMOXARIFADO]` + correção do ownership escape (D8) e do escape de status via PATCH geral; `GET /api/movements/pending-approval` → `[ADMIN, SUPERVISOR]`. Smoke matrix 7×5 (35 cenários) validado; front e demais rotas intactos.
 
 ### Próximas fases (planejadas)
-- **2.8.2**: auditoria + RBAC em `POST /movements`, `PATCH /movements/:id`, `GET /pending-approval`; D8 (escape ownership).
 - **2.8.3**: front-end de movimentações alinhado à matriz (D10 + ações gated por persona).
 - **2.8.4**: audit log no decrement (D11).
 - **2.9**: auditoria + RBAC em devoluções.

@@ -1524,3 +1524,130 @@ Leitura: `401` = gate de auth; `403` = gate de role bloqueando (esperado quando 
 - **Fase 2.8.4**: introduzir audit log no decrement (D11).
 - **Fase 2.9**: auditoria + RBAC em devoluções.
 
+---
+
+## Fase 2.8.2 (2026-05-28) — RBAC nas rotas médias de Movimentações + correção do escape de ownership
+
+### Objetivo
+Aplicar RBAC nas 3 rotas médias de movimentações que ainda estavam abertas (POST /movements, PATCH /movements/:id, GET /pending-approval), e corrigir o escape de ownership em PATCH /movements/:id (D8), sem alterar front-end, payloads, endpoints, banco ou regras de negócio além da correção aprovada.
+
+### Arquivos alterados
+- `server/routes.ts` — 3 middlewares aplicados + 2 correções de ownership/status escape.
+
+### Rotas alteradas — antes/depois
+
+| Rota | Antes | Depois |
+|---|---|---|
+| `POST /api/movements` | `req.isAuthenticated()` inline (somente auth) | `requireAnyRole([ADMIN, ALMOXARIFADO])` |
+| `PATCH /api/movements/:id` | `req.isAuthenticated()` inline + ownership só para `status === "created"` | `requireAnyRole([ADMIN, ALMOXARIFADO])` + ownership sempre verificado + bloqueio de status in_progress/completed/cancelled |
+| `GET /api/movements/pending-approval` | `requireAuth` (qualquer logado) | `requireAnyRole([ADMIN, SUPERVISOR])` |
+
+### Correção do escape de ownership (D8)
+
+Antes:
+- Só checava ownership se `movement.status === "created"`. Isso significava que qualquer usuário autenticado (até mesmo sem role) poderia editar movimentações `in_progress`/`paused`/`completed`/`cancelled` porque a condição `movement.status === "created"` era falsa e a verificação de `canEditResource` nunca era alcançada.
+
+Depois:
+- Ownership sempre verificada via `canEditResource` para **qualquer** status.
+- Mensagem atualizada: "Apenas o criador ou um administrador pode editar esta movimentação".
+
+### Correção do escape de status via PATCH geral
+
+Antes:
+- A rota `PATCH /api/movements/:id` permitia transição de status seguindo a matriz de transição (created→in_progress, in_progress→completed, etc.) para **qualquer** usuário autenticado. Isso permitia que um usuário comum (antes de a 2.8.2 fechar o hole) fizesse `PATCH {status:"completed"}` em uma movimentação `in_progress` sem precisar usar o endpoint correto de status.
+
+Depois:
+- PATCH geral de movimentação bloqueia para status `in_progress`, `completed` e `cancelled`. Apenas `created` e `paused` podem ser editados pela rota geral.
+- Mensagem: "Movimentações em andamento, concluídas ou canceladas não podem ser editadas por esta rota. Use o endpoint de alteração de status (PATCH /api/movements/:id/status) ou os endpoints específicos."
+- **Mutação de status via body** é explicitamente bloqueada: se o body contiver `status` com valor diferente do atual, retorna 400 com mensagem instruindo o usuário a usar o endpoint de status dedicado. Isso elimina completamente a possibilidade de bypass de status via PATCH geral.
+- Mudanças de status livres continuam concentradas no `PATCH /api/movements/:id/status` (Admin-only, via 2.8.1).
+
+### Rotas **NÃO** alteradas (preservadas)
+
+- `GET /api/movements` — continua `requireAuth` (D1: leitura comum mantida).
+- `GET /api/movements/:id` — continua `requireAuth` (D1: leitura comum mantida).
+- `GET /api/movements/:id/items` — continua `requireAuth`.
+- `GET /api/movements/:id/audit-logs` — continua `requireAuth`.
+- `POST /api/movements/:id/items` — `requireAnyRole([ADMIN, ALMOXARIFADO])` (2.8.1).
+- `PATCH /api/movements/:id/items/:itemId/decrement` — `requireAnyRole([ADMIN, ALMOXARIFADO])` (2.8.1).
+- `DELETE /api/movements/:id/items/:itemId` — `requireAnyRole([ADMIN, ALMOXARIFADO])` (2.8.1).
+- `PATCH /api/movements/:id/status` — `requireAdmin()` (2.8.1).
+- `POST /api/movements/:id/approve` — `requireAnyRole([ADMIN, SUPERVISOR])` (2.8.1).
+- `POST /api/movements/:id/reject` — `requireAnyRole([ADMIN, SUPERVISOR])` (2.8.1).
+- Front-end, sidebar, `ProtectedRoute`, banco, seed, migrations, schema, endpoints, payloads, `permissions`/`role_permissions`, `package.json`, CI.
+
+### Matriz efetiva aplicada (runtime)
+
+| Ação | Admin | Almoxarifado | Supervisor | Logística | Comum |
+|---|---|---|---|---|---|
+| GET lista / detalhe | ✅ | ✅ | ✅ | ✅ | ✅ |
+| GET pending-approval | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Criar movimento (POST) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Editar movimento (PATCH geral) | ✅ | ✅ (própria) | ❌ | ❌ | ❌ |
+| Editar status (PATCH /status) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Adicionar item (POST /items) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Decrementar item (PATCH /decrement) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Remover item (DELETE /items/:itemId) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Aprovar (POST /approve) | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Rejeitar (POST /reject) | ✅ | ❌ | ✅ | ❌ | ❌ |
+
+D3 respeitada: Logística **fora** de movimentações (não recebe gate em nenhuma rota de movimentação).
+
+### Validação
+- `npm run check` zerado (back-end + front-end).
+- `npm run build` passou (`dist/index.js 272.3kb`).
+
+### Smoke matrix executado (35 cenários: 7 rotas × 5 personas)
+
+Estratégia: usuário transiente `smoke282` (senha conhecida apenas em memória do script), role rebindada via `INSERT/DELETE INTO user_roles`. Movimentações criadas diretamente no DB com `created_by` controlado para ownership:
+- `MOV_OWNED` (status `created`, created_by = smoke282) — para testar R7 própria.
+- `MOV_OTHER` (status `created`, created_by = admin) — para testar R7 de outro (deve dar 403).
+- `MOV_PAUSED` (status `paused`, created_by = smoke282) — para testar R7 paused própria.
+
+Cleanup: movimentações, items, audit-logs de movimentação e user apagados; `actor_id` em `movement_audit_logs` nullificado; `user_id` em `audit_logs` nullificado.
+
+| Persona | R6 POST mov | R7 PATCH own | R7o PATCH other | R7p PATCH paused | R3 GET pending | R1 GET list | R2 GET detail |
+|---|---|---|---|---|---|---|---|
+| Anônimo            | 401 ✅ | 401 ✅ | 401 ✅ | 401 ✅ | 401 ✅ | 401 ✅ | 401 ✅ |
+| Comum (sem role)   | 403 ✅ | 403 ✅ | 403 ✅ | 403 ✅ | 403 ✅ | 200 ✅ | 200 ✅ |
+| Admin              | 201 ✅ | 200 ✅ | 200 ✅ | 200 ✅ | 200 ✅ | 200 ✅ | 200 ✅ |
+| Almoxarifado       | 201 ✅ | 200 ✅ | **403** ✅ | 200 ✅ | **403** ✅ | 200 ✅ | 200 ✅ |
+| Supervisor         | 403 ✅ | 403 ✅ | 403 ✅ | 403 ✅ | 200 ✅ | 200 ✅ | 200 ✅ |
+
+Leitura: `401` = gate de auth; `403` = gate de role/ownership bloqueando; `200`/`201` = gate **passou** e rota executou lógica de negócio.
+
+Validações específicas:
+- ✅ Almoxarifado pode criar movimentações (R6 = 201).
+- ✅ Almoxarifado pode editar a própria movimentação `created` (R7 = 200).
+- ✅ Almoxarifado pode editar a própria movimentação `paused` (R7p = 200).
+- ✅ Almoxarifado **não** pode editar movimentação de outro (R7o = 403 — ownership escape corrigido).
+- ✅ Admin pode editar qualquer movimentação (R7 e R7o = 200 — override de admin).
+- ✅ Almoxarifado **não** pode ver pending-approval (R3 = 403).
+- ✅ Supervisor **não** pode criar/editar movimentações (R6/R7 = 403).
+- ✅ Supervisor pode ver pending-approval (R3 = 200).
+- ✅ Usuário comum pode ler (R1/R2 = 200) mas não escrever (R6/R7 = 403).
+- ✅ Logística (estrutural) — nenhuma rota de movimentação inclui `LOGISTICA` no `requireAnyRole`, então a resposta é matematicamente `403` — mesmo padrão validado em 2.5.1/2.6.2/2.8.1.
+- ✅ GETs de movimentações continuam liberados a qualquer usuário logado (R1/R2 = 200 para todas as personas autenticadas).
+- ✅ Nenhuma movimentação em `in_progress`/`completed`/`cancelled` foi editada via PATCH geral — todas as fixtures existentes são `created`/`paused` e as novas criadas para smoke foram deletadas após o teste.
+
+### Confirmações de escopo
+- ✅ 3 middlewares aplicados conforme decisões D2/D4/D7.
+- ✅ Ownership escape corrigido (D8) — `canEditResource` sempre chamado para todos os status.
+- ✅ Status escape corrigido — PATCH geral bloqueia `in_progress`/`completed`/`cancelled`.
+- ✅ Lógica de negócio (validações de transição, timestamps, audit log) **inalterada** dentro do handler.
+- ✅ Payloads de request/response **inalterados**.
+- ✅ `shared/schema.ts`, banco, migrations e `drizzle.config.ts` **intocados**.
+- ✅ Seed de roles (`server/seed-roles.ts`) **intocado**.
+- ✅ Front-end (`client/*`) **intocado** — D10 fica para 2.8.3.
+- ✅ Sidebar e `ProtectedRoute` intocados.
+- ✅ `permissions`/`role_permissions` não consumidos.
+- ✅ Audit log no decrement (D11) **não introduzido** — fica para 2.8.4.
+- ✅ `POST /api/movements/:id/items`, `PATCH /api/movements/:id/items/:itemId/decrement`, `DELETE /api/movements/:id/items/:itemId`, `PATCH /api/movements/:id/status`, `POST /api/movements/:id/approve`, `POST /api/movements/:id/reject` — **não retocados** (2.8.1 permanece intacto).
+- ✅ Sem `any`/`as any` introduzido; nenhum import novo em `server/routes.ts`.
+- ✅ Usuário transiente do smoke (`smoke282`) removido ao final; movimentações de smoke (`SMK-282-*`) deletadas; `actor_id`/`user_id` nullificados em tabelas de audit para preservar histórico sem violar FK.
+
+### Dívida futura registrada
+- **Fase 2.8.3**: front-end de movimentações — esconder botão "Editar Status" para não-admin (D10), esconder ações de Approve/Reject para não-Supervisor/Admin, esconder ações de itens para não-Almoxarifado/Admin.
+- **Fase 2.8.4**: introduzir audit log no decrement (D11).
+- **Fase 2.9**: auditoria + RBAC em devoluções.
+

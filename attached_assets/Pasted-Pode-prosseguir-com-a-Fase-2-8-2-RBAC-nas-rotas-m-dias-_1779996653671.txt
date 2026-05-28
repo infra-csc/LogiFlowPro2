@@ -1,0 +1,233 @@
+Pode prosseguir com a Fase 2.8.2 — RBAC nas rotas médias de Movimentações + correção do escape de ownership.
+
+Objetivo:
+Aplicar RBAC nas rotas médias de Movimentações e corrigir o escape de ownership em PATCH /api/movements/:id, sem alterar front-end, payloads, endpoints, banco ou regras de negócio além da correção explicitamente aprovada.
+
+Contexto:
+A Fase 2.8.1 foi concluída com sucesso:
+
+* 6 rotas críticas protegidas.
+* Anônimo não consegue mais adicionar/decrementar/remover item, alterar status, aprovar ou rejeitar movimentações.
+* Almoxarifado opera itens.
+* Supervisor aprova/rejeita.
+* PATCH /api/movements/:id/status ficou Admin-only.
+* npm run check e build passaram.
+
+Agora vamos tratar as rotas médias restantes.
+
+Escopo aprovado da Fase 2.8.2:
+
+1. POST /api/movements
+
+Hoje:
+
+* Usa req.isAuthenticated() inline.
+
+Novo:
+
+* Aplicar requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO])
+
+Regras:
+
+* Admin pode criar movimentações.
+* Almoxarifado pode criar movimentações.
+* Logística não entra em Movimentações nesta fase.
+* Usuário comum não cria.
+* Anônimo recebe 401.
+* Preservar requiresApproval do tipo de movimentação.
+* Preservar createdBy.
+* Preservar payload, validações e resposta.
+
+2. PATCH /api/movements/:id
+
+Hoje:
+
+* Usa req.isAuthenticated() inline.
+* Possui escape de ownership em certos status.
+
+Novo:
+
+* Aplicar requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO])
+* Corrigir o escape de ownership:
+
+  * ownership deve ser respeitado de forma consistente.
+  * Almoxarifado não-admin só pode editar movimentação própria quando a regra de domínio permitir.
+  * Admin mantém override.
+  * Não permitir que status in_progress/completed/cancelled sejam editados pela rota geral de PATCH, salvo se já existir regra explícita e segura.
+  * Mudanças livres de status continuam concentradas em PATCH /api/movements/:id/status, que ficou Admin-only na 2.8.1.
+
+Importante:
+
+* Não alterar payload.
+* Não alterar endpoint.
+* Não alterar schema.
+* Não alterar tabela de transições.
+* Não alterar audit logs.
+* Não mexer em decrement.
+* Não alterar regras de estoque.
+* Corrigir apenas o escape de ownership aprovado.
+
+3. GET /api/movements/pending-approval
+
+Hoje:
+
+* Leitura sensível de fila de aprovação.
+
+Novo:
+
+* Aplicar requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR])
+
+Regras:
+
+* Admin vê.
+* Supervisor vê.
+* Almoxarifado não vê.
+* Logística não vê.
+* Usuário comum não vê.
+* Anônimo recebe 401.
+* Preservar payload, filtros, ordenação e resposta.
+
+4. Não alterar nesta fase
+
+Não mexer em:
+
+* GET /api/movements
+* GET /api/movements/:id
+* GET /api/movements/:id/items
+* GET /api/movements/:id/audit-logs
+* POST /api/movements/:id/items
+* PATCH /api/movements/:id/items/:itemId/decrement
+* DELETE /api/movements/:id/items/:itemId
+* PATCH /api/movements/:id/status
+* POST /api/movements/:id/approve
+* POST /api/movements/:id/reject
+* front-end
+* sidebar
+* ProtectedRoute
+* banco
+* seed
+* migrations
+* schema
+* endpoints
+* payloads
+* permissions/role_permissions
+* package.json
+* CI
+
+Também não avançar para:
+
+* 2.8.3 front-end
+* 2.8.4 audit log no decrement
+
+5. Mensagens de erro sugeridas
+
+Para criação/edição:
+
+* "Apenas administradores ou almoxarifado podem gerenciar movimentações"
+
+Para pending approval:
+
+* "Apenas administradores ou supervisores podem visualizar aprovações pendentes de movimentações"
+
+Manter padrão:
+
+* Anônimo → 401 { error: "Não autenticado" }
+* Logado sem papel → 403
+* Autorizado → comportamento anterior ou validação de domínio existente
+
+6. Validações obrigatórias
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests back-end:
+
+Anônimo:
+
+* POST /api/movements → 401
+* PATCH /api/movements/:id → 401
+* GET /api/movements/pending-approval → 401
+
+Admin:
+
+* POST /api/movements passa pelo gate.
+* PATCH /api/movements/:id passa pelo gate.
+* GET /api/movements/pending-approval → 200.
+
+Almoxarifado:
+
+* POST /api/movements passa pelo gate.
+* PATCH /api/movements/:id própria passa pelo gate se status/regra permitir.
+* PATCH /api/movements/:id de outro usuário → 403.
+* GET /api/movements/pending-approval → 403.
+
+Supervisor:
+
+* POST /api/movements → 403.
+* PATCH /api/movements/:id → 403.
+* GET /api/movements/pending-approval → 200.
+
+Usuário comum:
+
+* GET /api/movements → 200.
+* GET /api/movements/:id → 200.
+* POST /api/movements → 403.
+* PATCH /api/movements/:id → 403.
+* GET /api/movements/pending-approval → 403.
+
+Logística:
+
+* POST /api/movements → 403.
+* PATCH /api/movements/:id → 403.
+* GET /api/movements/pending-approval → 403.
+
+Teste específico do escape de ownership:
+
+* Criar/usar duas movimentações, uma owned pelo usuário Almoxarifado A e outra por usuário B.
+* Almoxarifado A consegue editar a própria apenas se status/regra permitir.
+* Almoxarifado A não consegue editar a de B.
+* Admin consegue passar pelo gate conforme regra de admin.
+* Status in_progress/completed/cancelled não podem ser alterados pela rota geral de PATCH se isso era o escape identificado.
+
+Usar estratégia non-mutating sempre que possível:
+
+* Se autorizado receber 400 por payload/status, considerar gate-pass.
+* Restaurar fixtures ao final se algo for alterado.
+* Remover usuários transientes ao final.
+* Não alterar senha de usuário real.
+
+7. Documentação
+
+Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.8.2
+* replit.md com bullet curto
+
+Registrar:
+
+* rotas alteradas
+* middlewares aplicados
+* correção do ownership escape
+* testes executados
+* rotas propositalmente não alteradas
+* próximas fases:
+
+  * 2.8.3 front-end de Movimentações
+  * 2.8.4 audit log no decrement e dívida técnica do PATCH /status
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Rotas alteradas.
+* Middleware aplicado em cada rota.
+* Como o escape de ownership foi corrigido.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que Logística continua fora de Movimentações.
+* Confirmação de que usuário comum continua podendo ler movimentações.
+* Confirmação de que pending-approval agora é Admin/Supervisor.
+* Confirmação de que front-end, banco, seed, endpoints, payloads e permissions/role_permissions não foram alterados.

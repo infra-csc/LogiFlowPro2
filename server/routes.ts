@@ -1617,12 +1617,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Movement Approvals - Must come BEFORE /api/movements/:id
-  app.get("/api/movements/pending-approval", requireAuth, async (req, res) => {
+  app.get("/api/movements/pending-approval", requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR]), async (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      
       const pendingMovements = await storage.listPendingMovements();
       res.json(pendingMovements);
     } catch (error) {
@@ -1652,11 +1648,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/movements", async (req, res) => {
+  app.post("/api/movements", requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]), async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
 
       const data = insertMovementWithEventsSchema.parse(req.body);
       
@@ -1715,70 +1708,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/movements/:id", async (req, res) => {
+  app.patch("/api/movements/:id", requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]), async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-
       const movement = await storage.getMovement(req.params.id);
       if (!movement) {
         return res.status(404).json({ error: "Movement not found" });
       }
 
-      // Check ownership (only owner can edit their movements in created status)
-      if (movement.status === "created" && !(await canEditResource(req.user, movement.createdBy))) {
+      // Ownership check: non-admin can only edit their own movements
+      if (!(await canEditResource(req.user, movement.createdBy))) {
         return res.status(403).json({ 
           error: "Acesso negado",
-          message: "Apenas o criador pode editar esta movimentação"
+          message: "Apenas o criador ou um administrador pode editar esta movimentação"
+        });
+      }
+
+      // Block editing in_progress/completed/cancelled movements via the general PATCH route
+      if (movement.status !== "created" && movement.status !== "paused") {
+        return res.status(400).json({
+          error: "Movimentações em andamento, concluídas ou canceladas não podem ser editadas por esta rota. Use o endpoint de alteração de status (PATCH /api/movements/:id/status) ou os endpoints específicos."
         });
       }
 
       const data = insertMovementSchema.partial().parse(req.body);
-      const previousStatus = movement.status;
-      
-      // Validate status transitions
-      if (data.status && data.status !== movement.status) {
-        const validTransitions: Record<string, string[]> = {
-          created: ["in_progress", "cancelled"],
-          in_progress: ["paused", "completed", "cancelled"],
-          paused: ["in_progress", "cancelled"],
-          completed: [],
-          cancelled: [],
-        };
 
-        const allowedStatuses = validTransitions[movement.status] || [];
-        if (!allowedStatuses.includes(data.status)) {
-          return res.status(400).json({
-            error: `Cannot transition from ${movement.status} to ${data.status}`,
-          });
-        }
-
-        // Set timestamps based on status
-        if (data.status === "in_progress" && !movement.startedAt) {
-          (data as any).startedAt = new Date();
-        }
-        if (data.status === "completed") {
-          (data as any).completedAt = new Date();
-        }
-      }
-      
-      const updated = await storage.updateMovement(req.params.id, data);
-      
-      // Create audit log if status changed
-      if (data.status && data.status !== previousStatus) {
-        await storage.createMovementAuditLog({
-          movementId: req.params.id,
-          action: "status_changed",
-          actorId: req.user?.id || null,
-          actorName: req.user?.name || "Sistema",
-          context: {
-            previousStatus,
-            newStatus: data.status,
-          },
+      // Reject any status mutation via the general PATCH route — status changes
+      // must go through the dedicated PATCH /api/movements/:id/status endpoint
+      if (data.status !== undefined && data.status !== movement.status) {
+        return res.status(400).json({
+          error: "Alterações de status não são permitidas por esta rota. Use o endpoint PATCH /api/movements/:id/status.",
         });
       }
-      
+
+      const updated = await storage.updateMovement(req.params.id, data);
       res.json(updated);
     } catch (error) {
       res.status(400).json({ error: "Invalid movement data" });
