@@ -1,0 +1,243 @@
+Vamos iniciar a Fase 3.0 — Auditoria Visual e Plano de UI/UX, sem alteração de código.
+
+Objetivo:
+Auditar o front-end inteiro do sistema e montar um plano de melhoria visual/UX 10/10 antes de qualquer alteração de layout.
+
+Contexto:
+A Fase 2 foi encerrada com sucesso:
+
+* RBAC aplicado e consistente.
+* Back-end e front-end alinhados por perfil.
+* Nenhuma rota crítica aberta.
+* npm run check e npm run build passando.
+* Próxima frente agora é UI/Design.
+
+Nesta fase, NÃO ALTERE CÓDIGO.
+Quero apenas diagnóstico visual, plano de design e priorização.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar front-end.
+* Não alterar banco.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar regras de negócio.
+* Não alterar RBAC.
+* Não alterar sidebar ainda.
+* Não alterar ProtectedRoute.
+* Não criar componentes novos ainda.
+* Não fazer redesign ainda.
+* Apenas auditar e propor.
+
+Tarefa 1 — Auditar telas principais
+
+Auditar visualmente e tecnicamente as telas:
+
+1. Dashboard
+2. Movimentações
+
+   * lista
+   * detalhes
+   * aprovações
+   * modal/dialog de criação/edição
+3. Loading Orders
+
+   * lista
+   * detalhes
+   * dialog de criação/edição
+   * otimização
+4. Requisições
+
+   * lista
+   * detalhes
+   * aprovação, se existir
+5. Produtos
+6. Kits
+7. Fornecedores
+8. Motoristas
+9. Veículos
+10. Docas
+11. Devoluções
+12. Configurações/Admin
+13. Login/Auth, se fizer sentido
+
+Para cada tela, analisar:
+
+* hierarquia visual;
+* espaçamento;
+* alinhamento;
+* legibilidade;
+* excesso de informação;
+* consistência de cards;
+* consistência de tabelas;
+* consistência de filtros;
+* botões e ações;
+* modais/dialogs;
+* estados vazios;
+* loading states;
+* mensagens de erro;
+* responsividade;
+* acessibilidade básica;
+* coerência com a paleta atual do sistema.
+
+Tarefa 2 — Auditar componentes reutilizáveis
+
+Mapear os padrões atuais de:
+
+* cards;
+* tabelas;
+* filtros;
+* search inputs;
+* botões primários/secundários/destrutivos;
+* badges de status;
+* headers de página;
+* modais/dialogs;
+* empty states;
+* skeleton/loading;
+* alertas;
+* tabs;
+* side panels;
+* formulários.
+
+Para cada padrão, dizer:
+
+* se está consistente;
+* onde está melhor implementado;
+* onde está pior;
+* qual padrão deve virar referência;
+* quais componentes precisam ser padronizados.
+
+Tarefa 3 — Auditar UX por perfil/RBAC
+
+Verificar se a UX por perfil está clara:
+
+Perfis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Analisar:
+
+* se botões ocultos fazem sentido;
+* se usuários sem ação ficam com telas vazias demais;
+* se falta mensagem explicando ausência de permissão;
+* se a leitura continua útil para perfis sem escrita;
+* se a sidebar fica coerente;
+* se há ações com aparência de desabilitadas quando deveriam estar ocultas, ou vice-versa.
+
+Não alterar nada, apenas propor.
+
+Tarefa 4 — Propor Design System leve
+
+Propor um padrão visual para o sistema usando a paleta atual.
+
+Incluir recomendações para:
+
+* layout de página;
+* header de página;
+* área de filtros;
+* cards de resumo;
+* cards de lista;
+* tabelas;
+* modais;
+* telas de detalhe;
+* badges de status;
+* botões;
+* empty states;
+* mensagens de erro;
+* estados de loading;
+* responsividade;
+* microcopy.
+
+Importante:
+Não propor troca radical de identidade visual.
+A ideia é evoluir o visual atual para algo mais profissional, limpo e consistente.
+
+Tarefa 5 — Priorizar melhorias
+
+Classificar cada melhoria em:
+
+P0 — Corrigir antes de qualquer redesign:
+
+* problemas que atrapalham uso;
+* ações confusas;
+* layout quebrado;
+* botão com permissão errada visualmente.
+
+P1 — Alto impacto visual:
+
+* telas mais usadas;
+* listas principais;
+* modais importantes;
+* filtros.
+
+P2 — Padronização:
+
+* badges;
+* botões;
+* espaçamentos;
+* empty states.
+
+P3 — Polimento:
+
+* microinterações;
+* pequenos textos;
+* refinamentos visuais.
+
+Tarefa 6 — Propor roadmap da Fase 3
+
+Montar um plano em subfases pequenas, por exemplo:
+
+Fase 3.1 — Design System base
+
+* padronizar PageHeader, filtros, empty states, status badges e botões.
+
+Fase 3.2 — Movimentações
+
+* melhorar lista, detalhe, aprovações e dialog.
+
+Fase 3.3 — Loading Orders
+
+* melhorar lista, detalhe, dialogs e otimização.
+
+Fase 3.4 — Requisições
+
+* melhorar fluxo visual e telas de detalhe.
+
+Fase 3.5 — Catálogo
+
+* produtos, kits e fornecedores.
+
+Fase 3.6 — Devoluções
+
+* avaliar se cria formulário de devolução ou mantém read-only.
+
+Fase 3.7 — Admin/Configurações
+
+* melhorar telas administrativas.
+
+Para cada fase, indicar:
+
+* arquivos prováveis;
+* risco;
+* impacto visual;
+* se precisa mexer em regra de negócio;
+* como testar.
+
+Tarefa 7 — Entrega final
+
+Quero uma resposta estruturada com:
+
+1. Diagnóstico geral do design atual.
+2. Principais problemas visuais encontrados.
+3. Telas mais críticas.
+4. Componentes que precisam ser padronizados.
+5. Problemas de UX por perfil/RBAC.
+6. Proposta de design system leve.
+7. Roadmap sugerido da Fase 3.
+8. Primeira fase recomendada para implementação.
+9. Confirmação de que nenhum código foi alterado.
