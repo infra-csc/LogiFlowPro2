@@ -1,0 +1,182 @@
+Pode aplicar a Fase 1.1 — Lote A, com segurança e sem refatoração grande.
+
+Objetivo:
+Proteger com requireAuth as rotas GET internas que hoje estão públicas, mantendo públicas apenas as rotas realmente necessárias para autenticação/sessão.
+
+Contexto:
+Você auditou 63 rotas GET:
+
+* 16 já protegidas
+* 47 públicas hoje
+* 46 recomendadas para proteger
+* /api/user deve continuar com o comportamento atual
+
+Quero aplicar a proteção agora, mas sem mexer ainda em papéis funcionais.
+
+Regras obrigatórias:
+
+* Não alterar banco de dados.
+* Não criar migrations.
+* Não alterar payloads.
+* Não alterar nomes de rotas.
+* Não alterar respostas para usuário logado.
+* Não alterar regras de negócio.
+* Não implementar papéis funcionais ainda.
+* Não mexer no front-end.
+* Não refatorar routes.ts agora.
+* Não mover arquivos.
+* Não remover rotas duplicadas neste passo.
+* Não alterar /api/user.
+
+Escopo:
+Adicionar requireAuth nas rotas GET internas que hoje estão públicas, incluindo:
+
+Dashboard:
+
+* GET /api/dashboard/stats
+* GET /api/dashboard/recent-events
+
+Eventos:
+
+* GET /api/events
+* GET /api/events/:id
+
+Kits:
+
+* GET /api/kits
+* GET /api/kits/:id
+* GET /api/kits/:id/bom
+
+Fornecedores:
+
+* GET /api/suppliers
+* GET /api/suppliers/:id
+
+Produtos:
+
+* GET /api/products
+* GET /api/products/by-sku/:sku
+* GET /api/products/target/:sku
+* GET /api/products/:id
+
+Requisições:
+
+* GET /api/requests
+* GET /api/requests/:id
+* GET /api/requests/:id/items
+
+Veículos, motoristas e docas:
+
+* GET /api/vehicle-types
+* GET /api/vehicles
+* GET /api/drivers
+* GET /api/docks
+
+Viagens:
+
+* GET /api/trips
+* GET /api/trips/:id
+
+Ordens de carregamento:
+
+* GET /api/loading-orders
+* GET /api/loading-orders/:id
+* GET /api/loading-orders/:id/requests
+* GET /api/loading-orders/:id/items
+* GET /api/loading-orders/:id/trips
+* GET /api/loading-orders/:id/movements
+* GET /api/loading-orders/:id/optimizations
+
+Importante:
+Neste primeiro lote, NÃO mexa ainda em:
+
+* GET /api/loading-orders/:id/can-edit
+
+Antes de proteger essa rota, quero que você verifique se ela é chamada antes da sessão estar hidratada no front.
+
+Movimentações:
+
+* GET /api/movements
+* GET /api/movements/pending-approval
+* GET /api/movements/:id
+* GET /api/movements/:id/items
+* GET /api/movements/:id/audit-logs
+
+Devoluções:
+
+* GET /api/returns
+
+Usuários e permissões:
+
+* GET /api/users
+* GET /api/users/:id
+* GET /api/roles
+* GET /api/roles/:id
+* GET /api/permissions
+* GET /api/users/:userId/roles
+* GET /api/roles/:roleId/permissions
+
+Atenção especial:
+Você encontrou GET /api/users declarado mais de uma vez.
+Neste passo:
+
+* Não remova nenhuma declaração duplicada.
+* Apenas garanta que todas as declarações de GET /api/users e GET /api/users/:id tenham requireAuth.
+* O objetivo agora é segurança, não limpeza/refatoração.
+
+Relatórios:
+
+* GET /api/reports/simulation-events
+* GET /api/reports/simulation-requests
+
+Rotas que devem continuar públicas ou sem alteração:
+
+* GET /api/user, mantendo o comportamento atual.
+* Rotas de login, cadastro, forgot-password e reset-password.
+* Assets estáticos, se existirem.
+
+Depois de alterar:
+
+1. Rode npm run check.
+2. Rode npm run build, se aplicável.
+3. Corrija apenas erros causados por esta alteração.
+4. Não corrija erros antigos neste passo; apenas informe que são pré-existentes.
+
+Testes obrigatórios:
+Anônimo deve receber 401 em:
+
+* GET /api/events
+* GET /api/products
+* GET /api/drivers
+* GET /api/loading-orders
+* GET /api/movements
+* GET /api/users
+* GET /api/roles
+* GET /api/reports/simulation-events
+
+Usuário logado deve receber 200 normalmente nas telas:
+
+* Dashboard
+* Eventos
+* Produtos
+* Kits
+* Fornecedores
+* Motoristas
+* Veículos
+* Viagens
+* Ordens de carregamento
+* Movimentações
+* Devoluções
+* Relatórios
+* Configurações
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Todas as rotas GET que receberam requireAuth.
+* Rotas GET analisadas e não alteradas.
+* Resultado do npm run check/build.
+* Testes manuais executados.
+* Se encontrou algum GET ainda público que pareça interno.
+* Avaliação específica do GET /api/loading-orders/:id/can-edit para decidirmos no Lote B.

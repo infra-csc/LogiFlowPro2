@@ -1,6 +1,7 @@
 import { Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
+import { requireAuth } from "./ownership";
 import { sql, eq, inArray, and, or, gte, lte } from "drizzle-orm";
 import { 
   materialRequests, 
@@ -354,7 +355,7 @@ export function registerReportsRoutes(app: Express) {
   });
 
   // Get events for simulation filters
-  app.get("/api/reports/simulation-events", async (req: Request, res: Response) => {
+  app.get("/api/reports/simulation-events", requireAuth, async (req: Request, res: Response) => {
     try {
       const allEvents = await storage.getEvents();
       
@@ -372,7 +373,7 @@ export function registerReportsRoutes(app: Express) {
   });
 
   // Get material requests for simulation filters
-  app.get("/api/reports/simulation-requests", async (req: Request, res: Response) => {
+  app.get("/api/reports/simulation-requests", requireAuth, async (req: Request, res: Response) => {
     try {
       const { eventIds } = req.query;
       

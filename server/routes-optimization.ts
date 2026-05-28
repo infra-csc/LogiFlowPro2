@@ -1,6 +1,7 @@
 import { Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { optimizeVehicleLoading, optimizeRoute } from "./optimization-engine";
+import { requireAuth } from "./ownership";
 
 export function registerOptimizationRoutes(app: Express) {
   // Request vehicle loading optimization
@@ -110,7 +111,7 @@ export function registerOptimizationRoutes(app: Express) {
   });
   
   // Get loading optimizations for a loading order
-  app.get("/api/loading-orders/:id/optimizations", async (req: Request, res: Response) => {
+  app.get("/api/loading-orders/:id/optimizations", requireAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const optimizations = await storage.getLoadingOptimizationsByLoadingOrder(id);
@@ -218,7 +219,7 @@ export function registerOptimizationRoutes(app: Express) {
   });
   
   // Get route optimizations for a trip
-  app.get("/api/trips/:id/route-optimizations", async (req: Request, res: Response) => {
+  app.get("/api/trips/:id/route-optimizations", requireAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const optimizations = await storage.getRouteOptimizationsByTrip(id);

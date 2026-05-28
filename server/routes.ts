@@ -90,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize default permissions
   await initializeDefaultPermissions();
   // Dashboard stats
-  app.get("/api/dashboard/stats", async (req, res) => {
+  app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
       const events = await storage.getEvents();
       const trips = await storage.getTrips();
@@ -113,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/recent-events", async (req, res) => {
+  app.get("/api/dashboard/recent-events", requireAuth, async (req, res) => {
     try {
       const events = await storage.getEvents();
       res.json(events.slice(0, 5));
@@ -123,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Events
-  app.get("/api/events", async (req, res) => {
+  app.get("/api/events", requireAuth, async (req, res) => {
     try {
       const events = await storage.getEvents();
       res.json(events);
@@ -132,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/events/:id", async (req, res) => {
+  app.get("/api/events/:id", requireAuth, async (req, res) => {
     try {
       const event = await storage.getEvent(req.params.id);
       if (!event) {
@@ -231,7 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Kits
-  app.get("/api/kits", async (req, res) => {
+  app.get("/api/kits", requireAuth, async (req, res) => {
     try {
       const kits = await storage.getKits();
       res.json(kits);
@@ -240,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/kits/:id", async (req, res) => {
+  app.get("/api/kits/:id", requireAuth, async (req, res) => {
     try {
       const kit = await storage.getKit(req.params.id);
       if (!kit) {
@@ -299,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/kits/:id/bom", async (req, res) => {
+  app.get("/api/kits/:id/bom", requireAuth, async (req, res) => {
     try {
       const bomLines = await storage.getBomLinesByKit(req.params.id);
       res.json(bomLines);
@@ -309,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Suppliers
-  app.get("/api/suppliers", async (req, res) => {
+  app.get("/api/suppliers", requireAuth, async (req, res) => {
     try {
       const suppliers = await storage.getSuppliers();
       res.json(suppliers);
@@ -318,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/suppliers/:id", async (req, res) => {
+  app.get("/api/suppliers/:id", requireAuth, async (req, res) => {
     try {
       const supplier = await storage.getSupplier(req.params.id);
       if (!supplier) {
@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Products
-  app.get("/api/products", async (req, res) => {
+  app.get("/api/products", requireAuth, async (req, res) => {
     try {
       const products = await storage.getProducts();
       res.json(products);
@@ -380,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Product Variants - specific routes MUST come before generic :id route
-  app.get("/api/products/by-sku/:sku", async (req, res) => {
+  app.get("/api/products/by-sku/:sku", requireAuth, async (req, res) => {
     try {
       const product = await storage.getProductBySku(req.params.sku);
       if (!product) {
@@ -393,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/products/target/:sku", async (req, res) => {
+  app.get("/api/products/target/:sku", requireAuth, async (req, res) => {
     try {
       const result = await storage.getTargetProduct(req.params.sku);
       if (!result) {
@@ -421,7 +421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/products/:id", async (req, res) => {
+  app.get("/api/products/:id", requireAuth, async (req, res) => {
     try {
       const product = await storage.getProduct(req.params.id);
       if (!product) {
@@ -491,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Material Requests
-  app.get("/api/requests", async (req, res) => {
+  app.get("/api/requests", requireAuth, async (req, res) => {
     try {
       const requests = await storage.getMaterialRequests();
       res.json(requests);
@@ -500,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/requests/:id", async (req, res) => {
+  app.get("/api/requests/:id", requireAuth, async (req, res) => {
     try {
       const request = await storage.getMaterialRequest(req.params.id);
       if (!request) {
@@ -745,7 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Request Items
-  app.get("/api/requests/:id/items", async (req, res) => {
+  app.get("/api/requests/:id/items", requireAuth, async (req, res) => {
     try {
       const items = await storage.getRequestItems(req.params.id);
       res.json(items);
@@ -870,7 +870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vehicle Types
-  app.get("/api/vehicle-types", async (req, res) => {
+  app.get("/api/vehicle-types", requireAuth, async (req, res) => {
     try {
       const vehicleTypes = await storage.getVehicleTypes();
       res.json(vehicleTypes);
@@ -900,7 +900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vehicles
-  app.get("/api/vehicles", async (req, res) => {
+  app.get("/api/vehicles", requireAuth, async (req, res) => {
     try {
       const vehicles = await storage.getVehicles();
       res.json(vehicles);
@@ -920,7 +920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Drivers
-  app.get("/api/drivers", async (req, res) => {
+  app.get("/api/drivers", requireAuth, async (req, res) => {
     try {
       const drivers = await storage.getDrivers();
       res.json(drivers);
@@ -1004,7 +1004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Docks
-  app.get("/api/docks", async (req, res) => {
+  app.get("/api/docks", requireAuth, async (req, res) => {
     try {
       const docks = await storage.getDocks();
       res.json(docks);
@@ -1024,7 +1024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Trips
-  app.get("/api/trips", async (req, res) => {
+  app.get("/api/trips", requireAuth, async (req, res) => {
     try {
       const trips = await storage.getTrips();
       res.json(trips);
@@ -1033,7 +1033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/trips/:id", async (req, res) => {
+  app.get("/api/trips/:id", requireAuth, async (req, res) => {
     try {
       const trip = await storage.getTrip(req.params.id);
       if (!trip) {
@@ -1232,7 +1232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Loading Orders
-  app.get("/api/loading-orders", async (req, res) => {
+  app.get("/api/loading-orders", requireAuth, async (req, res) => {
     try {
       const orders = await storage.getLoadingOrders();
       res.json(orders);
@@ -1241,7 +1241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/loading-orders/:id", async (req, res) => {
+  app.get("/api/loading-orders/:id", requireAuth, async (req, res) => {
     try {
       const order = await storage.getLoadingOrder(req.params.id);
       if (!order) {
@@ -1253,7 +1253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/loading-orders/:id/requests", async (req, res) => {
+  app.get("/api/loading-orders/:id/requests", requireAuth, async (req, res) => {
     try {
       const requests = await storage.getLoadingOrderRequests(req.params.id);
       res.json(requests);
@@ -1262,7 +1262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/loading-orders/:id/items", async (req, res) => {
+  app.get("/api/loading-orders/:id/items", requireAuth, async (req, res) => {
     try {
       const items = await storage.getLoadingOrderItems(req.params.id);
       res.json(items);
@@ -1291,7 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Loading Order Trips routes
-  app.get("/api/loading-orders/:id/trips", async (req, res) => {
+  app.get("/api/loading-orders/:id/trips", requireAuth, async (req, res) => {
     try {
       const trips = await storage.getLoadingOrderTrips(req.params.id);
       res.json(trips);
@@ -1530,7 +1530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/loading-orders/:id/movements", async (req, res) => {
+  app.get("/api/loading-orders/:id/movements", requireAuth, async (req, res) => {
     try {
       const movements = await storage.getMovementsByLoadingOrder(req.params.id);
       res.json(movements);
@@ -1540,7 +1540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Movements
-  app.get("/api/movements", async (req, res) => {
+  app.get("/api/movements", requireAuth, async (req, res) => {
     try {
       const movements = await storage.getMovements();
       res.json(movements);
@@ -1551,7 +1551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Movement Approvals - Must come BEFORE /api/movements/:id
-  app.get("/api/movements/pending-approval", async (req, res) => {
+  app.get("/api/movements/pending-approval", requireAuth, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -1565,7 +1565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/movements/:id", async (req, res) => {
+  app.get("/api/movements/:id", requireAuth, async (req, res) => {
     try {
       const movement = await storage.getMovement(req.params.id);
       if (!movement) {
@@ -1577,7 +1577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/movements/:id/items", async (req, res) => {
+  app.get("/api/movements/:id/items", requireAuth, async (req, res) => {
     try {
       const items = await storage.getMovementItems(req.params.id);
       res.json(items);
@@ -1842,7 +1842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Movement Audit Logs
-  app.get("/api/movements/:id/audit-logs", async (req, res) => {
+  app.get("/api/movements/:id/audit-logs", requireAuth, async (req, res) => {
     try {
       const logs = await storage.getMovementAuditLogs(req.params.id);
       res.json(logs);
@@ -1971,7 +1971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Returns
-  app.get("/api/returns", async (req, res) => {
+  app.get("/api/returns", requireAuth, async (req, res) => {
     try {
       const returns = await storage.getReturns();
       res.json(returns);
@@ -1991,7 +1991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Users
-  app.get("/api/users", async (req, res) => {
+  app.get("/api/users", requireAuth, async (req, res) => {
     try {
       const users = await storage.getUsers();
       // Remove passwords from response
@@ -2002,7 +2002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:id", async (req, res) => {
+  app.get("/api/users/:id", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) {
@@ -2133,7 +2133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Roles
-  app.get("/api/roles", async (req, res) => {
+  app.get("/api/roles", requireAuth, async (req, res) => {
     try {
       const roles = await storage.getRoles();
       res.json(roles);
@@ -2142,7 +2142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/roles/:id", async (req, res) => {
+  app.get("/api/roles/:id", requireAuth, async (req, res) => {
     try {
       const role = await storage.getRole(req.params.id);
       if (!role) {
@@ -2184,7 +2184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Permissions
-  app.get("/api/permissions", async (req, res) => {
+  app.get("/api/permissions", requireAuth, async (req, res) => {
     try {
       const permissions = await storage.getPermissions();
       res.json(permissions);
@@ -2302,7 +2302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Roles
-  app.get("/api/users/:userId/roles", async (req, res) => {
+  app.get("/api/users/:userId/roles", requireAuth, async (req, res) => {
     try {
       const userRoles = await storage.getUserRoles(req.params.userId);
       res.json(userRoles);
@@ -2334,7 +2334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Role Permissions
-  app.get("/api/roles/:roleId/permissions", async (req, res) => {
+  app.get("/api/roles/:roleId/permissions", requireAuth, async (req, res) => {
     try {
       const rolePermissions = await storage.getRolePermissions(req.params.roleId);
       res.json(rolePermissions);
