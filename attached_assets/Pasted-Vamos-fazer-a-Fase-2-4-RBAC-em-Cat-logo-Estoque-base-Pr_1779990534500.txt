@@ -1,0 +1,249 @@
+Vamos fazer a Fase 2.4 — RBAC em Catálogo/Estoque base: Produtos, Kits e Fornecedores.
+
+Objetivo:
+Aplicar autorização por papel nas rotas de escrita de Produtos, Kits e Fornecedores, mantendo leitura para usuários autenticados, sem mexer ainda em movimentações, requisições, ordens de carregamento ou regras de estoque operacional.
+
+Contexto:
+Já concluímos:
+
+* Fase 2.1: infraestrutura mínima de RBAC.
+* Fase 2.2: rotas administrativas/configuração admin-only.
+* Fase 2.2.1: endpoint mínimo para @mention.
+* Fase 2.3: RBAC nas escritas de logística.
+* Fase 2.3.1: front-end alinhado para esconder ações bloqueadas.
+
+Agora vamos proteger a escrita de catálogo.
+
+Decisões aprovadas para esta fase:
+
+1. Escrita de Produtos, Kits e Fornecedores deve ser admin-only por enquanto.
+2. Leitura de Produtos, Kits e Fornecedores continua permitida para qualquer usuário autenticado.
+3. Não criar role nova de almoxarifado nesta fase.
+4. Não permitir ainda edição de status de produto por almoxarifado.
+5. O caso especial de status de produto será tratado futuramente com endpoint separado, como PATCH /api/products/:id/status.
+6. Não consumir permissions/role_permissions no runtime.
+7. Não alterar banco, seed ou migrations.
+
+Escopo permitido:
+
+1. Back-end — aplicar requireAdmin nas rotas de escrita
+
+Produtos:
+
+* POST /api/products
+* POST /api/products/bulk
+* PATCH /api/products/:id
+* PUT /api/products/:id, se existir
+* DELETE /api/products/:id, se existir
+* rotas de upload/alteração de imagem de produto, se existirem e forem escrita de produto
+
+Kits:
+
+* POST /api/kits
+* PATCH /api/kits/:id
+* DELETE /api/kits/:id, se existir
+* rotas de BOM/composição do kit que alterem dados, como POST/PATCH/DELETE de itens do kit, se existirem
+
+Fornecedores:
+
+* POST /api/suppliers
+* PATCH /api/suppliers/:id
+* DELETE /api/suppliers/:id já deve estar admin-only; manter como está
+
+Importante:
+Antes de alterar, audite as rotas reais existentes para products, kits e suppliers e liste quais serão protegidas.
+
+2. Back-end — manter leitura apenas com requireAuth
+   Não aplicar requireAdmin nos GETs:
+
+* GET /api/products
+* GET /api/products/:id
+* GET /api/products/by-sku/:sku
+* GET /api/products/target/:sku
+* GET /api/kits
+* GET /api/kits/:id
+* GET /api/kits/:id/bom
+* GET /api/suppliers
+* GET /api/suppliers/:id
+* GET /api/suppliers/recent
+* GET /api/products/:sku/recent-suppliers
+
+Esses endpoints continuam disponíveis para qualquer usuário logado, pois alimentam consulta operacional, dropdowns e telas de visualização.
+
+3. Preservar regras existentes
+   Não remover ou alterar:
+
+* validações Zod existentes
+* regras de SKU
+* regras de variantes
+* regras de BOM
+* regras de upload
+* regras de fornecedores recentes
+* payloads de entrada ou saída
+* nomes de endpoints
+* status codes existentes para admin
+
+A única mudança esperada:
+
+* usuário logado não-admin passa a receber 403 nas rotas de escrita de catálogo.
+
+4. Front-end — alinhar UX defensiva
+   Ajustar apenas telas/componentes de:
+
+* products
+* product-dialog
+* kits
+* kit-dialog
+* suppliers
+* supplier-dialog
+* botões de importação de produtos, se existirem
+
+Para não-admin:
+
+* esconder/desabilitar botão de criar produto
+* esconder/desabilitar botão de editar produto
+* esconder/desabilitar importação em lote de produtos
+* esconder/desabilitar upload/alteração de imagem de produto, se existir
+* esconder/desabilitar botão de criar kit
+* esconder/desabilitar botão de editar kit
+* esconder/desabilitar edição de BOM/composição do kit
+* esconder/desabilitar botão de criar fornecedor
+* esconder/desabilitar botão de editar fornecedor
+* esconder/desabilitar botão de excluir fornecedor
+
+Para admin:
+
+* manter tudo como está.
+
+Importante:
+Não esconder as páginas/listas de produtos, kits e fornecedores, porque os GETs continuam permitidos para consulta.
+Apenas esconder ações de escrita.
+
+5. Não alterar nesta fase
+
+* Requisições
+* Aprovações
+* Ordens de carregamento
+* Viagens
+* Motoristas
+* Veículos
+* Docas
+* Movimentações
+* Devoluções
+* Relatórios
+* Sidebar geral, exceto se houver botão direto de ação de catálogo
+* ProtectedRoute, salvo se já existir suporte e for necessário para tela estritamente admin-only
+* Banco
+* Seed
+* Migration
+* permissions/role_permissions
+* Novos papéis
+* Endpoint de status de produto por almoxarifado
+
+6. Mensagens de erro
+   Usar mensagens claras:
+
+* "Apenas administradores podem gerenciar produtos"
+* "Apenas administradores podem gerenciar kits"
+* "Apenas administradores podem gerenciar fornecedores"
+
+Manter padrão:
+
+* Anônimo → 401
+* Logado sem admin → 403
+* Admin → comportamento anterior
+
+7. Testes obrigatórios
+   Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Anônimo:
+
+* POST /api/products → 401
+* POST /api/kits → 401
+* POST /api/suppliers → 401
+
+Não-admin:
+
+* GET /api/products → 200
+* GET /api/kits → 200
+* GET /api/suppliers → 200
+* POST /api/products → 403
+* POST /api/kits → 403
+* POST /api/suppliers → 403
+* PATCH /api/products/:id → 403
+* PATCH /api/kits/:id → 403
+* PATCH /api/suppliers/:id → 403
+
+Admin:
+
+* GET /api/products → 200
+* GET /api/kits → 200
+* GET /api/suppliers → 200
+* POST/PATCH de produto continua funcionando
+* POST/PATCH de kit continua funcionando
+* POST/PATCH de fornecedor continua funcionando
+* DELETE /api/suppliers/:id continua funcionando apenas para admin
+
+Front-end:
+Admin:
+
+* vê botões de criar/editar produtos, kits e fornecedores.
+* vê importação de produtos, se existir.
+* consegue abrir dialogs de edição.
+
+Não-admin:
+
+* continua acessando listas de produtos, kits e fornecedores.
+* não vê botões de criar/editar/importar/excluir.
+* não recebe erro visual quebrado.
+
+8. Documentação
+   Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.4
+* replit.md com bullet curto
+
+Registrar:
+
+* objetivo
+* rotas auditadas
+* rotas protegidas
+* rotas mantidas apenas com requireAuth
+* ajustes de front-end
+* testes executados
+* limitações conhecidas
+
+Regras obrigatórias:
+
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não criar roles novas.
+* Não renomear roles.
+* Não consumir permissions/role_permissions.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não mexer em módulos fora de produtos/kits/fornecedores.
+* Não criar any/as any.
+* Não refatorar routes.ts inteiro.
+* Não fazer redesign.
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Rotas auditadas.
+* Rotas que receberam requireAdmin.
+* Rotas analisadas e não alteradas.
+* Ajustes feitos no front-end.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que leitura continua liberada para usuários logados.
+* Confirmação de que escrita de catálogo agora é admin-only.
+* Confirmação de que banco, seed, endpoints, payloads e permissions/role_permissions não foram alterados.
