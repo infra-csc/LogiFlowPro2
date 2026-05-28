@@ -1,0 +1,189 @@
+Vamos executar a Fase 2.10 — RBAC mínimo em Devoluções.
+
+Objetivo:
+Fechar o único hole crítico encontrado na auditoria de Devoluções, protegendo a criação de devoluções com RBAC, sem alterar payloads, endpoints, banco, front-end ou regras de negócio.
+
+Contexto:
+A Fase 2.9 auditou o módulo de Devoluções e identificou que ele é simples:
+
+Rotas existentes:
+
+* GET /api/returns — já usa requireAuth.
+* POST /api/returns — está sem nenhuma proteção.
+
+Não existem hoje:
+
+* GET /api/returns/:id
+* PATCH /api/returns/:id
+* DELETE /api/returns/:id
+* rotas de itens
+* rotas de status
+* aprovação
+* rejeição
+* cancelamento
+* processamento
+* audit logs
+* impacto em estoque
+
+A devolução hoje é apenas um registro passivo de constatação:
+
+* tripId
+* productId
+* expectedQuantity
+* returnedQuantity
+* damagedQuantity
+* lostQuantity
+* damagePhotos
+* damageDescription
+
+Decisão aprovada:
+POST /api/returns deve ser permitido apenas para:
+
+* Admin
+* Almoxarifado
+
+Logística, Supervisor e usuário comum continuam apenas com leitura.
+
+Escopo permitido:
+
+1. Back-end
+
+Alterar somente:
+
+* POST /api/returns
+
+Aplicar:
+
+* requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO])
+
+Mensagem sugerida:
+
+* "Apenas administradores ou almoxarifado podem criar devoluções"
+
+Preservar:
+
+* insertReturnSchema
+* payload de entrada
+* payload de saída
+* status code atual para criação bem-sucedida
+* validações existentes
+* handler atual
+* comportamento de GET /api/returns
+
+2. Não alterar
+
+Não mexer em:
+
+* GET /api/returns
+* banco
+* schema
+* migrations
+* seed
+* endpoints
+* payloads
+* front-end
+* sidebar
+* ProtectedRoute
+* permissions/role_permissions
+* roles novas
+* package.json
+* CI
+* layout/design
+* status de devolução
+* fluxo de aprovação
+* impacto em estoque
+* audit log
+
+Não criar:
+
+* botão Nova Devolução
+* dialog/form de devolução
+* página de detalhe
+* rotas novas
+* status
+* processamento
+* aprovação/rejeição
+
+3. Validações obrigatórias
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Anônimo:
+
+* GET /api/returns → 401
+* POST /api/returns → 401
+
+Admin:
+
+* GET /api/returns → 200
+* POST /api/returns → 201 ou comportamento atual equivalente
+
+Almoxarifado:
+
+* GET /api/returns → 200
+* POST /api/returns → 201 ou comportamento atual equivalente
+
+Logística:
+
+* GET /api/returns → 200
+* POST /api/returns → 403
+
+Supervisor:
+
+* GET /api/returns → 200
+* POST /api/returns → 403
+
+Usuário comum:
+
+* GET /api/returns → 200
+* POST /api/returns → 403
+
+Importante:
+
+* Usar usuário transiente, se necessário.
+* Remover usuário transiente ao final.
+* Se criar devolução de teste, remover ao final.
+* Não alterar senha de usuário real.
+* Se o POST autorizado retornar 400 por payload/fixture inválido, isso pode indicar gate-pass; mas, se possível, testar um payload válido para confirmar 201.
+
+4. Documentação
+
+Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.10
+* replit.md com bullet curto
+
+Registrar:
+
+* auditoria encontrou apenas 2 rotas
+* POST /api/returns estava sem proteção
+* middleware aplicado
+* decisão de Admin/Almoxarifado
+* confirmação de que GET continua liberado para qualquer usuário logado
+* confirmação de que não foi criado fluxo novo de devoluções
+* próximas possibilidades futuras:
+
+  * formulário de criação de devolução
+  * status/processamento
+  * audit log
+  * impacto em estoque, se virar requisito de produto
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Rota alterada.
+* Middleware aplicado.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que anônimo não consegue mais criar devolução.
+* Confirmação de que usuário comum, Logística e Supervisor continuam apenas leitura.
+* Confirmação de que Admin e Almoxarifado podem criar devolução.
+* Confirmação de que GET /api/returns continua requireAuth.
+* Confirmação de que front-end, banco, seed, schema, endpoints, payloads e permissions/role_permissions não foram alterados.

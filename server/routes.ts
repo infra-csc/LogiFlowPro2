@@ -2035,7 +2035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/returns", async (req, res) => {
+  app.post("/api/returns", requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]), async (req, res) => {
     try {
       const data = insertReturnSchema.parse(req.body);
       const returnItem = await storage.createReturn(data);

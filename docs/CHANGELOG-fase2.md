@@ -1770,6 +1770,67 @@ Admin-only provisória**. Não foi refatorada nesta fase.
   usuários — `pending_approval` deve continuar sendo definido pela regra de
   criação/tipo de movimentação.
 
+---
+
+## Fase 2.10 — RBAC mínimo em Devoluções (2026-05-28)
+
+**Objetivo**: fechar o único hole crítico de Devoluções, protegendo a criação
+com RBAC, sem alterar payloads, endpoints, banco, front-end ou regras de
+negócio.
+
+### Contexto
+- Fase 2.9 auditou o módulo: apenas 2 rotas existem.
+- `GET /api/returns` já usava `requireAuth`.
+- `POST /api/returns` estava **sem nenhuma proteção**.
+- A devolução é um registro passivo (tripId, productId, quantidades, avaria,
+  perda, descrição) — não tem status, processamento, aprovação, impacto em
+  estoque, nem audit log.
+
+### Arquivo alterado
+
+| Arquivo | Alteração |
+|---|---|
+| `server/routes.ts` | `POST /api/returns` recebeu `requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO])`. |
+
+### Rota alterada
+
+- `POST /api/returns` — agora exige `Admin` ou `Almoxarifado`.
+
+### Smoke tests executados
+
+| Persona | GET /api/returns | POST /api/returns | Resultado |
+|---|---|---|---|
+| Admin (`admin`) | 200 | 201 | ✅ Cria devolução |
+| Almoxarifado (`smoke_almox`) | 200 | 201 | ✅ Cria devolução |
+| Logística (`smoke_logist`) | 200 | 403 | ✅ Rejeitado |
+| Supervisor (`smoke_superv`) | 200 | 403 | ✅ Rejeitado |
+| Usuário comum (`smoke_comum`) | 200 | 403 | ✅ Rejeitado |
+| Anônimo | 401 | 401 | ✅ Rejeitado |
+
+Dados de smoke restaurados:
+- 2 devoluções de teste deletadas.
+
+### O que NÃO foi alterado
+
+- `GET /api/returns`: continua `requireAuth` (nenhuma mudança).
+- Banco, schema, migrations, seed: intocados.
+- Front-end: nenhuma alteração.
+- Sidebar: nenhuma alteração.
+- ProtectedRoute: nenhuma alteração.
+- `permissions`/`role_permissions`: não consumidos.
+- Nenhuma rota nova, botão, dialog, status, processamento, aprovação,
+  rejeição, cancelamento, audit log ou impacto em estoque.
+- `npm run check` zerado.
+- `npm run build` passou (`dist/index.js 272.4kb`).
+
 ### Dívida futura registrada
-- **Fase 2.9**: auditoria + RBAC em devoluções.
+- Formulário de criação de devolução (front-end) — fica para quando houver
+  requisito de produto.
+- Status, processamento, aprovação/rejeição, impacto em estoque — fica para
+  futuro roadmap de produto.
+- Audit log genérico para criação de devolução — fica para futuro.
+
+### Próximas fases recomendadas
+- **Fase 2.11+**: se o módulo de devoluções evoluir, adicionar formulário,
+  status, processamento, audit log e impacto em estoque conforme roadmap.
 

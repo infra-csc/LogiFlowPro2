@@ -48,8 +48,10 @@ Preferred communication style: Simple, everyday language.
 - **2.8.3** (2026-05-28): front-end de movimentações alinhado — 6 helpers novos em `authz.ts`; botões de escrita (create, edit, status, items, aprovações) e scanner gated por persona; sidebar oculta link de aprovações de movimentações para não-Admin/Supervisor. `npm run check` e `build` zerados. Back-end inalterado.
 - **2.8.4** (2026-05-28): audit log no decremento — rota `PATCH /api/movements/:id/items/:itemId/decrement` agora registra `movement_audit_logs` com `action: "item_quantity_changed"`, `actorId`, `actorName`, `metadata` (previousQuantity, newQuantity, quantityDecremented, productName, sku, ownerName, ownerType). Padrão existente `createMovementAuditLog` reutilizado. Smoke tests 5×5 validados (Admin/Almox passam; Supervisor/Comum/Anônimo rejeitados). Dados restaurados. `npm run check` e `build` zerados. Dívida técnica do `PATCH /status` documentada (rota Admin-only provisória; no futuro deve ser substituída por transições explícitas).
 
+- **2.9** (2026-05-28): auditoria de Devoluções — 2 rotas identificadas (GET/POST). `GET /api/returns` com `requireAuth`. `POST /api/returns` **sem nenhuma proteção** (hole crítico). Módulo é registro passivo de constatação (tripId, productId, quantidades, avaria, perda). Sem status, processamento, aprovação, impacto em estoque, audit log. Nenhum código alterado.
+- **2.10** (2026-05-28): RBAC mínimo em Devoluções — `POST /api/returns` recebeu `requireAnyRole([ADMIN, ALMOXARIFADO])`. Smoke tests 6×2 (12 cenários) validados: Admin/Almox criam; Logística/Supervisor/Comum rejeitados; Anônimo 401. Dados de smoke restaurados. `npm run check` e `build` zerados. Nenhuma rota nova, botão, dialog, status, front-end, banco ou schema alterado.
+
 ### Próximas fases (planejadas)
-- **2.9**: auditoria + RBAC em devoluções.
 - **Fases futuras** (roadmap de longo prazo): hierarquia de roles, sistema de auditoria, templates, interface master-detail, dependências automáticas. Roadmap detalhado em [`docs/RBAC-future-guide.md`](docs/RBAC-future-guide.md).
 
 ## System Architecture
