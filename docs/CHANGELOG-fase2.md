@@ -242,3 +242,198 @@ Comportamento das 2 rotas migradas é **idêntico** ao anterior:
 GET `/api/user` retorna o mesmo payload de antes (`roles` + `isAdmin`).
 
 Demais 135 endpoints inalterados.
+
+---
+
+## Fase 2.2 — RBAC em rotas administrativas e configurações (2026-05-28)
+
+**Objetivo**: aplicar `requireAdmin` nas rotas administrativas (usuários,
+papéis, permissões) e nas escritas de configuração (grupos/tipos de
+movimentação, status de produto, localizações, tipos de veículos),
+mantendo intactos os fluxos operacionais centrais e o auto-cadastro
+público.
+
+### Arquivos alterados
+
+- **`server/routes.ts`** — única source de mudanças. 33 rotas migradas
+  para `requireAdmin`. Removidos blocos inline redundantes de
+  `if (!req.isAuthenticated())` que viraram dead code após o middleware
+  (ganho colateral: mensagens 401 padronizadas em pt-BR
+  `"Não autenticado"` em vez do antigo `"Not authenticated"`).
+- **`docs/CHANGELOG-fase2.md`** — este bloco.
+- **`replit.md`** — bullet curto de Fase 2.2 apontando para este arquivo.
+
+**Nenhum outro arquivo tocado.** `server/authz.ts` e `shared/roles.ts`
+da Fase 2.1 reaproveitados sem alteração.
+
+### Rotas que receberam `requireAdmin`
+
+**Usuários admin** (mensagem: `"Apenas administradores podem gerenciar usuários"`)
+| Método | Rota | Antes |
+|---|---|---|
+| GET | `/api/users` | `requireAuth` |
+| GET | `/api/users/:id` | `requireAuth` |
+| PATCH | `/api/users/:id` | **sem auth** ⚠️ (hole corrigido) |
+| PATCH | `/api/users/:id/approve` | inline 401 |
+| PATCH | `/api/users/:id/reject` | inline 401 |
+
+**Papéis e permissões** (mensagem: `"Apenas administradores podem gerenciar papéis e permissões"`)
+| Método | Rota | Antes |
+|---|---|---|
+| GET | `/api/roles` | `requireAuth` |
+| GET | `/api/roles/:id` | `requireAuth` |
+| POST | `/api/roles` | sem auth |
+| PATCH | `/api/roles/:id` | sem auth |
+| DELETE | `/api/roles/:id` | sem auth |
+| GET | `/api/permissions` | `requireAuth` |
+| POST | `/api/permissions` | sem auth |
+| POST | `/api/permissions/populate` | sem auth |
+| GET | `/api/users/:userId/roles` | `requireAuth` |
+| POST | `/api/users/:userId/roles` | sem auth |
+| DELETE | `/api/users/:userId/roles/:roleId` | sem auth |
+| GET | `/api/roles/:roleId/permissions` | `requireAuth` |
+| POST | `/api/roles/:roleId/permissions` | sem auth |
+| PATCH | `/api/role-permissions/:id` | sem auth |
+| DELETE | `/api/roles/:roleId/permissions/:permissionId` | sem auth |
+
+**Configurações do sistema** (mensagem: `"Apenas administradores podem alterar configurações do sistema"`)
+| Método | Rota | Antes |
+|---|---|---|
+| POST | `/api/movement-groups` | inline 401 |
+| PATCH | `/api/movement-groups/:id` | inline 401 |
+| DELETE | `/api/movement-groups/:id` | inline 401 |
+| POST | `/api/movement-types-config` | inline 401 |
+| PATCH | `/api/movement-types-config/:id` | inline 401 |
+| DELETE | `/api/movement-types-config/:id` | inline 401 |
+| POST | `/api/product-statuses` | inline 401 |
+| PATCH | `/api/product-statuses/:id` | inline 401 |
+| POST | `/api/locations` | inline 401 |
+| PATCH | `/api/locations/:id` | inline 401 |
+| POST | `/api/vehicle-types` | `requireAuth` |
+| PATCH | `/api/vehicle-types/:id` | `requireAuth` |
+
+**Total**: 33 rotas migradas (5 usuários + 15 papéis/perms + 12 config + reaproveitamento de helpers locais `adminRolesPerms` e `adminConfig` para evitar repetição).
+
+### Rotas analisadas e **propositalmente NÃO alteradas**
+
+**Públicas (escopo do spec — devem permanecer públicas)**:
+- `POST /api/users` — auto-cadastro com `approval_status='pending'`.
+- `POST /api/register` (em `server/auth.ts`) — registro alternativo.
+- `POST /api/login`, `POST /api/logout` — autenticação.
+- `GET /api/user` — quem sou eu (já é `requireAuth` implícito).
+- `POST /api/auth/request-password-reset` — recuperação de senha.
+- `POST /api/auth/reset-password` — redefinição via token.
+
+**GETs de catálogos operacionais (permanecem `requireAuth`/inline auth — alimentam dropdowns)**:
+- `GET /api/movement-groups`, `GET /api/movement-groups/:id`
+- `GET /api/movement-types-config`, `GET /api/movement-types-config/:id`
+- `GET /api/product-statuses`
+- `GET /api/locations`
+- `GET /api/vehicle-types`
+
+**Módulos operacionais (escopo de Fase 2.3+, intocados)**:
+- `/api/events`, `/api/products`, `/api/kits`, `/api/suppliers` POST/PATCH,
+  `/api/requests`, `/api/loading-orders`, `/api/trips`, `/api/drivers`
+  POST/PATCH, `/api/vehicles`, `/api/docks`, `/api/movements`,
+  `/api/returns`, `/api/reports`, `/api/inventory/*`.
+
+**Já protegidos com `requireAdmin` na Fase 2.1 (intocados)**:
+- `DELETE /api/suppliers/:id`
+- `DELETE /api/drivers/:id`
+
+### Decisões técnicas
+
+1. **GETs de roles/permissions também viraram admin-only** — confirmado
+   pelo spec ("são telas administrativas e não devem ficar visíveis para
+   usuário comum"). Antes eram `requireAuth`, agora `requireAdmin`.
+2. **GETs de catálogos operacionais ficam `requireAuth`** — alimentam
+   dropdowns em telas operacionais (qualquer logado precisa enxergar
+   status/localização/tipo de veículo para preencher formulários).
+3. **Inline `if (!req.isAuthenticated()) return 401 "Not authenticated"`
+   removidos** quando substituídos por `requireAdmin`. Motivo: viram
+   dead code (middleware já garantiu `isAuthenticated()=true`). Ganho
+   colateral: mensagem 401 padronizada em pt-BR `"Não autenticado"`.
+4. **Helpers locais `adminRolesPerms` e `adminConfig`** declarados uma
+   vez dentro de `registerRoutes()` para evitar 26 instanciações
+   repetidas do mesmo middleware factory. Mensagens permanecem únicas
+   por família (3 mensagens distintas no total).
+5. **`PATCH /api/users/:id` — correção de hole crítico**: antes não
+   tinha nenhuma checagem de auth (qualquer um anônimo podia editar
+   qualquer usuário, incluindo trocar password do admin). Agora exige
+   admin autenticado. Esse era o maior risco em produção.
+6. **Nenhum `any` / `as any` novo** introduzido.
+
+### Validações
+
+- **`npm run check`** → exit 0 (typecheck zerado).
+- **`npm run build`** → ok (`dist/index.js 266.1kb`, -0.2kb por remoção
+  de blocos inline).
+- **Smoke tests** (cobertura abaixo):
+
+#### Anônimo (todas as 30 rotas no escopo)
+
+| Cenário | Esperado | Obtido |
+|---|---|---|
+| GET admin (7 rotas: users/roles/permissions/users:id/roles/...) | 401 | **401** ✅ |
+| GET catálogos config (5 rotas) | 401 | **401** ✅ |
+| Escritas admin/config (23 rotas: POST/PATCH/DELETE em users/roles/permissions/movement-groups/movement-types-config/product-statuses/locations/vehicle-types) | 401 | **401** ✅ |
+| `POST /api/users` (auto-cadastro) | 201 (ou 400 se inválido) | **201** ✅ `approval_status:"pending"` |
+
+#### Admin (sessão real)
+
+| Cenário | Esperado | Obtido |
+|---|---|---|
+| GET 8 endpoints administrativos/config | 200 | **200** ✅ |
+| DELETE 5 endpoints em UUID fake (no-op idempotente) | 200/204 | **200/204** ✅ |
+| `GET /api/user` payload | mesmo de antes | **idem** ✅ (`roles:["Adm"], isAdmin:true`) |
+
+#### Não-admin (cobertura herdada da Fase 2.1)
+
+Per spec ("Não alterar senha de usuário real para smoke test"), **não**
+foi reaberto o smoke 403 com usuário não-admin nesta fase. O
+comportamento 403 do `requireAdmin` foi **integralmente validado na
+Fase 2.1** (usuário `pftelles` / `Gestor Logistica` recebeu 403 com
+mensagem custom). Como esta Fase 2.2 apenas aplica o **mesmo middleware
+inalterado** a mais rotas (sem mudar nem o middleware nem o usuário),
+o 403 para não-admin é garantido por construção. Limitação registrada
+em vez de alterar senha real.
+
+### Cleanup
+
+- Usuário pendente criado pelo smoke de auto-cadastro (`smoke2_*`) foi
+  apagado via `DELETE FROM users` no mesmo lote do smoke. Estado do
+  banco preservado.
+
+### Confirmações exigidas pelo spec
+
+- ✅ Banco **não** alterado (apenas SELECT + INSERT/DELETE de 1 user de
+  teste descartado).
+- ✅ Migration **não** criada.
+- ✅ Seed **não** alterado.
+- ✅ Roles **não** renomeadas.
+- ✅ Payloads **não** alterados (GET /api/user verificado idêntico).
+- ✅ Nomes de endpoints **não** alterados.
+- ✅ Front-end **não** alterado.
+- ✅ ProtectedRoute **não** alterado.
+- ✅ Sidebar **não** alterada.
+- ✅ Matriz completa **não** implementada.
+- ✅ Eventos/produtos/kits/requisições/viagens/loading-orders/movimentações/devoluções/relatórios **não** tocados.
+- ✅ `permissions` / `role_permissions` **não** consumidas em runtime.
+- ✅ Nenhum `any` / `as any` novo.
+- ✅ `routes.ts` **não** refatorado inteiro (apenas blocos das 33 rotas).
+- ✅ `POST /api/users` continua público (verificado: 201 anônimo).
+- ✅ GETs catálogos operacionais continuam apenas `requireAuth` (verificado: 401 anônimo, 200 admin).
+
+### Rotas administrativas ainda expostas (auditoria final)
+
+Nenhuma rota administrativa de gestão de usuários, papéis, permissões
+ou configurações dos 5 catálogos listados está sem proteção. Auditadas
+todas as 137 rotas via grep `app\.(get|post|patch|delete)\("/api/` e
+revisadas individualmente as do escopo.
+
+**Pendências para fases posteriores (NÃO escopo Fase 2.2)**:
+- Módulos operacionais ainda só exigem `requireAuth` (qualquer logado
+  pode criar evento/produto/requisição/viagem). Será Fase 2.3+ com
+  matriz por papel funcional.
+- `POST /api/permissions/populate` é admin-only agora; considerar movê-lo
+  para CLI/seed posteriormente — fora de escopo aqui.

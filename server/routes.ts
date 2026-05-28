@@ -875,7 +875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/vehicle-types", requireAuth, async (req, res) => {
+  app.post("/api/vehicle-types", requireAdmin({ message: "Apenas administradores podem alterar configurações do sistema" }), async (req, res) => {
     try {
       const data = insertVehicleTypeSchema.parse(req.body);
       const vehicleType = await storage.createVehicleType(data);
@@ -885,7 +885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/vehicle-types/:id", requireAuth, async (req, res) => {
+  app.patch("/api/vehicle-types/:id", requireAdmin({ message: "Apenas administradores podem alterar configurações do sistema" }), async (req, res) => {
     try {
       const data = insertVehicleTypeSchema.partial().parse(req.body);
       const vehicleType = await storage.updateVehicleType(req.params.id, data);
@@ -1982,7 +1982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Users
-  app.get("/api/users", requireAuth, async (req, res) => {
+  app.get("/api/users", requireAdmin({ message: "Apenas administradores podem gerenciar usuários" }), async (req, res) => {
     try {
       const users = await storage.getUsers();
       // Remove passwords from response
@@ -1993,7 +1993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:id", requireAuth, async (req, res) => {
+  app.get("/api/users/:id", requireAdmin({ message: "Apenas administradores podem gerenciar usuários" }), async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) {
@@ -2022,7 +2022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id", async (req, res) => {
+  app.patch("/api/users/:id", requireAdmin({ message: "Apenas administradores podem gerenciar usuários" }), async (req, res) => {
     try {
       const data = insertUserSchema.partial().parse(req.body);
       // Hash password if it's being updated
@@ -2124,7 +2124,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Roles
-  app.get("/api/roles", requireAuth, async (req, res) => {
+  const adminRolesPerms = requireAdmin({ message: "Apenas administradores podem gerenciar papéis e permissões" });
+
+  app.get("/api/roles", adminRolesPerms, async (req, res) => {
     try {
       const roles = await storage.getRoles();
       res.json(roles);
@@ -2133,7 +2135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/roles/:id", requireAuth, async (req, res) => {
+  app.get("/api/roles/:id", adminRolesPerms, async (req, res) => {
     try {
       const role = await storage.getRole(req.params.id);
       if (!role) {
@@ -2145,7 +2147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/roles", async (req, res) => {
+  app.post("/api/roles", adminRolesPerms, async (req, res) => {
     try {
       const data = insertRoleSchema.parse(req.body);
       const role = await storage.createRole(data);
@@ -2155,7 +2157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/roles/:id", async (req, res) => {
+  app.patch("/api/roles/:id", adminRolesPerms, async (req, res) => {
     try {
       const data = insertRoleSchema.partial().parse(req.body);
       const role = await storage.updateRole(req.params.id, data);
@@ -2165,7 +2167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/roles/:id", async (req, res) => {
+  app.delete("/api/roles/:id", adminRolesPerms, async (req, res) => {
     try {
       await storage.deleteRole(req.params.id);
       res.sendStatus(204);
@@ -2175,7 +2177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Permissions
-  app.get("/api/permissions", requireAuth, async (req, res) => {
+  app.get("/api/permissions", adminRolesPerms, async (req, res) => {
     try {
       const permissions = await storage.getPermissions();
       res.json(permissions);
@@ -2184,7 +2186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/permissions", async (req, res) => {
+  app.post("/api/permissions", adminRolesPerms, async (req, res) => {
     try {
       const data = insertPermissionSchema.parse(req.body);
       const permission = await storage.createPermission(data);
@@ -2195,7 +2197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Populate/Update all system permissions
-  app.post("/api/permissions/populate", async (req, res) => {
+  app.post("/api/permissions/populate", adminRolesPerms, async (req, res) => {
     try {
       const allPermissions = [
         // Operações
@@ -2293,7 +2295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Roles
-  app.get("/api/users/:userId/roles", requireAuth, async (req, res) => {
+  app.get("/api/users/:userId/roles", adminRolesPerms, async (req, res) => {
     try {
       const userRoles = await storage.getUserRoles(req.params.userId);
       res.json(userRoles);
@@ -2302,7 +2304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users/:userId/roles", async (req, res) => {
+  app.post("/api/users/:userId/roles", adminRolesPerms, async (req, res) => {
     try {
       const data = insertUserRoleSchema.parse({
         userId: req.params.userId,
@@ -2315,7 +2317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:userId/roles/:roleId", async (req, res) => {
+  app.delete("/api/users/:userId/roles/:roleId", adminRolesPerms, async (req, res) => {
     try {
       await storage.removeUserRole(req.params.userId, req.params.roleId);
       res.sendStatus(204);
@@ -2325,7 +2327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Role Permissions
-  app.get("/api/roles/:roleId/permissions", requireAuth, async (req, res) => {
+  app.get("/api/roles/:roleId/permissions", adminRolesPerms, async (req, res) => {
     try {
       const rolePermissions = await storage.getRolePermissions(req.params.roleId);
       res.json(rolePermissions);
@@ -2334,7 +2336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/roles/:roleId/permissions", async (req, res) => {
+  app.post("/api/roles/:roleId/permissions", adminRolesPerms, async (req, res) => {
     try {
       const data = insertRolePermissionSchema.parse({
         roleId: req.params.roleId,
@@ -2351,7 +2353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/role-permissions/:id", async (req, res) => {
+  app.patch("/api/role-permissions/:id", adminRolesPerms, async (req, res) => {
     try {
       const data = insertRolePermissionSchema.partial().parse(req.body);
       const rolePermission = await storage.updateRolePermission(req.params.id, data);
@@ -2361,7 +2363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/roles/:roleId/permissions/:permissionId", async (req, res) => {
+  app.delete("/api/roles/:roleId/permissions/:permissionId", adminRolesPerms, async (req, res) => {
     try {
       await storage.removeRolePermission(req.params.roleId, req.params.permissionId);
       res.sendStatus(204);
@@ -2750,11 +2752,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/movement-groups", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  const adminConfig = requireAdmin({ message: "Apenas administradores podem alterar configurações do sistema" });
 
+  app.post("/api/movement-groups", adminConfig, async (req, res) => {
     try {
       const data = insertMovementGroupSchema.parse(req.body);
       const group = await storage.createMovementGroup(data);
@@ -2765,11 +2765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/movement-groups/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.patch("/api/movement-groups/:id", adminConfig, async (req, res) => {
     try {
       const data = insertMovementGroupSchema.partial().parse(req.body);
       const group = await storage.updateMovementGroup(req.params.id, data);
@@ -2780,11 +2776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/movement-groups/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.delete("/api/movement-groups/:id", adminConfig, async (req, res) => {
     try {
       await storage.deleteMovementGroup(req.params.id);
       res.json({ success: true });
@@ -2831,11 +2823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/movement-types-config", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.post("/api/movement-types-config", adminConfig, async (req, res) => {
     try {
       const data = insertMovementTypeConfigSchema.parse(req.body);
       const typeConfig = await storage.createMovementTypeConfig(data);
@@ -2846,11 +2834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/movement-types-config/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.patch("/api/movement-types-config/:id", adminConfig, async (req, res) => {
     try {
       const data = insertMovementTypeConfigSchema.partial().parse(req.body);
       const typeConfig = await storage.updateMovementTypeConfig(req.params.id, data);
@@ -2861,11 +2845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/movement-types-config/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.delete("/api/movement-types-config/:id", adminConfig, async (req, res) => {
     try {
       await storage.deleteMovementTypeConfig(req.params.id);
       res.json({ success: true });
@@ -2944,10 +2924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/product-statuses", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  app.post("/api/product-statuses", adminConfig, async (req, res) => {
     try {
       const { db } = await import("./db");
       const { productStatuses } = await import("@shared/schema");
@@ -2959,10 +2936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/product-statuses/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  app.patch("/api/product-statuses/:id", adminConfig, async (req, res) => {
     try {
       const { db } = await import("./db");
       const { productStatuses } = await import("@shared/schema");
@@ -2996,10 +2970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/locations", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  app.post("/api/locations", adminConfig, async (req, res) => {
     try {
       const { db } = await import("./db");
       const { locations } = await import("@shared/schema");
@@ -3011,10 +2982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/locations/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  app.patch("/api/locations/:id", adminConfig, async (req, res) => {
     try {
       const { db } = await import("./db");
       const { locations } = await import("@shared/schema");
@@ -3036,10 +3004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // (Express first-match). The active route declared earlier already returns
   // a superset of these fields. Removed in Fase 1.5 — see replit.md.
 
-  app.patch("/api/users/:id/approve", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  app.patch("/api/users/:id/approve", requireAdmin({ message: "Apenas administradores podem gerenciar usuários" }), async (req, res) => {
     try {
       const { db } = await import("./db");
       const { users } = await import("@shared/schema");
@@ -3077,10 +3042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id/reject", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  app.patch("/api/users/:id/reject", requireAdmin({ message: "Apenas administradores podem gerenciar usuários" }), async (req, res) => {
     try {
       const { db } = await import("./db");
       const { users } = await import("@shared/schema");

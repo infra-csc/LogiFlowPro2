@@ -1,0 +1,210 @@
+Vamos fazer a Fase 2.2 — RBAC em rotas administrativas e configurações, com escopo controlado.
+
+Objetivo:
+Aplicar requireAdmin nas rotas administrativas e de configuração do sistema que hoje não deveriam ser acessíveis por qualquer usuário logado, sem mexer ainda nos fluxos operacionais centrais.
+
+Contexto:
+A Fase 2.1 criou a infraestrutura mínima de RBAC:
+
+* shared/roles.ts
+* server/authz.ts
+* requireRole
+* requireAnyRole
+* requireAdmin
+* normalização admin/adm
+* cache por request de roleNames
+* fallback opcional EMERGENCY_ADMIN_USERNAME
+* aplicação apenas em DELETE /api/suppliers/:id e DELETE /api/drivers/:id
+
+Agora vamos aplicar requireAdmin nas rotas administrativas/configuração.
+
+Decisões já aprovadas:
+
+1. POST /api/users deve continuar público como auto cadastro com approval_status='pending'.
+2. Não criar roles novas nesta fase.
+3. Não renomear roles existentes.
+4. Não usar permissions/role_permissions no runtime ainda.
+5. Não mexer em sidebar ou ProtectedRoute nesta fase.
+6. GETs de catálogos usados em dropdowns devem continuar acessíveis para qualquer usuário logado.
+7. Admin continua tendo acesso total.
+8. Não-admin passa a receber 403 nas escritas administrativas.
+
+Regras obrigatórias:
+
+* Não alterar banco de dados.
+* Não criar migration.
+* Não alterar seed.
+* Não renomear roles.
+* Não alterar payloads.
+* Não alterar nomes de endpoints.
+* Não alterar front-end.
+* Não alterar ProtectedRoute.
+* Não alterar sidebar.
+* Não implementar a matriz completa.
+* Não mexer em eventos, produtos, kits, requisições, viagens, ordens de carregamento, movimentações, devoluções ou relatórios nesta fase.
+* Não consumir permissions/role_permissions.
+* Não criar novos any ou as any.
+* Não refatorar routes.ts inteiro.
+* Não alterar POST /api/users público.
+
+Escopo permitido:
+
+1. Usuários — rotas administrativas
+   Aplicar requireAdmin apenas em rotas administrativas de gestão de usuários, como:
+
+* GET /api/users
+* GET /api/users/:id
+* PATCH /api/users/:id
+* PATCH /api/users/:id/approve
+* PATCH /api/users/:id/reject
+* rotas equivalentes de ativar/desativar usuário, se existirem
+
+Não aplicar requireAdmin em:
+
+* POST /api/users se ele for o auto cadastro público
+* POST /api/register
+* POST /api/login
+* POST /api/logout
+* POST /api/forgot-password
+* POST /api/reset-password
+* GET /api/user
+
+2. Papéis e permissões
+   Aplicar requireAdmin em todas as rotas de gestão de:
+
+* /api/roles
+* /api/roles/:id
+* /api/permissions
+* /api/users/:userId/roles
+* /api/roles/:roleId/permissions
+* /api/role-permissions, se existir
+* qualquer POST/PATCH/DELETE relacionado a roles, permissions, user_roles ou role_permissions
+
+Pode aplicar também nos GETs dessas áreas, porque são telas administrativas e não devem ficar visíveis para usuário comum:
+
+* GET /api/roles
+* GET /api/roles/:id
+* GET /api/permissions
+* GET /api/users/:userId/roles
+* GET /api/roles/:roleId/permissions
+
+3. Configurações operacionais — escrita admin-only
+   Aplicar requireAdmin em POST/PATCH/DELETE das configurações:
+
+* /api/movement-groups
+* /api/movement-groups/:id
+* /api/movement-types-config
+* /api/movement-types-config/:id
+* /api/product-statuses
+* /api/product-statuses/:id
+* /api/locations
+* /api/locations/:id
+* /api/vehicle-types
+* /api/vehicle-types/:id
+
+Importante:
+Os GETs desses catálogos devem permanecer apenas com requireAuth, não requireAdmin, porque podem alimentar dropdowns operacionais:
+
+* GET /api/movement-groups
+* GET /api/movement-types-config
+* GET /api/product-statuses
+* GET /api/locations
+* GET /api/vehicle-types
+
+4. Não mexer nos módulos operacionais
+   Não aplicar requireAdmin nesta fase em:
+
+* /api/events
+* /api/products
+* /api/kits
+* /api/suppliers POST/PATCH
+* /api/requests
+* /api/loading-orders
+* /api/trips
+* /api/drivers POST/PATCH
+* /api/vehicles
+* /api/docks
+* /api/movements
+* /api/returns
+* /api/reports
+
+Esses ficam para fases posteriores.
+
+5. Mensagens de erro
+   Usar mensagens claras, por exemplo:
+
+* "Apenas administradores podem gerenciar usuários"
+* "Apenas administradores podem gerenciar papéis e permissões"
+* "Apenas administradores podem alterar configurações do sistema"
+
+Manter:
+
+* Anônimo → 401 { error: "Não autenticado" }
+* Logado sem admin → 403
+* Admin → comportamento anterior
+
+6. Testes obrigatórios
+   Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Admin:
+
+* GET /api/users → 200
+* GET /api/users/:id → 200
+* PATCH /api/users/:id/approve ou reject, se seguro testar → 200 ou comportamento esperado
+* GET /api/roles → 200
+* GET /api/permissions → 200
+* POST/PATCH de uma configuração segura de teste → permitido, se houver ambiente de teste
+
+Não-admin:
+
+* GET /api/users → 403
+* GET /api/users/:id → 403
+* GET /api/roles → 403
+* GET /api/permissions → 403
+* POST/PATCH de configurações → 403
+* GET de catálogos operacionais, como /api/product-statuses e /api/locations → 200
+
+Anônimo:
+
+* GET /api/users → 401
+* GET /api/roles → 401
+* GET /api/permissions → 401
+* GET /api/product-statuses → 401
+
+Importante sobre testes:
+Não alterar senha de usuário real para smoke test.
+Se precisar de não-admin, usar usuário de teste existente e credencial conhecida em ambiente de desenvolvimento, ou testar via sessão/cookie já disponível. Se não houver usuário de teste seguro, informe a limitação em vez de alterar senha.
+
+7. Documentação
+   Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.2
+* replit.md com resumo curto
+
+Registrar:
+
+* objetivo
+* arquivos alterados
+* rotas protegidas com requireAdmin
+* rotas propositalmente não alteradas
+* resultado dos testes
+* decisões técnicas
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Rotas que receberam requireAdmin.
+* Rotas analisadas e não alteradas.
+* Confirmação de que POST /api/users continua público.
+* Confirmação de que GETs de catálogos operacionais continuam apenas requireAuth.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Qualquer rota administrativa que ainda pareça exposta.
+* Confirmação de que front-end, banco, seed, endpoints e payloads não foram alterados.

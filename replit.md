@@ -38,6 +38,15 @@ Sub-fases 1.0 a 1.6 estabilizaram a base do sistema antes da Fase 2 (matriz de p
   - Super-admin opcional via env var `EMERGENCY_ADMIN_USERNAME` (off-by-default; não aparece em `/api/user`; loga warning a cada uso).
   - Aplicado `requireAdmin` apenas em `DELETE /api/suppliers/:id` e `DELETE /api/drivers/:id` (rotas que já eram admin-only). Comportamento, mensagens e status codes idênticos ao anterior. Demais 135 endpoints intocados. Front-end, sidebar, ProtectedRoute, schema, seed, migrations e `permissions`/`role_permissions` não foram tocados.
   - `npm run check` zerado; `npm run build` passando; smoke completo (admin/não-admin/anônimo) ok.
+- **Fase 2.2** (2026-05-28): RBAC em rotas administrativas e configurações.
+  - Aplicado `requireAdmin` em **33 rotas** administrativas/config: usuários admin (GET/PATCH + approve/reject), papéis e permissões inteiras (incluindo GETs — telas admin-only), user_roles, role_permissions, e POST/PATCH/DELETE de configurações (`/api/movement-groups`, `/api/movement-types-config`, `/api/product-statuses`, `/api/locations`, `/api/vehicle-types`).
+  - **GETs de catálogos operacionais permanecem apenas `requireAuth`** (alimentam dropdowns de qualquer logado): `/api/movement-groups`, `/api/movement-types-config`, `/api/product-statuses`, `/api/locations`, `/api/vehicle-types`.
+  - `POST /api/users` continua **público** (auto-cadastro com `approval_status='pending'`). `/api/register`, `/api/login`, `/api/logout`, `/api/auth/request-password-reset`, `/api/auth/reset-password`, `GET /api/user` intocados.
+  - Removidos blocos inline `if (!req.isAuthenticated()) return 401 "Not authenticated"` redundantes (substituídos pelo middleware que retorna "Não autenticado" pt-BR — ganho de consistência sem mudança funcional para o usuário).
+  - Mensagens padronizadas em 3 famílias: usuários / papéis e permissões / configurações do sistema.
+  - **`PATCH /api/users/:id` ganhou auth pela primeira vez** — antes não tinha nenhuma checagem (correção de hole de segurança crítico).
+  - Módulos operacionais (events, products, kits, requests, loading-orders, trips, drivers POST/PATCH, suppliers POST/PATCH, vehicles, docks, movements, returns, reports) intocados — escopo de fases posteriores.
+  - `npm run check` zerado; `npm run build` passando; smoke completo (anônimo em 30+ rotas, admin em 8 GETs e 5 escritas, auto-cadastro público preservado) ok.
 
 **Histórico detalhado da Fase 2**: ver [`docs/CHANGELOG-fase2.md`](docs/CHANGELOG-fase2.md).
 
