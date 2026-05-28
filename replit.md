@@ -9,57 +9,25 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (2025-11-01)
 - **Ownership-Based Permissions (Phase 1)**: Implemented resource ownership control where only the creator (or admins) can edit/delete resources. Converted requestedBy/createdBy fields from text to FK references to users.id. Created server/ownership.ts with canEditResource/canDeleteResource utilities that check admin role OR resource ownership. Updated all POST routes to auto-populate creator from authenticated user. Added ownership checks to PATCH/DELETE routes for requests, trips, loading orders, and movements. Updated frontend request-details page to show/hide edit/delete buttons based on ownership verification.
 
-## Cleanup (2026-05-28) — Fase 1.5 (rotas mortas + consolidação isAdmin)
-- **Removidas 2 declarações duplicadas de `GET /api/users`** (linhas 2723 e 3059 antes do edit). Ambas eram inalcançáveis em runtime porque Express resolve a primeira rota que casa method+path, e a rota ativa em `routes.ts:1994` (`requireAuth`) já devolve um superset dos campos que @mention e user-management precisam. Deixados comentários `NOTE:` no lugar para evitar reintrodução. Rota ativa intocada; `GET /api/users/:id` intocado.
-- **Consolidada a regra de admin numa única função `isAdminRoleName(name)`** exportada de `server/ownership.ts`. Helper puro (sem DB, sem `req`), aceita `'admin'` ou `'adm'` case-insensitive. Usado por (a) `isAdmin()` no próprio `ownership.ts` e (b) `GET /api/user` em `server/auth.ts` via `await import("./ownership")`.
-- **Sem dependência circular**: `auth.ts` não importa `ownership.ts` no topo (só dinamicamente no handler); `ownership.ts` nunca importou `auth.ts`. Antes da mudança nenhum dos dois se referenciava — agora `auth.ts` depende unidirecionalmente de `ownership.ts`.
-- **Smoke completo (Fase 1.5)**: admin `GET /api/user` → `isAdmin:true` ✓; admin `GET /api/users` → 200, 3 usuários, payload completo ✓; admin `GET /api/users/:id` → 200 ✓; admin `DELETE /api/drivers/:id` → 204 ✓; anônimo em ambas rotas users → 401 ✓; não-admin `GET /api/user` → `isAdmin:false` ✓; não-admin `DELETE /api/drivers/:id` → 403 ✓.
-- **Sem alteração** em banco, migrations, payloads (formato JSON inalterado), nomes de rotas, regras de negócio, front-end, ownership de outras entidades ou papéis funcionais.
+## Fase 1 — Endurecimento da base (concluída em 2026-05-28)
 
-## Bug Fix (2026-05-28) — Fase 1.4 (autorização admin)
-- **Causa raiz do 403 no `DELETE /api/drivers/:id` para o usuário `admin`**: mismatch de strings. No seed do banco a role administrativa chama-se **`Adm`** (pt-BR) e está corretamente atribuída ao usuário `admin` via `user_roles`. Porém `isAdmin()` em `server/ownership.ts` e o cálculo de `isAdmin` em `server/auth.ts` (`GET /api/user`) comparavam contra a string literal `'admin'` (inglês, minúsculo). Resultado: `isAdmin` sempre `false` para o usuário admin → 403 em qualquer rota admin-only e front-end inteiro sub-permissionado.
-- **Bug**, não comportamento esperado. Impacto: DELETE de drivers/suppliers (e qualquer rota admin-only futura) bloqueava o próprio admin; UI dependente de `user.isAdmin` escondia funcionalidades de admin.
-- **Correção mínima** (sem alterar banco, sem migration, sem ampliar permissões além do seed): comparação de role agora é **case-insensitive** e aceita as duas grafias do seed (`'admin'` e `'adm'`). Aplicada em 2 lugares: `server/ownership.ts:isAdmin()` e `server/auth.ts:GET /api/user`. Nenhuma role nova é concedida — só é honrada a role já atribuída via `user_roles`.
-- **Smoke completo (Fase 1.4)**: anônimo `DELETE /api/drivers/:id` → 401 ✓; usuário não-admin (role `Gestor Logistica`) → 403 ✓; admin → 204 ✓; admin `GET /api/user` agora devolve `"isAdmin":true` ✓; criação/edição/exclusão de motorista pelo admin ok ponta-a-ponta.
-- **Auditoria de duplicação `GET /api/users`** (apenas diagnóstico, sem remoção — proposta para Fase 1.5):
-  - **3 declarações**: `routes.ts:1994` (com `requireAuth`, devolve `users.map(({password,...}) => user)` — superset), `routes.ts:2723` (auth manual, devolve `{id, username, name}` para @mention), `routes.ts:3059` (auth manual, devolve campos de user-management explícitos via Drizzle).
-  - **Express resolve a primeira registrada** → linha 1994 é a única ativa em runtime; linhas 2723 e 3059 são código morto. A linha 1994 é superset funcional das outras duas (todos os campos necessários para @mention e para user-management estão presentes). Remoção é segura, mas fica para fase dedicada.
-  - Não há duplicação de `GET /api/users/:id` (declarado uma única vez em `routes.ts:2005`).
-- **Sem alteração** em banco, migrations, payloads (formato JSON de `/api/user` mantém `roles` e `isAdmin`), nomes de rotas, regras de negócio, front-end ou ownership de outras entidades.
+Sub-fases 1.0 a 1.6 estabilizaram a base do sistema antes da Fase 2 (matriz de papéis funcionais):
 
-## TypeScript Cleanup (2026-05-28) — Fase 1.3 (front-end)
-- **`client/src/components/ObjectUploader.tsx`**: Uppy emite `UploadResult<Meta, Body>` no evento `complete`, mas o prop `onComplete` exigia `UploadResult<Record<string, unknown>, Record<string, unknown>>`, incompatível. Importado `Meta` de `@uppy/core` e exportado `type ObjectUploaderResult = UploadResult<Meta, Record<string, never>>`. Prop agora recebe esse alias. Sem mudança de runtime.
-- **`client/src/components/kit-dialog.tsx` + `client/src/components/product-dialog.tsx`**: atualizados para consumir `ObjectUploaderResult` (em vez do tipo antigo). Lógica de `handleUploadComplete` intocada — continua lendo `result.successful[0].response` como antes. Upload de imagem de produto e kit funcionando normalmente.
-- **`client/src/pages/dashboard.tsx:213`**: `<Button variant="link">` não existe no `buttonVariants` do projeto (só `default | destructive | outline | secondary | ghost`). Trocado para `variant="ghost"` com classes utilitárias `text-primary underline-offset-4 hover:underline` para preservar a aparência de link inline. Comportamento de clique (abre URL da notificação) inalterado.
-- **`client/src/pages/drivers.tsx`**: `driverFormSchema = insertDriverSchema.extend({...}).omit({ id, createdAt })` tentava re-omitir chaves que `insertDriverSchema` já omite em `shared/schema.ts`, fazendo TS colapsar `DriverFormData` para `never` e propagando 9 erros para todos os `FormField name="..."`. Removida a chamada `.omit` redundante. Schema de validação, lista de campos, submit, criação, edição e upload de CNH preservados (smoke confirma 201 criação + 200 edição).
-- **Nenhum `any`/`as any` novo.** Um único alias de tipo exportado (`ObjectUploaderResult`).
-- **Sem alteração** em back-end, banco, migrations, endpoints, payloads, autenticação, permissões, regras de negócio ou layout/UX.
+- **Fase 1**: ownership-based permissions; rotas POST/PATCH/DELETE sensíveis exigem autenticação + dono ou admin; criados `server/ownership.ts` e `getRequestItem(id)`; campos `requestedBy`/`createdBy` migrados para FK `users.id`.
+- **Fase 1.1**: `requireAuth` em 46+ rotas GET internas que estavam públicas; última GET interna pública (`/api/loading-orders/:id/can-edit`) também fechada.
+- **Fase 1.2**: zerado `npm run check` no back-end (removido `: any` poluindo inferência da tabela `users`; ajustes em `routes-optimization.ts`; `AuthUser = Omit<User, "password">` em `ownership.ts`).
+- **Fase 1.3**: zerado `npm run check` no front-end (`ObjectUploader`/`kit-dialog`/`product-dialog`, variant `link` no `dashboard.tsx`, schema redundante em `drivers.tsx`).
+- **Fase 1.4**: corrigido 403 indevido para admin (role no seed é `Adm`/pt-BR, código comparava `'admin'`); comparação agora case-insensitive em `ownership.ts` e `auth.ts`.
+- **Fase 1.5**: removidas 2 declarações inalcançáveis de `GET /api/users` em `routes.ts`; fonte única `isAdminRoleName(name)` em `ownership.ts` consumida também por `auth.ts`.
+- **Fase 1.6**: CI básico em `.github/workflows/ci.yml` rodando `npm ci` → `npm run check` → `npm run build` em push/PR; histórico detalhado consolidado em `docs/CHANGELOG-fase1.md`.
 
-## TypeScript Cleanup (2026-05-28) — Fase 1.2
-- **Root cause server-side errors**: `shared/schema.ts` had `export const users: any = pgTable(...)`. The `: any` annotation poisoned Drizzle's type inference for every field of `users` (forcing `password`, `active` and related insert types into a degenerate `unknown[] | [any, ...any[]]` shape) and made `db.insert(users).returning()` non-iterable, breaking `auth.ts:128/131`, `routes.ts:2024/2025/2040/2123` and `storage.ts:1381` (createUser destructuring). Removed the `: any`, restoring proper inference.
-- **Cascade exposure**: removing `: any` revealed pre-existing latent mismatches — `req.user` is `Omit<User, "password">` (Passport strips it on serialize) but `ownership.ts` functions were typed as full `User`. Introduced a local `type AuthUser = Omit<User, "password">` and used it on `canEditResource`/`canDeleteResource`/`isAdmin`/`getUserInfo`. No call-site changes; only `user.id` is read.
-- **`server/routes-optimization.ts`** — corrections aligned with the actual schema, no algorithm changes:
-  - `completedAt: true` → `completedAt: new Date()` in 4 spots (success + failure branches of both endpoints). Column is `timestamp("completed_at")`.
-  - Decimal columns now receive strings via `.toFixed(2)` (Drizzle's `decimal(...)` insert type is `string`): `confidenceScore`, `utilizationPercentage`, `weightDistributionScore`, `totalDistanceKm`, `fuelEstimateLiters`. Output payload unchanged (PG already returns decimals as strings).
-  - `arrivalTime: d.arrivalDateTime` → `.toISOString()` to satisfy `RouteStop.arrivalTime: string`.
-  - `.filter(Boolean)` substituído por type predicate `.filter((x): x is string => x !== null)`. Mesmo resultado em runtime.
-  - `trip.unloadingLocation ?? undefined` para casar com `string | undefined`.
-- **No usage of `any` or `as any` was introduced.** All casts are explicit and local (one `Omit<User, "password">` type alias).
-- **Sem alteração** em banco, migrations, payloads de API, nomes de rotas, autenticação, regras de negócio ou front-end.
-- **Erros remanescentes em `npm run check`** (frontend, fora do escopo declarado da Fase 1.2): `client/src/components/ObjectUploader.tsx:49`, `client/src/pages/dashboard.tsx:213` (variant `"link"`), `client/src/pages/drivers.tsx:51/52/344/358/372/386/408/422/436`. Não tocados conforme regra do usuário.
+**Histórico detalhado de cada sub-fase**: ver [`docs/CHANGELOG-fase1.md`](docs/CHANGELOG-fase1.md).
 
-## Security Fixes (2026-05-28) — Fase 1.1 Lote A + B
-- **Lote A — Proteção de leitura nas rotas GET internas**: aplicado `requireAuth` em 46 rotas GET que estavam públicas. Cobertura: dashboard, eventos, kits, fornecedores, produtos, requisições, veículos, motoristas, docas, viagens, ordens de carregamento, movimentações, devoluções, usuários (todas as 4 declarações duplicadas de `/api/users` agora protegidas), papéis, permissões, otimizações e relatórios de simulação. `/api/user` mantido inalterado (Passport interno). Login/register/forgot-password/reset-password seguem públicas.
-- **Lote B — `GET /api/loading-orders/:id/can-edit`**: protegido com `requireAuth`. Última rota GET interna que ainda estava pública agora exige sessão.
-- Sem alterações em banco, payloads, regras de negócio ou front-end.
-
-## Security Fixes (2026-05-27)
-- **DELETE /api/request-items/:id**: Added authentication check and ownership verification via parent request lookup. Only the request creator (or admin) can delete its items.
-- **DELETE /api/suppliers/:id**: Now requires authentication and admin role.
-- **DELETE /api/drivers/:id**: Now requires authentication and admin role.
-- **PATCH /api/requests/:id**: Removed conditional ownership check (was only enforced for `draft` status). Now always validates owner/admin. Also blocks direct status transitions to approved/rejected — only `draft` and `pending_approval` are allowed here; privileged transitions must go through their dedicated approve/reject routes.
-- **POST /api/requests/:id/items**: Added authentication + ownership check (owner of the parent request or admin only).
-- Added `getRequestItem(id)` to storage layer (interface + implementation) to support parent-request lookup for ownership validation.
+**Estado atual**:
+- Toda escrita interna exige autenticação + ownership/admin.
+- Toda leitura interna exige autenticação.
+- `npm run check` zerado; `npm run build` passando; CI ativo.
+- `isAdmin` em uma única fonte da verdade (`server/ownership.ts:isAdminRoleName`).
 
 ## System Architecture
 

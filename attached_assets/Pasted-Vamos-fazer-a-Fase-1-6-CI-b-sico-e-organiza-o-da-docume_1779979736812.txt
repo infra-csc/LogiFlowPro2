@@ -1,0 +1,134 @@
+Vamos fazer a Fase 1.6 — CI básico e organização da documentação da Fase 1.
+
+Objetivo:
+Criar uma proteção mínima de qualidade para o projeto antes de avançar para a Fase 2 de papéis funcionais, garantindo que toda alteração futura rode typecheck e build automaticamente.
+
+Contexto:
+As Fases 1.0 a 1.5 estabilizaram a base do sistema:
+
+* Rotas POST/PATCH/DELETE internas protegidas.
+* Rotas GET internas protegidas.
+* Última rota GET exposta fechada.
+* Erros TypeScript server-side corrigidos.
+* Erros TypeScript front-end corrigidos.
+* npm run check está zerado.
+* npm run build está passando.
+* Bug de admin corrigido.
+* Duplicações mortas de GET /api/users removidas.
+* isAdmin consolidado em uma regra única.
+
+Agora quero criar uma rede de segurança antes de mexer com permissões funcionais.
+
+Escopo da Fase 1.6:
+
+1. Criar CI básico no GitHub Actions
+   Criar arquivo:
+
+* .github/workflows/ci.yml
+
+O workflow deve rodar em:
+
+* push
+* pull_request
+
+Branches:
+
+* main
+* master
+* develop, se existir
+
+Passos mínimos:
+
+* checkout do repositório
+* setup Node na versão compatível com o projeto
+* instalar dependências
+* rodar npm run check
+* rodar npm run build
+
+Importante:
+
+* Usar npm install ou npm ci conforme o projeto suportar.
+* Se existir package-lock.json, preferir npm ci.
+* Se não existir lockfile, usar npm install.
+* Não adicionar testes agora, pois ainda não existem testes próprios.
+* Não alterar scripts existentes sem necessidade.
+* Não alterar build/start/dev.
+* Não alterar código da aplicação.
+
+2. Validar package.json
+   Verificar se os scripts atuais estão adequados:
+
+* dev
+* build
+* start
+* check
+* db:push
+
+Não criar script novo se não for necessário.
+Se criar algum script auxiliar, explicar por quê.
+
+3. Consolidar documentação da Fase 1
+   O arquivo replit.md está crescendo com notas de várias fases.
+
+Quero:
+
+* Manter no replit.md apenas um resumo executivo da Fase 1.
+* Criar um arquivo de histórico detalhado, por exemplo:
+
+  * docs/CHANGELOG-fase1.md
+
+O docs/CHANGELOG-fase1.md deve registrar:
+
+* Fase 1 — autenticação de rotas de escrita
+* Fase 1.1 — proteção de rotas GET internas
+* Fase 1.2 — correção de TypeScript no back-end
+* Fase 1.3 — correção de TypeScript no front-end
+* Fase 1.4 — correção de admin/isAdmin
+* Fase 1.5 — remoção de duplicação de GET /api/users e consolidação de isAdmin
+
+Para cada fase, registrar:
+
+* Objetivo
+* Arquivos principais alterados
+* Resultado
+* Validações executadas
+* Observações importantes
+
+4. Não alterar comportamento funcional
+   Regras obrigatórias:
+
+* Não alterar back-end funcional.
+* Não alterar front-end funcional.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar autenticação.
+* Não alterar permissões.
+* Não implementar papéis funcionais.
+* Não mexer em layout.
+* Não refatorar routes.ts.
+* Não criar novos any ou as any.
+
+5. Validação final
+   Rodar:
+
+* npm run check
+* npm run build
+
+Se possível, validar também o workflow localmente apenas por conferência de sintaxe YAML, sem depender de execução real do GitHub Actions.
+
+Entrega final:
+Liste:
+
+* Arquivos criados.
+* Arquivos alterados.
+* Conteúdo resumido do workflow CI.
+* Scripts usados pelo CI.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Como o replit.md ficou organizado.
+* Onde ficou o histórico detalhado da Fase 1.
+* Confirmação de que nenhum comportamento funcional foi alterado.
+
+Depois desta fase, avançaremos para a Fase 2 — matriz de papéis funcionais, primeiro como planejamento, sem código.
