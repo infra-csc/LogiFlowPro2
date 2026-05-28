@@ -1,0 +1,116 @@
+Resultado da Auditoria Visual
+1. Diagnóstico Geral do Design
+O sistema está visualmente coerente, mas ainda funcional demais. A paleta dark navy com azul ciano e rosa funciona bem. A sidebar está bem organizada. Os formulários são robustos. Mas falta polimento: componentes replicados manualmente, telas densas demais, e algumas decisões de layout que prejudicam a primeira impressão.
+
+Pontos fortes:
+
+Paleta coerente e sem poluição cromática
+Sidebar bem estruturada com grupos colapsáveis
+Formulários consistentes (React Hook Form + Zod)
+RBAC visual funcional — botões ocultos corretamente
+Badges de status centralizados (em parte)
+Pontos fracos:
+
+Componentes de loading, empty state e header de página replicados manualmente em ~15 telas
+Algumas telas densas demais (movement-details com 1.565 linhas, movement-dialog com 543)
+Login aparece dentro do layout com sidebar visível
+Dashboard retorna 404
+Devoluções não têm botão de criação no front
+2. Principais Problemas Visuais (10 catalogados)
+#	Problema	Severidade
+1	Dashboard retorna 404 — primeira tela após login quebra	P0
+2	Login dentro do layout com sidebar — experiência confusa	P0
+3	Devoluções sem botão de criação — back-end pronto, front sem UI	P0
+4	Cards de Configuração não clicáveis — usuário clica e nada acontece	P1
+5	Movimentações — tela muito densa — 1.565 linhas de detalhe	P1
+6	Tabela vs Card sem critério — drivers usa tabela, veículos usa cards	P1
+7	Loading/Empty states duplicados — ~15 cópias do mesmo spinner	P2
+8	PageHeader não componentizado — replicado manualmente em ~25 telas	P2
+9	Badge de cores inline — movimentações e devoluções usam função local	P2
+10	Microcopy EN/PT misturado — "404 Page Not Found", "Back to Dashboard"	P3
+3. Telas Mais Críticas
+Movimentações (lista + detalhe + aprovações) — tela mais usada pelo Almoxarifado. Scanner, carregamento, form gigante.
+Loading Orders (lista + detalhe + otimização) — central para Logística e Almoxarifado. Dialog de 478 linhas.
+Requisições (lista + detalhe) — tela mais usada pelo Usuário Comum. Filtros não colapsáveis.
+Dashboard — não existe (404). É a primeira impressão.
+Devoluções — módulo passivo com gap de UI (sem botão de criar).
+Catálogo (produtos + kits + fornecedores) — referência para todo o sistema.
+4. Componentes que Precisam de Padronização
+Componentes que não existem e deveriam ser criados:
+
+Componente	Telas afetadas	Impacto
+PageHeader	~25 páginas	Alto
+PageLoading	~15 páginas	Alto
+EmptyState	~10 páginas	Médio
+DataCard	Listagens (movements, orders, requests)	Alto
+FilterBar	Movimentações, requisições	Médio
+FormSection	Dialogs longos (vehicles, loading-order)	Médio
+Componentes que já existem e precisam de ajuste:
+
+StatusBadge — precisa cobrir movimentações e devoluções (hoje usa função local)
+5. Problemas de UX por Perfil/RBAC
+Geral: o RBAC visual está correto. Botões de escrita estão ocultos (não desabilitados). A sidebar filtra links por perfil. Nenhuma tela fica vazia por falta de permissão.
+
+Gaps encontrados:
+
+#	Perfil	Problema
+G1	Almoxarifado/Admin	Devoluções — tem permissão de criar (POST) mas não há botão no front
+G2	Todos	Dashboard — 404 ao entrar no sistema
+G3	Todos	Configuração — cards não clicáveis, botão de + sem contexto
+G4	Almoxarifado	Movimentações em andamento — não há indicador visual na lista
+G5	Todos	Requisições — filtros ocupam espaço fixo, não colapsáveis
+6. Proposta de Design System Leve
+Sem troca de identidade visual. Manter a paleta atual, a fonte Inter, e o shadcn/ui.
+
+Tokens propostos:
+
+Padding de página: p-6 (manter)
+Cards com cor sutil de fundo por status (não borda lateral — evita problema com rounded)
+Badges: verde = positivo, laranja = pendente/alerta, vermelho = erro, azul = ativo/novo, cinza = inativo
+Padrões:
+
+PageHeader: h1 + p descritivo + ações (slot) — em todas as páginas
+DataCard: card com ícone, título, badge de status, metadados — para listagens
+FilterBar: colapsável com Collapsible — para telas com filtros
+EmptyState: ícone + título + descrição + CTA opcional — para todos os estados vazios
+7. Roadmap da Fase 3 (9 subfases)
+Fase	Foco	Risco	Impacto
+3.1	Design System base (PageHeader, Loading, Empty, DataCard, FilterBar)	Baixo	Alto
+3.2	Movimentações (lista, detalhe, dialog, aprovações)	Médio	Alto
+3.3	Loading Orders (lista, detalhe, dialog, otimização)	Médio	Alto
+3.4	Requisições (lista, detalhe, filtros)	Médio	Alto
+3.5	Catálogo (produtos, kits, fornecedores)	Baixo	Médio
+3.6	Devoluções (formulário de criação)	Baixo	Médio
+3.7	Admin/Configurações (cards clicáveis, tabelas)	Baixo	Médio
+3.8	Dashboard (resumo do sistema)	Baixo	Alto
+3.9	Login/Auth flow (fullscreen, redirect)	Baixo	Alto
+8. Primeira Fase Recomendada
+Fase 3.1 — Design System Base + Fase 3.9 — Login/Auth Flow
+
+Por que começar por essas duas:
+
+São componentes puros (sem lógica de negócio)
+Risco baixo
+Impacto visual alto
+Uma vez criados, as fases 3.2–3.8 ficam mais rápidas
+Corrigem a primeira impressão (login + dashboard)
+Ordem sugerida:
+
+3.1 + 3.9 em paralelo (base + login)
+3.2 + 3.3 em paralelo (movimentações + loading orders)
+3.4 + 3.6 em paralelo (requisições + devoluções)
+3.5 (catálogo)
+3.7 (admin)
+3.8 (dashboard — por último, pois pode precisar de endpoint novo)
+9. Confirmação: Nenhum Código Foi Alterado
+✅ Nenhum arquivo editado.
+✅ Nenhum componente criado.
+✅ Nenhum endpoint alterado.
+✅ Nenhum banco modificado.
+✅ Nenhuma regra de negócio alterada.
+✅ Nenhuma permissão RBAC alterada.
+✅ npm run check e npm run build continuam passando.
+
+O relatório completo (detalhado) está salvo em: docs/UI_AUDIT_PHASE3.md
+
+Quer que eu inicie a Fase 3.1 (Design System Base) ou a Fase 3.9 (Login/Auth Flow)? Ou prefere aprovar o plano primeiro?
