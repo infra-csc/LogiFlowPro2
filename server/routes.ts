@@ -1297,8 +1297,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/loading-orders/:id/items",
-    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
-      message: "Apenas administradores ou logística podem adicionar itens à ordem",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA, ROLES.ALMOXARIFADO], {
+      message: "Apenas administradores, logística ou almoxarifado podem adicionar itens à ordem",
     }),
     async (req, res) => {
     try {
@@ -1529,8 +1529,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/loading-orders/:id/approve",
-    requireAdmin({
-      message: "Apenas administradores podem aprovar ou desaprovar ordens de carregamento",
+    requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR], {
+      message: "Apenas administradores ou supervisores podem aprovar ou desaprovar ordens de carregamento",
     }),
     async (req, res) => {
     try {
@@ -1552,8 +1552,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/loading-orders/:id/disapprove",
-    requireAdmin({
-      message: "Apenas administradores podem aprovar ou desaprovar ordens de carregamento",
+    requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR], {
+      message: "Apenas administradores ou supervisores podem aprovar ou desaprovar ordens de carregamento",
     }),
     async (req, res) => {
     try {
@@ -1575,8 +1575,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/loading-orders/:id/mark-ready",
-    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
-      message: "Apenas administradores ou logística podem marcar ordem como pronta",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA, ROLES.ALMOXARIFADO], {
+      message: "Apenas administradores, logística ou almoxarifado podem marcar ordem como pronta",
     }),
     async (req, res) => {
     try {

@@ -1,0 +1,286 @@
+Vamos executar a Fase 2.6.2 — aplicar Almoxarifado e Supervisor nas rotas de Loading Orders.
+
+Objetivo:
+Substituir as regras provisórias da Fase 2.5.1 pelas novas roles criadas na Fase 2.6.1, apenas no back-end, sem alterar payloads, endpoints, banco ou front-end.
+
+Contexto:
+Na Fase 2.6.1 foram criadas com sucesso as roles:
+
+* Almoxarifado
+* Supervisor
+
+E foram adicionados os canônicos:
+
+* ROLES.ALMOXARIFADO = "almoxarifado"
+* ROLES.SUPERVISOR = "supervisor"
+
+Com aliases:
+
+* almoxarifado: almoxarifado, almox, estoque
+* supervisor: supervisor, aprovador, supervisor aprovador, supervisor/aprovador
+
+Decisões aprovadas:
+
+1. Almoxarifado pode adicionar/remover itens em loading-orders.
+2. Logística continua podendo adicionar/remover itens junto com Almoxarifado.
+3. Almoxarifado pode marcar ordem como pronta.
+4. Supervisor aprova e desaprova loading-orders.
+5. Admin continua com override.
+6. Usuário comum continua apenas leitura.
+7. Não mexer em front-end nesta fase. O alinhamento visual fica para Fase 2.6.3.
+
+Escopo permitido:
+
+1. Back-end — atualizar RBAC nas rotas de loading-orders
+
+Alterar as rotas abaixo:
+
+A) POST /api/loading-orders/:id/items
+
+Hoje:
+
+* requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA])
+
+Novo:
+
+* requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA, ROLES.ALMOXARIFADO])
+
+Preservar:
+
+* payload
+* validações
+* guarda contra completed/cancelled
+* comportamento atual para admin/logística
+
+B) POST /api/loading-orders/:id/mark-ready
+
+Hoje:
+
+* requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA])
+
+Novo:
+
+* requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA, ROLES.ALMOXARIFADO])
+
+Preservar:
+
+* regra atual de status
+* mark-ready exige draft
+* payload
+* resposta
+
+C) POST /api/loading-orders/:id/approve
+
+Hoje:
+
+* requireAdmin provisório
+
+Novo:
+
+* requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR])
+
+Preservar:
+
+* approve exige ready
+* payload
+* resposta
+* regras de transição
+
+D) POST /api/loading-orders/:id/disapprove
+
+Hoje:
+
+* requireAdmin provisório
+
+Novo:
+
+* requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR])
+
+Preservar:
+
+* disapprove exige approved
+* payload
+* resposta
+* regras de transição
+
+2. Não alterar estas rotas
+
+Manter como estão:
+
+* POST /api/loading-orders
+
+  * continua Admin/Logística
+* PATCH /api/loading-orders/:id
+
+  * continua Admin/Logística + ownership
+* POST /api/loading-orders/:id/optimize
+
+  * continua Admin/Logística
+* POST /api/loading-orders/:id/trips
+
+  * continua Admin/Logística
+* DELETE /api/loading-orders/:id/trips
+
+  * continua Admin/Logística
+* Todos os GETs de loading-orders
+
+  * continuam requireAuth
+
+3. Pré-validação dos aliases
+
+Antes ou durante os testes, validar que os aliases funcionam:
+
+* rolesMatch("Almoxarifado", ROLES.ALMOXARIFADO) → true
+* rolesMatch("almox", ROLES.ALMOXARIFADO) → true
+* rolesMatch("estoque", ROLES.ALMOXARIFADO) → true
+* rolesMatch("Supervisor", ROLES.SUPERVISOR) → true
+* rolesMatch("Aprovador", ROLES.SUPERVISOR) → true
+* rolesMatch("Supervisor/Aprovador", ROLES.SUPERVISOR) → true
+* rolesMatch("Gestor Logistica", ROLES.LOGISTICA) → true
+* rolesMatch("Adm", ROLES.ADMIN) → true
+
+Não criar suíte de testes automatizados nesta fase se isso exigir infra nova. Apenas validar no smoke/code review. Testes unitários podem ficar para uma fase própria.
+
+4. Não alterar nesta fase
+
+* Front-end.
+* Sidebar.
+* ProtectedRoute.
+* Loading-order buttons.
+* Banco.
+* Seed.
+* Migration.
+* Role assignment permanente.
+* permissions/role_permissions.
+* Endpoints.
+* Payloads.
+* Regras de status.
+* Algoritmo de otimização.
+* Produtos, kits, fornecedores.
+* Requisições.
+* Movimentações.
+* Devoluções.
+* Relatórios.
+* package.json.
+* CI.
+
+5. Mensagens de erro
+
+Usar mensagens claras:
+
+Para items:
+
+* "Apenas administradores, logística ou almoxarifado podem adicionar itens à ordem"
+
+Para mark-ready:
+
+* "Apenas administradores, logística ou almoxarifado podem marcar ordem como pronta"
+
+Para approve/disapprove:
+
+* "Apenas administradores ou supervisores podem aprovar ou desaprovar ordens de carregamento"
+
+Manter padrão:
+
+* Anônimo → 401 { error: "Não autenticado" }
+* Logado sem papel → 403
+* Autorizado → comportamento anterior
+
+6. Validações obrigatórias
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests back-end:
+
+Anônimo:
+
+* POST /api/loading-orders/:id/items → 401
+* POST /api/loading-orders/:id/mark-ready → 401
+* POST /api/loading-orders/:id/approve → 401
+* POST /api/loading-orders/:id/disapprove → 401
+
+Admin:
+
+* POST /api/loading-orders/:id/items em ordem draft → permitido
+* POST /api/loading-orders/:id/mark-ready em ordem draft → permitido
+* POST /api/loading-orders/:id/approve em ordem ready → permitido
+* POST /api/loading-orders/:id/disapprove em ordem approved → permitido
+
+Gestor Logistica:
+
+* POST /api/loading-orders/:id/items em ordem draft → permitido
+* POST /api/loading-orders/:id/mark-ready em ordem draft → permitido
+* POST /api/loading-orders/:id/approve → 403
+* POST /api/loading-orders/:id/disapprove → 403
+
+Almoxarifado:
+
+* POST /api/loading-orders/:id/items em ordem draft → permitido
+* POST /api/loading-orders/:id/mark-ready em ordem draft → permitido
+* POST /api/loading-orders/:id/approve → 403
+* POST /api/loading-orders/:id/disapprove → 403
+* POST /api/loading-orders → 403
+* PATCH /api/loading-orders/:id → 403
+* POST /api/loading-orders/:id/optimize → 403
+
+Supervisor:
+
+* POST /api/loading-orders/:id/approve em ordem ready → permitido
+* POST /api/loading-orders/:id/disapprove em ordem approved → permitido
+* POST /api/loading-orders/:id/items → 403
+* POST /api/loading-orders/:id/mark-ready → 403
+* POST /api/loading-orders → 403
+* PATCH /api/loading-orders/:id → 403
+* POST /api/loading-orders/:id/optimize → 403
+
+Usuário comum:
+
+* GET /api/loading-orders → 200
+* GET /api/loading-orders/:id → 200
+* POST /api/loading-orders/:id/items → 403
+* POST /api/loading-orders/:id/mark-ready → 403
+* POST /api/loading-orders/:id/approve → 403
+* POST /api/loading-orders/:id/disapprove → 403
+
+Importante sobre testes:
+
+* Não alterar senha de usuário real.
+* Usar usuários transientes ou sessão controlada.
+* Se atribuir roles transientes via user_roles para smoke, remover ao final.
+* Restaurar status da ordem de teste ao estado original ao final.
+
+7. Documentação
+
+Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.6.2
+* replit.md com bullet curto
+
+Registrar:
+
+* rotas alteradas
+* matriz efetiva aplicada
+* roles novas usadas em runtime
+* testes executados
+* confirmação de que o front ainda será ajustado na Fase 2.6.3
+* dívida futura: testes unitários para rolesMatch
+
+8. Entrega final
+
+Liste:
+
+* Arquivos alterados.
+* Rotas alteradas.
+* Antes/depois dos middlewares.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que Almoxarifado agora atua em items/mark-ready.
+* Confirmação de que Supervisor agora atua em approve/disapprove.
+* Confirmação de que Logística continua sem approve/disapprove.
+* Confirmação de que Supervisor não pode criar/editar/otimizar loading-orders.
+* Confirmação de que GETs continuam liberados para qualquer usuário logado.
+* Confirmação de que banco, seed, endpoints, payloads, front-end, sidebar, ProtectedRoute e permissions/role_permissions não foram alterados.

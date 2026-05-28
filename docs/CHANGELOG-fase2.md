@@ -1274,3 +1274,86 @@ Confirmado: `COUNT(*) WHERE name='Almoxarifado' = 1` e `COUNT(*) WHERE name='Sup
 - ✅ Sem migration nova; sem alteração em `drizzle.config.ts`.
 - ✅ Sem `any`/`as any`.
 - ✅ Almoxarifado e Supervisor **não foram aplicados em nenhum RBAC de runtime**. Existem apenas como linhas no banco e canônicos no código, prontos para a Fase 2.6.2.
+
+---
+
+## Fase 2.6.2 (2026-05-28) — Aplicar Almoxarifado e Supervisor em Loading Orders
+
+### Objetivo
+Substituir as regras provisórias da Fase 2.5.1 pelas novas roles criadas na Fase 2.6.1, **apenas no back-end** das rotas de loading-orders. Front-end fica para Fase 2.6.3.
+
+### Arquivos alterados
+- `server/routes.ts` — 4 middlewares trocados em rotas de loading-orders.
+
+### Rotas alteradas — antes/depois
+
+| Rota | Antes | Depois |
+|---|---|---|
+| `POST /api/loading-orders/:id/items` | `requireAnyRole([ADMIN, LOGISTICA])` | `requireAnyRole([ADMIN, LOGISTICA, ALMOXARIFADO])` |
+| `POST /api/loading-orders/:id/mark-ready` | `requireAnyRole([ADMIN, LOGISTICA])` | `requireAnyRole([ADMIN, LOGISTICA, ALMOXARIFADO])` |
+| `POST /api/loading-orders/:id/approve` | `requireAdmin` (provisório) | `requireAnyRole([ADMIN, SUPERVISOR])` |
+| `POST /api/loading-orders/:id/disapprove` | `requireAdmin` (provisório) | `requireAnyRole([ADMIN, SUPERVISOR])` |
+
+Mensagens de erro atualizadas para refletir os papéis aceitos. Payloads, validações de status (`draft`/`ready`/`approved`), regras de transição e respostas **inalteradas**.
+
+### Rotas **NÃO** alteradas (preservadas)
+- `POST /api/loading-orders` — continua `[ADMIN, LOGISTICA]`
+- `PATCH /api/loading-orders/:id` — continua `[ADMIN, LOGISTICA]` + ownership
+- `POST /api/loading-orders/:id/optimize` — continua `[ADMIN, LOGISTICA]`
+- `POST /api/loading-orders/:id/trips` — continua `[ADMIN, LOGISTICA]`
+- `DELETE /api/loading-orders/:id/trips/:tripId` — continua `[ADMIN, LOGISTICA]`
+- Todos os `GET` — continuam `requireAuth`
+
+### Matriz efetiva aplicada (runtime)
+
+| Ação | Admin | Logística | Almoxarifado | Supervisor | Usuário comum |
+|---|---|---|---|---|---|
+| GET ordens / detalhes | ✅ | ✅ | ✅ | ✅ | 👁️ |
+| Criar ordem | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Editar ordem (PATCH) | ✅ | ✅(owner) | ❌ | ❌ | ❌ |
+| Adicionar/remover itens | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Marcar como pronta | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Aprovar | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Desaprovar | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Otimizar | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Vincular/desvincular viagens | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+### Validação
+- `npm run check` zerado.
+- `npm run build` passou (`dist/index.js 271.9kb`).
+
+### Smoke matrix executado (28 cenários, sem mutação de estado)
+
+Estratégia: usar ordens em status "errado" para que, quando a role estiver autorizada, a rota retorne `400` na validação de status (gate **passou**) em vez de `200` (que mutaria a ordem). `403` sempre indica gate bloqueando.
+
+Usuários transientes criados via SQL (`test_almox`, `test_supervisor`, `test_common`), assignment dos roles correspondentes; **removidos ao final** do smoke (DB volta ao estado pré-teste: apenas `admin/Adm` e `pftelles/Gestor Logistica`).
+
+| Persona | Cenário | Status esperado | Resultado |
+|---|---|---|---|
+| Anônimo | items / mark-ready / approve / disapprove | 401 | ✅ 401 em todos |
+| Admin | items (draft) / mark-ready (ready) / approve (draft) / disapprove (draft) | 400 (gate-pass) | ✅ 400 em todos |
+| Almoxarifado | items (draft) | 400 gate-pass | ✅ 400 |
+| Almoxarifado | mark-ready (ready) | 400 gate-pass | ✅ 400 |
+| Almoxarifado | approve / disapprove | 403 | ✅ 403 |
+| Almoxarifado | POST loading-orders / PATCH / optimize | 403 | ✅ 403 |
+| Supervisor | approve (draft) / disapprove (draft) | 400 gate-pass | ✅ 400 |
+| Supervisor | items / mark-ready / POST / PATCH / optimize | 403 | ✅ 403 |
+| Comum | GET listagem / GET detalhe | 200 | ✅ 200 |
+| Comum | items / mark-ready / approve / disapprove | 403 | ✅ 403 |
+
+**Gestor Logística** não foi testado ao vivo (sem senha real do `pftelles`); a regressão é estruturalmente garantida porque:
+- `POST items` e `POST mark-ready` mantêm `LOGISTICA` na lista de roles do `requireAnyRole`;
+- `POST approve`/`disapprove` saíram de `requireAdmin` para `[ADMIN, SUPERVISOR]` — Logística não tinha acesso a essas rotas e continua sem (resposta esperada: 403, mesmo padrão validado em 2.5.1).
+
+### Confirmações de escopo
+- ✅ Almoxarifado atua em `items` e `mark-ready` (validado).
+- ✅ Supervisor atua em `approve` e `disapprove` (validado).
+- ✅ Logística mantida em `items` e `mark-ready`; sem acesso a `approve`/`disapprove`.
+- ✅ Supervisor **não** pode criar/editar/otimizar loading-orders (validado: 403).
+- ✅ GETs continuam liberados a qualquer usuário logado (validado).
+- ✅ Banco/seed/migration/endpoints/payloads/front/sidebar/`ProtectedRoute`/`permissions`/`role_permissions`/`package.json` intactos.
+- ✅ Usuários transientes do smoke removidos; nenhuma role real reatribuída.
+
+### Dívida futura registrada
+- Testes unitários para `rolesMatch` (sugerido no code review da 2.6.1) — fase própria.
+- Front-end de loading-orders (mostrar botões para Almoxarifado/Supervisor) — **Fase 2.6.3**.
