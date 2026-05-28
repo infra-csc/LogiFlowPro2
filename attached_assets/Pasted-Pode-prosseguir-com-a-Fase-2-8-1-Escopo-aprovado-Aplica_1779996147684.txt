@@ -1,0 +1,56 @@
+Pode prosseguir com a Fase 2.8.1.
+
+Escopo aprovado:
+Aplicar somente os middlewares nas 6 rotas críticas de movimentações, conforme consolidado:
+
+* POST /api/movements/:id/items → requireAnyRole([ADMIN, ALMOXARIFADO])
+* PATCH /api/movements/:id/items/:itemId/decrement → requireAnyRole([ADMIN, ALMOXARIFADO])
+* DELETE /api/movements/:id/items/:itemId → requireAnyRole([ADMIN, ALMOXARIFADO])
+* PATCH /api/movements/:id/status → requireAdmin
+* POST /api/movements/:id/approve → requireAnyRole([ADMIN, SUPERVISOR])
+* POST /api/movements/:id/reject → requireAnyRole([ADMIN, SUPERVISOR])
+
+Regras importantes:
+
+* Não alterar lógica de negócio.
+* Não alterar payloads.
+* Não alterar endpoints.
+* Não alterar banco, seed, migration ou schema.
+* Não alterar front-end.
+* Não mexer em POST /api/movements.
+* Não mexer em PATCH /api/movements/:id.
+* Não mexer em GET /api/movements/pending-approval.
+* Não alterar status/transições.
+* Não alterar audit logs.
+* Não criar/refatorar nada fora do necessário.
+* Não avançar para 2.8.2 ou 2.8.3 nesta entrega.
+
+Objetivo da 2.8.1:
+Fechar imediatamente os holes críticos:
+
+* anônimo não pode mais adicionar/decrementar/remover item;
+* anônimo não pode mais alterar status;
+* anônimo não pode mais aprovar/rejeitar;
+* usuário comum logado não pode executar ações sensíveis;
+* Almoxarifado opera itens;
+* Supervisor aprova/rejeita;
+* Admin continua com acesso total.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+* smoke matrix non-mutating com anônimo, admin, almoxarifado, supervisor e usuário comum.
+
+No smoke, se uma role autorizada receber 400/404 por payload, status ou fixture inválido, tudo bem: isso indica que passou pelo gate de RBAC e caiu na validação de domínio. O importante é não receber 401/403 quando deveria passar pelo gate.
+
+Na entrega final, liste:
+
+* arquivos alterados;
+* rotas alteradas;
+* middleware aplicado em cada rota;
+* resultado do check/build;
+* smoke tests executados;
+* confirmação de que anônimo não consegue mais escrever/alterar status/aprovar/rejeitar movimentações;
+* confirmação de que POST /api/movements, PATCH /api/movements/:id e GET /api/movements/pending-approval ficaram para a 2.8.2;
+* confirmação de que front-end, banco, seed, endpoints, payloads e permissions/role_permissions não foram alterados.

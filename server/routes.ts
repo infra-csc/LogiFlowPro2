@@ -1785,7 +1785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/movements/:id/items", async (req, res) => {
+  app.post("/api/movements/:id/items", requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]), async (req, res) => {
     try {
       const movement = await storage.getMovement(req.params.id);
       if (!movement) {
@@ -1837,7 +1837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/movements/:id/items/:itemId/decrement", async (req, res) => {
+  app.patch("/api/movements/:id/items/:itemId/decrement", requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]), async (req, res) => {
     try {
       const movement = await storage.getMovement(req.params.id);
       if (!movement) {
@@ -1861,7 +1861,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/movements/:id/items/:itemId", async (req, res) => {
+  app.delete("/api/movements/:id/items/:itemId", requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]), async (req, res) => {
     try {
       const movement = await storage.getMovement(req.params.id);
       if (!movement) {
@@ -1918,7 +1918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update Movement Status
-  app.patch("/api/movements/:id/status", async (req, res) => {
+  app.patch("/api/movements/:id/status", requireAdmin(), async (req, res) => {
     try {
       const movement = await storage.getMovement(req.params.id);
       if (!movement) {
@@ -1955,7 +1955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/movements/:id/approve", async (req, res) => {
+  app.post("/api/movements/:id/approve", requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR]), async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -1990,7 +1990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/movements/:id/reject", async (req, res) => {
+  app.post("/api/movements/:id/reject", requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR]), async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ error: "Unauthorized" });

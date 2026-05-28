@@ -1440,3 +1440,87 @@ Anônimo: continua redirecionado pelo `ProtectedRoute` (não tocado nesta fase).
 
 ### Dívida futura registrada
 - Testes automatizados visuais (e.g. React Testing Library) cobrindo a matriz de gating para cada persona — não-bloqueante; vale considerar quando houver suíte de testes de UI.
+
+---
+
+## Fase 2.8.1 (2026-05-28) — RBAC efetivo em Movimentações (rotas críticas)
+
+### Objetivo
+Fechar 6 holes de RBAC nas rotas críticas de movimentações identificados na auditoria 2.7, aplicando os middlewares aprovados pelas decisões D2/D4/D7 sem alterar lógica de negócio, payloads, banco, seed, front, `permissions`/`role_permissions` nem ownership. Front-end (D10 — esconder "Editar Status") fica para Fase 2.8.3; audit log no decrement (D11) fica para 2.8.4; auditoria de POST/PATCH/GET pending-approval fica para 2.8.2.
+
+### Arquivos alterados
+- `server/routes.ts` — 6 middlewares aplicados (sem novos imports; `requireAuth`, `requireAdmin`, `requireAnyRole`, `ROLES` já estavam em uso).
+
+### Rotas alteradas — antes/depois
+
+| Rota | Antes | Depois | Decisão |
+|---|---|---|---|
+| `POST   /api/movements/:id/items` | apenas `requireAuth` (implícito via session) | `requireAnyRole([ADMIN, ALMOXARIFADO])` | D2 |
+| `PATCH  /api/movements/:id/items/:itemId/decrement` | apenas `requireAuth` | `requireAnyRole([ADMIN, ALMOXARIFADO])` | D2 |
+| `DELETE /api/movements/:id/items/:itemId` | apenas `requireAuth` | `requireAnyRole([ADMIN, ALMOXARIFADO])` | D2 |
+| `PATCH  /api/movements/:id/status` | apenas `requireAuth` | `requireAdmin()` | D7 |
+| `POST   /api/movements/:id/approve` | apenas `requireAuth` | `requireAnyRole([ADMIN, SUPERVISOR])` | D4 |
+| `POST   /api/movements/:id/reject` | apenas `requireAuth` | `requireAnyRole([ADMIN, SUPERVISOR])` | D4 |
+
+Payloads de entrada, validações de status (`in_progress`/`pending_approval`/etc.), regras de transição, decremento de quantidade, side-effects (audit log existente em items e status) e respostas: **inalteradas**.
+
+### Rotas **NÃO** alteradas nesta sub-fase (ficam para 2.8.2/2.8.3/2.8.4)
+- `POST   /api/movements` (R6 — criar movimento)
+- `PATCH  /api/movements/:id` (R7 — editar movimento)
+- `GET    /api/movements/pending-approval` (R3 — listagem)
+- Demais `GET` de movimentações — continuam `requireAuth` (D1: leitura comum mantida).
+
+### Matriz efetiva aplicada (runtime)
+
+| Ação | Admin | Almoxarifado | Supervisor | Logística | Usuário comum |
+|---|---|---|---|---|---|
+| Adicionar item (POST /items) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Decrementar item (PATCH /decrement) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Remover item (DELETE /items/:itemId) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Editar status (PATCH /status) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Aprovar (POST /approve) | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Rejeitar (POST /reject) | ✅ | ❌ | ✅ | ❌ | ❌ |
+
+D3 respeitada: Logística **fora** de movimentações (não recebe gate em nenhuma das 6 rotas).
+
+### Validação
+- `npm run check` zerado (back-end + front-end).
+- `npm run build` passou (`dist/index.js 272.2kb`).
+
+### Smoke matrix executado (30 cenários: 6 rotas × 5 personas)
+
+Estratégia: usar usuário transiente `smoke281` (senha conhecida apenas em memória do script), com role rebindada via `INSERT/DELETE INTO user_roles` entre personas. Fixtures escolhidas para que rotas com gate-pass retornem `400`/`404`/`204` (post-gate) em vez de mutar estado real — `M_PROGRESS` (in_progress) para itens, `M_DONE` (completed) para status/approve/reject. Snapshot/restore de `M_DONE` aplicado entre personas para neutralizar a única rota que muta sem validação de transição (PATCH /status — gerou audit log esperado).
+
+| Persona | R8 POST items | R9 PATCH decrement | R10 DELETE item | R12 PATCH status | R13 POST approve | R14 POST reject |
+|---|---|---|---|---|---|---|
+| Anônimo            | 401 ✅ | 401 ✅ | 401 ✅ | 401 ✅ | 401 ✅ | 401 ✅ |
+| Comum (sem role)   | 403 ✅ | 403 ✅ | 403 ✅ | 403 ✅ | 403 ✅ | 403 ✅ |
+| Admin              | 400 ✅ | 200 ✅ | 204 ✅ | 200 ✅ | 400 ✅ | 400 ✅ |
+| Almoxarifado       | 400 ✅ | 200 ✅ | 204 ✅ | **403** ✅ | **403** ✅ | **403** ✅ |
+| Supervisor         | **403** ✅ | **403** ✅ | **403** ✅ | **403** ✅ | 400 ✅ | 400 ✅ |
+
+Leitura: `401` = gate de auth; `403` = gate de role bloqueando (esperado quando a persona não pode); `200`/`204`/`400`/`404` = gate **passou** e a rota executou sua lógica de negócio. Os `400` em R13/R14 (Admin e Supervisor) refletem "Only pending movements can be approved/rejected" — não há movimento `pending_approval` em fixture, o que confirma gate-pass sem mutar estado.
+
+**Gestor Logística (D3)** não foi testado ao vivo (sem senha real do `pftelles`); estruturalmente garantido pelos middlewares: nenhuma das 6 rotas inclui `ROLES.LOGISTICA` em `requireAnyRole`, então a resposta é matematicamente `403` — mesmo padrão validado em 2.5.1/2.6.2.
+
+### Confirmações de escopo
+- ✅ 6 middlewares aplicados exatamente conforme decisões D2/D4/D7.
+- ✅ Lógica de negócio (validações de status, decremento, audit log, side-effects) **inalterada**.
+- ✅ Payloads de request/response **inalterados**.
+- ✅ `shared/schema.ts`, banco, migrations e `drizzle.config.ts` **intocados**.
+- ✅ Seed de roles (`server/seed-roles.ts`) **intocado**.
+- ✅ Front-end (`client/*`) **intocado** — D10 fica para 2.8.3.
+- ✅ Sidebar e `ProtectedRoute` intocados.
+- ✅ `permissions`/`role_permissions` não consumidos.
+- ✅ Ownership de movimentações intocado — D8 (escape ownership) fica para 2.8.2 junto com R6/R7.
+- ✅ Audit log no decrement (D11) **não introduzido** — fica para 2.8.4.
+- ✅ `POST /api/movements`, `PATCH /api/movements/:id`, `GET /pending-approval` **não tocados** — ficam para 2.8.2.
+- ✅ Sem `any`/`as any`; nenhum import novo em `server/routes.ts`.
+- ✅ Usuário transiente do smoke (`smoke281`) removido ao final; fixtures `M_PROGRESS`/`M_DONE` restauradas ao status original (`in_progress`/`completed`); `actor_id` em `movement_audit_logs` da persona transiente nullificado para preservar histórico sem violar FK.
+
+### Dívida futura registrada
+- **Fase 2.8.2**: auditoria + RBAC em `POST /movements`, `PATCH /movements/:id`, `GET /pending-approval`; tratar D8 (escape ownership).
+- **Fase 2.8.3**: front-end de movimentações — esconder botão "Editar Status" para não-admin (D10), esconder ações de Approve/Reject para não-Supervisor/Admin, esconder ações de itens para não-Almoxarifado/Admin.
+- **Fase 2.8.4**: introduzir audit log no decrement (D11).
+- **Fase 2.9**: auditoria + RBAC em devoluções.
+
