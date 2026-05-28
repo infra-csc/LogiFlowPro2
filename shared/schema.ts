@@ -174,7 +174,7 @@ export const userApprovalStatusEnum = pgEnum("user_approval_status", [
 ]);
 
 // Users table (Authentication)
-export const users: any = pgTable("users", {
+export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),

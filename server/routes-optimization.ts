@@ -70,7 +70,7 @@ export function registerOptimizationRoutes(app: Express) {
         await storage.updateOptimizationRun(optimizationRun.id, {
           status: 'completed',
           executionTimeMs,
-          completedAt: true
+          completedAt: new Date()
         });
         
         // Save optimization result
@@ -78,9 +78,9 @@ export function registerOptimizationRoutes(app: Express) {
           optimizationRunId: optimizationRun.id,
           loadingOrderId: id,
           vehicleTypeId,
-          confidenceScore: parseFloat(confidenceScore.toFixed(2)),
-          utilizationPercentage: result.utilizationPercentage,
-          weightDistributionScore: result.weightDistributionScore,
+          confidenceScore: confidenceScore.toFixed(2),
+          utilizationPercentage: result.utilizationPercentage.toFixed(2),
+          weightDistributionScore: result.weightDistributionScore.toFixed(2),
           loadingSequence: result.items,
           warnings: result.warnings,
           recommendations: result.recommendations,
@@ -99,7 +99,7 @@ export function registerOptimizationRoutes(app: Express) {
         await storage.updateOptimizationRun(optimizationRun.id, {
           status: 'failed',
           errorMessage: error.message,
-          completedAt: true
+          completedAt: new Date()
         });
         throw error;
       }
@@ -163,9 +163,9 @@ export function registerOptimizationRoutes(app: Express) {
           trip.loadingLocation || "Depósito Central",
           destinations.map(d => ({
             location: d.location,
-            arrivalTime: d.arrivalDateTime
+            arrivalTime: d.arrivalDateTime.toISOString()
           })),
-          trip.unloadingLocation
+          trip.unloadingLocation ?? undefined
         );
         
         const executionTimeMs = Date.now() - startTime;
@@ -177,25 +177,25 @@ export function registerOptimizationRoutes(app: Express) {
         await storage.updateOptimizationRun(optimizationRun.id, {
           status: 'completed',
           executionTimeMs,
-          completedAt: true
+          completedAt: new Date()
         });
         
         // Save route optimization
         const optimization = await storage.createRouteOptimization({
           optimizationRunId: optimizationRun.id,
           tripId: id,
-          confidenceScore: parseFloat(confidenceScore.toFixed(2)),
-          totalDistanceKm: result.totalDistanceKm,
+          confidenceScore: confidenceScore.toFixed(2),
+          totalDistanceKm: result.totalDistanceKm.toFixed(2),
           estimatedDurationMinutes: result.estimatedDurationMinutes,
-          fuelEstimateLiters: result.fuelEstimateLiters,
+          fuelEstimateLiters: result.fuelEstimateLiters.toFixed(2),
           optimizedRoute: result.stops,
           warnings: [
             result.totalDistanceKm > 500 ? "Rota longa - considere dividir em múltiplas viagens" : null
-          ].filter(Boolean),
+          ].filter((x): x is string => x !== null),
           recommendations: [
             "Considere horários de menor tráfego para otimizar tempo",
             result.fuelEstimateLiters > 100 ? "Alto consumo de combustível - verifique peso da carga" : null
-          ].filter(Boolean)
+          ].filter((x): x is string => x !== null)
         });
         
         res.json({
@@ -207,7 +207,7 @@ export function registerOptimizationRoutes(app: Express) {
         await storage.updateOptimizationRun(optimizationRun.id, {
           status: 'failed',
           errorMessage: error.message,
-          completedAt: true
+          completedAt: new Date()
         });
         throw error;
       }

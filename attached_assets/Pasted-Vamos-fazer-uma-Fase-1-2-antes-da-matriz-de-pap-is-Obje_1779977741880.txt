@@ -1,0 +1,103 @@
+Vamos fazer uma Fase 1.2 antes da matriz de papéis.
+
+Objetivo:
+Corrigir os erros TypeScript pré-existentes até o comando npm run check passar limpo, sem alterar comportamento funcional do sistema.
+
+Contexto:
+Após as Fases 1 e 1.1, a segurança básica foi fechada:
+
+* POST/PATCH/DELETE internos protegidos.
+* GET internos protegidos.
+* Build passando.
+* Nenhum GET interno público restante, exceto /api/user com comportamento intencional.
+
+Porém, npm run check ainda falha com erros pré-existentes em:
+
+* server/auth.ts:128,131
+* server/routes-optimization.ts, várias linhas relacionadas ao typing do engine de otimização
+* server/routes.ts:2024,2025,2040,2123, relacionadas ao código de roles array
+* server/storage.ts:1381
+
+Antes de avançar para papéis funcionais, quero limpar esses erros.
+
+Regras obrigatórias:
+
+* Não alterar banco de dados.
+* Não criar migration.
+* Não alterar payloads da API.
+* Não alterar nomes de rotas.
+* Não alterar regras de negócio.
+* Não alterar autenticação já corrigida.
+* Não alterar permissões/papéis ainda.
+* Não mexer no front-end, salvo se algum erro TypeScript exigir e for estritamente necessário.
+* Não refatorar routes.ts inteiro.
+* Não mover arquivos.
+* Não remover rotas duplicadas neste passo.
+* Não substituir lógica por any para “calar” o TypeScript.
+* Não criar novos as any.
+* Se precisar usar cast, prefira tipos explícitos e locais.
+* Não fazer mudanças visuais.
+
+Tarefa:
+
+1. Rodar npm run check e listar exatamente os erros atuais.
+
+2. Corrigir os erros em pequenos blocos, nesta ordem:
+   a) server/auth.ts
+   b) server/routes.ts, apenas o trecho de roles array
+   c) server/storage.ts
+   d) server/routes-optimization.ts
+
+3. Para cada erro:
+
+* Explique brevemente a causa.
+* Corrija com a menor alteração possível.
+* Preserve o comportamento atual.
+* Evite reescrever funções inteiras.
+
+4. Em server/auth.ts:
+
+* Corrigir apenas os tipos quebrados.
+* Não mudar login, registro, sessão, Passport, hash de senha ou reset de senha.
+
+5. Em server/routes.ts:
+
+* Corrigir apenas os erros relacionados a roles array.
+* Não alterar regras de autorização.
+* Não implementar papéis funcionais novos.
+* Não remover duplicações de /api/users ainda.
+
+6. Em server/storage.ts:
+
+* Corrigir apenas o erro da linha indicada.
+* Não alterar queries, filtros ou retorno de dados, exceto se a correção de tipo exigir ajuste mínimo.
+
+7. Em server/routes-optimization.ts:
+
+* Corrigir typing do engine de otimização.
+* Não alterar algoritmo de otimização.
+* Não alterar resultado esperado das rotas.
+* Não alterar payloads de entrada ou saída.
+* Se o erro vier de tipos incompletos do optimization-engine, criar tipos auxiliares claros e locais.
+
+8. Após as correções:
+
+* Rodar npm run check.
+* Rodar npm run build.
+
+9. Se npm run check ainda falhar:
+
+* Liste os erros restantes.
+* Diga quais foram corrigidos.
+* Não avance para outras mudanças.
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Erros TypeScript corrigidos.
+* Causa de cada erro.
+* Como foi corrigido.
+* Resultado final do npm run check.
+* Resultado final do npm run build.
+* Confirmação de que não houve alteração de regra de negócio, rotas, payloads, banco ou permissões.

@@ -4,6 +4,11 @@ import { db } from "./db";
 import { userRoles, roles } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
+// Passport stores users in the session without the password field, so any
+// utility that receives `req.user` must accept that variant. Defining a local
+// alias keeps the signatures explicit without using `any`.
+type AuthUser = Omit<User, "password">;
+
 /**
  * Express middleware that blocks anonymous requests with 401.
  * Pass-through for authenticated users (no behavior change).
@@ -19,7 +24,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 /**
  * Check if user has ownership or admin rights over a resource
  */
-export async function canEditResource(user: User | undefined, resourceCreatorId: string | null): Promise<boolean> {
+export async function canEditResource(user: AuthUser | undefined, resourceCreatorId: string | null): Promise<boolean> {
   if (!user) return false;
   
   // Check if user is admin - admins can edit everything
@@ -38,7 +43,7 @@ export async function canEditResource(user: User | undefined, resourceCreatorId:
  * Check if user can delete a resource
  * Currently same logic as edit, but kept separate for future flexibility
  */
-export async function canDeleteResource(user: User | undefined, resourceCreatorId: string | null): Promise<boolean> {
+export async function canDeleteResource(user: AuthUser | undefined, resourceCreatorId: string | null): Promise<boolean> {
   return canEditResource(user, resourceCreatorId);
 }
 
@@ -76,7 +81,7 @@ export function checkOwnership(
 /**
  * Check if user has admin role
  */
-export async function isAdmin(user: User | undefined): Promise<boolean> {
+export async function isAdmin(user: AuthUser | undefined): Promise<boolean> {
   if (!user) return false;
   
   try {
@@ -99,7 +104,7 @@ export async function isAdmin(user: User | undefined): Promise<boolean> {
 /**
  * Get user info to include in responses (for frontend ownership checks)
  */
-export function getUserInfo(user: User | undefined) {
+export function getUserInfo(user: AuthUser | undefined) {
   if (!user) return null;
   
   return {

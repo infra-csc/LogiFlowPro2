@@ -9,6 +9,19 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (2025-11-01)
 - **Ownership-Based Permissions (Phase 1)**: Implemented resource ownership control where only the creator (or admins) can edit/delete resources. Converted requestedBy/createdBy fields from text to FK references to users.id. Created server/ownership.ts with canEditResource/canDeleteResource utilities that check admin role OR resource ownership. Updated all POST routes to auto-populate creator from authenticated user. Added ownership checks to PATCH/DELETE routes for requests, trips, loading orders, and movements. Updated frontend request-details page to show/hide edit/delete buttons based on ownership verification.
 
+## TypeScript Cleanup (2026-05-28) — Fase 1.2
+- **Root cause server-side errors**: `shared/schema.ts` had `export const users: any = pgTable(...)`. The `: any` annotation poisoned Drizzle's type inference for every field of `users` (forcing `password`, `active` and related insert types into a degenerate `unknown[] | [any, ...any[]]` shape) and made `db.insert(users).returning()` non-iterable, breaking `auth.ts:128/131`, `routes.ts:2024/2025/2040/2123` and `storage.ts:1381` (createUser destructuring). Removed the `: any`, restoring proper inference.
+- **Cascade exposure**: removing `: any` revealed pre-existing latent mismatches — `req.user` is `Omit<User, "password">` (Passport strips it on serialize) but `ownership.ts` functions were typed as full `User`. Introduced a local `type AuthUser = Omit<User, "password">` and used it on `canEditResource`/`canDeleteResource`/`isAdmin`/`getUserInfo`. No call-site changes; only `user.id` is read.
+- **`server/routes-optimization.ts`** — corrections aligned with the actual schema, no algorithm changes:
+  - `completedAt: true` → `completedAt: new Date()` in 4 spots (success + failure branches of both endpoints). Column is `timestamp("completed_at")`.
+  - Decimal columns now receive strings via `.toFixed(2)` (Drizzle's `decimal(...)` insert type is `string`): `confidenceScore`, `utilizationPercentage`, `weightDistributionScore`, `totalDistanceKm`, `fuelEstimateLiters`. Output payload unchanged (PG already returns decimals as strings).
+  - `arrivalTime: d.arrivalDateTime` → `.toISOString()` to satisfy `RouteStop.arrivalTime: string`.
+  - `.filter(Boolean)` substituído por type predicate `.filter((x): x is string => x !== null)`. Mesmo resultado em runtime.
+  - `trip.unloadingLocation ?? undefined` para casar com `string | undefined`.
+- **No usage of `any` or `as any` was introduced.** All casts are explicit and local (one `Omit<User, "password">` type alias).
+- **Sem alteração** em banco, migrations, payloads de API, nomes de rotas, autenticação, regras de negócio ou front-end.
+- **Erros remanescentes em `npm run check`** (frontend, fora do escopo declarado da Fase 1.2): `client/src/components/ObjectUploader.tsx:49`, `client/src/pages/dashboard.tsx:213` (variant `"link"`), `client/src/pages/drivers.tsx:51/52/344/358/372/386/408/422/436`. Não tocados conforme regra do usuário.
+
 ## Security Fixes (2026-05-28) — Fase 1.1 Lote A + B
 - **Lote A — Proteção de leitura nas rotas GET internas**: aplicado `requireAuth` em 46 rotas GET que estavam públicas. Cobertura: dashboard, eventos, kits, fornecedores, produtos, requisições, veículos, motoristas, docas, viagens, ordens de carregamento, movimentações, devoluções, usuários (todas as 4 declarações duplicadas de `/api/users` agora protegidas), papéis, permissões, otimizações e relatórios de simulação. `/api/user` mantido inalterado (Passport interno). Login/register/forgot-password/reset-password seguem públicas.
 - **Lote B — `GET /api/loading-orders/:id/can-edit`**: protegido com `requireAuth`. Última rota GET interna que ainda estava pública agora exige sessão.
