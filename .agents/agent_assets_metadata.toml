@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "ycMDMY6vMX2y_zQJe9InY"
+uri = "file://documentacao_eventflow.pdf"
+type = "pdf"
+title = "Documentação Técnica EventFlow"
