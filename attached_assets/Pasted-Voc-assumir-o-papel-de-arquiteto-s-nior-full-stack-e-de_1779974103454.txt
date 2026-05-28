@@ -1,0 +1,90 @@
+Você assumirá o papel de arquiteto sênior full-stack e deverá revisar este projeto Replit antes de alterar qualquer código.
+
+Contexto:
+Este é um sistema web chamado EventFlow Logistics, usado para gestão logística de materiais para eventos. Ele possui back-end em Node.js + Express + TypeScript, banco PostgreSQL com Drizzle ORM, autenticação com Passport/session, front-end em React + TypeScript + Vite, TanStack Query, shadcn/ui e Tailwind.
+
+Objetivo:
+Quero melhorar o sistema com segurança, sem quebrar regras de negócio existentes, tanto no front-end quanto no back-end.
+
+Antes de alterar qualquer arquivo, faça uma auditoria completa e me entregue um plano técnico dividido em fases.
+
+Analise obrigatoriamente:
+
+1. Front-end
+
+* Estrutura de rotas
+* Layout geral
+* Sidebar/header
+* Tela de login
+* Responsividade
+* Tabelas/listagens
+* Empty states
+* Componentes grandes demais
+* Uso de TanStack Query
+* Formulários e validações
+* Padrão visual shadcn/Tailwind
+* Experiência do usuário operacional
+
+2. Back-end
+
+* Organização das rotas
+* Tamanho e responsabilidade do arquivo server/routes.ts
+* Camada storage/repository
+* Validações com Zod
+* Uso de Drizzle
+* Autenticação e autorização
+* Regras de propriedade
+* Uploads
+* Reset de senha
+* Tratamento de erros
+* Tipagem TypeScript
+* Ocorrências de “as any”
+
+3. Banco/schema
+
+* Organização do shared/schema.ts
+* Possibilidade de dividir o schema por domínio
+* Relacionamentos entre eventos, requisições, itens, estoque, viagens, movimentações e usuários
+* Riscos de alteração em tabelas existentes
+* Migrações necessárias
+
+4. Performance
+
+* Listagens com filtro no cliente
+* Necessidade de paginação server-side
+* Ordenação server-side
+* Busca textual
+* Índices úteis no banco
+* Estratégia de cache/invalidação no TanStack Query
+
+5. Segurança e permissões
+
+* Rotas protegidas
+* Permissões por papel
+* Diferença entre admin, supervisor, almoxarifado, logística e usuário comum
+* Risco de permissões estarem apenas escondidas no front
+* Proteção real no back-end
+
+6. Qualidade
+
+* Falta de testes
+* Lint/typecheck/build
+* Possível configuração de CI
+* Logs e tratamento de erros
+
+Formato da resposta:
+
+* Primeiro, liste os principais riscos do projeto.
+* Depois, liste quick wins de baixo risco.
+* Depois, monte um roadmap em fases.
+* Para cada fase, informe:
+
+  * Objetivo
+  * Arquivos prováveis envolvidos
+  * Risco
+  * Como testar
+  * O que não deve ser alterado
+* Não faça alterações de código ainda.
+* Não refatore nada automaticamente.
+* Não altere schema ou migrations sem explicar antes.
+* Não mude regras de negócio existentes sem minha aprovação.
