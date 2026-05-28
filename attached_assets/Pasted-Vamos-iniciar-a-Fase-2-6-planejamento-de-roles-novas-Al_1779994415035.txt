@@ -1,0 +1,312 @@
+Vamos iniciar a Fase 2.6 — planejamento de roles novas: Almoxarifado e Supervisor/Aprovador, sem alteração de código.
+
+Objetivo:
+Planejar a criação, normalização e uso das novas roles funcionais antes de alterar banco, seed, RBAC ou endpoints.
+
+Contexto:
+Até agora concluímos:
+
+* Fase 2.1: infraestrutura mínima de RBAC.
+* Fase 2.2: rotas admin/config protegidas.
+* Fase 2.3: logística protegida com alias para Gestor Logistica.
+* Fase 2.4: escrita de catálogo admin-only.
+* Fase 2.5.1: loading-orders com holes críticos fechados.
+* approve/disapprove de loading-orders ficaram admin-only provisoriamente.
+* itens avulsos ficaram Admin/Logística provisoriamente.
+* ainda não existem roles reais de Almoxarifado e Supervisor/Aprovador no banco.
+
+Nesta fase, NÃO ALTERE CÓDIGO.
+Quero apenas diagnóstico e plano.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar front-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não criar roles.
+* Não renomear roles.
+* Não aplicar requireRole novo.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar sidebar.
+* Não alterar ProtectedRoute.
+* Não consumir permissions/role_permissions.
+* Apenas auditar e propor.
+
+Tarefa 1 — Auditar estrutura atual de roles
+Levante no código e no banco:
+
+1. Roles existentes hoje:
+
+* nome exato
+* descrição, se existir
+* quantidade de usuários vinculados
+* se é usada no runtime
+* se possui alias em shared/roles.ts
+
+2. Tabelas relacionadas:
+
+* roles
+* user_roles
+* permissions
+* role_permissions
+
+3. Como roles são criadas hoje:
+
+* seed
+* tela admin
+* endpoint POST /api/roles
+* manualmente no banco
+* outro fluxo
+
+4. Como roles são atribuídas hoje:
+
+* tela admin
+* endpoints de user_roles
+* seed
+* fluxo manual
+
+5. Se existe campo unique em roles.name.
+6. Se há risco de duplicar role por diferença de acento/case, exemplo:
+
+* Almoxarifado
+* almoxarifado
+* Almox
+* Supervisor
+* Supervisor/Aprovador
+* Aprovador
+
+Entrega da tarefa 1:
+
+* Diagnóstico da estrutura atual.
+* Riscos encontrados.
+* O que já está pronto para receber roles novas.
+* O que precisa ser ajustado antes.
+
+Tarefa 2 — Propor roles canônicas e aliases
+Propor nomes canônicos para o código:
+
+* ROLES.ALMOXARIFADO = "almoxarifado"
+* ROLES.SUPERVISOR = "supervisor"
+
+Avaliar se o nome exibido no banco deve ser:
+
+Para Almoxarifado:
+
+* "Almoxarifado"
+
+Para Supervisor/Aprovador:
+
+* "Supervisor"
+  ou
+* "Aprovador"
+  ou
+* "Supervisor Aprovador"
+  ou
+* "Supervisor/Aprovador"
+
+Para cada opção, informar:
+
+* vantagem
+* desvantagem
+* impacto em UX
+* impacto em código
+* impacto em seed
+* recomendação final
+
+Também propor aliases para shared/roles.ts, por exemplo:
+
+* almoxarifado
+* almox
+* estoque
+* supervisor
+* aprovador
+* supervisor aprovador
+* supervisor/aprovador
+
+Importante:
+Não implementar ainda.
+
+Tarefa 3 — Propor estratégia de criação das roles
+Comparar as opções:
+
+Opção A — Criar roles via migration
+
+* Prós
+* Contras
+* Risco
+* Quando usar
+
+Opção B — Criar roles via seed idempotente
+
+* Prós
+* Contras
+* Risco
+* Quando usar
+
+Opção C — Criar roles manualmente pela tela admin
+
+* Prós
+* Contras
+* Risco
+* Quando usar
+
+Opção D — Criar script idempotente separado
+
+* Prós
+* Contras
+* Risco
+* Quando usar
+
+Recomendar a melhor opção para este projeto Replit.
+
+Critérios:
+
+* evitar duplicidade
+* preservar produção
+* facilitar deploy
+* facilitar rollback
+* não quebrar roles existentes
+* permitir uso posterior no RBAC
+
+Tarefa 4 — Propor matriz revisada com novas roles
+Atualizar a matriz específica para:
+
+1. Loading Orders
+
+* Ver ordens
+* Criar ordem
+* Editar ordem
+* Adicionar/remover itens
+* Vincular/desvincular viagens
+* Marcar como pronta
+* Aprovar
+* Desaprovar
+* Executar otimização
+
+2. Movimentações
+
+* Ver movimentações
+* Criar movimentação
+* Editar movimentação
+* Aprovar movimentação
+* Rejeitar movimentação
+* Ver logs/auditoria
+
+3. Devoluções
+
+* Ver devoluções
+* Criar devolução
+* Processar devolução
+* Aprovar/rejeitar devolução, se existir
+
+Papéis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor/Aprovador
+* Usuário comum
+
+Tarefa 5 — Propor mudanças futuras em endpoints
+Liste quais endpoints devem mudar quando as roles existirem.
+
+Exemplos esperados:
+
+Loading Orders:
+
+* POST /api/loading-orders/:id/items
+
+  * hoje: Admin/Logística provisório
+  * futuro: Admin/Almoxarifado, talvez Logística também
+* POST /api/loading-orders/:id/approve
+
+  * hoje: Admin-only provisório
+  * futuro: Admin/Supervisor
+* POST /api/loading-orders/:id/disapprove
+
+  * hoje: Admin-only provisório
+  * futuro: Admin/Supervisor
+* POST /api/loading-orders/:id/mark-ready
+
+  * hoje: Admin/Logística
+  * futuro: Admin/Logística/Almoxarifado, se fizer sentido
+
+Movimentações:
+
+* listar endpoints atuais e papel sugerido
+
+Devoluções:
+
+* listar endpoints atuais e papel sugerido
+
+Para cada endpoint:
+
+* método
+* rota
+* papel atual
+* papel futuro sugerido
+* risco de mudar
+* fase recomendada
+
+Tarefa 6 — Plano de implementação futuro
+Propor fases pequenas:
+
+Fase 2.6.1:
+
+* criar/normalizar roles Almoxarifado e Supervisor/Aprovador
+* adicionar aliases no shared/roles.ts
+* sem aplicar em endpoints ainda
+
+Fase 2.6.2:
+
+* ajustar loading-orders usando as novas roles
+
+Fase 2.6.3:
+
+* ajustar front-end de loading-orders para os novos papéis
+
+Fase 2.7:
+
+* auditar movimentações
+
+Fase 2.8:
+
+* aplicar RBAC em movimentações
+
+Fase 2.9:
+
+* auditar/aplicar RBAC em devoluções
+
+Para cada fase:
+
+* arquivos prováveis
+* risco
+* testes necessários
+* rollback
+
+Tarefa 7 — Decisões que dependem de mim
+Liste claramente as decisões que preciso aprovar antes de codar, por exemplo:
+
+* Nome oficial da role de Supervisor: Supervisor, Aprovador ou Supervisor/Aprovador?
+* Almoxarifado pode adicionar/remover itens em loading-orders?
+* Logística continua podendo adicionar/remover itens ou isso sai quando Almoxarifado existir?
+* Supervisor aprova apenas loading-orders ou também movimentações?
+* Supervisor pode desaprovar?
+* Almoxarifado pode marcar ordem como pronta?
+* Usuário comum continua vendo loading-orders?
+* Gestor/relatórios precisa de role própria agora ou depois?
+
+Entrega final:
+Quero uma resposta estruturada com:
+
+1. Diagnóstico das roles atuais.
+2. Proposta de roles canônicas e aliases.
+3. Estratégia recomendada para criar roles.
+4. Matriz revisada com Almoxarifado e Supervisor.
+5. Endpoints que mudarão no futuro.
+6. Plano de implementação em fases.
+7. Decisões pendentes para eu aprovar.
+8. Confirmação de que nenhum código foi alterado.
