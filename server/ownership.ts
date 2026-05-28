@@ -3,6 +3,7 @@ import type { User } from "@shared/schema";
 import { db } from "./db";
 import { userRoles, roles } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { isAdminRoleName as sharedIsAdminRoleName } from "@shared/roles";
 
 // Passport stores users in the session without the password field, so any
 // utility that receives `req.user` must accept that variant. Defining a local
@@ -79,22 +80,14 @@ export function checkOwnership(
 }
 
 /**
- * Pure helper: decide whether a given role name represents the admin role.
+ * Re-export of the canonical admin-role check from `@shared/roles`.
  *
- * The seeded admin role in this database is named "Adm" (pt-BR), while
- * earlier code paths assumed the literal "admin". Accept both spellings
- * case-insensitively so the existing seed and any future installs that
- * use the English name both resolve to admin. No new role is granted —
- * callers only honor roles already assigned via `user_roles`.
- *
- * Single source of truth — used by `isAdmin()` here and by `GET /api/user`
- * in `server/auth.ts`.
+ * As of Fase 2.1 the pure helper lives in `shared/roles.ts` so the
+ * front-end can import the same logic. Keeping a re-export here means
+ * existing consumers (notably the dynamic import in `server/auth.ts`)
+ * continue to work unchanged — single source of truth is preserved.
  */
-export function isAdminRoleName(name: string | null | undefined): boolean {
-  if (!name) return false;
-  const lower = name.toLowerCase();
-  return lower === 'admin' || lower === 'adm';
-}
+export const isAdminRoleName = sharedIsAdminRoleName;
 
 /**
  * Check if user has admin role

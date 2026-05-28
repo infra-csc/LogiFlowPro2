@@ -27,7 +27,19 @@ Sub-fases 1.0 a 1.6 estabilizaram a base do sistema antes da Fase 2 (matriz de p
 - Toda escrita interna exige autenticação + ownership/admin.
 - Toda leitura interna exige autenticação.
 - `npm run check` zerado; `npm run build` passando; CI ativo.
-- `isAdmin` em uma única fonte da verdade (`server/ownership.ts:isAdminRoleName`).
+- `isAdmin` em uma única fonte da verdade (`shared/roles.ts:isAdminRoleName`, re-exportada por `server/ownership.ts`).
+
+## Fase 2 — Matriz de papéis funcionais (em andamento)
+
+- **Fase 2.0** (planejamento, sem código): diagnóstico das 5 tabelas de RBAC, matriz papel × módulo × ação proposta para 19 módulos, matriz endpoint × papel mínimo para os 137 endpoints, decisões consolidadas com o usuário.
+- **Fase 2.1** (2026-05-28): infraestrutura mínima de RBAC.
+  - Criados `shared/roles.ts` (isomórfico: `ROLES`, `normalizeRoleName`, `isAdminRoleName`, `rolesMatch`) e `server/authz.ts` (`getUserRoleNames` com cache por-request, `hasRole`/`hasAnyRole`, middlewares `requireRole`/`requireAnyRole`/`requireAdmin`).
+  - `server/ownership.ts:isAdminRoleName` agora é re-export do helper compartilhado — fonte única migrou para `shared/`.
+  - Super-admin opcional via env var `EMERGENCY_ADMIN_USERNAME` (off-by-default; não aparece em `/api/user`; loga warning a cada uso).
+  - Aplicado `requireAdmin` apenas em `DELETE /api/suppliers/:id` e `DELETE /api/drivers/:id` (rotas que já eram admin-only). Comportamento, mensagens e status codes idênticos ao anterior. Demais 135 endpoints intocados. Front-end, sidebar, ProtectedRoute, schema, seed, migrations e `permissions`/`role_permissions` não foram tocados.
+  - `npm run check` zerado; `npm run build` passando; smoke completo (admin/não-admin/anônimo) ok.
+
+**Histórico detalhado da Fase 2**: ver [`docs/CHANGELOG-fase2.md`](docs/CHANGELOG-fase2.md).
 
 ## System Architecture
 

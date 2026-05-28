@@ -49,6 +49,7 @@ import {
 } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { checkOwnership, canEditResource, isAdmin, requireAuth } from "./ownership";
+import { requireAdmin } from "./authz";
 
 // Legacy function - now replaced by POST /api/permissions/populate endpoint
 // Keeping minimal initialization for backward compatibility
@@ -350,24 +351,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/suppliers/:id", async (req, res) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Não autenticado" });
+  app.delete(
+    "/api/suppliers/:id",
+    requireAdmin({ message: "Apenas administradores podem excluir fornecedores" }),
+    async (req, res) => {
+      try {
+        await storage.deleteSupplier(req.params.id);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting supplier:", error);
+        res.status(500).json({ error: "Failed to delete supplier" });
       }
-      if (!(await isAdmin(req.user))) {
-        return res.status(403).json({
-          error: "Acesso negado",
-          message: "Apenas administradores podem excluir fornecedores"
-        });
-      }
-      await storage.deleteSupplier(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting supplier:", error);
-      res.status(500).json({ error: "Failed to delete supplier" });
     }
-  });
+  );
 
   // Products
   app.get("/api/products", requireAuth, async (req, res) => {
@@ -959,24 +955,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/drivers/:id", async (req, res) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Não autenticado" });
+  app.delete(
+    "/api/drivers/:id",
+    requireAdmin({ message: "Apenas administradores podem excluir motoristas" }),
+    async (req, res) => {
+      try {
+        await storage.deleteDriver(req.params.id);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting driver:", error);
+        res.status(500).json({ error: "Failed to delete driver" });
       }
-      if (!(await isAdmin(req.user))) {
-        return res.status(403).json({
-          error: "Acesso negado",
-          message: "Apenas administradores podem excluir motoristas"
-        });
-      }
-      await storage.deleteDriver(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting driver:", error);
-      res.status(500).json({ error: "Failed to delete driver" });
     }
-  });
+  );
 
   // Upload CNH image
   app.post("/api/drivers/:id/cnh-upload", requireAuth, upload.single("file"), async (req, res) => {

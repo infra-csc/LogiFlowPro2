@@ -1,0 +1,202 @@
+Vamos iniciar a Fase 2.1 — infraestrutura mínima de RBAC, com escopo reduzido.
+
+Objetivo:
+Criar a base técnica para autorização por papel, sem ainda implantar a matriz completa de papéis funcionais e sem mudar comportamento prático do sistema.
+
+Contexto:
+A Fase 2 de planejamento mostrou que:
+
+* O sistema já tem users, roles, user_roles, permissions e role_permissions.
+* permissions e role_permissions existem no banco, mas ainda não são consumidas em runtime.
+* Hoje o back usa requireAuth, isAdmin e canEditResource.
+* Hoje o front só usa ProtectedRoute por autenticação, e user.roles praticamente não é usado.
+* A matriz funcional será implementada em fases posteriores.
+
+Decisões aprovadas para este momento:
+
+1. POST /api/users continua público, como auto cadastro com aprovação de admin.
+2. Não criar nem renomear roles novas nesta fase.
+3. Não renomear Gestor Logistica agora.
+4. Não renomear Usuario Requisitor agora.
+5. Logística aprovará readiness/carregamento no futuro; supervisor aprovará requisições e movimentações sensíveis.
+6. Mudança de status de produto fica fora desta fase; futuramente avaliar endpoint separado /api/products/:id/status.
+7. Nesta fase, usar RBAC simples baseado em roles, não permissions/role_permissions.
+8. Super-admin via env var pode ser criado como fallback opcional, off-by-default.
+9. Usuário com múltiplas roles terá união de permissões.
+10. Filtro de solicitante em requisições será tratado futuramente no storage layer.
+
+Escopo permitido nesta Fase 2.1:
+
+1. Criar constantes canônicas de roles
+   Criar um arquivo compartilhado, por exemplo:
+
+* shared/roles.ts
+
+Ele deve conter:
+
+* ROLES.ADMIN = "admin"
+* ROLES.ADM = "adm", se necessário apenas como alias legado
+* aliases/normalização para reconhecer "Adm", "admin" e variações case-insensitive
+* Função pura normalizeRoleName(name)
+* Função pura isAdminRoleName(name)
+
+Importante:
+
+* Não alterar o banco.
+* Não renomear roles existentes.
+* Não criar seed.
+* Não criar migration.
+
+2. Criar helper de autorização no back-end
+   Criar ou ajustar um helper, por exemplo:
+
+* server/authz.ts
+  ou expandir server/ownership.ts se fizer mais sentido
+
+Funções esperadas:
+
+* getUserRoleNames(user)
+* hasRole(user, roleName)
+* hasAnyRole(user, roleNames[])
+* requireRole(roleName)
+* requireAnyRole(roleNames[])
+* requireAdmin, se fizer sentido como alias de requireRole(ROLES.ADMIN)
+
+Regras:
+
+* Admin deve ser reconhecido tanto por "Adm" quanto por "admin".
+* Comparação deve ser case-insensitive.
+* Não conceder admin por username, email ou id.
+* Apenas roles vindas de user_roles/roles podem autorizar.
+* Anônimo deve receber 401.
+* Usuário logado sem papel necessário deve receber 403.
+* Mensagens de erro devem ser claras.
+
+3. Cache ou anexação de roleNames
+   Avaliar a forma mais segura de evitar query repetida a cada requireRole:
+
+* Se req.user já tiver roles/roleNames via Passport/session, reutilizar.
+* Se não tiver, criar helper com cache simples por request.
+* Não alterar sessão de forma arriscada.
+* Não quebrar GET /api/user.
+* Não mudar payload de /api/user, exceto se for apenas preservar/normalizar o que já existe.
+
+Antes de alterar:
+
+* Explique qual abordagem escolheu e por quê.
+
+4. Aplicar requireRole apenas nas rotas que já eram admin-only
+   Nesta fase, aplicar somente em rotas que já exigiam admin e cujo comportamento não deve mudar:
+
+* DELETE /api/suppliers/:id
+* DELETE /api/drivers/:id
+
+Substituir a checagem manual isAdmin(), se houver, por requireRole/requireAdmin.
+
+Importante:
+
+* O comportamento deve continuar idêntico.
+* Admin continua recebendo 204.
+* Não-admin continua recebendo 403.
+* Anônimo continua recebendo 401.
+
+5. Não aplicar ainda em:
+
+* Eventos
+* Produtos
+* Kits
+* Fornecedores POST/PATCH
+* Requisições
+* Aprovações
+* Ordens de carregamento
+* Viagens
+* Motoristas POST/PATCH
+* Veículos
+* Docas
+* Movimentações
+* Relatórios
+* Sidebar/front-end
+* ProtectedRoute
+* permissions/role_permissions
+
+6. Super-admin de emergência
+   Pode implementar somente se for simples e seguro:
+
+* env var opcional, por exemplo EMERGENCY_ADMIN_USERNAME
+* off-by-default
+* se não estiver configurada, não muda nada
+* deve ser documentada
+* não deve aparecer como role no payload
+* deve ser usada apenas como fallback em requireAdmin/hasRole
+* não deve substituir roles reais
+
+Se houver qualquer risco, não implemente agora; apenas deixe recomendação.
+
+7. Validações obrigatórias
+   Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+Admin:
+
+* GET /api/user retorna roles e isAdmin:true
+* DELETE /api/drivers/:id retorna 204
+* DELETE /api/suppliers/:id retorna comportamento esperado de admin
+
+Não-admin:
+
+* GET /api/user retorna isAdmin:false
+* DELETE /api/drivers/:id retorna 403
+* DELETE /api/suppliers/:id retorna 403
+
+Anônimo:
+
+* DELETE /api/drivers/:id retorna 401
+* DELETE /api/suppliers/:id retorna 401
+
+8. Documentação
+   Atualizar:
+
+* replit.md com resumo curto da Fase 2.1
+* docs/CHANGELOG-fase1.md não deve ser alterado
+* Se necessário, criar docs/CHANGELOG-fase2.md
+
+Registrar:
+
+* Objetivo
+* Arquivos alterados
+* Rotas afetadas
+* Resultado dos testes
+* Decisões técnicas
+
+Regras obrigatórias:
+
+* Não alterar banco.
+* Não criar migration.
+* Não criar seed.
+* Não renomear roles.
+* Não alterar payloads funcionais.
+* Não alterar endpoints.
+* Não mexer no front-end.
+* Não implementar a matriz completa.
+* Não consumir permissions/role_permissions ainda.
+* Não criar novos any ou as any.
+* Não usar cast solto.
+* Não refatorar routes.ts inteiro.
+
+Entrega final:
+Liste:
+
+* Arquivos criados.
+* Arquivos alterados.
+* Funções criadas.
+* Como roles são normalizadas.
+* Como requireRole/requireAnyRole funcionam.
+* Se houve ou não super-admin por env var.
+* Rotas onde foi aplicado.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Testes manuais executados.
+* Confirmação de que o comportamento funcional permaneceu igual.
