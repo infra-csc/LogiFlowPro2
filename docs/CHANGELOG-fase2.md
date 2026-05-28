@@ -871,3 +871,84 @@ Banco, seed, migrations, schema, payloads, demais endpoints,
 front-end, sidebar, ProtectedRoute, roles, `permissions`/
 `role_permissions`, requests, loading-orders, trips, movements,
 returns, reports.
+
+---
+
+## Fase 2.4.2 — Ordem de rotas em Fornecedores + fix SQL pré-existente (2026-05-28)
+
+**Objetivo**: corrigir bug pré-existente em que `GET /api/suppliers/recent`
+retornava 404 porque a rota estava declarada **depois** de
+`GET /api/suppliers/:id`, sendo mascarada pelo parâmetro paramétrico.
+Identificado durante o smoke da Fase 2.4.1.
+
+### Back-end
+
+#### `server/routes.ts` — reordenação de rotas
+
+`GET /api/suppliers/recent` (estava na linha 406, depois de
+`/api/suppliers/:id` e dos handlers POST/PATCH/DELETE) foi movido para
+**logo após** `GET /api/suppliers` e **antes** de
+`GET /api/suppliers/:id`. Nova ordem:
+
+1. `GET /api/suppliers`
+2. `GET /api/suppliers/recent` ← **mais específica vem antes**
+3. `GET /api/suppliers/:id`
+4. `POST /api/suppliers` (requireAdmin)
+5. `PATCH /api/suppliers/:id` (requireAdmin)
+6. `DELETE /api/suppliers/:id` (requireAdmin)
+
+Comentário inline adicionado: `// Specific routes MUST come before generic :id route`.
+
+**Não alterado** no handler: query string, payload, `requireAuth`,
+`requireAdmin`, mensagens de erro, código de status.
+
+#### `server/storage.ts` — fix SQL latente em `getRecentSuppliers`
+
+A reordenação expôs um bug que nunca havia executado (handler era
+inalcançável). Erro Postgres `42P10`:
+`for SELECT DISTINCT, ORDER BY expressions must appear in select list`.
+
+Causa: `selectDistinct({ ownerName })` + `orderBy(desc(processedAt))` —
+Postgres exige que toda coluna no ORDER BY apareça também no SELECT
+DISTINCT.
+
+**Fix mínimo** (preserva a semântica original "N nomes distintos mais
+recentes"):
+- `selectDistinct` → `select`
+- adicionado `.groupBy(movementItems.ownerName)`
+- `orderBy(desc(...))` → `orderBy(sql\`MAX(${processedAt}) DESC NULLS LAST\`)`
+
+Mesma assinatura (`Promise<string[]>`), mesmo filtro WHERE, mesmo
+mapeamento de retorno. Apenas a forma de deduplicar mudou de DISTINCT
+para GROUP BY + MAX, que é o padrão SQL para "top N distintos por data
+mais recente".
+
+#### Auditoria rápida em Produtos
+
+Verificada a ordem de `/api/products/by-sku/:sku`,
+`/api/products/target/:sku`, `/api/products/:sku/recent-suppliers` e
+`/api/products/:id`. **Sem risco**: `/api/products/:sku/recent-suppliers`
+tem 2 segmentos após `/api/products`, enquanto `/api/products/:id` tem 1,
+então `:id` não captura. Confirmado no smoke (200). Nenhuma reordenação
+necessária em produtos.
+
+### Validação
+
+- `npm run check` zerado.
+- `npm run build` passando (`dist/index.js 269.8kb`).
+- Smoke (após restart do workflow para carregar novo storage):
+  - Anônimo: `/suppliers/recent` 401, `/suppliers/:id` 401,
+    `/products/:sku/recent-suppliers` 401.
+  - Logado: `/suppliers/recent` **200** com payload `["R2R"]` (antes era
+    404 → bug corrigido), `/suppliers/:id` 200, `/suppliers/nonexistent-id`
+    404 com mensagem `"Supplier not found"` (comportamento preservado),
+    `/products/:sku/recent-suppliers` 200.
+  - Admin: idêntico a logado em `/suppliers/recent` (diff vazio).
+- Usuário transiente `smokefase242` criado e removido após smoke.
+
+### Não tocado
+
+Banco, seed, migrations, schema, payloads, demais endpoints, front-end,
+sidebar, ProtectedRoute, roles, `permissions`/`role_permissions`,
+requests, loading-orders, trips, movements, returns, reports. Nenhum
+RBAC novo. Nenhuma rota nova. Nenhuma alteração de mensagem.

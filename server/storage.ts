@@ -1285,7 +1285,7 @@ export class DatabaseStorage implements IStorage {
 
   async getRecentSuppliers(limit: number = 10): Promise<string[]> {
     const recent = await db
-      .selectDistinct({ ownerName: movementItems.ownerName })
+      .select({ ownerName: movementItems.ownerName })
       .from(movementItems)
       .where(
         and(
@@ -1294,7 +1294,8 @@ export class DatabaseStorage implements IStorage {
           sql`${movementItems.ownerType} != 'proprio'`
         )
       )
-      .orderBy(desc(movementItems.processedAt))
+      .groupBy(movementItems.ownerName)
+      .orderBy(sql`MAX(${movementItems.processedAt}) DESC NULLS LAST`)
       .limit(limit);
     
     return recent
