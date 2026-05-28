@@ -1,0 +1,281 @@
+Vamos iniciar a Fase 2.7 — auditoria de Movimentações, sem alteração de código.
+
+Objetivo:
+Mapear todas as rotas, telas, botões, regras de status, permissões atuais e riscos do módulo de Movimentações antes de aplicar RBAC.
+
+Contexto:
+Já concluímos:
+
+* Fase 2.1: infraestrutura de RBAC.
+* Fase 2.2: rotas administrativas/configuração admin-only.
+* Fase 2.3: logística protegida.
+* Fase 2.4: catálogo com escrita admin-only.
+* Fase 2.5.1: loading-orders com holes críticos fechados.
+* Fase 2.6.1: roles Almoxarifado e Supervisor criadas.
+* Fase 2.6.2: Almoxarifado/Supervisor aplicados no back de loading-orders.
+* Fase 2.6.3: front de loading-orders alinhado às novas roles.
+
+Agora vamos preparar o módulo de Movimentações, mas SEM alterar código ainda.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar front-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não criar roles.
+* Não renomear roles.
+* Não aplicar requireRole/requireAnyRole.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar sidebar.
+* Não alterar ProtectedRoute.
+* Não consumir permissions/role_permissions.
+* Apenas auditar e propor.
+
+Tarefa 1 — Auditar rotas de Movimentações
+
+Liste todas as rotas relacionadas a movimentações, incluindo, se existirem:
+
+* GET /api/movements
+* GET /api/movements/pending-approval
+* GET /api/movements/:id
+* GET /api/movements/:id/items
+* GET /api/movements/:id/audit-logs
+* POST /api/movements
+* PATCH /api/movements/:id
+* DELETE /api/movements/:id
+* POST /api/movements/:id/items
+* PATCH /api/movements/:id/items/:itemId
+* DELETE /api/movements/:id/items/:itemId
+* POST /api/movements/:id/approve
+* POST /api/movements/:id/reject
+* POST /api/movements/:id/cancel
+* POST /api/movements/:id/complete
+* qualquer rota de auditoria, status, aprovação, rejeição, itens ou anexos
+
+Para cada rota, informar:
+
+* método
+* path
+* arquivo/linha aproximada
+* o que faz
+* middleware atual
+* se exige requireAuth
+* se exige requireAnyRole
+* se usa req.isAuthenticated inline
+* se não tem proteção
+* se altera dados ou só lê
+* se altera estoque
+* se altera status
+* se depende de status atual
+* payload esperado
+* resposta esperada
+* papel sugerido
+* risco se liberar demais
+* risco se bloquear demais
+
+Tarefa 2 — Identificar holes críticos
+
+Classifique cada rota em uma das categorias:
+
+1. Crítico:
+
+* anônimo consegue criar/editar/aprovar/rejeitar/cancelar/concluir movimentação
+* rota altera estoque ou status sem middleware
+* rota altera itens sem role gate
+
+2. Médio:
+
+* rota exige login, mas qualquer usuário logado consegue executar ação sensível
+* rota usa auth inline inconsistente
+* rota tem regra de status fraca
+
+3. Baixo:
+
+* rota apenas leitura com requireAuth
+* rota já protegida adequadamente
+* rota sem impacto operacional direto
+
+Entregar uma lista priorizada dos riscos encontrados.
+
+Tarefa 3 — Auditar regras de negócio e status
+
+Mapeie:
+
+* quais status existem para movimentações
+* quais transições são permitidas
+* quem hoje consegue executar cada transição
+* se existe aprovação/rejeição
+* se existe status pending approval
+* se existe cancelamento
+* se existe conclusão
+* se existe impacto em estoque
+* se existe log/audit trail
+* se existem validações para impedir alteração depois de aprovado/concluído/cancelado
+
+Se houver enums ou constantes de status, listar onde estão definidos.
+
+Tarefa 4 — Auditar front-end de Movimentações
+
+Mapeie todos os arquivos do front que consomem movimentações, por exemplo:
+
+* página de lista de movimentações
+* página de detalhes
+* dialogs/modais de criação/edição
+* componentes de aprovação
+* componentes de itens
+* botões de aprovar/rejeitar/cancelar/concluir
+* visualização de audit logs
+* cards de pending approval
+
+Para cada ação visual, informar:
+
+* arquivo
+* botão/ação
+* endpoint chamado
+* quem deveria ver
+* quem deveria apenas visualizar
+* se hoje está visível para qualquer usuário logado
+* helper de front sugerido
+
+Tarefa 5 — Propor matriz específica de Movimentações
+
+Criar matriz com os papéis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Ações mínimas:
+
+* Ver movimentações
+* Ver pending approval
+* Ver detalhes
+* Ver itens
+* Ver audit logs
+* Criar movimentação
+* Editar movimentação
+* Adicionar item
+* Editar item
+* Remover item
+* Aprovar
+* Rejeitar
+* Cancelar
+* Concluir
+* Alterar status
+* Excluir, se existir
+
+Proposta inicial esperada, sujeita à auditoria:
+
+* Admin: tudo.
+* Almoxarifado: criar/editar movimentações operacionais e itens.
+* Supervisor: aprovar/rejeitar movimentações sensíveis.
+* Logística: apenas se a movimentação estiver ligada a viagem/loading-order/logística.
+* Usuário comum: leitura, se o back já permitir.
+* Pending approval: Admin/Supervisor.
+
+Se essa proposta não combinar com a estrutura real do código, explicar e propor alternativa.
+
+Tarefa 6 — Propor escopo seguro para Fase 2.8
+
+Com base na auditoria, propor uma Fase 2.8 pequena e segura.
+
+Separar em:
+
+A) Rotas que devem ser corrigidas imediatamente
+
+* holes críticos
+* rotas sem middleware
+* rotas de approve/reject/status abertas
+
+B) Rotas que podem receber RBAC agora
+
+* baixo risco
+* papel claro
+
+C) Rotas que devem aguardar decisão
+
+* regra de negócio ambígua
+* papel não claro
+* dependência de status ou estoque
+
+D) Rotas que devem ficar apenas requireAuth por enquanto
+
+* leitura geral
+* consulta operacional
+
+Tarefa 7 — Propor helpers de front futuros
+
+Sugerir helpers no client/src/lib/authz.ts, sem implementar ainda, como:
+
+* userCanCreateMovement
+* userCanEditMovement
+* userCanApproveMovement
+* userCanViewMovementApprovalQueue
+* userCanManageMovementItems
+* userCanCancelMovement
+* userCanCompleteMovement
+
+Para cada helper, dizer quais roles ele deveria aceitar.
+
+Tarefa 8 — Plano de testes futuro
+
+Propor smoke tests para quando implementarmos, separando:
+
+Anônimo:
+
+* deve receber 401 em qualquer escrita/status.
+
+Admin:
+
+* deve conseguir tudo.
+
+Almoxarifado:
+
+* deve conseguir operações de criação/itens, conforme matriz.
+
+Supervisor:
+
+* deve conseguir aprovar/rejeitar e ver pending approval.
+
+Logística:
+
+* deve conseguir apenas ações relacionadas a logística, se aplicável.
+
+Usuário comum:
+
+* deve conseguir leitura, se mantida.
+* deve receber 403 nas escritas.
+
+Tarefa 9 — Decisões que dependem de mim
+
+Listar claramente o que preciso aprovar antes de codar, por exemplo:
+
+* Usuário comum pode visualizar todas as movimentações?
+* Almoxarifado pode criar qualquer tipo de movimentação?
+* Logística participa de movimentações ou só loading-orders/trips?
+* Supervisor aprova todas as movimentações ou só movimentações sensíveis?
+* Quem pode cancelar movimentação?
+* Quem pode concluir movimentação?
+* Quem pode editar movimentação depois de aprovada?
+* Pending approval deve ser visível só para Admin/Supervisor?
+* Audit logs devem ser visíveis para todos ou só Admin/Supervisor?
+
+Entrega final:
+Quero uma resposta estruturada com:
+
+1. Rotas de movimentações auditadas.
+2. Holes críticos encontrados.
+3. Regras de status/transição encontradas.
+4. Componentes front auditados.
+5. Matriz específica de Movimentações.
+6. Escopo recomendado para Fase 2.8.
+7. Rotas que NÃO devem ser mexidas ainda.
+8. Helpers de front sugeridos.
+9. Plano de testes.
+10. Decisões pendentes para eu aprovar.
+11. Confirmação de que nenhum código foi alterado.
