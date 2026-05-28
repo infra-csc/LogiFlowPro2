@@ -1,0 +1,103 @@
+Vamos iniciar pela Fase 1, mas de forma controlada e segura.
+
+Objetivo:
+Corrigir possíveis rotas de escrita sem autenticação no back-end, sem alterar regras de negócio, sem mudar permissões funcionais e sem refatorar o projeto inteiro.
+
+Contexto:
+Você identificou aproximadamente 30 rotas POST/PATCH/DELETE sem isAuthenticated aparente. Quero que você revise uma a uma e aplique autenticação apenas onde for seguro e necessário.
+
+Regras obrigatórias:
+
+* Não alterar banco de dados.
+* Não criar migration.
+* Não alterar payloads da API.
+* Não alterar nomes de rotas.
+* Não alterar respostas esperadas, exceto quando o usuário estiver anônimo e agora deve receber 401.
+* Não alterar regras de aprovação.
+* Não alterar regras de estoque, kits, viagens, carregamento ou movimentações.
+* Não implementar papéis funcionais ainda.
+* Não mexer em layout/front-end neste passo.
+* Não fazer refatoração grande de routes.ts agora.
+* Não mover arquivos.
+* Não remover nenhuma rota.
+
+Tarefa:
+
+1. Criar ou padronizar um middleware claro de autenticação, por exemplo:
+
+* requireAuth
+  ou
+* isAuthenticated
+
+Esse middleware deve:
+
+* Verificar se o usuário está autenticado.
+* Retornar 401 com mensagem clara se não estiver.
+* Manter comportamento atual para usuários logados.
+
+2. Revisar individualmente as rotas abaixo:
+
+* POST /api/events
+* POST /api/events/bulk
+* PATCH /api/events/:id
+* POST /api/kits
+* PATCH /api/kits/:id
+* POST /api/suppliers
+* PATCH /api/suppliers/:id
+* POST /api/products
+* POST /api/products/bulk
+* PATCH /api/products/:id
+* POST /api/requests
+* DELETE /api/requests/:id
+* POST/PATCH de vehicle-types
+* POST /api/vehicles
+* POST /api/drivers
+* PATCH /api/drivers/:id
+* POST /api/drivers/:id/cnh-upload
+* POST /api/docks
+* POST /api/trips
+* PATCH /api/trips/:id
+* POST /api/trips/bulk
+* POST de loading-orders items
+* POST de loading-orders trips
+* DELETE de loading-orders trips
+
+3. Para cada rota:
+
+* Confirmar se já existe autenticação aplicada por middleware de grupo, wrapper ou função anterior.
+* Se não existir, adicionar requireAuth/isAuthenticated.
+* Se existir proteção indireta, não duplicar middleware sem necessidade.
+* Se houver dúvida, comentar no resumo final antes de alterar demais.
+
+4. Garantir que rotas públicas continuem públicas:
+
+* POST /api/login
+* POST /api/register
+* POST /api/logout, se o sistema já trata assim
+* GET /api/user, mantendo comportamento atual
+* POST /api/forgot-password
+* POST /api/reset-password
+* Arquivos públicos ou assets, se existirem
+
+5. Depois da alteração:
+
+* Rodar npm run check.
+* Rodar npm run build, se aplicável.
+* Corrigir apenas erros causados por essa mudança.
+
+6. Entrega final:
+   Liste:
+
+* Arquivos alterados.
+* Middleware criado ou reutilizado.
+* Rotas que receberam autenticação.
+* Rotas que você analisou e não alterou, explicando o motivo.
+* Como testar manualmente:
+
+  * usuário anônimo tentando POST/PATCH/DELETE deve receber 401
+  * usuário logado deve continuar conseguindo executar as ações permitidas
+  * login/cadastro/reset devem continuar funcionando
+* Informe qualquer rota que pareça precisar também de autorização por papel, mas não implemente isso ainda.
+
+Importante:
+Este passo é apenas para autenticação básica. A matriz de permissões por papel será feita depois.

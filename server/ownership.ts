@@ -5,6 +5,18 @@ import { userRoles, roles } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 /**
+ * Express middleware that blocks anonymous requests with 401.
+ * Pass-through for authenticated users (no behavior change).
+ * Usage: app.post("/api/x", requireAuth, handler)
+ */
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Não autenticado" });
+  }
+  next();
+}
+
+/**
  * Check if user has ownership or admin rights over a resource
  */
 export async function canEditResource(user: User | undefined, resourceCreatorId: string | null): Promise<boolean> {

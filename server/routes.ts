@@ -48,7 +48,7 @@ import {
   ObjectNotFoundError,
 } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { checkOwnership, canEditResource, isAdmin } from "./ownership";
+import { checkOwnership, canEditResource, isAdmin, requireAuth } from "./ownership";
 
 // Legacy function - now replaced by POST /api/permissions/populate endpoint
 // Keeping minimal initialization for backward compatibility
@@ -144,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/events", async (req, res) => {
+  app.post("/api/events", requireAuth, async (req, res) => {
     try {
       console.log("Received event data:", JSON.stringify(req.body, null, 2));
       const data = insertEventSchema.parse(req.body);
@@ -156,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/events/bulk", async (req, res) => {
+  app.post("/api/events/bulk", requireAuth, async (req, res) => {
     try {
       const { events: eventsData } = req.body;
       
@@ -220,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/events/:id", async (req, res) => {
+  app.patch("/api/events/:id", requireAuth, async (req, res) => {
     try {
       const data = insertEventSchema.partial().parse(req.body);
       const event = await storage.updateEvent(req.params.id, data);
@@ -252,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/kits", async (req, res) => {
+  app.post("/api/kits", requireAuth, async (req, res) => {
     try {
       const { kit: kitData, bomLines: bomLinesData } = req.body;
       const validatedKit = insertKitSchema.parse(kitData);
@@ -271,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/kits/:id", async (req, res) => {
+  app.patch("/api/kits/:id", requireAuth, async (req, res) => {
     try {
       // Support both { kit, bomLines } and flat body for backward compatibility
       const raw = req.body;
@@ -330,7 +330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/suppliers", async (req, res) => {
+  app.post("/api/suppliers", requireAuth, async (req, res) => {
     try {
       const data = insertSupplierSchema.parse(req.body);
       const supplier = await storage.createSupplier(data);
@@ -340,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/suppliers/:id", async (req, res) => {
+  app.patch("/api/suppliers/:id", requireAuth, async (req, res) => {
     try {
       const data = insertSupplierSchema.partial().parse(req.body);
       const supplier = await storage.updateSupplier(req.params.id, data);
@@ -433,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", requireAuth, async (req, res) => {
     try {
       const data = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(data);
@@ -443,7 +443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products/bulk", async (req, res) => {
+  app.post("/api/products/bulk", requireAuth, async (req, res) => {
     try {
       const { products: productsData } = req.body;
       
@@ -480,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/products/:id", async (req, res) => {
+  app.patch("/api/products/:id", requireAuth, async (req, res) => {
     try {
       const data = insertProductSchema.partial().parse(req.body);
       const product = await storage.updateProduct(req.params.id, data);
@@ -879,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/vehicle-types", async (req, res) => {
+  app.post("/api/vehicle-types", requireAuth, async (req, res) => {
     try {
       const data = insertVehicleTypeSchema.parse(req.body);
       const vehicleType = await storage.createVehicleType(data);
@@ -889,7 +889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/vehicle-types/:id", async (req, res) => {
+  app.patch("/api/vehicle-types/:id", requireAuth, async (req, res) => {
     try {
       const data = insertVehicleTypeSchema.partial().parse(req.body);
       const vehicleType = await storage.updateVehicleType(req.params.id, data);
@@ -909,7 +909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/vehicles", async (req, res) => {
+  app.post("/api/vehicles", requireAuth, async (req, res) => {
     try {
       const data = insertVehicleSchema.parse(req.body);
       const vehicle = await storage.createVehicle(data);
@@ -929,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/drivers", async (req, res) => {
+  app.post("/api/drivers", requireAuth, async (req, res) => {
     try {
       const data = insertDriverSchema.parse(req.body);
       const driver = await storage.createDriver(data);
@@ -944,7 +944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/drivers/:id", async (req, res) => {
+  app.patch("/api/drivers/:id", requireAuth, async (req, res) => {
     try {
       const data = insertDriverSchema.partial().parse(req.body);
       const driver = await storage.updateDriver(req.params.id, data);
@@ -979,7 +979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload CNH image
-  app.post("/api/drivers/:id/cnh-upload", upload.single("file"), async (req, res) => {
+  app.post("/api/drivers/:id/cnh-upload", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
@@ -1013,7 +1013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/docks", async (req, res) => {
+  app.post("/api/docks", requireAuth, async (req, res) => {
     try {
       const data = insertDockSchema.parse(req.body);
       const dock = await storage.createDock(data);
@@ -1128,7 +1128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/trips/bulk", async (req, res) => {
+  app.post("/api/trips/bulk", requireAuth, async (req, res) => {
     try {
       const { trips: tripsData } = req.body;
       
@@ -1271,7 +1271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loading-orders/:id/items", async (req, res) => {
+  app.post("/api/loading-orders/:id/items", requireAuth, async (req, res) => {
     try {
       const loadingOrderId = req.params.id;
       const { insertLoadingOrderItemSchema } = await import("@shared/schema");
@@ -1300,7 +1300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loading-orders/:id/trips", async (req, res) => {
+  app.post("/api/loading-orders/:id/trips", requireAuth, async (req, res) => {
     try {
       const loadingOrderId = req.params.id;
       const { tripId } = req.body;
@@ -1317,7 +1317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/loading-orders/:id/trips", async (req, res) => {
+  app.delete("/api/loading-orders/:id/trips", requireAuth, async (req, res) => {
     try {
       await storage.deleteLoadingOrderTrips(req.params.id);
       res.status(204).send();
