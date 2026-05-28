@@ -93,8 +93,15 @@ export async function isAdmin(user: AuthUser | undefined): Promise<boolean> {
       .where(eq(userRoles.userId, user.id))
       .execute();
     
-    // Check if any of the user's roles is 'admin'
-    return userRoleRecords.some(record => record.roleName === 'admin');
+    // The seeded admin role in this database is named "Adm" (pt-BR), while
+    // earlier code paths assumed the literal "admin". Accept both spellings
+    // case-insensitively so the existing seed and any future installs that
+    // use the English name both resolve to admin. No new role is granted —
+    // we only honor the role already assigned via user_roles.
+    return userRoleRecords.some(record => {
+      const name = record.roleName?.toLowerCase();
+      return name === 'admin' || name === 'adm';
+    });
   } catch (error) {
     console.error("Error checking admin status:", error);
     return false;

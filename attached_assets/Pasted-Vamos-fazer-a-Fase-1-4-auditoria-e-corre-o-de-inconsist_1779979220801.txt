@@ -1,0 +1,125 @@
+Vamos fazer a Fase 1.4 — auditoria e correção de inconsistências de autorização existentes, antes da Fase 2 de papéis funcionais.
+
+Objetivo:
+Investigar e corrigir inconsistências atuais de autorização, especialmente o caso em que um usuário admin recebeu 403 ao tentar deletar um motorista criado no teste, além da duplicação de rotas GET /api/users.
+
+Contexto:
+Após a Fase 1.3:
+
+* npm run check está limpo.
+* npm run build está passando.
+* Rotas internas estão protegidas.
+* TypeScript está estável.
+
+Durante os smoke tests, foi observado:
+
+* POST /api/drivers criou motorista com sucesso.
+* PATCH /api/drivers/:id funcionou.
+* DELETE do motorista retornou 403.
+* O motorista precisou ser removido direto no banco.
+* Foi dito que isso é comportamento herdado de ownership/admin.
+
+Antes de implementar papéis funcionais, quero entender se isso é correto ou se existe bug na lógica de autorização.
+
+Regras obrigatórias:
+
+* Não implementar papéis funcionais novos.
+* Não criar matriz de papéis ainda.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar payloads da API.
+* Não alterar nomes de rotas.
+* Não alterar regras de negócio de estoque, kits, viagens, requisições ou movimentações.
+* Não mexer no front-end, salvo se encontrar alguma chamada incorreta relacionada ao problema.
+* Não refatorar routes.ts inteiro.
+* Não remover rotas duplicadas sem antes provar qual é a rota ativa.
+* Não criar novos any ou as any.
+* Não usar cast solto.
+
+Parte 1 — Auditoria do 403 no DELETE
+Investigue:
+
+1. Qual rota DELETE foi usada no teste de motorista.
+2. Qual middleware ou verificação retornou 403.
+3. Se a regra esperada é:
+
+   * admin pode deletar qualquer registro
+   * apenas dono pode deletar
+   * admin e dono podem deletar
+4. Como o sistema identifica admin hoje:
+
+   * user.role
+   * user.roles
+   * tabela user_roles
+   * outro campo
+5. Se req.user contém role/roles suficientes para canEditResource funcionar corretamente.
+6. Se o problema é:
+
+   * createdBy não preenchido corretamente
+   * req.user sem role admin
+   * helper canEditResource esperando User completo, mas recebendo AuthUser
+   * rota usando regra errada
+   * rota DELETE de driver sendo admin-only, ownership-only ou mistura das duas
+
+Entrega da Parte 1:
+
+* Explique a causa real do 403.
+* Informe se é bug ou comportamento esperado.
+* Se for bug, proponha correção mínima.
+* Não altere ainda se houver risco alto; primeiro explique.
+
+Parte 2 — Correção mínima, se confirmada
+Se confirmar que admin deveria conseguir deletar:
+
+* Corrija a menor quantidade possível de código.
+* Preserve o comportamento para usuários comuns.
+* Admin deve poder deletar conforme regra existente.
+* Usuário comum só deve deletar se a regra atual permitir.
+* Não ampliar permissões além do que já estava previsto pelo sistema.
+
+Teste obrigatório:
+
+* Admin cria motorista.
+* Admin edita motorista.
+* Admin deleta motorista.
+* Usuário comum não-admin tenta deletar motorista de outro usuário e recebe 403.
+* Anônimo recebe 401.
+
+Parte 3 — Auditoria de duplicação GET /api/users
+Você identificou anteriormente GET /api/users declarado várias vezes.
+
+Investigue:
+
+1. Quantas declarações existem exatamente.
+2. Em quais linhas.
+3. Qual delas responde de fato no Express.
+4. Se os retornos são iguais ou diferentes.
+5. Se alguma duplicação é código morto.
+6. Se existe também duplicação de GET /api/users/:id.
+7. Se remover duplicações pode quebrar algo.
+
+Nesta fase, faça apenas auditoria e, se for muito seguro, proponha limpeza para uma Fase 1.5 separada.
+Não remova duplicações ainda sem explicar o impacto.
+
+Parte 4 — Validações finais
+Depois de qualquer correção mínima:
+
+* Rodar npm run check.
+* Rodar npm run build.
+
+Entrega final:
+Liste:
+
+* Arquivos alterados, se houver.
+* Causa do 403 no DELETE.
+* Se o comportamento era bug ou esperado.
+* Correção aplicada, se houver.
+* Testes manuais executados.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Diagnóstico das duplicações de GET /api/users.
+* Recomendação objetiva para a próxima fase:
+
+  * limpar duplicações
+  * criar CI
+  * ou iniciar matriz de papéis funcionais
