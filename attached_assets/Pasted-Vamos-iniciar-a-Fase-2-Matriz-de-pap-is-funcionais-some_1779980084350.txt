@@ -1,0 +1,255 @@
+Vamos iniciar a Fase 2 — Matriz de papéis funcionais, somente planejamento, sem alteração de código.
+
+Objetivo:
+Mapear os papéis funcionais do sistema EventFlow Logistics e definir uma matriz papel × módulo × ação antes de implementar qualquer middleware de autorização.
+
+Contexto:
+A Fase 1 foi concluída com sucesso:
+
+* Rotas internas protegidas por autenticação.
+* GETs internos fechados.
+* npm run check zerado.
+* npm run build passando.
+* CI básico criado.
+* Bug de admin corrigido.
+* isAdmin consolidado.
+* Duplicações de GET /api/users removidas.
+* Documentação consolidada em docs/CHANGELOG-fase1.md.
+
+Agora precisamos evoluir de “usuário logado” para “usuário com papel correto”.
+
+Importante:
+Nesta fase, NÃO ALTERE CÓDIGO.
+Quero apenas diagnóstico e proposta de matriz.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar front-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar autenticação.
+* Não implementar requireRole ainda.
+* Não alterar sidebar.
+* Não alterar ProtectedRoute.
+* Não alterar permissões existentes.
+* Não criar papéis automaticamente.
+* Não apagar roles existentes.
+* Não alterar user_roles.
+* Apenas analisar e propor.
+
+Tarefa 1 — Auditar estrutura atual de roles/permissões
+Levante:
+
+1. Quais tabelas existem relacionadas a permissões:
+
+* users
+* roles
+* user_roles
+* permissions
+* role_permissions
+* qualquer outra relacionada
+
+2. Quais campos relevantes existem em cada uma.
+
+3. Como o sistema identifica admin hoje:
+
+* user_roles
+* roles.name
+* isAdminRoleName
+* GET /api/user
+
+4. Quais roles existem no seed/código atual, se houver:
+
+* nome exato
+* descrição
+* se estão em português ou inglês
+* se existe “Adm”, “admin” ou ambos
+
+5. Se a tabela permissions/role_permissions já está funcional ou apenas preparada para futuro.
+
+6. Onde o front hoje usa:
+
+* user.isAdmin
+* user.roles
+* protected routes
+* ocultação de menu/sidebar
+* botões condicionais por permissão
+
+7. Onde o back hoje usa:
+
+* requireAuth
+* isAdmin
+* canEditResource
+* checagens manuais de role
+* checagens admin-only
+
+Entrega da tarefa 1:
+
+* Resumo da estrutura atual.
+* Pontos fortes.
+* Fragilidades.
+* Riscos de implementar papéis sem migração/seed correto.
+
+Tarefa 2 — Propor papéis funcionais
+Proponha uma lista de papéis funcionais para o sistema, considerando o fluxo operacional:
+
+Papéis base sugeridos:
+
+* Admin
+* Planejamento
+* Produção/Cenografia
+* Supervisor/Aprovador
+* Almoxarifado
+* Logística
+* Gestor/Relatórios
+* Solicitante
+
+Para cada papel, informe:
+
+* Descrição
+* O que deve poder visualizar
+* O que deve poder criar
+* O que deve poder editar
+* O que deve poder aprovar/reprovar
+* O que deve poder excluir
+* Quais módulos deve acessar no menu
+* Quais módulos não deve acessar
+
+Tarefa 3 — Matriz por módulo
+Monte uma matriz de permissões por módulo e ação.
+
+Módulos mínimos:
+
+1. Dashboard
+2. Eventos
+3. Produtos
+4. Kits
+5. Fornecedores
+6. Requisições
+7. Aprovação de requisições
+8. Ordens de carregamento
+9. Viagens
+10. Motoristas
+11. Veículos
+12. Docas
+13. Movimentações
+14. Aprovação de movimentações
+15. Devoluções
+16. Relatórios
+17. Usuários
+18. Papéis e permissões
+19. Configurações gerais
+
+Ações mínimas:
+
+* Ver
+* Criar
+* Editar
+* Excluir
+* Aprovar
+* Rejeitar
+* Importar em lote
+* Exportar
+* Gerenciar configuração
+
+Formato esperado da matriz:
+
+* Papel
+* Módulo
+* Ação permitida
+* Endpoint(s) relacionados
+* Tela(s) relacionadas
+* Justificativa
+* Risco se liberar demais
+* Risco se bloquear demais
+
+Tarefa 4 — Classificar endpoints por papel futuro
+Com base nas rotas existentes, crie uma tabela com:
+
+* Método
+* Endpoint
+* Módulo
+* Papel mínimo sugerido
+* Ação
+* Se admin deve ter override
+* Se dono do recurso deve ter permissão
+* Se precisa de regra especial
+
+Exemplos de regra especial:
+
+* Solicitante pode ver apenas as próprias requisições.
+* Supervisor pode aprovar requisições, mas não necessariamente editar produtos.
+* Almoxarifado pode executar movimentações, mas não configurar roles.
+* Logística pode gerenciar viagens, motoristas e veículos.
+* Gestor pode ver relatórios, mas não alterar operação.
+* Admin pode acessar tudo.
+
+Tarefa 5 — Separar implementação futura em fases
+Proponha como implementar depois, em fases pequenas:
+
+Fase 2.1:
+
+* Criar helper requireRole ou requireAnyRole
+* Sem aplicar em tudo ainda
+* Apenas rotas admin-only já existentes
+
+Fase 2.2:
+
+* Aplicar papéis em configurações, usuários, roles e permissões
+
+Fase 2.3:
+
+* Aplicar papéis em logística, motoristas, veículos, viagens e docas
+
+Fase 2.4:
+
+* Aplicar papéis em estoque, produtos, kits e fornecedores
+
+Fase 2.5:
+
+* Aplicar papéis em requisições, aprovações, ordens, movimentações e devoluções
+
+Fase 2.6:
+
+* Ajustar sidebar, ProtectedRoute e botões do front-end conforme a mesma matriz
+
+Para cada fase, informe:
+
+* Arquivos prováveis
+* Risco
+* Como testar
+* Usuários de teste necessários
+* Como fazer rollback
+
+Tarefa 6 — Recomendar estratégia segura
+Explique qual estratégia é mais segura:
+
+Opção A:
+Aplicar permissões direto bloqueando no back-end.
+
+Opção B:
+Criar modo “shadow/audit” primeiro, registrando o que seria bloqueado sem bloquear.
+
+Opção C:
+Aplicar primeiro só em rotas administrativas e depois expandir.
+
+Recomende a melhor abordagem para este projeto e explique por quê.
+
+Entrega final:
+Quero uma resposta estruturada com:
+
+1. Diagnóstico da estrutura atual de papéis.
+2. Lista final recomendada de papéis.
+3. Matriz papel × módulo × ação.
+4. Matriz endpoint × papel mínimo.
+5. Riscos principais.
+6. Ordem de implementação recomendada.
+7. Pontos que precisam de decisão minha antes de codar.
+8. Confirmação de que nenhum código foi alterado.
+
+Importante:
+Esta fase é somente planejamento. Não faça nenhuma alteração de código.
