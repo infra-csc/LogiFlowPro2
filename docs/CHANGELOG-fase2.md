@@ -1830,7 +1830,151 @@ Dados de smoke restaurados:
   futuro roadmap de produto.
 - Audit log genérico para criação de devolução — fica para futuro.
 
+---
+
+## Fase 2.11 — Fechamento técnico do ciclo RBAC (2026-05-28)
+
+**Objetivo**: revisão final de segurança, RBAC, documentação e consistência
+após as fases 2.1–2.10, antes de iniciar a Fase 3 de UI/Design.
+
+**Regras**: nenhum código alterado. Apenas auditoria, validação e relatório.
+
+### 1. Auditoria de rotas de escrita
+
+**Total de rotas de escrita (POST/PATCH/PUT/DELETE) auditadas**: ~65
+
+**Classificação por proteção**:
+
+| Categoria | Quantidade | Descrição |
+|---|---|---|
+| `requireAdmin` | 33 | Rotas administrativas: produtos, kits, fornecedores, tipos de veículo, configurações, roles/permissions, usuários, movement-groups, movement-types-config, product-statuses, locations |
+| `requireAnyRole` | 22 | Rotas funcionais: veículos, motoristas, docas, viagens, ordens de carregamento, movimentações, devoluções |
+| `requireAuth` + ownership | 2 | Eventos, bulk events (ownership implícito) |
+| `req.isAuthenticated()` + ownership | 10 | Requisições: criar, editar, deletar, duplicar, adicionar itens, deletar itens, aprovar/rejeitar |
+| `req.isAuthenticated()` (pessoal) | 8 | Notificações, comentários, configurações de notificação, upload de objetos |
+| Público (intencional) | 3 | Auto-cadastro, reset de senha, download de arquivos |
+
+**Rotas de escrita sem proteção aparente**: **ZERO**
+
+### 2. Auditoria de GETs sensíveis
+
+**GETs com `requireAuth`**: ~35 (dashboard, events, kits, suppliers, products, requests, trips, loading-orders, movements, returns, vehicle-types, vehicles, drivers, docks, users/mention-lookup)
+
+**GETs com `requireAdmin`/`adminRolesPerms`**: ~15 (users, roles, permissions)
+
+**GETs com `requireAnyRole`**: 1 (`/api/movements/pending-approval` — Admin/Supervisor)
+
+**GETs com `req.isAuthenticated()` inline**: ~15 (comments, notifications, notification-settings, movement-groups, movement-types-config, inventory/overview, product-statuses, locations)
+
+**GETs públicos (intencional)**: 1 (`/objects/uploads/:filename`)
+
+**Confirmações**:
+- ✅ `/api/users` continua admin-only
+- ✅ `/api/users/mention-lookup` continua `requireAuth` + payload mínimo
+- ✅ `/api/movements/pending-approval` continua Admin/Supervisor
+- ✅ GETs operacionais de leitura continuam `requireAuth`
+
+### 3. Matriz final de permissões
+
+| Módulo | Admin | Logística | Almoxarifado | Supervisor | Comum |
+|---|---|---|---|---|---|
+| **Admin/Configuração** | Escreve tudo | Apenas lê | Apenas lê | Apenas lê | Apenas lê |
+| **Produtos/Kits/Fornecedores** | Escreve tudo | Apenas lê | Apenas lê | Apenas lê | Apenas lê |
+| **Logística (veículos, motoristas, docas, viagens)** | Escreve tudo | Escreve tudo | Apenas lê | Apenas lê | Apenas lê |
+| **Loading Orders** | Escreve tudo | Escreve tudo | Itens + mark-ready | Aprova/Desaprova | Apenas lê |
+| **Movimentações** | Escreve tudo | Apenas lê | Cria, edita, itens | Aprova/Rejeita | Apenas lê |
+| **Devoluções** | Cria | Apenas lê | Cria | Apenas lê | Apenas lê |
+| **Requisições** | Escreve tudo | Apenas lê | Apenas lê | Apenas lê | Cria/edit própria |
+| **Notificações/Comentários** | Própria | Própria | Própria | Própria | Própria |
+
+### 4. Alinhamento front x back
+
+**Helpers em `client/src/lib/authz.ts`** (13 helpers):
+
+| Helper | Back-end gate | Status |
+|---|---|---|
+| `userIsAdmin` | `requireAdmin` | ✅ Alinhado |
+| `userCanWriteLogistics` | `[ADMIN, LOGISTICA]` | ✅ Alinhado |
+| `userCanHandleLoadingOrderItems` | `[ADMIN, LOGISTICA, ALMOXARIFADO]` | ✅ Alinhado |
+| `userCanMarkLoadingOrderReady` | Alias de acima | ✅ Alinhado |
+| `userCanApproveLoadingOrder` | `[ADMIN, SUPERVISOR]` | ✅ Alinhado |
+| `userCanCreateMovement` | `[ADMIN, ALMOXARIFADO]` | ✅ Alinhado |
+| `userCanEditMovement` | `[ADMIN, ALMOXARIFADO]` | ✅ Alinhado |
+| `userCanManageMovementItems` | `[ADMIN, ALMOXARIFADO]` | ✅ Alinhado |
+| `userCanApproveMovement` | `[ADMIN, SUPERVISOR]` | ✅ Alinhado |
+| `userCanViewMovementApprovalQueue` | `[ADMIN, SUPERVISOR]` | ✅ Alinhado |
+| `userCanChangeMovementStatusFreely` | `requireAdmin()` | ✅ Alinhado |
+
+**Nenhuma divergência encontrada.**
+
+**Front-end gated**:
+- `app-sidebar.tsx` — link de aprovações oculto para não-Admin/Supervisor ✅
+- `loading-orders.tsx` — botões de escrita gated por role ✅
+- `loading-order-details.tsx` — botões de escrita gated por role ✅
+- `movements.tsx` — botões de escrita gated por role ✅
+- `movement-details.tsx` — botões de escrita, scanner, status gated por role ✅
+- `movement-approvals.tsx` — page-level guard + botões gated por role ✅
+- `movement-dialog.tsx` — submit button gated por role ✅
+- `vehicles.tsx` — botão de escrita gated por role ✅
+
+**Nenhuma pendência visual conhecida.**
+
+### 5. Validações
+
+- `npm run check` ✅ zerado
+- `npm run build` ✅ passou (`dist/index.js 272.4kb`)
+
+### 6. Pendências encontradas
+
+| # | Pendência | Severidade | Nota |
+|---|---|---|---|
+| P1 | `PATCH /api/movements/:id/status` é Admin-only provisório | Média | Documentado como dívida técnica. No futuro deve ser substituído por transições explícitas. |
+| P2 | Requests `approve-all`/`approve-partial`/`reject-all` usam `req.isAuthenticated()` apenas | Baixa | Qualquer logado pode aprovar/rejeitar. É padrão legado, não hole. Poderia receber `requireAdmin` no futuro. |
+| P3 | GETs com `req.isAuthenticated()` inline em vez de `requireAuth` middleware | Baixa | Padrão legado. Funciona igual. Não é hole. |
+| P4 | Devoluções não têm formulário de criação no front-end | Baixa | É por design — o módulo é read-only. Não é bug. |
+| P5 | Testes automatizados de RBAC | Baixa | Smoke tests foram manuais. Ideal: testes automatizados no futuro. |
+| P6 | Roles Almoxarifado e Supervisor no banco | Baixa | Script `seed-roles.ts` criou. Nenhum usuário real vinculado ainda. |
+
+### 7. Recomendação: Fase 2 encerrada?
+
+**Sim.** ✅
+
+**Nenhum bloqueador** para iniciar a Fase 3 de UI/Design.
+
+**Nenhum hole crítico** permanece aberto.
+
+**Todas as pendências** podem ficar para backlog.
+
+### 8. Próximo passo recomendado para Fase 3
+
+**Fase 3 — UI/Design**
+
+Foco sugerido:
+1. **Formulário de criação de devolução** (front-end) — o módulo está pronto no back-end.
+2. **Melhorias de UX** nas telas de movimentações, loading orders, requisições.
+3. **Testes automatizados** de RBAC (opcional, mas recomendado).
+4. **Refinamento do sistema de aprovação** de requisições (padrão legado P2).
+
+### 9. Confirmação: nenhum código foi alterado
+
+✅ **Nenhum arquivo editado** durante esta fase.
+
+✅ `npm run check` e `npm run build` passaram sem alterações.
+
+---
+
+### Dívida futura registrada (consolidada)
+
+- **PATCH /api/movements/:id/status** — Admin-only provisório; futuro: transições explícitas.
+- **Testes automatizados de RBAC** — smoke tests manuais são suficientes por ora.
+- **Evolução de Devoluções** — formulário, status, processamento, audit log, impacto em estoque.
+- **Aprovação de Requisições** — poderia receber role gate mais restritivo no futuro.
+- **Fase 3** — UI/Design.
+
+---
+
+*Fase 2.11 concluída. Nenhum código alterado.*
+
 ### Próximas fases recomendadas
-- **Fase 2.11+**: se o módulo de devoluções evoluir, adicionar formulário,
-  status, processamento, audit log e impacto em estoque conforme roadmap.
+- **Fase 3 — UI/Design**: formulário de devolução, melhorias de UX, testes automatizados.
 

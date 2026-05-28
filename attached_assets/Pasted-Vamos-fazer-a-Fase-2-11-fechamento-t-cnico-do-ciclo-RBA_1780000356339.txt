@@ -1,0 +1,182 @@
+Vamos fazer a Fase 2.11 — fechamento técnico do ciclo RBAC, sem alteração de código.
+
+Objetivo:
+Fazer uma revisão final de segurança, RBAC, documentação e consistência após as fases 2.1 até 2.10, antes de iniciar a Fase 3 de UI/Design.
+
+Contexto:
+Concluímos o ciclo principal de RBAC:
+
+* Admin/config protegido.
+* Logística protegida.
+* Catálogo com escrita admin-only.
+* Loading Orders protegidas com Admin, Logística, Almoxarifado e Supervisor.
+* Movimentações protegidas e front alinhado.
+* Devoluções com POST protegido.
+* Helpers de front criados para refletir permissões.
+* Roles Almoxarifado e Supervisor criadas via script idempotente.
+
+Nesta fase, NÃO ALTERE CÓDIGO.
+Quero apenas auditoria, validação e relatório final.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar front-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não alterar schema.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar roles.
+* Não alterar permissions/role_permissions.
+* Não alterar sidebar.
+* Não alterar ProtectedRoute.
+* Não refatorar nada.
+* Apenas auditar, testar e relatar.
+
+Tarefa 1 — Auditoria final de rotas críticas
+
+Varra as rotas POST, PATCH, PUT e DELETE do servidor e classifique:
+
+1. Rotas protegidas por requireAuth.
+2. Rotas protegidas por requireAdmin.
+3. Rotas protegidas por requireAnyRole.
+4. Rotas que usam req.isAuthenticated inline.
+5. Rotas de escrita sem proteção aparente.
+
+Para qualquer rota de escrita sem proteção aparente, informe:
+
+* método;
+* path;
+* arquivo/linha;
+* risco;
+* recomendação;
+* se parece pública por natureza ou se é possível hole.
+
+Importante:
+Não corrigir nada nesta fase. Apenas reportar.
+
+Tarefa 2 — Auditoria final de GETs sensíveis
+
+Verificar se existem GETs internos sensíveis ainda públicos.
+
+Separar:
+
+* GETs públicos intencionais, como login/reset/user quando aplicável.
+* GETs com requireAuth.
+* GETs com requireAdmin/role.
+* GETs potencialmente sensíveis expostos.
+
+Confirmar especialmente:
+
+* /api/users continua admin-only.
+* /api/users/mention-lookup continua requireAuth e payload mínimo.
+* /api/movements/pending-approval continua Admin/Supervisor.
+* GETs operacionais de leitura continuam requireAuth.
+
+Tarefa 3 — Matriz final de permissões efetiva
+
+Gerar uma matriz resumida por módulo:
+
+Módulos:
+
+* Administração/Configurações
+* Logística
+* Produtos/Kits/Fornecedores
+* Loading Orders
+* Movimentações
+* Devoluções
+* Relatórios, se houver
+
+Papéis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Para cada módulo, indicar:
+
+* quem visualiza;
+* quem cria;
+* quem edita;
+* quem aprova/rejeita;
+* quem processa ou altera status;
+* observações/dívidas futuras.
+
+Tarefa 4 — Verificar alinhamento front x back
+
+Auditar se os principais gates de front estão coerentes com o back:
+
+* app-sidebar.tsx
+* authz.ts
+* loading-orders
+* movements
+* products/kits/suppliers
+* logística
+
+Listar:
+
+* helpers existentes;
+* quais roles eles usam;
+* se algum helper diverge do back;
+* se algum botão parece ainda visível para quem receberia 403;
+* se há pendência visual conhecida.
+
+Não corrigir nesta fase.
+
+Tarefa 5 — Rodar validações
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Se ambos passarem, registrar.
+Se algum falhar, não corrigir automaticamente; apenas reportar o erro.
+
+Tarefa 6 — Documentação final
+
+Verificar se estão atualizados:
+
+* replit.md
+* docs/CHANGELOG-fase1.md
+* docs/CHANGELOG-fase2.md
+* docs/RBAC-future-guide.md
+
+Confirmar:
+
+* Fase 2.10 documentada.
+* Próxima fase sugerida: Fase 3 — UI/Design.
+* Dívidas futuras registradas:
+
+  * PATCH /api/movements/:id/status como Admin-only provisório.
+  * testes automatizados de RBAC.
+  * eventual canonicalização de roles no banco.
+  * evolução futura de Devoluções, se virar fluxo completo.
+
+Tarefa 7 — Recomendação final
+
+No final, entregar uma recomendação objetiva:
+
+* Fase 2 pode ser considerada concluída? Sim/Não.
+* Existe algum bloqueador antes da Fase 3?
+* Existe algum hole crítico ainda aberto?
+* Quais pendências podem ficar para backlog?
+* Qual deve ser o primeiro foco da Fase 3 de UI/Design?
+
+Entrega final:
+Quero uma resposta estruturada com:
+
+1. Resultado da auditoria de rotas de escrita.
+2. Resultado da auditoria de GETs sensíveis.
+3. Matriz final de permissões.
+4. Alinhamento front x back.
+5. Resultado de npm run check.
+6. Resultado de npm run build.
+7. Pendências encontradas.
+8. Recomendação se a Fase 2 está encerrada.
+9. Próximo passo recomendado para Fase 3.
+10. Confirmação de que nenhum código foi alterado.

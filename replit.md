@@ -51,7 +51,10 @@ Preferred communication style: Simple, everyday language.
 - **2.9** (2026-05-28): auditoria de Devoluções — 2 rotas identificadas (GET/POST). `GET /api/returns` com `requireAuth`. `POST /api/returns` **sem nenhuma proteção** (hole crítico). Módulo é registro passivo de constatação (tripId, productId, quantidades, avaria, perda). Sem status, processamento, aprovação, impacto em estoque, audit log. Nenhum código alterado.
 - **2.10** (2026-05-28): RBAC mínimo em Devoluções — `POST /api/returns` recebeu `requireAnyRole([ADMIN, ALMOXARIFADO])`. Smoke tests 6×2 (12 cenários) validados: Admin/Almox criam; Logística/Supervisor/Comum rejeitados; Anônimo 401. Dados de smoke restaurados. `npm run check` e `build` zerados. Nenhuma rota nova, botão, dialog, status, front-end, banco ou schema alterado.
 
+- **2.11** (2026-05-28): fechamento técnico do ciclo RBAC — auditoria final de ~65 rotas de escrita, ~65 GETs, matriz de permissões consolidada, alinhamento front×back verificado (13 helpers, 0 divergências), 6 pendências catalogadas (nenhuma crítica). `npm run check` e `build` zerados. Nenhum código alterado. Fase 2 oficialmente concluída.
+
 ### Próximas fases (planejadas)
+- **Fase 3 — UI/Design**: formulário de criação de devolução, melhorias de UX, testes automatizados.
 - **Fases futuras** (roadmap de longo prazo): hierarquia de roles, sistema de auditoria, templates, interface master-detail, dependências automáticas. Roadmap detalhado em [`docs/RBAC-future-guide.md`](docs/RBAC-future-guide.md).
 
 ## System Architecture
