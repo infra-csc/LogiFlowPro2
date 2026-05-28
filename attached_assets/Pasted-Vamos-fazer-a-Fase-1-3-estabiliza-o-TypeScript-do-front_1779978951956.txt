@@ -1,0 +1,99 @@
+Vamos fazer a Fase 1.3 — estabilização TypeScript do front-end.
+
+Objetivo:
+Corrigir os 11 erros TypeScript restantes no front-end até o comando npm run check passar limpo, sem alterar comportamento funcional, visual ou regras de negócio.
+
+Contexto:
+A Fase 1.2 corrigiu os erros server-side e o npm run build passou com sucesso. Agora restam apenas erros front-end pré-existentes:
+
+* client/src/components/ObjectUploader.tsx(49,22) — Uppy generics
+* client/src/pages/dashboard.tsx(213,31) — variant="link" inexistente no Button
+* client/src/pages/drivers.tsx(51,52,344,358,372,386,408,422,436) — 9 erros do form
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar banco de dados.
+* Não criar migration.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar regras de negócio.
+* Não alterar autenticação ou permissões.
+* Não implementar papéis funcionais.
+* Não mexer em layout/UX além do mínimo necessário para corrigir TypeScript.
+* Não fazer redesign.
+* Não refatorar componentes inteiros.
+* Não criar novos any.
+* Não criar novos as any.
+* Não usar cast solto para apenas “calar” o TypeScript.
+* Se precisar de cast, usar tipo explícito, local e justificado.
+* Preservar o comportamento atual das telas.
+
+Tarefa:
+
+1. Rodar npm run check e confirmar os 11 erros atuais.
+
+2. Corrigir em pequenos blocos, nesta ordem:
+
+a) client/src/components/ObjectUploader.tsx
+
+* Corrigir o erro de generics do Uppy.
+* Manter o comportamento atual de upload.
+* Não trocar biblioteca.
+* Não alterar o contrato do componente.
+* Não alterar fluxo visual de upload.
+
+b) client/src/pages/dashboard.tsx
+
+* Corrigir o variant="link" inexistente no Button.
+* Usar uma alternativa compatível com o componente Button existente.
+* Manter aparência o mais próxima possível da atual.
+* Não redesenhar dashboard.
+
+c) client/src/pages/drivers.tsx
+
+* Corrigir os 9 erros de formulário.
+* Preservar todos os campos atuais.
+* Preservar validações atuais.
+* Preservar submit, edição, criação e upload de CNH.
+* Não mudar nomes de campos enviados para API.
+* Não mudar schema de validação, salvo ajuste mínimo de tipagem.
+* Não mudar layout da tela.
+
+3. Após cada bloco:
+
+* Explique brevemente a causa do erro.
+* Explique a correção aplicada.
+* Garanta que não houve mudança funcional.
+
+4. Depois de corrigir:
+
+* Rodar npm run check.
+* Rodar npm run build.
+
+5. Se ainda houver erro:
+
+* Liste exatamente os erros restantes.
+* Não avance para mudanças fora do escopo.
+
+Testes manuais obrigatórios:
+
+* Dashboard abre normalmente.
+* Botão/link corrigido no dashboard mantém comportamento anterior.
+* Tela de motoristas abre normalmente.
+* Criar motorista continua funcionando.
+* Editar motorista continua funcionando.
+* Upload de CNH continua funcionando.
+* ObjectUploader continua funcionando no fluxo onde é usado.
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Erros corrigidos.
+* Causa de cada erro.
+* Como foi corrigido.
+* Resultado final do npm run check.
+* Resultado final do npm run build.
+* Testes manuais executados.
+* Confirmação de que não houve alteração em back-end, banco, rotas, payloads, autenticação, permissões ou regras de negócio.

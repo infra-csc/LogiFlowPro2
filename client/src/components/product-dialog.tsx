@@ -22,8 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Product, InsertProduct } from "@shared/schema";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
+import { ObjectUploader, type ObjectUploaderResult } from "@/components/ObjectUploader";
 import { ImageIcon, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -136,7 +135,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     },
   });
 
-  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  const handleUploadComplete = async (result: ObjectUploaderResult) => {
     if (result.successful && result.successful.length > 0) {
       const uploadedFile = result.successful[0];
       // Get the URL from the server response

@@ -4,15 +4,17 @@ import type { ReactNode } from "react";
 import Uppy from "@uppy/core";
 import { DashboardModal } from "@uppy/react";
 import XHRUpload from "@uppy/xhr-upload";
-import type { UploadResult } from "@uppy/core";
+import type { Meta, UploadResult } from "@uppy/core";
 import { Button } from "@/components/ui/button";
+
+// Match Uppy's default generics so the prop type aligns with what the
+// underlying `complete` event actually emits (UploadResult<Meta, Body>).
+export type ObjectUploaderResult = UploadResult<Meta, Record<string, never>>;
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
-  onComplete?: (
-    result: UploadResult<Record<string, unknown>, Record<string, unknown>>
-  ) => void;
+  onComplete?: (result: ObjectUploaderResult) => void;
   buttonClassName?: string;
   buttonVariant?: "default" | "outline" | "secondary" | "ghost" | "destructive";
   children: ReactNode;

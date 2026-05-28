@@ -210,10 +210,10 @@ export default function Dashboard() {
                           </p>
                           {notification.actionUrl && (
                             <Button
-                              variant="link"
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleNotificationClick(notification)}
-                              className="h-auto p-0 text-xs"
+                              className="h-auto p-0 text-xs text-primary underline-offset-4 hover:underline"
                               data-testid={`button-view-notification-${notification.id}`}
                             >
                               Ver detalhes

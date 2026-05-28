@@ -24,8 +24,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Kit, InsertKit, Product, BomLine } from "@shared/schema";
 import { Plus, Trash2, Image as ImageIcon, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
+import { ObjectUploader, type ObjectUploaderResult } from "@/components/ObjectUploader";
 
 interface KitDialogProps {
   open: boolean;
@@ -89,7 +88,7 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
     }
   }, [open, kit?.id, existingBomLines]);
 
-  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  const handleUploadComplete = async (result: ObjectUploaderResult) => {
     if (result.successful && result.successful.length > 0) {
       const uploadedFile = result.successful[0];
       // Get the URL from the server response

@@ -42,14 +42,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+// `insertDriverSchema` already omits `id` and `createdAt` in shared/schema.ts,
+// so we only extend with the stricter field-level validations here.
 const driverFormSchema = insertDriverSchema.extend({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   cpf: z.string().length(11, "CPF deve ter 11 dígitos"),
   license: z.string().min(5, "Número da CNH é obrigatório"),
   phone: z.string().min(10, "Telefone é obrigatório"),
-}).omit({
-  id: true,
-  createdAt: true,
 });
 
 type DriverFormData = z.infer<typeof driverFormSchema>;
