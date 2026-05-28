@@ -48,6 +48,8 @@ Sub-fases 1.0 a 1.6 estabilizaram a base do sistema antes da Fase 2 (matriz de p
   - Módulos operacionais (events, products, kits, requests, loading-orders, trips, drivers POST/PATCH, suppliers POST/PATCH, vehicles, docks, movements, returns, reports) intocados — escopo de fases posteriores.
   - `npm run check` zerado; `npm run build` passando; smoke completo (anônimo em 30+ rotas, admin em 8 GETs e 5 escritas, auto-cadastro público preservado) ok.
 
+- **Fase 2.2.1** (2026-05-28): correção de regressão de @mention. Criado `GET /api/users/mention-lookup` com `requireAuth` (declarado antes de `/api/users/:id`) retornando apenas `{id, username, name}` de usuários ativos+aprovados, ordenado por nome. `client/src/components/comment-section.tsx` passou a consumir esse endpoint. `GET /api/users` e `GET /api/users/:id` continuam `requireAdmin`. Novo método `getUsersForMentionLookup()` em `IStorage`/`DatabaseStorage` com SELECT explícito de 3 colunas (sem leak). `npm run check` zerado; `npm run build` passando; smoke completo (anônimo 401, não-admin 403 em `/api/users` + 200 em mention-lookup com payload mínimo, admin 200 em ambas) ok.
+
 **Histórico detalhado da Fase 2**: ver [`docs/CHANGELOG-fase2.md`](docs/CHANGELOG-fase2.md).
 
 ## System Architecture

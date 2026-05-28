@@ -282,6 +282,7 @@ export interface IStorage {
   
   // Users
   getUsers(): Promise<User[]>;
+  getUsersForMentionLookup(): Promise<Pick<User, "id" | "username" | "name">[]>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -1360,6 +1361,14 @@ export class DatabaseStorage implements IStorage {
   // Users
   async getUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getUsersForMentionLookup(): Promise<Pick<User, "id" | "username" | "name">[]> {
+    return await db
+      .select({ id: users.id, username: users.username, name: users.name })
+      .from(users)
+      .where(and(eq(users.active, true), eq(users.approvalStatus, "approved")))
+      .orderBy(users.name);
   }
 
   async getUser(id: string): Promise<User | undefined> {

@@ -437,3 +437,78 @@ revisadas individualmente as do escopo.
   matriz por papel funcional.
 - `POST /api/permissions/populate` é admin-only agora; considerar movê-lo
   para CLI/seed posteriormente — fora de escopo aqui.
+
+---
+
+## Fase 2.2.1 — Correção de regressão de @mention (2026-05-28)
+
+### Motivo
+Fase 2.2 fechou `GET /api/users` com `requireAdmin`. O componente
+`client/src/components/comment-section.tsx` consumia essa rota para
+alimentar o autocomplete de `@mention` em comentários — usuários
+não-admin passaram a receber 403 e o autocomplete ficou vazio.
+
+### Decisão
+Criar endpoint específico e mínimo para menções, em vez de reabrir
+`GET /api/users`. `GET /api/users` continua admin-only (telas
+administrativas de gestão de usuários).
+
+### Mudanças
+
+**Back-end — `server/routes.ts`**
+- Nova rota `GET /api/users/mention-lookup` com `requireAuth`.
+- Declarada **antes** de `GET /api/users/:id` para não ser capturada
+  como id.
+
+**Storage — `server/storage.ts`**
+- Novo método `getUsersForMentionLookup()` na interface `IStorage` e
+  na implementação `DatabaseStorage`.
+- Tipado como `Promise<Pick<User, "id" | "username" | "name">[]>`
+  (sem `any`).
+- Filtra `active = true AND approval_status = 'approved'`.
+- Ordena por `name` (autocomplete legível).
+- SELECT explícito de apenas 3 colunas — `password` e dados
+  administrativos nunca saem do banco.
+
+**Front-end — `client/src/components/comment-section.tsx`**
+- Única mudança: `queryKey: ["/api/users"]` → `queryKey: ["/api/users/mention-lookup"]`.
+- Interface local `User { id, username, name }` já era mínima — nada
+  mais alterado. Layout, comportamento do autocomplete e lógica de
+  comentários preservados.
+
+### Campos retornados
+Apenas: `id`, `username`, `name`.
+
+**Não retornados**: `email`, `password`, `active`, `approvalStatus`,
+`approvedBy`, `approvedAt`, `rejectedBy`, `rejectedAt`,
+`rejectionReason`, `createdAt`, `updatedAt`, `roles`.
+
+### Filtros aplicados
+- `active = true` (não inclui inativos)
+- `approval_status = 'approved'` (não inclui pendentes nem rejeitados)
+
+### Não alterado
+- `GET /api/users` continua `requireAdmin`.
+- `GET /api/users/:id` continua `requireAdmin`.
+- Sidebar, ProtectedRoute, matriz de papéis, roles/permissions, banco,
+  migrations, seed, payloads administrativos — intactos.
+- Módulos operacionais (events/products/requests/loading-orders/trips/
+  movements/returns/reports) intactos.
+
+### Validações
+- `npm run check` → **exit 0**
+- `npm run build` → ✅ `dist/index.js 266.7kb`
+
+### Smoke tests executados
+| Cenário | Resultado |
+|---|---|
+| Anônimo `GET /api/users/mention-lookup` | **401** ✅ |
+| Admin `GET /api/users/mention-lookup` | **200** · keys=`[id,name,username]` · sem leak ✅ |
+| Admin `GET /api/users` | **200** · payload administrativo completo preservado ✅ |
+| Não-admin `GET /api/users` | **403** · `"Apenas administradores podem gerenciar usuários"` ✅ |
+| Não-admin `GET /api/users/mention-lookup` | **200** · keys=`[id,name,username]` · sem leak ✅ |
+| Não-admin `GET /api/users/:id` | **403** (rota `:id` não foi capturada pelo mention-lookup) ✅ |
+| Admin `GET /api/users/:id` | **200** ✅ |
+
+Usuário de teste não-admin criado via `POST /api/users` público + admin
+approve, e removido ao fim (`DELETE FROM users` no mesmo lote).

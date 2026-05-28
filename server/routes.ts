@@ -1981,7 +1981,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Users
+  // Users — mention-lookup MUST be declared before /api/users/:id so it's not captured as an id.
+  // Returns minimal payload (id/username/name) for @mention autocomplete; any logged-in user can call it.
+  app.get("/api/users/mention-lookup", requireAuth, async (req, res) => {
+    try {
+      const users = await storage.getUsersForMentionLookup();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users for mention lookup:", error);
+      res.status(500).json({ error: "Failed to fetch users for mention lookup" });
+    }
+  });
+
   app.get("/api/users", requireAdmin({ message: "Apenas administradores podem gerenciar usuários" }), async (req, res) => {
     try {
       const users = await storage.getUsers();

@@ -1,0 +1,157 @@
+Antes de avançarmos para a Fase 2.3, vamos fazer uma Fase 2.2.1 para corrigir a regressão do autocomplete de @mention.
+
+Objetivo:
+Restaurar o funcionamento das menções em comentários para usuários não-admin, sem reabrir GET /api/users e sem expor dados administrativos.
+
+Contexto:
+Na Fase 2.2, GET /api/users passou a exigir requireAdmin. Isso está correto para a tela administrativa de usuários, mas gerou regressão porque:
+
+* client/src/components/comment-section.tsx consome GET /api/users para autocomplete de @mention.
+* Para usuários não-admin, essa chamada agora retorna 403.
+* O autocomplete de menções fica vazio.
+
+Decisão aprovada:
+Criar um endpoint específico e mínimo para menções.
+
+Escopo permitido:
+
+1. Back-end
+   Criar nova rota:
+
+* GET /api/users/mention-lookup
+
+Regras:
+
+* Deve exigir requireAuth, não requireAdmin.
+* Deve retornar apenas campos mínimos:
+
+  * id
+  * username
+  * name
+* Não retornar:
+
+  * email
+  * active
+  * approvalStatus
+  * approvedBy
+  * approvedAt
+  * rejectedBy
+  * rejectedAt
+  * rejectionReason
+  * createdAt
+  * updatedAt
+  * roles
+  * qualquer dado administrativo
+
+Filtro recomendado:
+
+* Retornar apenas usuários ativos e aprovados, se esses campos existirem e fizerem sentido no schema atual.
+* Se não houver certeza, explicar antes de escolher.
+* Não incluir usuários rejeitados/inativos no autocomplete.
+
+Importante sobre ordem da rota:
+Como já existe GET /api/users/:id, a nova rota /api/users/mention-lookup deve ser declarada antes de /api/users/:id, para não ser capturada como id.
+
+2. Storage/helper
+   Se já existir método adequado para listar usuários mínimos, reutilizar.
+   Se não existir, criar método pequeno e específico, por exemplo:
+
+* getUsersForMentionLookup()
+
+Esse método deve:
+
+* Buscar somente campos mínimos.
+* Não retornar password.
+* Não retornar dados administrativos.
+* Ordenar por name ou username.
+* Ser tipado sem any/as any.
+
+3. Front-end
+   Alterar apenas:
+
+* client/src/components/comment-section.tsx
+
+Trocar a query de:
+
+* GET /api/users
+
+Para:
+
+* GET /api/users/mention-lookup
+
+Preservar:
+
+* Comportamento do autocomplete.
+* Layout.
+* Interação atual de @mention.
+* Tipos do componente.
+* Lógica de comentários.
+
+4. Não alterar
+
+* GET /api/users deve continuar requireAdmin.
+* GET /api/users/:id deve continuar requireAdmin.
+* Não alterar sidebar.
+* Não alterar ProtectedRoute.
+* Não alterar matriz de papéis.
+* Não alterar roles/permissions.
+* Não alterar banco.
+* Não criar migration.
+* Não criar seed.
+* Não alterar payloads administrativos.
+* Não alterar permissões além desse novo endpoint mínimo.
+* Não mexer em módulos de logística, eventos, produtos, requisições, movimentações ou relatórios.
+
+5. Testes obrigatórios
+   Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Anônimo:
+
+* GET /api/users/mention-lookup → 401
+
+Não-admin logado:
+
+* GET /api/users → 403
+* GET /api/users/mention-lookup → 200
+* Payload contém apenas id, username, name
+* Autocomplete de @mention volta a funcionar em comment-section
+
+Admin:
+
+* GET /api/users → 200 com payload administrativo
+* GET /api/users/mention-lookup → 200 com payload mínimo
+* Comentários/menções continuam funcionando
+
+6. Documentação
+   Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.2.1
+* replit.md com bullet curto
+
+Registrar:
+
+* motivo da correção
+* endpoint criado
+* campos retornados
+* por que GET /api/users permaneceu admin-only
+* testes executados
+
+Entrega final:
+Liste:
+
+* Arquivos criados/alterados.
+* Rota criada.
+* Onde ela foi posicionada em relação a /api/users/:id.
+* Campos retornados.
+* Filtros aplicados.
+* Alteração feita no comment-section.tsx.
+* Resultado do npm run check.
+* Resultado do npm run build.
+* Smoke tests executados.
+* Confirmação de que GET /api/users continua admin-only.
+* Confirmação de que a regressão de @mention foi corrigida.

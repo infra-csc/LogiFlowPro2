@@ -40,7 +40,7 @@ export function CommentSection({ entityType, entityId }: CommentSectionProps) {
   });
 
   const { data: users = [] } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+    queryKey: ["/api/users/mention-lookup"],
   });
 
   const createCommentMutation = useMutation({
