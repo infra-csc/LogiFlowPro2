@@ -12,7 +12,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { LoadingOrder, Event, MaterialRequest, Movement, MovementItem } from "@shared/schema";
 import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { userCanWriteLogistics, userIsAdmin } from "@/lib/authz";
+import {
+  userCanApproveLoadingOrder,
+  userCanMarkLoadingOrderReady,
+} from "@/lib/authz";
 
 type LoadingOrderItem = {
   id: string;
@@ -41,8 +44,8 @@ export default function LoadingOrderDetails() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const canWriteLogistics = userCanWriteLogistics(user);
-  const isAdmin = userIsAdmin(user);
+  const canMarkReady = userCanMarkLoadingOrderReady(user);
+  const canApprove = userCanApproveLoadingOrder(user);
 
   const { data: order, isLoading: orderLoading } = useQuery<LoadingOrderWithRelations>({
     queryKey: [`/api/loading-orders/${id}`],
@@ -224,7 +227,7 @@ export default function LoadingOrderDetails() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <StatusBadge status={order.status} />
-          {order.status === "draft" && canWriteLogistics && (
+          {order.status === "draft" && canMarkReady && (
             <Button
               onClick={() => markAsReadyMutation.mutate()}
               disabled={markAsReadyMutation.isPending}
@@ -234,7 +237,7 @@ export default function LoadingOrderDetails() {
               Marcar como Pronta
             </Button>
           )}
-          {order.status === "ready" && isAdmin && (
+          {order.status === "ready" && canApprove && (
             <Button
               onClick={() => approveMutation.mutate()}
               disabled={approveMutation.isPending}
@@ -244,7 +247,7 @@ export default function LoadingOrderDetails() {
               Aprovar para Carga
             </Button>
           )}
-          {order.status === "approved" && isAdmin && (
+          {order.status === "approved" && canApprove && (
             <Button
               variant="outline"
               onClick={() => disapproveMutation.mutate()}

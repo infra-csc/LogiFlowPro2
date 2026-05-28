@@ -1,0 +1,290 @@
+Vamos executar a Fase 2.6.3 — alinhar o front-end de Loading Orders às roles Almoxarifado e Supervisor.
+
+Objetivo:
+Atualizar a UX de Loading Orders para refletir as permissões aplicadas no back-end na Fase 2.6.2, sem alterar regras de back-end, endpoints, payloads, banco ou roles.
+
+Contexto:
+Na Fase 2.6.2, o back-end passou a aplicar:
+
+* Almoxarifado em:
+
+  * POST /api/loading-orders/:id/items
+  * POST /api/loading-orders/:id/mark-ready
+
+* Supervisor em:
+
+  * POST /api/loading-orders/:id/approve
+  * POST /api/loading-orders/:id/disapprove
+
+Permissões atuais efetivas:
+
+* Admin: tudo.
+* Logística: criar/editar/otimizar loading-orders, adicionar itens, marcar pronta, vincular/desvincular viagens.
+* Almoxarifado: adicionar itens e marcar pronta.
+* Supervisor: aprovar e desaprovar.
+* Usuário comum: apenas leitura.
+
+Agora o front-end precisa esconder/desabilitar ações conforme essa matriz para evitar UX ruim de clique seguido de 403.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar middlewares.
+* Não alterar ProtectedRoute.
+* Não alterar sidebar, pois leitura de Loading Orders continua liberada para qualquer usuário logado.
+* Não consumir permissions/role_permissions.
+* Não criar roles novas.
+* Não refatorar layout inteiro.
+* Não fazer redesign.
+* Não criar any/as any.
+* Não alterar módulos fora de Loading Orders.
+
+Escopo permitido:
+
+1. Usar helper de RBAC já existente no front
+
+Reutilizar:
+
+* client/src/lib/authz.ts
+* ROLES de shared/roles.ts
+* userHasRole / userHasAnyRole / userIsAdmin, ou funções equivalentes já criadas
+
+Se faltar helper específico, criar apenas helpers pequenos, por exemplo:
+
+* userIsLogistica(user)
+* userIsAlmoxarifado(user)
+* userIsSupervisor(user)
+* userCanManageLoadingOrders(user)
+* userCanHandleLoadingOrderItems(user)
+* userCanMarkLoadingOrderReady(user)
+* userCanApproveLoadingOrder(user)
+* userCanOptimizeLoadingOrder(user)
+
+Regras esperadas:
+
+* canManageLoadingOrders = Admin ou Logística
+* canHandleLoadingOrderItems = Admin ou Logística ou Almoxarifado
+* canMarkLoadingOrderReady = Admin ou Logística ou Almoxarifado
+* canApproveLoadingOrder = Admin ou Supervisor
+* canOptimizeLoadingOrder = Admin ou Logística
+* canLinkTrips = Admin ou Logística
+
+2. Ajustar client/src/pages/loading-orders.tsx
+
+Para Admin/Logística:
+
+* Mostrar botão "Nova Ordem".
+* Permitir abrir criação/edição conforme regra atual.
+* Manter comportamento existente.
+
+Para Almoxarifado:
+
+* Não mostrar "Nova Ordem".
+* Não permitir edição/criação de ordem.
+* Deve continuar podendo visualizar lista e abrir detalhes.
+
+Para Supervisor:
+
+* Não mostrar "Nova Ordem".
+* Não permitir edição/criação de ordem.
+* Deve continuar podendo visualizar lista e abrir detalhes.
+
+Para usuário comum:
+
+* Não mostrar "Nova Ordem".
+* Não permitir edição/criação.
+* Deve continuar podendo visualizar lista e abrir detalhes.
+
+Importante:
+
+* Não esconder cards/lista.
+* Não bloquear leitura.
+
+3. Ajustar client/src/components/loading-order-dialog.tsx
+
+Esse dialog é usado para criar/editar loading-order.
+
+Permitir submit apenas para:
+
+* Admin
+* Logística
+
+Para Almoxarifado, Supervisor e usuário comum:
+
+* Não permitir submit.
+* Se o dialog for aberto por algum caminho residual, mostrar estado read-only ou impedir ação com mensagem amigável.
+* Não quebrar o layout.
+
+Preservar:
+
+* canEdit atual.
+* status atual.
+* validações atuais.
+* payload atual.
+* mutations atuais.
+
+4. Ajustar client/src/pages/loading-order-details.tsx
+
+Aplicar regras nos botões/ações:
+
+Ações de itens:
+
+* Adicionar item: Admin, Logística ou Almoxarifado.
+* Remover item, se existir ação visual: Admin, Logística ou Almoxarifado.
+* Respeitar bloqueios de status já existentes.
+* Não mostrar ação se a ordem estiver completed/cancelled, conforme regra atual.
+
+Marcar como pronta:
+
+* Mostrar apenas para Admin, Logística ou Almoxarifado.
+* Respeitar status atual, especialmente draft.
+
+Aprovar/Desaprovar:
+
+* Mostrar apenas para Admin ou Supervisor.
+* Aprovar deve aparecer somente nos status em que a regra atual permitir.
+* Desaprovar deve aparecer somente nos status em que a regra atual permitir.
+
+Otimizar:
+
+* Mostrar apenas para Admin ou Logística.
+* Supervisor e Almoxarifado não devem ver ação de otimizar.
+
+Vincular/desvincular viagens:
+
+* Continuar apenas Admin ou Logística.
+* Almoxarifado e Supervisor não devem ver ação de vínculo/desvínculo de viagens.
+
+Leitura:
+
+* Todos os usuários logados continuam vendo detalhes, itens, viagens, movimentos e informações permitidas pelo back.
+
+5. Ajustar client/src/components/loading-optimization-dialog.tsx
+
+Garantir que:
+
+* Somente Admin ou Logística consigam abrir/executar otimização.
+* Almoxarifado, Supervisor e usuário comum não vejam ou não consigam acionar a otimização.
+* Não alterar algoritmo, payload ou mutation.
+
+6. Não alterar nesta fase
+
+* Back-end.
+* routes.ts.
+* routes-optimization.ts.
+* authz.ts do servidor.
+* Banco.
+* Seed.
+* Migration.
+* Endpoints.
+* Payloads.
+* Regras de status.
+* permissions/role_permissions.
+* Sidebar.
+* ProtectedRoute.
+* Produtos, kits, fornecedores.
+* Requisições.
+* Movimentações.
+* Devoluções.
+* Relatórios.
+* Viagens, motoristas, veículos e docas fora do que for usado dentro de Loading Orders.
+
+7. Validações obrigatórias
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests front-end:
+
+Admin:
+
+* Vê "Nova Ordem".
+* Vê/usa edição de ordem.
+* Vê adicionar/remover itens.
+* Vê "Marcar como Pronta".
+* Vê "Aprovar" e "Desaprovar".
+* Vê "Otimizar".
+* Vê vínculo/desvínculo de viagens.
+
+Gestor Logistica:
+
+* Vê "Nova Ordem".
+* Vê/usa edição de ordem quando permitido.
+* Vê adicionar/remover itens.
+* Vê "Marcar como Pronta".
+* Não vê "Aprovar" nem "Desaprovar".
+* Vê "Otimizar".
+* Vê vínculo/desvínculo de viagens.
+
+Almoxarifado:
+
+* Não vê "Nova Ordem".
+* Não vê edição de ordem.
+* Vê adicionar/remover itens quando status permitir.
+* Vê "Marcar como Pronta" quando status permitir.
+* Não vê "Aprovar" nem "Desaprovar".
+* Não vê "Otimizar".
+* Não vê vínculo/desvínculo de viagens.
+* Continua visualizando lista e detalhes.
+
+Supervisor:
+
+* Não vê "Nova Ordem".
+* Não vê edição de ordem.
+* Não vê adicionar/remover itens.
+* Não vê "Marcar como Pronta".
+* Vê "Aprovar" e "Desaprovar" quando status permitir.
+* Não vê "Otimizar".
+* Não vê vínculo/desvínculo de viagens.
+* Continua visualizando lista e detalhes.
+
+Usuário comum:
+
+* Não vê "Nova Ordem".
+* Não vê edição de ordem.
+* Não vê adicionar/remover itens.
+* Não vê "Marcar como Pronta".
+* Não vê "Aprovar" nem "Desaprovar".
+* Não vê "Otimizar".
+* Não vê vínculo/desvínculo de viagens.
+* Continua visualizando lista e detalhes.
+* Não recebe tela quebrada ou erro visual.
+
+Anônimo:
+
+* Continua sendo redirecionado para login nas rotas protegidas.
+
+8. Documentação
+
+Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.6.3
+* replit.md com bullet curto
+
+Registrar:
+
+* helpers de front criados/alterados
+* botões/actions ajustados
+* matriz visual aplicada
+* testes executados
+* confirmação de que o back-end permanece fonte da verdade
+* dívida futura: testes automatizados para RBAC visual, se fizer sentido
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Helpers de front criados/alterados.
+* Ações escondidas/desabilitadas por role.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que Admin, Logística, Almoxarifado, Supervisor e usuário comum veem apenas o que devem ver.
+* Confirmação de que back-end, banco, seed, endpoints, payloads, sidebar, ProtectedRoute e permissions/role_permissions não foram alterados.

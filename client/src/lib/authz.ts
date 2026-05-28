@@ -75,3 +75,57 @@ export function userCanWriteLogistics(
 ): boolean {
   return userIsAdmin(user) || userIsLogistica(user);
 }
+
+/**
+ * True when the user holds the Almoxarifado role (any alias).
+ */
+export function userIsAlmoxarifado(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userHasRoleName(user, ROLES.ALMOXARIFADO);
+}
+
+/**
+ * True when the user holds the Supervisor role (any alias).
+ */
+export function userIsSupervisor(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userHasRoleName(user, ROLES.SUPERVISOR);
+}
+
+/**
+ * Mirrors back-end gate `requireAnyRole([ADMIN, LOGISTICA, ALMOXARIFADO])`
+ * applied on `POST /api/loading-orders/:id/items` and
+ * `POST /api/loading-orders/:id/mark-ready`. Used by the front to show
+ * affordances for adding/removing items and marking the order as ready.
+ */
+export function userCanHandleLoadingOrderItems(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return (
+    userIsAdmin(user) || userIsLogistica(user) || userIsAlmoxarifado(user)
+  );
+}
+
+/**
+ * Alias of {@link userCanHandleLoadingOrderItems} — kept for callsite
+ * readability where the action is specifically "mark as ready".
+ */
+export function userCanMarkLoadingOrderReady(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userCanHandleLoadingOrderItems(user);
+}
+
+/**
+ * Mirrors back-end gate `requireAnyRole([ADMIN, SUPERVISOR])` applied on
+ * `POST /api/loading-orders/:id/approve` and
+ * `POST /api/loading-orders/:id/disapprove`. Used to show approve/disapprove
+ * affordances in loading-order details.
+ */
+export function userCanApproveLoadingOrder(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userIsAdmin(user) || userIsSupervisor(user);
+}

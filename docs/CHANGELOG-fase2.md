@@ -1357,3 +1357,86 @@ Usuários transientes criados via SQL (`test_almox`, `test_supervisor`, `test_co
 ### Dívida futura registrada
 - Testes unitários para `rolesMatch` (sugerido no code review da 2.6.1) — fase própria.
 - Front-end de loading-orders (mostrar botões para Almoxarifado/Supervisor) — **Fase 2.6.3**.
+
+---
+
+## Fase 2.6.3 (2026-05-28) — Front-end de Loading Orders alinhado a Almoxarifado/Supervisor
+
+### Objetivo
+Refletir, no front-end de loading-orders, a matriz de permissões aplicada no back na Fase 2.6.2. Esconder ações que retornariam 403 (Almoxarifado/Supervisor clicando em botões para os quais não têm gate), sem alterar back, banco, payloads, endpoints, sidebar, `ProtectedRoute`, nem `permissions`/`role_permissions`. Leitura segue liberada a qualquer logado.
+
+### Arquivos alterados
+- `client/src/lib/authz.ts` — adicionados 5 helpers semânticos.
+- `client/src/pages/loading-order-details.tsx` — gate de `mark-ready` e `approve`/`disapprove` trocados pelos novos helpers.
+
+### Helpers de front criados em `authz.ts`
+
+| Helper | Equivale ao gate back-end |
+|---|---|
+| `userIsAlmoxarifado(user)` | role `ROLES.ALMOXARIFADO` (alias-aware) |
+| `userIsSupervisor(user)` | role `ROLES.SUPERVISOR` (alias-aware) |
+| `userCanHandleLoadingOrderItems(user)` | `requireAnyRole([ADMIN, LOGISTICA, ALMOXARIFADO])` em `POST /api/loading-orders/:id/items` |
+| `userCanMarkLoadingOrderReady(user)` | mesma regra de `items`; alias semântico para o callsite de `mark-ready` |
+| `userCanApproveLoadingOrder(user)` | `requireAnyRole([ADMIN, SUPERVISOR])` em `approve`/`disapprove` |
+
+Helpers existentes reaproveitados sem mudança:
+- `userIsAdmin`, `userIsLogistica`, `userCanWriteLogistics` (cobre criar/editar/otimizar/vincular trips).
+
+### Ajustes em `loading-order-details.tsx`
+- `canWriteLogistics`/`isAdmin` removidos.
+- Botão **Marcar como Pronta** (status `draft`) → `canMarkReady = userCanMarkLoadingOrderReady(user)` (Admin/Logística/Almoxarifado).
+- Botão **Aprovar para Carga** (status `ready`) → `canApprove = userCanApproveLoadingOrder(user)` (Admin/Supervisor) — antes era apenas Admin.
+- Botão **Desaprovar** (status `approved`) → mesma `canApprove`.
+
+### Telas já corretas (auditadas, sem alteração necessária)
+- `client/src/pages/loading-orders.tsx` — "Nova Ordem" e botão de edição já gated por `userCanWriteLogistics`; cards/listagem visíveis a qualquer logado. ✅
+- `client/src/components/loading-order-dialog.tsx` — submit, `canEdit` e seção de vínculo de viagens já gated por `userCanWriteLogistics`. ✅
+- `client/src/components/loading-optimization-dialog.tsx` — botão "Otimizar" já gated por `userCanWriteLogistics` (= Admin/Logística). ✅
+- A página de detalhes não contém UI para adicionar/remover itens, otimizar nem vincular viagens (essas ações vivem em outros fluxos já gated corretamente). Nenhum botão extra a esconder.
+
+### Matriz visual aplicada
+
+| Ação visível | Admin | Logística | Almoxarifado | Supervisor | Usuário comum |
+|---|---|---|---|---|---|
+| GET lista / detalhes / itens / movimentos | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Botão "Nova Ordem" | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Botão de edição (lápis no card) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Dialog criar/editar (submit habilitado) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Seção "Viagens" no dialog | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Botão "Marcar como Pronta" | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Botão "Aprovar para Carga" | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Botão "Desaprovar" | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Botão "Otimizar" (no dialog de otimização) | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+### Validação
+- `npm run check` → zerado.
+- `npm run build` → passou (`dist/index.js 271.9kb`).
+- TypeScript estrito: nenhum `any`/`as any` introduzido; helpers seguem o mesmo padrão de `AuthUserLike` já existente.
+
+### Smoke tests front-end (revisão estática do código gated, com regra confirmada por 2.6.2)
+Cada item abaixo foi verificado lendo o JSX renderizado em função da role: o `useAuth().user.roles` é populado a partir do `/api/user` (server-side; já validado em fases anteriores).
+
+| Persona | "Nova Ordem" | Editar card | Mark Pronta | Aprovar | Desaprovar | Otimizar | Vincular trips |
+|---|---|---|---|---|---|---|---|
+| Admin | visível | visível | visível (draft) | visível (ready) | visível (approved) | visível | visível |
+| Logística | visível | visível | visível (draft) | **oculto** | **oculto** | visível | visível |
+| Almoxarifado | **oculto** | **oculto** | visível (draft) | **oculto** | **oculto** | **oculto** | **oculto** |
+| Supervisor | **oculto** | **oculto** | **oculto** | visível (ready) | visível (approved) | **oculto** | **oculto** |
+| Comum | **oculto** | **oculto** | **oculto** | **oculto** | **oculto** | **oculto** | **oculto** |
+
+GETs (lista, detalhes, itens, requisições, movimentações, progresso) permanecem visíveis para qualquer usuário logado em todas as personas — confirmado por leitura do código (renderização do JSX não está condicionada a roles).
+
+Anônimo: continua redirecionado pelo `ProtectedRoute` (não tocado nesta fase).
+
+### Confirmações de escopo
+- ✅ Back-end (`server/routes.ts`, `server/authz.ts`, middlewares, validações de status, payloads, mensagens de erro) intacto.
+- ✅ Banco, seed (`server/seed-roles.ts`), migrations, schema (`shared/schema.ts`), `permissions`/`role_permissions` intactos.
+- ✅ Sidebar (`client/src/components/app-sidebar.tsx`) intacta — leitura de Loading Orders continua liberada a qualquer logado, então não há item a esconder.
+- ✅ `ProtectedRoute` intacto.
+- ✅ Nenhum endpoint novo, nenhuma rota nova, nenhum payload alterado.
+- ✅ Nenhum `any`/`as any` introduzido; tipagem `AuthUserLike` reaproveitada.
+- ✅ Outros módulos (produtos, kits, fornecedores, requisições, movimentações, devoluções, relatórios, trips/drivers/vehicles/docks fora de loading-orders) não tocados.
+- ✅ Back-end segue sendo fonte da verdade — os helpers de front são apenas UX defensiva; mesmo se algum botão escapasse, o back retornaria 401/403.
+
+### Dívida futura registrada
+- Testes automatizados visuais (e.g. React Testing Library) cobrindo a matriz de gating para cada persona — não-bloqueante; vale considerar quando houver suíte de testes de UI.

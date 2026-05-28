@@ -39,10 +39,10 @@ Preferred communication style: Simple, everyday language.
 - **2.6** (2026-05-28): planejamento das roles funcionais Almoxarifado e Supervisor — diagnóstico, matriz revisada, plano de fases e 11 decisões aprovadas. Sem código alterado.
 - **2.6.1** (2026-05-28): base das novas roles — canônicos `ROLES.ALMOXARIFADO`/`ROLES.SUPERVISOR` + aliases em `shared/roles.ts`; script idempotente `server/seed-roles.ts` (rodar via `npx tsx server/seed-roles.ts`); 2 roles criadas no banco com `description` preenchida, 0 usuários vinculados, nenhum endpoint aplicando ainda.
 - **2.6.2** (2026-05-28): RBAC efetivo em loading-orders — `items`/`mark-ready` para `[ADMIN, LOGISTICA, ALMOXARIFADO]`; `approve`/`disapprove` saem de `requireAdmin` provisório e passam a `[ADMIN, SUPERVISOR]`. Front-end fica para 2.6.3.
+- **2.6.3** (2026-05-28): front-end de loading-orders alinhado — helpers `userIsAlmoxarifado`/`userIsSupervisor`/`userCanHandleLoadingOrderItems`/`userCanMarkLoadingOrderReady`/`userCanApproveLoadingOrder` em `client/src/lib/authz.ts`; em `loading-order-details.tsx`, "Marcar como Pronta" passa a aceitar Almoxarifado e "Aprovar"/"Desaprovar" passam a aceitar Supervisor. Demais telas (lista, dialog de criação/edição, dialog de otimização) já estavam corretas.
 - **Detalhes**: [`docs/CHANGELOG-fase2.md`](docs/CHANGELOG-fase2.md).
 
 ### Próximas fases (planejadas)
-- **2.6.3**: front-end de loading-orders alinhado aos novos papéis (sidebar/botões para Almoxarifado e Supervisor).
 - **2.7 / 2.8**: auditoria + aplicação de RBAC em movimentações (6 holes de escrita ainda abertos hoje).
 - **2.9**: auditoria + RBAC em devoluções.
 - **Fases futuras** (roadmap de longo prazo): hierarquia de roles, sistema de auditoria, templates, interface master-detail, dependências automáticas. Roadmap detalhado em [`docs/RBAC-future-guide.md`](docs/RBAC-future-guide.md).
