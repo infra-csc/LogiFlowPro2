@@ -79,19 +79,19 @@ function Router() {
       <ProtectedRoute path="/products" component={Products} />
       <ProtectedRoute path="/kits" component={Kits} />
       <ProtectedRoute path="/config" component={Config} />
-      <ProtectedRoute path="/config/users" component={UsersPage} />
-      <ProtectedRoute path="/config/roles" component={RolesPage} />
-      <ProtectedRoute path="/config/vehicle-types" component={VehicleTypes} />
+      <ProtectedRoute path="/config/users" component={UsersPage} requireAdmin />
+      <ProtectedRoute path="/config/roles" component={RolesPage} requireAdmin />
+      <ProtectedRoute path="/config/vehicle-types" component={VehicleTypes} requireAdmin />
       <ProtectedRoute path="/config/vehicles" component={Vehicles} />
       <ProtectedRoute path="/config/drivers" component={Drivers} />
       <ProtectedRoute path="/config/docks" component={Docks} />
       <ProtectedRoute path="/notification-settings" component={NotificationSettingsPage} />
       <ProtectedRoute path="/reports/stock-simulation" component={StockSimulation} />
       <ProtectedRoute path="/reports/stock-position-simulation" component={StockPositionSimulation} />
-      <ProtectedRoute path="/config/movement-groups" component={MovementGroups} />
-      <ProtectedRoute path="/config/movement-types" component={MovementTypesConfig} />
-      <ProtectedRoute path="/config/product-statuses" component={ProductStatuses} />
-      <ProtectedRoute path="/config/locations" component={Locations} />
+      <ProtectedRoute path="/config/movement-groups" component={MovementGroups} requireAdmin />
+      <ProtectedRoute path="/config/movement-types" component={MovementTypesConfig} requireAdmin />
+      <ProtectedRoute path="/config/product-statuses" component={ProductStatuses} requireAdmin />
+      <ProtectedRoute path="/config/locations" component={Locations} requireAdmin />
       <Route component={NotFound} />
     </Switch>
   );

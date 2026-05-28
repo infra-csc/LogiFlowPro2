@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
+import { userCanWriteLogistics } from "@/lib/authz";
 import { format } from "date-fns";
 
 type ParsedTrip = {
@@ -41,6 +43,9 @@ type BulkResult = {
 };
 
 export default function TripUpload() {
+  const { user } = useAuth();
+  const canWrite = userCanWriteLogistics(user);
+
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedTrip[]>([]);
@@ -217,7 +222,7 @@ export default function TripUpload() {
             />
             <Button
               onClick={handleUpload}
-              disabled={parsedData.length === 0 || uploadMutation.isPending}
+              disabled={parsedData.length === 0 || uploadMutation.isPending || !canWrite}
               data-testid="button-upload"
             >
               {uploadMutation.isPending ? (

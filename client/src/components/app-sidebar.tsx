@@ -43,6 +43,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/use-auth";
+import { userIsAdmin } from "@/lib/authz";
 import { Button } from "@/components/ui/button";
 
 const approvalItems = [
@@ -182,7 +183,14 @@ const movementTypeItems = [
   },
 ];
 
-const configItems = [
+type ConfigItem = {
+  title: string;
+  url: string;
+  icon: typeof Bell;
+  adminOnly?: boolean;
+};
+
+const configItems: ConfigItem[] = [
   {
     title: "Notificações",
     url: "/notification-settings",
@@ -192,16 +200,19 @@ const configItems = [
     title: "Usuários",
     url: "/config/users",
     icon: Users,
+    adminOnly: true,
   },
   {
     title: "Papéis e Permissões",
     url: "/config/roles",
     icon: Shield,
+    adminOnly: true,
   },
   {
     title: "Tipos de Veículos",
     url: "/config/vehicle-types",
     icon: Truck,
+    adminOnly: true,
   },
   {
     title: "Veículos",
@@ -222,17 +233,21 @@ const configItems = [
     title: "Status de Produtos",
     url: "/config/product-statuses",
     icon: CheckSquare,
+    adminOnly: true,
   },
   {
     title: "Localizações",
     url: "/config/locations",
     icon: Warehouse,
+    adminOnly: true,
   },
 ];
 
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
+  const isAdmin = userIsAdmin(user);
+  const visibleConfigItems = configItems.filter((item) => !item.adminOnly || isAdmin);
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -475,7 +490,7 @@ export function AppSidebar() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                      {configItems.map((item) => (
+                      {visibleConfigItems.map((item) => (
                         <SidebarMenuSubItem key={item.title}>
                           <SidebarMenuSubButton 
                             asChild 
@@ -494,6 +509,7 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               </Collapsible>
               
+              {isAdmin && (
               <Collapsible defaultOpen className="group/collapsible">
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
@@ -523,6 +539,7 @@ export function AppSidebar() {
                   </CollapsibleContent>
                 </SidebarMenuItem>
               </Collapsible>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

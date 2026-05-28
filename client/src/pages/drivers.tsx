@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Driver, insertDriverSchema } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
+import { userCanWriteLogistics, userIsAdmin } from "@/lib/authz";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +56,10 @@ const driverFormSchema = insertDriverSchema.extend({
 type DriverFormData = z.infer<typeof driverFormSchema>;
 
 export default function DriversPage() {
+  const { user } = useAuth();
+  const canWrite = userCanWriteLogistics(user);
+  const isAdmin = userIsAdmin(user);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [cnhFile, setCnhFile] = useState<File | null>(null);
@@ -223,18 +229,20 @@ export default function DriversPage() {
           <h1 className="text-3xl font-bold">Motoristas</h1>
           <p className="text-muted-foreground">Gerencie o cadastro de motoristas</p>
         </div>
-        <Button
-          onClick={() => {
-            setSelectedDriver(null);
-            form.reset();
-            setCnhFile(null);
-            setIsDialogOpen(true);
-          }}
-          data-testid="button-create-driver"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Motorista
-        </Button>
+        {canWrite && (
+          <Button
+            onClick={() => {
+              setSelectedDriver(null);
+              form.reset();
+              setCnhFile(null);
+              setIsDialogOpen(true);
+            }}
+            data-testid="button-create-driver"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Motorista
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -298,23 +306,27 @@ export default function DriversPage() {
                             Ver CNH
                           </Button>
                         )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(driver)}
-                          data-testid={`button-edit-driver-${driver.id}`}
-                        >
-                          <UserCog className="mr-2 h-3 w-3" />
-                          Editar
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(driver)}
-                          data-testid={`button-delete-driver-${driver.id}`}
-                        >
-                          Excluir
-                        </Button>
+                        {canWrite && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(driver)}
+                            data-testid={`button-edit-driver-${driver.id}`}
+                          >
+                            <UserCog className="mr-2 h-3 w-3" />
+                            Editar
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(driver)}
+                            data-testid={`button-delete-driver-${driver.id}`}
+                          >
+                            Excluir
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

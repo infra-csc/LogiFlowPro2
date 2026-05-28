@@ -644,3 +644,108 @@ removido ao fim):**
   role real via `INSERT INTO user_roles`, executamos os smokes e
   removemos com `DELETE` (banco preservado). Isso prova que o
   canonical match contra o nome real da role no banco funciona.
+
+---
+
+## Fase 2.3.1 — Front-end alinhado ao RBAC (2026-05-28)
+
+**Objetivo**: alinhar a UI ao gating já existente no back-end (Fases 2.2 e
+2.3), escondendo afordâncias administrativas e de escrita logística para
+quem não tem a role, **sem mexer em banco, seed, schema ou rotas**. Só
+UX defensiva — o back continua sendo a fonte da verdade.
+
+### Princípios
+- **Não esconder listas.** Catálogos operacionais (veículos, motoristas,
+  docas) continuam visíveis para qualquer usuário logado — eles
+  alimentam fluxos do dia a dia. O que esconde são os botões/dialogs
+  de criar/editar/excluir e os menus puramente administrativos.
+- **Não duplicar regra.** O helper FE consome `ROLES` e `rolesMatch` de
+  `shared/roles.ts`. Não há "isAdmin" reescrito no client.
+- **Single source of truth no payload.** O `GET /api/user` já devolve
+  `roles: string[]` e `isAdmin: boolean` (computados via
+  `isAdminRoleName` no servidor). O front confia em `isAdmin` e
+  apenas faz fallback alias-aware se o flag estiver ausente.
+- **Defesa em profundidade.** Cada esconde-botão é redundância visual
+  sobre o 403 do back. Bypass via DevTools/HTTP continua bloqueado
+  pelas Fases 2.2/2.3.
+
+### Entregas
+
+**Helper FE de roles** (`client/src/lib/authz.ts`):
+- `AuthUserLike` (shape permissivo aceita `useAuth().user` direto).
+- `userIsAdmin(user)` — usa `user.isAdmin` quando presente; fallback
+  scaneia `user.roles` com `rolesMatch(..., ROLES.ADMIN)`.
+- `userHasRoleName(user, name)`, `userHasAnyRoleName(user, names)`.
+- `userIsLogistica(user)`.
+- `userCanWriteLogistics(user)` — mirror de
+  `requireAnyRole([ADMIN, LOGISTICA])` do back.
+
+**Tipo do payload de auth** (`client/src/hooks/use-auth.tsx`):
+- Exportado `AuthUser = Omit<User,"password"> & { roles: string[]; isAdmin: boolean }`.
+- `useQuery` agora tipado com `AuthUser` (antes era só `Omit<User,"password">`,
+  mascarando os campos extras que o `/api/user` já entrega).
+
+**`ProtectedRoute` com gate opcional** (`client/src/lib/protected-route.tsx`):
+- Nova prop `requireAdmin?: boolean` (default `false`).
+- Quando ligada e o usuário logado não é admin, renderiza uma tela
+  amigável `<AccessDenied />` (Card shadcn, ícone `ShieldAlert`, link
+  "Voltar ao Dashboard") em vez de redirect. Loading e
+  not-authenticated continuam idênticos.
+
+**Rotas admin-only no router** (`client/src/App.tsx`):
+- `requireAdmin` aplicado em: `/config/users`, `/config/roles`,
+  `/config/vehicle-types`, `/config/movement-groups`,
+  `/config/movement-types`, `/config/product-statuses`,
+  `/config/locations`.
+- **Sem** `requireAdmin` em: `/config/vehicles`, `/config/drivers`,
+  `/config/docks` (catálogos operacionais — qualquer logado vê a
+  listagem; só o botão de escrita é gated).
+
+**Sidebar filtrada** (`client/src/components/app-sidebar.tsx`):
+- `ConfigItem` ganhou `adminOnly?: boolean`. Marcados como adminOnly:
+  Usuários, Papéis e Permissões, Tipos de Veículos, Status de
+  Produtos, Localizações.
+- `visibleConfigItems = configItems.filter(...)` aplica o filtro
+  contra `userIsAdmin(user)`.
+- Bloco "Tipos de Movimentação" envolto em `{isAdmin && (...)}`.
+
+**Páginas de logística com botões de escrita escondidos para
+não-logística**:
+- `pages/trips.tsx`: botão "Planejar Viagem" (header + empty-state),
+  card clicável e calendar entry só ficam interativos quando
+  `userCanWriteLogistics(user)`. Para não-logística os cards
+  perdem `hover-elevate cursor-pointer` e `onClick`.
+- `pages/drivers.tsx`: "Novo Motorista" e "Editar" gated por
+  `canWrite`. "Excluir" gated por `isAdmin` (espelha
+  `DELETE /api/drivers/:id` que continua admin-only).
+- `pages/vehicles.tsx`: "Editar" e "Excluir" gated por `canWrite`.
+- `pages/docks.tsx`: "Nova Doca" (DialogTrigger) gated por `canWrite`.
+- `pages/trip-upload.tsx`: botão "Importar" recebe `!canWrite` no
+  `disabled` (mantém o resto da página utilizável para inspecionar
+  planilhas).
+- `components/loading-order-dialog.tsx`: seção "Viagens" (vincular/
+  desvincular) escondida quando `!canLinkTrips`. As demais seções
+  do dialog ficam intactas — o gate cobre só o slice que mapeia
+  para `POST/DELETE /api/loading-orders/:id/trips` (Fase 2.3).
+
+### Não tocados
+- Back-end, banco, migrations, seed, schema, `permissions`/
+  `role_permissions`.
+- Páginas e ações de requests, loading-orders (fora vínculo de
+  viagens), movements, returns, reports, products, kits, suppliers,
+  events — escopo de fases posteriores.
+- Auto-cadastro público (`POST /api/users`), login, logout,
+  password-reset.
+
+### Validação
+- `npm run check` zerado (front + back).
+- `npm run build` passando.
+- `GET /api/user` já entregava `roles`/`isAdmin` desde a Fase 2.1
+  (confirmado em `server/auth.ts`); o tipo agora está refletido no
+  client.
+
+### Limitação conhecida
+- A defesa de UI é "best effort": basta um usuário desativar
+  JavaScript ou abrir as rotas direto para ver listas. Toda escrita
+  efetiva continua barrada no back pelas Fases 2.2/2.3. Esconder
+  botão **não é** controle de acesso — é redução de ruído.

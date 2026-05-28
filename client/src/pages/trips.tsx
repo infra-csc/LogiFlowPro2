@@ -9,6 +9,8 @@ import { ptBR } from "date-fns/locale";
 import type { Trip, Event, Vehicle, VehicleType, Driver } from "@shared/schema";
 import { TripDialog } from "@/components/trip-dialog";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
+import { userCanWriteLogistics } from "@/lib/authz";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -51,6 +53,8 @@ type SortBy = "loading" | "unloading";
 type CalendarPeriod = "week" | "biweekly";
 
 export default function Trips() {
+  const { user } = useAuth();
+  const canWrite = userCanWriteLogistics(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | undefined>();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -235,10 +239,12 @@ export default function Trips() {
           <h1 className="text-2xl font-semibold text-foreground">Planejamento de Transporte</h1>
           <p className="text-sm text-muted-foreground mt-1">Agende e gerencie a logística de veículos e rotas</p>
         </div>
-        <Button onClick={() => setShowDialog(true)} data-testid="button-create-trip">
-          <Plus className="h-4 w-4 mr-2" />
-          Planejar Viagem
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setShowDialog(true)} data-testid="button-create-trip">
+            <Plus className="h-4 w-4 mr-2" />
+            Planejar Viagem
+          </Button>
+        )}
       </div>
 
       {/* View Controls */}
@@ -437,7 +443,7 @@ export default function Trips() {
                       ? "Tente ajustar os filtros para ver mais resultados"
                       : "Comece a planejar o transporte para seus eventos"}
                   </p>
-                  {activeFilterCount === 0 && (
+                  {activeFilterCount === 0 && canWrite && (
                     <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-plan-first-trip">
                       <Plus className="h-4 w-4 mr-2" />
                       Planejar Viagem
@@ -451,8 +457,8 @@ export default function Trips() {
               {sortedTrips.map((trip) => (
                 <Card 
                   key={trip.id}
-                  className="hover-elevate cursor-pointer"
-                  onClick={() => handleEdit(trip)}
+                  className={canWrite ? "hover-elevate cursor-pointer" : ""}
+                  onClick={canWrite ? () => handleEdit(trip) : undefined}
                   data-testid={`card-trip-${trip.id}`}
                 >
                   <CardHeader>
@@ -607,8 +613,8 @@ export default function Trips() {
                       dayTrips.map((entry, index) => (
                         <div
                           key={`${entry.trip.id}-${entry.type}-${index}`}
-                          className="p-2 rounded-md bg-card hover-elevate cursor-pointer border"
-                          onClick={() => handleEdit(entry.trip)}
+                          className={`p-2 rounded-md bg-card border ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
+                          onClick={canWrite ? () => handleEdit(entry.trip) : undefined}
                           data-testid={`calendar-trip-${entry.trip.id}-${entry.type}`}
                         >
                           <div className="flex items-start gap-3">

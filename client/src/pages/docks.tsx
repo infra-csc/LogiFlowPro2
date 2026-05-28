@@ -13,11 +13,16 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Dock } from "@shared/schema";
 import { insertDockSchema } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
+import { userCanWriteLogistics } from "@/lib/authz";
 import type { z } from "zod";
 
 type InsertDock = z.infer<typeof insertDockSchema>;
 
 export default function Docks() {
+  const { user } = useAuth();
+  const canWrite = userCanWriteLogistics(user);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { toast } = useToast();
   const { data: docks, isLoading } = useQuery<Dock[]>({ queryKey: ["/api/docks"] });
@@ -70,12 +75,14 @@ export default function Docks() {
           </p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-dock">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Doca
-            </Button>
-          </DialogTrigger>
+          {canWrite && (
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-dock">
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Doca
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Criar Nova Doca</DialogTitle>

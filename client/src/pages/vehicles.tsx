@@ -13,11 +13,16 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Vehicle, VehicleType } from "@shared/schema";
 import { insertVehicleSchema } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
+import { userCanWriteLogistics } from "@/lib/authz";
 import type { z } from "zod";
 
 type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 
 export default function Vehicles() {
+  const { user } = useAuth();
+  const canWrite = userCanWriteLogistics(user);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const { toast } = useToast();
@@ -466,22 +471,26 @@ export default function Vehicles() {
                   </span>
                 </div>
                 <div className="flex gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleEdit(vehicle)}
-                    data-testid={`button-edit-${vehicle.id}`}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleDelete(vehicle.id)}
-                    data-testid={`button-delete-${vehicle.id}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {canWrite && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleEdit(vehicle)}
+                      data-testid={`button-edit-${vehicle.id}`}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canWrite && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleDelete(vehicle.id)}
+                      data-testid={`button-delete-${vehicle.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </CardTitle>
             </CardHeader>

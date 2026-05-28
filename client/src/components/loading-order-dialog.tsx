@@ -26,6 +26,7 @@ import type { LoadingOrder, InsertLoadingOrder, Event, MaterialRequest, Trip } f
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { userCanWriteLogistics } from "@/lib/authz";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
@@ -199,6 +200,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   };
 
   const canEdit = !order || (canEditData?.canEdit !== false);
+  const canLinkTrips = userCanWriteLogistics(user);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,7 +403,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
               </div>
             )}
 
-            {selectedEventId && availableTrips.length > 0 && (
+            {selectedEventId && availableTrips.length > 0 && canLinkTrips && (
               <div>
                 <Label>Viagens ({availableTrips.length})</Label>
                 <p className="text-sm text-muted-foreground mb-3">

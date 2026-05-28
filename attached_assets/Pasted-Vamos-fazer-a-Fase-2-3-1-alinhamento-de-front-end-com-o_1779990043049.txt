@@ -1,0 +1,227 @@
+Vamos fazer a Fase 2.3.1 — alinhamento de front-end com o RBAC já aplicado nas Fases 2.2 e 2.3.
+
+Objetivo:
+Ajustar a experiência do usuário para não exibir ações que o back-end agora bloqueia por RBAC, sem alterar regras de back-end, banco ou permissões.
+
+Contexto:
+Nas fases anteriores:
+
+* Fase 2.1 criou shared/roles.ts e server/authz.ts.
+* Fase 2.2 tornou rotas administrativas/configuração admin-only.
+* Fase 2.2.1 criou /api/users/mention-lookup para não quebrar @mention.
+* Fase 2.3 aplicou RBAC nas rotas de escrita de logística.
+* GETs operacionais de logística continuam liberados para qualquer usuário autenticado.
+* Front-end ainda não foi alinhado: sidebar, ProtectedRoute e botões ainda podem exibir ações que agora retornam 403.
+
+Importante:
+Esta fase é apenas front-end/UX, usando as roles já retornadas por GET /api/user.
+Não alterar back-end funcional.
+
+Escopo permitido:
+
+1. Criar helper de roles no front-end
+   Criar um helper pequeno, por exemplo:
+
+* client/src/lib/rbac.ts
+  ou
+* client/src/lib/authz.ts
+
+Esse helper deve:
+
+* Importar ROLES e rolesMatch de shared/roles.ts, se possível.
+* Ter funções como:
+
+  * userHasRole(user, role)
+  * userHasAnyRole(user, roles[])
+  * userIsAdmin(user)
+  * userIsLogistica(user)
+* Trabalhar com user.roles retornado pelo GET /api/user.
+* Reconhecer aliases já existentes:
+
+  * Adm/admin
+  * Gestor Logistica/logistica
+* Não duplicar regra de string solta no front.
+* Não criar any/as any.
+
+2. Ajustar sidebar para áreas administrativas
+   Alterar:
+
+* client/src/components/app-sidebar.tsx
+
+Objetivo:
+Usuário não-admin não deve ver menus administrativos que agora são admin-only, como:
+
+* Usuários
+* Papéis e permissões
+* Configurações administrativas sensíveis
+* Roles
+* Permissions
+* Gestão de permissões
+* telas equivalentes de /config que dependem de rotas admin-only
+
+Usuário admin deve continuar vendo tudo.
+
+Importante:
+Não esconder módulos operacionais de leitura que ainda são permitidos para qualquer logado.
+
+3. Ajustar ProtectedRoute apenas para rotas administrativas
+   Se o ProtectedRoute já suporta alguma lógica simples, reaproveitar.
+   Se não suporta, adicionar suporte opcional e mínimo, por exemplo:
+
+* requiredRole
+* requiredAnyRole
+
+Aplicar apenas nas rotas administrativas/configuração que já viraram admin-only no back:
+
+* /config/users
+* /config/roles
+* /config/movement-types
+* /config/product-statuses
+* /config/locations
+* /config/vehicles ou equivalente, se forem rotas de configuração admin-only
+
+Se alguma dessas páginas também é usada como catálogo operacional, avaliar antes de bloquear. Na dúvida, não bloquear a rota inteira; apenas ocultar botões de escrita.
+
+Comportamento esperado:
+
+* Admin acessa normalmente.
+* Não-admin não deve entrar em tela admin-only.
+* Se tentar acessar URL direta, mostrar mensagem amigável de acesso negado ou redirecionar para dashboard.
+* Não gerar tela quebrada por 403.
+
+4. Ajustar botões e ações de logística
+   Alterar somente páginas/componentes relacionados a logística, como:
+
+* trips
+* drivers
+* vehicles
+* docks
+* loading-order-dialog, apenas no vínculo/desvínculo de viagens se houver ação visual
+
+Para usuários sem admin/logistica:
+
+* esconder ou desabilitar botões de criar viagem
+* esconder ou desabilitar botões de editar viagem
+* esconder ou desabilitar botão de importar viagens em lote
+* esconder ou desabilitar botão de criar motorista
+* esconder ou desabilitar botão de editar motorista
+* esconder ou desabilitar upload de CNH
+* esconder ou desabilitar botão de criar veículo
+* esconder ou desabilitar botão de criar doca
+* esconder ou desabilitar ações de vincular/desvincular viagens em ordens de carregamento
+
+Para usuários admin ou logística:
+
+* manter comportamento atual.
+
+Importante:
+GETs continuam permitidos, então as páginas podem continuar visíveis para consulta.
+Não esconder lista de viagens/motoristas/veículos/docas, apenas ações de escrita.
+
+5. Não alterar nesta fase
+
+* Back-end
+* Banco
+* Migration
+* Seed
+* Endpoints
+* Payloads
+* permissions/role_permissions
+* Fluxos de requisições
+* Produtos
+* Kits
+* Estoque
+* Movimentações
+* Devoluções
+* Relatórios
+* Lógica de aprovação
+* Layout/redesign amplo
+
+6. UX de acesso negado
+   Se criar uma tela/mensagem de acesso negado:
+
+* usar componente simples e consistente com shadcn
+* mensagem clara: "Você não tem permissão para acessar esta área."
+* opção de voltar ao dashboard
+* não fazer redesign
+
+7. Validações obrigatórias
+   Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Admin:
+
+* Sidebar mostra áreas administrativas.
+* Acessa /config/users e /config/roles.
+* Vê botões de criar/editar logística.
+* Consegue abrir telas de trips, drivers, vehicles, docks normalmente.
+
+Usuário com role Gestor Logistica:
+
+* Não vê menus administrativos admin-only.
+* Não acessa /config/users ou /config/roles pela URL direta.
+* Vê ações de logística:
+
+  * criar/editar viagem
+  * criar/editar motorista
+  * upload CNH
+  * criar veículo
+  * criar doca
+* Continua vendo listas operacionais.
+
+Usuário comum sem logística:
+
+* Não vê menus administrativos.
+* Não vê botões de criar/editar logística.
+* Continua conseguindo visualizar listas que o back permite via GET.
+* Não recebe erro visual quebrado.
+
+Anônimo:
+
+* Continua sendo redirecionado para login nas rotas protegidas.
+
+8. Documentação
+   Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.3.1
+* replit.md com bullet curto
+
+Registrar:
+
+* helper criado no front
+* rotas/telas com restrição visual
+* botões ocultados/desabilitados
+* testes executados
+* limitações conhecidas
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não implementar novos papéis.
+* Não consumir permissions/role_permissions.
+* Não criar any/as any.
+* Não fazer redesign.
+* Não esconder páginas de leitura operacional que continuam permitidas no back.
+
+Entrega final:
+Liste:
+
+* Arquivos criados.
+* Arquivos alterados.
+* Helper de RBAC criado no front.
+* Menus administrativos ocultados para não-admin.
+* Rotas protegidas visualmente por role.
+* Botões/actions de logística ocultados ou desabilitados.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que back-end, banco, seed, endpoints e payloads não foram alterados.

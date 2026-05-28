@@ -8,8 +8,18 @@ import { User, InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Auth payload returned by `GET /api/user`: base user (sans password) plus
+ * the role names from `user_roles` and a server-computed `isAdmin` flag.
+ * See server/auth.ts.
+ */
+export type AuthUser = Omit<User, "password"> & {
+  roles: string[];
+  isAdmin: boolean;
+};
+
 type AuthContextType = {
-  user: Omit<User, "password"> | null;
+  user: AuthUser | null;
   isLoading: boolean;
   error: Error | null;
   loginMutation: UseMutationResult<Omit<User, "password">, Error, LoginData>;
@@ -28,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-  } = useQuery<Omit<User, "password"> | undefined, Error>({
+  } = useQuery<AuthUser | undefined, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
