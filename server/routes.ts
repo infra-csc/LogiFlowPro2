@@ -1373,7 +1373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check if loading order can be edited
-  app.get("/api/loading-orders/:id/can-edit", async (req, res) => {
+  app.get("/api/loading-orders/:id/can-edit", requireAuth, async (req, res) => {
     try {
       const order = await storage.getLoadingOrder(req.params.id);
       if (!order) {

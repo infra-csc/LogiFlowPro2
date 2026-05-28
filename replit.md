@@ -9,8 +9,9 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (2025-11-01)
 - **Ownership-Based Permissions (Phase 1)**: Implemented resource ownership control where only the creator (or admins) can edit/delete resources. Converted requestedBy/createdBy fields from text to FK references to users.id. Created server/ownership.ts with canEditResource/canDeleteResource utilities that check admin role OR resource ownership. Updated all POST routes to auto-populate creator from authenticated user. Added ownership checks to PATCH/DELETE routes for requests, trips, loading orders, and movements. Updated frontend request-details page to show/hide edit/delete buttons based on ownership verification.
 
-## Security Fixes (2026-05-28) — Fase 1.1 Lote A
-- **Proteção de leitura nas rotas GET internas**: aplicado `requireAuth` em 46 rotas GET que estavam públicas. Cobertura: dashboard, eventos, kits, fornecedores, produtos, requisições, veículos, motoristas, docas, viagens, ordens de carregamento (exceto `can-edit`, reservado para Lote B), movimentações, devoluções, usuários (todas as 4 declarações duplicadas de `/api/users` agora protegidas), papéis, permissões, otimizações e relatórios de simulação. `/api/user` mantido inalterado (Passport interno). Login/register/forgot-password/reset-password seguem públicas.
+## Security Fixes (2026-05-28) — Fase 1.1 Lote A + B
+- **Lote A — Proteção de leitura nas rotas GET internas**: aplicado `requireAuth` em 46 rotas GET que estavam públicas. Cobertura: dashboard, eventos, kits, fornecedores, produtos, requisições, veículos, motoristas, docas, viagens, ordens de carregamento, movimentações, devoluções, usuários (todas as 4 declarações duplicadas de `/api/users` agora protegidas), papéis, permissões, otimizações e relatórios de simulação. `/api/user` mantido inalterado (Passport interno). Login/register/forgot-password/reset-password seguem públicas.
+- **Lote B — `GET /api/loading-orders/:id/can-edit`**: protegido com `requireAuth`. Última rota GET interna que ainda estava pública agora exige sessão.
 - Sem alterações em banco, payloads, regras de negócio ou front-end.
 
 ## Security Fixes (2026-05-27)
