@@ -49,7 +49,8 @@ import {
 } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { checkOwnership, canEditResource, isAdmin, requireAuth } from "./ownership";
-import { requireAdmin } from "./authz";
+import { requireAdmin, requireAnyRole } from "./authz";
+import { ROLES } from "@shared/roles";
 
 // Legacy function - now replaced by POST /api/permissions/populate endpoint
 // Keeping minimal initialization for backward compatibility
@@ -905,15 +906,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/vehicles", requireAuth, async (req, res) => {
-    try {
-      const data = insertVehicleSchema.parse(req.body);
-      const vehicle = await storage.createVehicle(data);
-      res.status(201).json(vehicle);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid vehicle data" });
+  app.post(
+    "/api/vehicles",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem cadastrar veículos",
+    }),
+    async (req, res) => {
+      try {
+        const data = insertVehicleSchema.parse(req.body);
+        const vehicle = await storage.createVehicle(data);
+        res.status(201).json(vehicle);
+      } catch (error) {
+        res.status(400).json({ error: "Invalid vehicle data" });
+      }
     }
-  });
+  );
 
   // Drivers
   app.get("/api/drivers", requireAuth, async (req, res) => {
@@ -925,7 +932,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/drivers", requireAuth, async (req, res) => {
+  app.post(
+    "/api/drivers",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem cadastrar motoristas",
+    }),
+    async (req, res) => {
     try {
       const data = insertDriverSchema.parse(req.body);
       const driver = await storage.createDriver(data);
@@ -940,7 +952,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/drivers/:id", requireAuth, async (req, res) => {
+  app.patch(
+    "/api/drivers/:id",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem editar motoristas",
+    }),
+    async (req, res) => {
     try {
       const data = insertDriverSchema.partial().parse(req.body);
       const driver = await storage.updateDriver(req.params.id, data);
@@ -970,7 +987,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Upload CNH image
-  app.post("/api/drivers/:id/cnh-upload", requireAuth, upload.single("file"), async (req, res) => {
+  app.post(
+    "/api/drivers/:id/cnh-upload",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem enviar CNH",
+    }),
+    upload.single("file"),
+    async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
@@ -1004,15 +1027,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/docks", requireAuth, async (req, res) => {
-    try {
-      const data = insertDockSchema.parse(req.body);
-      const dock = await storage.createDock(data);
-      res.status(201).json(dock);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid dock data" });
+  app.post(
+    "/api/docks",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem cadastrar docas",
+    }),
+    async (req, res) => {
+      try {
+        const data = insertDockSchema.parse(req.body);
+        const dock = await storage.createDock(data);
+        res.status(201).json(dock);
+      } catch (error) {
+        res.status(400).json({ error: "Invalid dock data" });
+      }
     }
-  });
+  );
 
   // Trips
   app.get("/api/trips", requireAuth, async (req, res) => {
@@ -1036,12 +1065,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/trips", async (req, res) => {
+  app.post(
+    "/api/trips",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem criar viagens",
+    }),
+    async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-
       const { destinations, ...tripData } = req.body;
       const data = insertTripSchema.parse(tripData);
       
@@ -1071,12 +1101,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/trips/:id", async (req, res) => {
+  app.patch(
+    "/api/trips/:id",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem editar viagens",
+    }),
+    async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-
       // Get the current trip to check ownership
       const currentTrip = await storage.getTrip(req.params.id);
       if (!currentTrip) {
@@ -1119,7 +1150,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/trips/bulk", requireAuth, async (req, res) => {
+  app.post(
+    "/api/trips/bulk",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem importar viagens em massa",
+    }),
+    async (req, res) => {
     try {
       const { trips: tripsData } = req.body;
       
@@ -1291,7 +1327,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loading-orders/:id/trips", requireAuth, async (req, res) => {
+  app.post(
+    "/api/loading-orders/:id/trips",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem vincular viagens à ordem de carregamento",
+    }),
+    async (req, res) => {
     try {
       const loadingOrderId = req.params.id;
       const { tripId } = req.body;
@@ -1308,7 +1349,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/loading-orders/:id/trips", requireAuth, async (req, res) => {
+  app.delete(
+    "/api/loading-orders/:id/trips",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem desvincular viagens da ordem de carregamento",
+    }),
+    async (req, res) => {
     try {
       await storage.deleteLoadingOrderTrips(req.params.id);
       res.status(204).send();

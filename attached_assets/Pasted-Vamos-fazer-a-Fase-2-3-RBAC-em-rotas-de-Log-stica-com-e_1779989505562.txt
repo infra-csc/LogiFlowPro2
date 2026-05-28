@@ -1,0 +1,251 @@
+Vamos fazer a Fase 2.3 — RBAC em rotas de Logística, com escopo controlado.
+
+Objetivo:
+Aplicar autorização por papel nas rotas operacionais de logística, permitindo acesso de escrita apenas para Admin ou usuários com papel de Logística, sem alterar banco, seed ou nomes reais das roles.
+
+Contexto:
+A Fase 2.1 criou a infraestrutura de RBAC:
+
+* shared/roles.ts
+* server/authz.ts
+* requireRole
+* requireAnyRole
+* requireAdmin
+* normalização de admin/adm
+
+A Fase 2.2 aplicou requireAdmin em rotas administrativas/configuração.
+
+A Fase 2.2.1 corrigiu a regressão de @mention com:
+
+* GET /api/users/mention-lookup
+* requireAuth
+* payload mínimo id, username, name
+
+Agora vamos proteger as rotas de Logística.
+
+Importante:
+Hoje o banco possui a role real:
+
+* "Gestor Logistica"
+
+Mas a chave canônica recomendada é:
+
+* "logistica"
+
+Nesta fase, NÃO renomear a role no banco. Apenas criar alias/normalização no código.
+
+Decisões aprovadas:
+
+1. Não alterar banco.
+2. Não criar migration.
+3. Não alterar seed.
+4. Não renomear "Gestor Logistica".
+5. Não criar roles novas.
+6. "Gestor Logistica" deve ser reconhecido como papel canônico "logistica".
+7. Admin continua tendo override.
+8. Não usar permissions/role_permissions no runtime.
+9. Não mexer em sidebar ou ProtectedRoute.
+10. Não mexer em requisições, produtos, kits, estoque, movimentações, devoluções ou relatórios.
+
+Escopo permitido:
+
+1. Atualizar shared/roles.ts
+   Adicionar constantes e aliases necessários:
+
+* ROLES.LOGISTICA = "logistica"
+
+A função de normalização/rolesMatch deve reconhecer como equivalentes:
+
+* "logistica"
+* "logística"
+* "gestor logistica"
+* "gestor logística"
+* "Gestor Logistica"
+
+Manter:
+
+* admin ↔ adm funcionando como antes
+
+Não quebrar:
+
+* isAdminRoleName
+* requireAdmin
+* rolesMatch existente
+
+2. Aplicar requireAnyRole em rotas de logística
+   Usar:
+
+* requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], { message: "Apenas administradores ou logística podem ..." })
+
+Aplicar somente em rotas de escrita relacionadas a Logística:
+
+Viagens:
+
+* POST /api/trips
+* PATCH /api/trips/:id
+* POST /api/trips/bulk
+
+Motoristas:
+
+* POST /api/drivers
+* PATCH /api/drivers/:id
+* POST /api/drivers/:id/cnh-upload
+
+Veículos:
+
+* POST /api/vehicles
+* PATCH /api/vehicles/:id, se existir
+
+Docas:
+
+* POST /api/docks
+* PATCH /api/docks/:id, se existir
+* DELETE /api/docks/:id, se existir e se hoje já for permitido
+
+Ordens de carregamento — apenas vínculos logísticos:
+
+* POST /api/loading-orders/:id/trips
+* DELETE /api/loading-orders/:id/trips
+
+Não aplicar ainda em:
+
+* POST /api/loading-orders
+* PATCH /api/loading-orders/:id
+* POST /api/loading-orders/:id/items
+* aprovação/disapprove/mark-ready de ordens
+* movimentações
+* devoluções
+
+Essas rotas ficam para fase posterior porque misturam logística, almoxarifado e aprovação.
+
+3. Preservar regras existentes
+   Onde já existir ownership/canEditResource, manter a regra existente além do novo papel.
+
+Exemplo desejado:
+
+* primeiro requireAuth/requireAnyRole
+* depois regra atual de ownership, se ela já existir
+
+Não remover:
+
+* canEditResource
+* validações de status
+* validações de payload
+* regras de createdBy
+* regras de CNH/upload
+* regras de viagens
+
+4. GETs continuam apenas autenticados
+   Não aplicar role em GETs nesta fase.
+
+Manter como requireAuth:
+
+* GET /api/trips
+* GET /api/trips/:id
+* GET /api/drivers
+* GET /api/vehicles
+* GET /api/docks
+* GET /api/loading-orders/:id/trips
+
+Motivo:
+A leitura operacional ainda será tratada com mais cuidado depois. Agora estamos protegendo escrita.
+
+5. Não alterar front-end
+   Não mexer em:
+
+* app-sidebar.tsx
+* protected-route.tsx
+* botões de tela
+* menus
+* layout
+
+Nesta fase, o back-end será a barreira real. O ajuste visual vem depois.
+
+6. Testes obrigatórios
+   Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Anônimo:
+
+* POST /api/trips → 401
+* POST /api/drivers → 401
+* POST /api/vehicles → 401
+* POST /api/docks → 401
+
+Admin:
+
+* POST/PATCH de logística continuam permitidos
+* DELETE /api/drivers/:id continua permitido apenas para admin
+* GET /api/user continua isAdmin:true
+
+Usuário com role "Gestor Logistica":
+
+* GET /api/user deve continuar isAdmin:false
+* POST /api/trips deve ser permitido
+* PATCH /api/trips/:id deve ser permitido se a regra de ownership atual permitir
+* POST /api/drivers deve ser permitido
+* PATCH /api/drivers/:id deve ser permitido
+* POST /api/drivers/:id/cnh-upload deve ser permitido se for seguro testar
+* POST /api/vehicles deve ser permitido
+* POST /api/docks deve ser permitido
+* DELETE /api/drivers/:id deve continuar 403, pois delete de motorista segue admin-only
+
+Usuário sem role logística:
+
+* POST /api/trips → 403
+* POST /api/drivers → 403
+* POST /api/vehicles → 403
+* POST /api/docks → 403
+
+Importante sobre testes:
+Não alterar senha de usuário real para smoke test.
+Se não houver usuário seguro com role "Gestor Logistica" e credencial conhecida, informe a limitação. Não mexa em senha real.
+
+7. Documentação
+   Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.3
+* replit.md com bullet curto
+
+Registrar:
+
+* objetivo
+* aliases criados
+* rotas protegidas
+* rotas analisadas e não alteradas
+* resultado dos testes
+* limitações de smoke, se houver
+
+Regras obrigatórias:
+
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não renomear roles.
+* Não criar roles novas.
+* Não consumir permissions/role_permissions.
+* Não alterar front-end.
+* Não alterar payloads.
+* Não alterar endpoints.
+* Não mexer em módulos fora de logística.
+* Não refatorar routes.ts inteiro.
+* Não criar any/as any.
+* Não remover regras de ownership existentes.
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Alias/canonização criada para Logística.
+* Rotas que receberam requireAnyRole([admin, logistica]).
+* Rotas analisadas e não alteradas.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que "Gestor Logistica" foi reconhecido como "logistica".
+* Confirmação de que DELETE /api/drivers/:id continua admin-only.
+* Confirmação de que front-end, banco, seed e permissions/role_permissions não foram alterados.

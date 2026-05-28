@@ -15,14 +15,26 @@
 
 export const ROLES = {
   ADMIN: "admin",
+  LOGISTICA: "logistica",
 } as const;
 
 /**
  * Legacy aliases recognized as equivalent to a canonical role.
  * Comparison is always case-insensitive after `normalizeRoleName`.
+ *
+ * Logística: the live seed names this role "Gestor Logistica" (pt-BR,
+ * no accent). We canonicalize as "logistica" in code and accept the
+ * accented variant and the "Gestor ..." prefix as equivalents so the
+ * seed is not renamed.
  */
 const ROLE_ALIASES: Record<string, readonly string[]> = {
   [ROLES.ADMIN]: ["admin", "adm"],
+  [ROLES.LOGISTICA]: [
+    "logistica",
+    "logística",
+    "gestor logistica",
+    "gestor logística",
+  ],
 };
 
 /**

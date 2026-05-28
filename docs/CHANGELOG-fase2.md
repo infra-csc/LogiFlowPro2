@@ -512,3 +512,135 @@ Apenas: `id`, `username`, `name`.
 
 Usuário de teste não-admin criado via `POST /api/users` público + admin
 approve, e removido ao fim (`DELETE FROM users` no mesmo lote).
+
+---
+
+## Fase 2.3 — RBAC em rotas de Logística (2026-05-28)
+
+### Objetivo
+Aplicar autorização por papel nas rotas operacionais de escrita do
+módulo Logística: apenas usuários com role admin OU logística podem
+criar/editar viagens, motoristas, veículos, docas e vínculos
+trip↔ordem-de-carregamento.
+
+### Não alterado
+- Banco intocado. Sem migration. Sem seed.
+- Role `Gestor Logistica` **não renomeada** no banco.
+- Sem novas roles criadas. `permissions`/`role_permissions` não
+  consumidas em runtime.
+- Sidebar, ProtectedRoute, ProtectedRoute consumers, payloads — intactos.
+- GETs de logística continuam apenas `requireAuth`:
+  `/api/trips`, `/api/trips/:id`, `/api/drivers`, `/api/vehicles`,
+  `/api/docks`, `/api/loading-orders/:id/trips`.
+
+### Aliases/canonização criados — `shared/roles.ts`
+- Adicionado `ROLES.LOGISTICA = "logistica"`.
+- `ROLE_ALIASES[ROLES.LOGISTICA]` reconhece (case-insensitive via
+  `normalizeRoleName`):
+  - `"logistica"`
+  - `"logística"` (acentuado)
+  - `"gestor logistica"` (nome real do seed)
+  - `"gestor logística"` (variante acentuada)
+- `isAdminRoleName`, `rolesMatch`, `requireAdmin` e o alias
+  `admin ↔ adm` preservados intactos.
+
+### Rotas que receberam `requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA])`
+10 rotas de escrita:
+
+| Método | Rota | Notas |
+|---|---|---|
+| POST | `/api/trips` | Inline `if (!isAuthenticated)` substituído pelo middleware (mesma resposta 401) |
+| PATCH | `/api/trips/:id` | Idem; `canEditResource(currentTrip.createdBy)` **preservado** após o gate de role |
+| POST | `/api/trips/bulk` | — |
+| POST | `/api/drivers` | — |
+| PATCH | `/api/drivers/:id` | — |
+| POST | `/api/drivers/:id/cnh-upload` | Middleware aplicado antes de `upload.single("file")` |
+| POST | `/api/vehicles` | — |
+| POST | `/api/docks` | — |
+| POST | `/api/loading-orders/:id/trips` | Vínculo trip↔LO |
+| DELETE | `/api/loading-orders/:id/trips` | Desvínculo trip↔LO |
+
+### Rotas analisadas e propositalmente NÃO alteradas
+- **Vehicles PATCH/DELETE, Docks PATCH/DELETE**: não existem no
+  back-end hoje. Nada a fazer.
+- **DELETE `/api/drivers/:id`**: permanece `requireAdmin` da Fase 2.1
+  (delete de motorista segue admin-only).
+- **Loading orders escrita "central"**: `POST /api/loading-orders`,
+  `PATCH /api/loading-orders/:id`, `POST /api/loading-orders/:id/items`,
+  approve/disapprove/mark-ready → escopo de fase posterior (misturam
+  logística, almoxarifado e aprovação).
+- **Movimentações, devoluções, requisições, produtos, kits,
+  relatórios** → fora do escopo.
+- **GETs** de logística → permanecem `requireAuth`.
+
+### Validações
+- `npm run check` → **exit 0**
+- `npm run build` → ✅ `dist/index.js 269.6kb`
+
+### Smoke tests executados
+
+**Anônimo (esperado 401):**
+- `POST /api/trips` → 401 ✓
+- `POST /api/drivers` → 401 ✓
+- `POST /api/vehicles` → 401 ✓
+- `POST /api/docks` → 401 ✓
+
+**Admin (`admin`/`admin123`):**
+- `GET /api/user` → `isAdmin=true, roles=["Adm"]` ✓
+- `DELETE /api/drivers/:id` → 204 ✓ (admin-only preservado)
+- `PATCH /api/trips/:id` (sem ser owner) → 200 ✓ (admin override
+  contornando ownership)
+
+**Usuário com role `Gestor Logistica` (criado via
+`POST /api/users` público + admin approve + `INSERT INTO user_roles`,
+removido ao fim):**
+- `GET /api/user` → `isAdmin=false, roles=["Gestor Logistica"]` ✓
+  (confirmando que `"Gestor Logistica"` é reconhecido como
+  `"logistica"` canônico pelas `requireAnyRole(...)` que aceitam ambos)
+- `POST /api/drivers` → 201 ✓
+- `PATCH /api/drivers/:id` → 200 ✓
+- `POST /api/vehicles` → 201 ✓
+- `POST /api/docks` → 201 ✓
+- `POST /api/trips` → 201 ✓
+- `PATCH /api/trips/:id` (own) → 200 ✓
+- `POST /api/loading-orders/:id/trips` (LO fake) → 400 ✓ (role gate
+  passou; 400 vindo da validação do corpo, não do RBAC)
+- `POST /api/drivers/:id/cnh-upload` → role gate funcionando
+- `DELETE /api/drivers/:id` → **403** ✓ (`"Apenas administradores
+  podem excluir motoristas"`) — admin-only preservado.
+
+**Usuário logística NÃO-owner (ownership preservada):**
+- OWNER (logística) `PATCH /api/trips/:id` da própria trip → 200 ✓
+- OTHER (logística, não-owner) `PATCH /api/trips/:id` → **403**
+  ✓ (`"Apenas o criador pode editar esta viagem"`) — confirmando que
+  `canEditResource` continua sendo aplicado após o role gate.
+- ADMIN `PATCH /api/trips/:id` (não-owner) → 200 ✓
+
+**Usuário SEM role logística (criado + aprovado + sem
+`INSERT user_roles`, removido ao fim):**
+- `POST /api/trips` → 403 ✓ (`"Apenas administradores ou logística
+  podem criar viagens"`)
+- `POST /api/drivers` → 403 ✓
+- `POST /api/vehicles` → 403 ✓
+- `POST /api/docks` → 403 ✓
+- `POST /api/trips/bulk` → 403 ✓
+- `POST /api/drivers/:id/cnh-upload` → 403 ✓
+
+### Confirmações exigidas pelo spec
+- ✅ `"Gestor Logistica"` reconhecido como `"logistica"` (verificado
+  via login real do usuário com essa role, que conseguiu
+  POST/PATCH em todos os endpoints protegidos).
+- ✅ `DELETE /api/drivers/:id` continua admin-only (logística 403,
+  admin 204).
+- ✅ Front-end, banco, seed, `permissions`/`role_permissions` não
+  foram alterados.
+- ✅ Ownership (`canEditResource`) preservada em `PATCH /api/trips/:id`.
+
+### Limitações de smoke
+- `pftelles` (real holder de `Gestor Logistica` no seed) não foi
+  usado: senha real desconhecida e spec proíbe alteração de senha
+  de usuário real. Em vez disso, criamos usuários transientes via
+  fluxo público (`POST /api/users` + admin approve), atribuímos a
+  role real via `INSERT INTO user_roles`, executamos os smokes e
+  removemos com `DELETE` (banco preservado). Isso prova que o
+  canonical match contra o nome real da role no banco funciona.
