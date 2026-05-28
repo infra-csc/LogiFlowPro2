@@ -53,8 +53,14 @@ Preferred communication style: Simple, everyday language.
 
 - **2.11** (2026-05-28): fechamento técnico do ciclo RBAC — auditoria final de ~65 rotas de escrita, ~65 GETs, matriz de permissões consolidada, alinhamento front×back verificado (13 helpers, 0 divergências), 6 pendências catalogadas (nenhuma crítica). `npm run check` e `build` zerados. Nenhum código alterado. Fase 2 oficialmente concluída.
 
+### Fase 3 — UI/UX (em andamento)
+
+- **3.0** (2026-05-28): auditoria visual completa — 10 problemas catalogados (P0–P3), 6 telas críticas, 5 componentes para padronizar. Relatório em [`docs/UI_AUDIT_PHASE3.md`](docs/UI_AUDIT_PHASE3.md).
+- **3.0.1** (2026-05-28): Quick Wins de primeira impressão — redirect `/dashboard` → `/` (elimina 404), layout público sem sidebar (`/auth`, `/forgot-password`, `/reset-password`), microcopy EN/PT corrigido em `not-found.tsx`, `protected-route.tsx` e `movement-approvals.tsx`. `npm run check` e `build` zerados. Sem alteração de back-end, banco, endpoints, RBAC ou regras de negócio. Detalhes em [`docs/CHANGELOG-fase3.md`](docs/CHANGELOG-fase3.md).
+
 ### Próximas fases (planejadas)
-- **Fase 3 — UI/Design**: formulário de criação de devolução, melhorias de UX, testes automatizados.
+- **Fase 3.1** — Design System base (PageHeader, Loading, Empty, DataCard, FilterBar).
+- **Fase 3.2 a 3.8** — Movimentações, Loading Orders, Requisições, Catálogo, Devoluções, Admin, Dashboard.
 - **Fases futuras** (roadmap de longo prazo): hierarquia de roles, sistema de auditoria, templates, interface master-detail, dependências automáticas. Roadmap detalhado em [`docs/RBAC-future-guide.md`](docs/RBAC-future-guide.md).
 
 ## System Architecture

@@ -21,7 +21,7 @@ function AccessDenied() {
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline" data-testid="button-back-to-dashboard">
-            <Link href="/">Voltar ao Dashboard</Link>
+            <Link href="/">Voltar ao início</Link>
           </Button>
         </CardContent>
       </Card>

@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -50,9 +51,24 @@ import MovementTypesConfig from "@/pages/movement-types-config";
 import MovementApprovals from "@/pages/movement-approvals";
 import InventoryViews from "@/pages/inventory-views";
 
+const PUBLIC_ROUTES = ["/auth", "/forgot-password", "/reset-password"];
+
+function isPublicRoute(path: string): boolean {
+  return PUBLIC_ROUTES.some((r) => path === r || path.startsWith(r + "/"));
+}
+
+function DashboardRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation("/");
+  }, [setLocation]);
+  return null;
+}
+
 function Router() {
   return (
     <Switch>
+      <Route path="/dashboard" component={DashboardRedirect} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
@@ -97,34 +113,44 @@ function Router() {
   );
 }
 
-export default function App() {
+function AppLayout() {
+  const [location] = useLocation();
+  const publicRoute = isPublicRoute(location);
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
   return (
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        {!publicRoute && <AppSidebar />}
+        <div className={`flex flex-col flex-1 overflow-hidden ${publicRoute ? "" : ""}`}>
+          {!publicRoute && (
+            <header className="flex items-center justify-between p-4 border-b border-border bg-card">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <div className="text-sm text-muted-foreground">
+                Gestão de Logística de Eventos
+              </div>
+              <NotificationBell />
+            </header>
+          )}
+          <main className="flex-1 overflow-y-auto bg-background">
+            <Router />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+export default function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
         <AuthProvider>
           <TooltipProvider>
-            <SidebarProvider style={style as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <header className="flex items-center justify-between p-4 border-b border-border bg-card">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
-                    <div className="text-sm text-muted-foreground">
-                      Gestão de Logística de Eventos
-                    </div>
-                    <NotificationBell />
-                  </header>
-                  <main className="flex-1 overflow-y-auto bg-background">
-                    <Router />
-                  </main>
-                </div>
-              </div>
-            </SidebarProvider>
+            <AppLayout />
             <Toaster />
           </TooltipProvider>
         </AuthProvider>

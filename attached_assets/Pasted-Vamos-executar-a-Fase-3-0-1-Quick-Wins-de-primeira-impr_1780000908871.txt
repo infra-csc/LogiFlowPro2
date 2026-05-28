@@ -1,0 +1,133 @@
+Vamos executar a Fase 3.0.1 — Quick Wins de primeira impressão e layout público.
+
+Objetivo:
+Corrigir problemas visuais P0 encontrados na auditoria da Fase 3 sem alterar regra de negócio, RBAC, endpoints, payloads ou banco.
+
+Contexto:
+A auditoria visual da Fase 3 identificou como problemas P0:
+- Dashboard retorna 404.
+- Login aparece dentro do layout com sidebar.
+- Microcopy EN/PT misturado em telas de erro, como “404 Page Not Found” e “Back to Dashboard”.
+
+Antes de criar o Design System base da Fase 3.1, quero corrigir esses pontos de primeira impressão.
+
+Escopo permitido:
+
+1. Corrigir rota /dashboard
+
+Opções aceitáveis:
+- Redirecionar /dashboard para /, se / já for a tela inicial real do app.
+ou
+- Criar uma página Dashboard simples usando dados já existentes, sem criar endpoint novo.
+
+Preferência:
+- Se já existir rota inicial funcional em /, fazer redirect /dashboard → /.
+- Não criar endpoint novo.
+- Não inventar cards ou métricas fictícias.
+
+Regras:
+- Não alterar autenticação.
+- Não alterar ProtectedRoute se não for necessário.
+- Não alterar back-end.
+- Não alterar payloads.
+- Não criar dashboard complexo nesta fase.
+- Apenas eliminar o 404.
+
+2. Criar/ajustar layout público de autenticação
+
+Rotas públicas:
+- /auth
+- /forgot-password
+- /reset-password
+
+Objetivo:
+Essas páginas não devem aparecer dentro do layout interno com sidebar.
+
+Implementar ou ajustar:
+- AuthLayout fullscreen.
+- Sem sidebar.
+- Sem navegação interna.
+- Visual limpo, centralizado e profissional.
+- Manter paleta atual do sistema.
+- Manter formulários e lógica existentes.
+- Não alterar payloads de login/reset.
+- Não alterar chamadas de API.
+- Não alterar regras de autenticação.
+
+3. Corrigir microcopy EN/PT em telas de erro
+
+Trocar textos genéricos em inglês, se existirem:
+
+- “404 Page Not Found” → “Página não encontrada”
+- “Back to Dashboard” → “Voltar ao início” ou “Voltar para o início”
+
+Manter tom profissional e simples.
+
+4. Não alterar nesta fase
+
+Não mexer em:
+- back-end
+- banco
+- seed
+- migrations
+- schema
+- endpoints
+- payloads
+- RBAC
+- permissions/role_permissions
+- sidebar interna, exceto garantir que não apareça nas rotas públicas
+- módulos de Movimentações
+- Loading Orders
+- Requisições
+- Produtos
+- Kits
+- Fornecedores
+- Devoluções
+- criação de Devoluções
+- Design System base completo
+- PageHeader, DataCard, FilterBar, EmptyState, StatusBadge
+- dashboard analítico complexo
+
+5. Validações obrigatórias
+
+Rodar:
+- npm run check
+- npm run build
+
+Smoke visual/manual:
+
+Anônimo:
+- /auth abre sem sidebar.
+- /forgot-password abre sem sidebar.
+- /reset-password abre sem sidebar.
+- /dashboard não mostra 404.
+- rota inexistente mostra texto em português.
+
+Usuário logado:
+- /dashboard não mostra 404.
+- navegação interna continua funcionando.
+- sidebar continua aparecendo nas rotas internas.
+- login/reset continuam funcionando como antes.
+
+6. Documentação
+
+Atualizar:
+- docs/CHANGELOG-fase3.md, criando o arquivo se ainda não existir.
+- replit.md com bullet curto da Fase 3.0.1.
+
+Registrar:
+- problemas corrigidos.
+- decisão tomada para /dashboard.
+- rotas públicas ajustadas.
+- confirmação de que não houve alteração de regra de negócio.
+
+Entrega final:
+Liste:
+- Arquivos alterados.
+- Como /dashboard foi corrigido.
+- Como o layout de auth foi ajustado.
+- Textos EN/PT corrigidos.
+- Resultado de npm run check.
+- Resultado de npm run build.
+- Smoke tests executados.
+- Confirmação de que back-end, banco, RBAC, endpoints e payloads não foram alterados.
