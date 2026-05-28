@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link, useLocation } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
 import type { Notification } from "@shared/schema";
 
 interface DashboardStats {
@@ -75,14 +77,7 @@ export default function Dashboard() {
   };
 
   if (statsLoading || eventsLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando dashboard...</p>
-        </div>
-      </div>
-    );
+    return <PageLoading message="Carregando dashboard..." />;
   }
 
   const statCards = [
@@ -122,10 +117,10 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Dashboard de Operações</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monitore eventos, estoque e operações logísticas</p>
-      </div>
+      <PageHeader
+        title="Dashboard de Operações"
+        description="Monitore eventos, estoque e operações logísticas"
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (

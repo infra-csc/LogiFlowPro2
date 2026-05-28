@@ -42,6 +42,20 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   in_repair: { color: "bg-chart-5 text-white", label: "Em Reparo" },
   unusable: { color: "bg-muted text-muted-foreground", label: "Inutilizável" },
   lost: { color: "bg-destructive text-destructive-foreground", label: "Perdido" },
+
+  // Movement statuses
+  created: { color: "bg-muted text-muted-foreground", label: "Criado" },
+  paused: { color: "bg-chart-5 text-white", label: "Pausado" },
+  disapproved: { color: "bg-destructive text-destructive-foreground", label: "Desaprovado" },
+
+  // User approval statuses
+  active: { color: "bg-chart-4 text-white", label: "Ativo" },
+  inactive: { color: "bg-muted text-muted-foreground", label: "Inativo" },
+
+  // Return statuses (passive module)
+  return_ok: { color: "bg-chart-4 text-white", label: "OK" },
+  return_damaged: { color: "bg-chart-5 text-white", label: "Com Avaria" },
+  return_lost: { color: "bg-destructive text-destructive-foreground", label: "Com Perda" },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

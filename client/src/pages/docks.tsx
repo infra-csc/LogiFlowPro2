@@ -16,6 +16,9 @@ import { insertDockSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
 import type { z } from "zod";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 type InsertDock = z.infer<typeof insertDockSchema>;
 
@@ -64,16 +67,10 @@ export default function Docks() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
-            <Warehouse className="h-6 w-6" />
-            Docas
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gerencie as docas de carregamento e descarregamento
-          </p>
-        </div>
+      <PageHeader
+        title="Docas"
+        description="Gerencie as docas de carregamento e descarregamento"
+      >
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           {canWrite && (
             <DialogTrigger asChild>
@@ -168,10 +165,10 @@ export default function Docks() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+        <PageLoading message="Carregando docas..." />
       ) : docks && docks.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {docks.map((dock) => (
@@ -199,14 +196,15 @@ export default function Docks() {
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Warehouse className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
-              Nenhuma doca cadastrada. Crie a primeira doca clicando no botão acima.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="Nenhuma doca cadastrada"
+          description="Crie a primeira doca clicando no botão acima."
+          icon={Warehouse}
+          action={canWrite ? {
+            label: "Nova Doca",
+            onClick: () => setIsCreateOpen(true),
+          } : undefined}
+        />
       )}
     </div>
   );

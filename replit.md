@@ -57,6 +57,7 @@ Preferred communication style: Simple, everyday language.
 
 - **3.0** (2026-05-28): auditoria visual completa — 10 problemas catalogados (P0–P3), 6 telas críticas, 5 componentes para padronizar. Relatório em [`docs/UI_AUDIT_PHASE3.md`](docs/UI_AUDIT_PHASE3.md).
 - **3.0.1** (2026-05-28): Quick Wins de primeira impressão — redirect `/dashboard` → `/` (elimina 404), layout público sem sidebar (`/auth`, `/forgot-password`, `/reset-password`), microcopy EN/PT corrigido em `not-found.tsx`, `protected-route.tsx` e `movement-approvals.tsx`. `npm run check` e `build` zerados. Sem alteração de back-end, banco, endpoints, RBAC ou regras de negócio. Detalhes em [`docs/CHANGELOG-fase3.md`](docs/CHANGELOG-fase3.md).
+- **3.1** (2026-05-28): Design System Base — 10 componentes criados (PageHeader, PageSection, EmptyState, PageLoading, ErrorState, FilterBar, DataCard, ActionBar, PermissionHint, StatusBadge expandido). Aplicados em `not-found`, `protected-route`, `dashboard`, `docks` (piloto). `npm run check` e `build` zerados. Sem alteração de back-end, banco, endpoints, RBAC ou regras de negócio. Detalhes em [`docs/CHANGELOG-fase3.md`](docs/CHANGELOG-fase3.md).
 
 ### Próximas fases (planejadas)
 - **Fase 3.1** — Design System base (PageHeader, Loading, Empty, DataCard, FilterBar).

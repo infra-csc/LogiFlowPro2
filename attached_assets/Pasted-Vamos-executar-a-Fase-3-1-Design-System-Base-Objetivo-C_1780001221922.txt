@@ -1,0 +1,187 @@
+Vamos executar a Fase 3.1 — Design System Base.
+
+Objetivo:
+Criar uma base visual consistente para o sistema, padronizando componentes reutilizáveis de layout, estados, filtros, cards e badges, sem alterar regra de negócio, RBAC, endpoints, payloads ou banco.
+
+Contexto:
+A Fase 3.0.1 foi concluída:
+
+* /dashboard não retorna mais 404.
+* /auth, /forgot-password e /reset-password agora usam layout público sem sidebar.
+* Microcopy EN/PT foi corrigido.
+* check/build passaram.
+* Nenhuma regra de negócio, RBAC, endpoint ou payload foi alterado.
+
+Agora vamos criar a base visual para evoluir o app de forma consistente.
+
+Escopo permitido:
+
+1. Criar ou padronizar componentes base de UI
+
+Criar, se ainda não existirem, componentes reutilizáveis como:
+
+* PageHeader
+* PageSection
+* EmptyState
+* PageLoading ou LoadingState
+* ErrorState
+* FilterBar
+* DataCard
+* StatusBadge
+* ActionBar
+* PermissionHint, se fizer sentido para telas sem ação por perfil
+
+Os componentes devem:
+
+* usar a paleta atual do sistema;
+* respeitar light/dark mode, se o app já tiver suporte;
+* seguir o padrão visual já usado no projeto;
+* ser genéricos e reutilizáveis;
+* não conter regra de negócio específica;
+* não fazer chamadas de API;
+* não depender de um módulo específico;
+* ser bem tipados, sem any/as any.
+
+2. Padronizar badges de status
+
+Criar ou ajustar StatusBadge para suportar status usados nos módulos principais, por exemplo:
+
+* draft
+* ready
+* approved
+* disapproved
+* pending_approval
+* in_progress
+* paused
+* completed
+* cancelled
+* rejected
+* active
+* inactive
+
+Regras:
+
+* Não alterar nomes de status no back-end.
+* Não alterar payloads.
+* Apenas mapear visualmente label, cor e tom.
+* Manter labels em português quando exibidos ao usuário.
+
+3. Padronizar empty/loading/error states
+
+Criar padrões para:
+
+* tela sem registros;
+* lista filtrada sem resultado;
+* carregamento de página;
+* erro de carregamento;
+* acesso negado;
+* página não encontrada.
+
+Esses estados devem ter:
+
+* título claro;
+* descrição curta;
+* ação opcional;
+* visual limpo;
+* sem exagero de texto;
+* sem ícones/emojis excessivos.
+
+4. Aplicação inicial controlada
+
+Aplicar os componentes base apenas em telas de baixo risco ou pontos globais, por exemplo:
+
+* not-found.tsx
+* protected-route.tsx, se fizer sentido sem alterar lógica
+* página inicial/dashboard existente, se for seguro
+* uma tela de lista simples como referência piloto, se houver baixo risco
+
+Importante:
+Não aplicar em massa em Movimentações, Loading Orders, Requisições, Produtos, Kits e Fornecedores nesta fase.
+Essas telas serão tratadas nas fases seguintes usando os componentes criados agora.
+
+5. Não alterar nesta fase
+
+Não mexer em:
+
+* back-end;
+* banco;
+* seed;
+* migrations;
+* schema;
+* endpoints;
+* payloads;
+* RBAC;
+* permissions/role_permissions;
+* ProtectedRoute logicamente;
+* sidebar, salvo ajustes mínimos visuais se forem globais e seguros;
+* regras de negócio;
+* queries;
+* mutations;
+* formulários complexos;
+* fluxos de aprovação;
+* Movimentações em profundidade;
+* Loading Orders em profundidade;
+* Requisições em profundidade;
+* Devoluções;
+* criação de novas funcionalidades.
+
+6. Critérios visuais
+
+O resultado deve buscar um padrão mais profissional:
+
+* headers com título, descrição e ação principal bem posicionados;
+* filtros agrupados em área consistente;
+* cards com espaçamento, borda e sombra suaves;
+* badges legíveis e consistentes;
+* botões com hierarquia clara;
+* estados vazios úteis;
+* loading states menos bruscos;
+* mensagens de erro em português;
+* responsividade básica preservada;
+* nada de redesign radical.
+
+7. Validações obrigatórias
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke visual/manual:
+
+* páginas públicas continuam sem sidebar;
+* rotas internas continuam com sidebar;
+* /dashboard continua sem 404;
+* página inexistente continua em português;
+* componentes novos não quebram layout existente;
+* nenhuma permissão visual muda;
+* nenhuma chamada de API muda.
+
+8. Documentação
+
+Atualizar:
+
+* docs/CHANGELOG-fase3.md com Fase 3.1
+* replit.md com bullet curto
+
+Registrar:
+
+* componentes criados;
+* componentes alterados;
+* telas onde foram aplicados;
+* padrões definidos;
+* o que ficou para as próximas fases;
+* confirmação de que não houve alteração funcional.
+
+Entrega final:
+Liste:
+
+* arquivos criados;
+* arquivos alterados;
+* componentes criados/padronizados;
+* telas onde foram aplicados;
+* padrão definido para badges/status;
+* resultado de npm run check;
+* resultado de npm run build;
+* smoke tests executados;
+* confirmação de que back-end, banco, RBAC, endpoints, payloads e regras de negócio não foram alterados.
