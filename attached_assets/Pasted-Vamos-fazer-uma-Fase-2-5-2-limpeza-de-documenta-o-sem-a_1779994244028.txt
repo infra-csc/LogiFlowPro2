@@ -1,0 +1,92 @@
+Vamos fazer uma Fase 2.5.2 — limpeza de documentação, sem alteração funcional.
+
+Objetivo:
+Enxugar o replit.md, mantendo-o legível como documento de estado atual do projeto, e mover o histórico detalhado das fases para os changelogs dedicados.
+
+Contexto:
+As Fases 1.x e 2.x já têm histórico detalhado em:
+
+* docs/CHANGELOG-fase1.md
+* docs/CHANGELOG-fase2.md
+
+O replit.md está crescendo muito com histórico por subfase. Quero que ele volte a ser um documento executivo, com ponteiros para os changelogs.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar front-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não alterar schema.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar permissões.
+* Não criar roles.
+* Não refatorar código.
+* Não alterar package.json.
+* Não alterar CI.
+* Esta fase é somente documentação.
+
+Escopo permitido:
+
+1. Reorganizar o replit.md
+   Manter no replit.md apenas:
+
+* Visão geral do projeto
+* Preferências do usuário, se já existirem
+* Estado atual resumido
+* Arquitetura do sistema
+* Dependências externas
+* Guia atual de papéis/RBAC, em formato resumido
+* Links para:
+
+  * docs/CHANGELOG-fase1.md
+  * docs/CHANGELOG-fase2.md
+
+2. Resumir as Fases 1 e 2
+   No replit.md, deixar algo como:
+
+Fase 1 — Endurecimento da base
+
+* Rotas internas protegidas.
+* TypeScript limpo.
+* Build e CI funcionando.
+* Admin/isAdmin corrigido.
+* Duplicações críticas removidas.
+* Detalhes em docs/CHANGELOG-fase1.md.
+
+Fase 2 — RBAC progressivo
+
+* Infra RBAC criada.
+* Admin/config protegidos.
+* Logística protegida.
+* Catálogo admin-only para escrita.
+* Loading-orders com holes críticos fechados.
+* Detalhes em docs/CHANGELOG-fase2.md.
+
+3. Preservar changelogs
+   Não apagar detalhes dos changelogs.
+   Se o replit.md tiver alguma informação detalhada que ainda não exista nos changelogs, mover para o changelog correto antes de remover do replit.md.
+
+4. Validação
+   Como é documentação, não precisa rodar build por obrigação, mas rode:
+
+* npm run check
+
+Se quiser rodar também:
+
+* npm run build
+
+Não corrigir nada fora de documentação se aparecer algum problema inesperado.
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* O que foi removido/resumido do replit.md.
+* O que foi preservado.
+* Se alguma informação foi movida para docs/CHANGELOG-fase1.md ou docs/CHANGELOG-fase2.md.
+* Resultado de npm run check.
+* Resultado de npm run build, se executado.
+* Confirmação de que não houve alteração funcional.

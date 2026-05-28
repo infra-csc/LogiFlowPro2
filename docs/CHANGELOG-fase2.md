@@ -1139,3 +1139,48 @@ ao final. Usuários transientes deletados.
   found"`, `"Only ready orders can be approved"`, etc.) **não foram
   padronizadas nesta fase** para manter o diff cirúrgico. Padronização
   pt-BR de mensagens internas fica como dívida menor.
+
+---
+
+## Fase 2.5.2 — Limpeza de documentação (2026-05-28)
+
+**Escopo**: somente documentação. Nenhuma alteração funcional.
+
+### Arquivos alterados
+
+- `replit.md` — enxugado de 266 para ~90 linhas. Histórico detalhado por subfase removido (já consolidado nos changelogs). Mantidos: Overview, User Preferences, Estado Atual resumido, Histórico de Fases em formato bullet, System Architecture, External Dependencies, links para os documentos relacionados.
+- `docs/RBAC-future-guide.md` — **novo**. Recebeu a seção "Guia de Implementação Futura: Sistema Avançado de Papéis e Permissões" que estava no final do `replit.md` (roadmap de longo prazo, não estado atual).
+- `docs/CHANGELOG-fase2.md` — esta entrada.
+
+### O que foi removido/resumido do replit.md
+
+- Bloco "Recent Changes (2025-11-01)" sobre Ownership-Based Permissions → já coberto em `CHANGELOG-fase1.md`.
+- Lista detalhada das sub-fases 1, 1.1 a 1.6 (linhas longas por subfase) → substituída por bullet resumido com link para `CHANGELOG-fase1.md`.
+- Lista detalhada das sub-fases 2.0 a 2.5.1 + 2.2.1 (parágrafos extensos) → substituída por bullets curtos por subfase, todos com link para `CHANGELOG-fase2.md`.
+- Seção "Guia de Implementação Futura" (≈ 160 linhas, roadmap de fases 3 a 6 ainda não implementadas) → movida integralmente para `docs/RBAC-future-guide.md`.
+
+### O que foi preservado no replit.md
+
+- Overview do projeto.
+- User Preferences (comunicação simples, pt-BR).
+- Estado Atual resumido (auth, ownership, RBAC, fonte única `isAdmin`, qualidade).
+- Sumário cronológico de Fase 1 e Fase 2 (bullets de uma linha por subfase com link para o changelog).
+- Próximas fases (2.6 + roadmap longo).
+- System Architecture (UI/UX, Tech Implementations, Key Features, Design Choices).
+- External Dependencies.
+- Bloco "Documentos relacionados" com ponteiros.
+
+### Informação movida de replit.md para outros arquivos
+
+- "Guia de Implementação Futura: Sistema Avançado de Papéis e Permissões" → `docs/RBAC-future-guide.md` (preservado integralmente, sem corte). Conteúdo é roadmap futuro, não histórico — por isso foi para um doc próprio em vez de um changelog.
+- Nenhuma informação detalhada de fases anteriores foi perdida: tudo que estava no `replit.md` já existia em `docs/CHANGELOG-fase1.md` ou `docs/CHANGELOG-fase2.md` em forma mais completa.
+
+### Validação
+
+- `npm run check` zerado.
+- `npm run build` não foi executado (mudança é só documentação; build já estava passando na 2.5.1).
+- Sem alterações em back-end, front-end, banco, seed, migration, schema, endpoints, payloads, permissões, roles, refator de código, `package.json`, ou CI.
+
+### Confirmação de não-funcional
+
+Nenhum `.ts`/`.tsx`/`.sql`/`.json` de código foi tocado. `git diff --stat` esperado apenas em `replit.md`, `docs/RBAC-future-guide.md` (novo) e `docs/CHANGELOG-fase2.md`.

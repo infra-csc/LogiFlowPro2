@@ -1,68 +1,46 @@
 # EventFlow Logistics - Event Material Management System
 
 ## Overview
-EventFlow Logistics is a web application designed to streamline event material management, from requisition and inventory tracking to multi-vehicle loading and reverse logistics. It operates under an "event umbrella" model, organizing all material-related activities by event. The system aims to reduce operational overhead, provide real-time visibility, and support various teams including planning, operations, scenography, warehouse, driving, and inventory management. Key capabilities include cutoff deadlines, parametric kit explosion, time-phased inventory projection, and detailed damage/loss tracking for returns. The project's ambition is to optimize event logistics through comprehensive, integrated management.
+EventFlow Logistics is a web application designed to streamline event material management, from requisition and inventory tracking to multi-vehicle loading and reverse logistics. It operates under an "event umbrella" model, organizing all material-related activities by event. The system aims to reduce operational overhead, provide real-time visibility, and support various teams including planning, operations, scenography, warehouse, driving, and inventory management. Key capabilities include cutoff deadlines, parametric kit explosion, time-phased inventory projection, and detailed damage/loss tracking for returns.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (2025-11-01)
-- **Ownership-Based Permissions (Phase 1)**: Implemented resource ownership control where only the creator (or admins) can edit/delete resources. Converted requestedBy/createdBy fields from text to FK references to users.id. Created server/ownership.ts with canEditResource/canDeleteResource utilities that check admin role OR resource ownership. Updated all POST routes to auto-populate creator from authenticated user. Added ownership checks to PATCH/DELETE routes for requests, trips, loading orders, and movements. Updated frontend request-details page to show/hide edit/delete buttons based on ownership verification.
+## Estado Atual (2026-05-28)
 
-## Fase 1 — Endurecimento da base (concluída em 2026-05-28)
+- **Autenticação**: toda rota interna (leitura e escrita) exige login.
+- **Autorização (ownership)**: criador ou admin podem editar/excluir os recursos sensíveis (requests, trips, loading-orders, movements).
+- **Autorização (RBAC funcional)**: middlewares `requireAdmin` / `requireAnyRole` aplicados em rotas administrativas, de configuração, de logística (trips/drivers/vehicles/docks), de catálogo (products/kits/suppliers) e de ordens de carregamento.
+- **Fonte única de `isAdmin`**: `shared/roles.ts:isAdminRoleName` (case-insensitive, reconhece `Adm`/`admin`), re-exportada por `server/ownership.ts` e consumida pelo front via `client/src/lib/authz.ts`.
+- **Front-end**: UX defensiva — botões de escrita escondidos por papel, leitura mantida para qualquer logado. Back-end continua a fonte da verdade.
+- **Qualidade**: `npm run check` zerado, `npm run build` passando, CI em `.github/workflows/ci.yml` rodando `npm ci` → `check` → `build` em push/PR.
 
-Sub-fases 1.0 a 1.6 estabilizaram a base do sistema antes da Fase 2 (matriz de papéis funcionais):
+## Histórico de Fases
 
-- **Fase 1**: ownership-based permissions; rotas POST/PATCH/DELETE sensíveis exigem autenticação + dono ou admin; criados `server/ownership.ts` e `getRequestItem(id)`; campos `requestedBy`/`createdBy` migrados para FK `users.id`.
-- **Fase 1.1**: `requireAuth` em 46+ rotas GET internas que estavam públicas; última GET interna pública (`/api/loading-orders/:id/can-edit`) também fechada.
-- **Fase 1.2**: zerado `npm run check` no back-end (removido `: any` poluindo inferência da tabela `users`; ajustes em `routes-optimization.ts`; `AuthUser = Omit<User, "password">` em `ownership.ts`).
-- **Fase 1.3**: zerado `npm run check` no front-end (`ObjectUploader`/`kit-dialog`/`product-dialog`, variant `link` no `dashboard.tsx`, schema redundante em `drivers.tsx`).
-- **Fase 1.4**: corrigido 403 indevido para admin (role no seed é `Adm`/pt-BR, código comparava `'admin'`); comparação agora case-insensitive em `ownership.ts` e `auth.ts`.
-- **Fase 1.5**: removidas 2 declarações inalcançáveis de `GET /api/users` em `routes.ts`; fonte única `isAdminRoleName(name)` em `ownership.ts` consumida também por `auth.ts`.
-- **Fase 1.6**: CI básico em `.github/workflows/ci.yml` rodando `npm ci` → `npm run check` → `npm run build` em push/PR; histórico detalhado consolidado em `docs/CHANGELOG-fase1.md`.
+### Fase 1 — Endurecimento da base (concluída em 2026-05-28)
+- Ownership-based permissions; rotas POST/PATCH/DELETE sensíveis exigem auth + dono ou admin.
+- `requireAuth` aplicado em 46+ rotas GET internas antes públicas.
+- `npm run check` zerado em back-end e front-end.
+- Correção do bug de comparação `'admin'` vs `'Adm'` (case-insensitive, fonte única `isAdminRoleName`).
+- Duplicações inalcançáveis removidas.
+- CI básico ativo.
+- **Detalhes**: [`docs/CHANGELOG-fase1.md`](docs/CHANGELOG-fase1.md).
 
-**Histórico detalhado de cada sub-fase**: ver [`docs/CHANGELOG-fase1.md`](docs/CHANGELOG-fase1.md).
+### Fase 2 — RBAC progressivo (em andamento)
+- **2.0**: planejamento (matriz papel × módulo × ação; endpoint × papel mínimo para 137 endpoints).
+- **2.1**: infraestrutura mínima (`shared/roles.ts`, `server/authz.ts`, middlewares `requireRole`/`requireAnyRole`/`requireAdmin`; super-admin opcional via `EMERGENCY_ADMIN_USERNAME`).
+- **2.2**: `requireAdmin` em 33 rotas administrativas e de configuração; auto-cadastro público preservado; `PATCH /api/users/:id` recebeu auth pela primeira vez (correção de hole crítico).
+- **2.2.1**: `GET /api/users/mention-lookup` (payload mínimo) para preservar @mentions após `requireAdmin` em `/api/users`.
+- **2.3**: role `LOGISTICA` adicionada; `requireAnyRole([ADMIN, LOGISTICA])` em 10 rotas de escrita (trips, drivers, vehicles, docks, loading-orders/trips); ownership preservado.
+- **2.3.1**: front-end alinhado — `client/src/lib/authz.ts`, `ProtectedRoute.requireAdmin`, sidebar filtrada, botões de escrita gated.
+- **2.4 / 2.4.1 / 2.4.2**: `requireAdmin` em 9 rotas de catálogo (products/kits/suppliers); padronização de auth em `/suppliers/recent` e `/products/:sku/recent-suppliers`; correção de bug de ordem de rotas e bug SQL latente em `getRecentSuppliers`.
+- **2.5.1**: RBAC em loading-orders — 3 holes críticos fechados (`mark-ready`, `approve`, `disapprove` agora autenticados); `requireAnyRole([ADMIN, LOGISTICA])` em 5 rotas; `requireAdmin` em approve/disapprove (provisório até existir Supervisor).
+- **2.5.2** (2026-05-28): limpeza de documentação — `replit.md` enxugado, histórico detalhado consolidado em `docs/CHANGELOG-fase1.md` e `docs/CHANGELOG-fase2.md`. Sem alteração funcional.
+- **Detalhes**: [`docs/CHANGELOG-fase2.md`](docs/CHANGELOG-fase2.md).
 
-**Estado atual**:
-- Toda escrita interna exige autenticação + ownership/admin.
-- Toda leitura interna exige autenticação.
-- `npm run check` zerado; `npm run build` passando; CI ativo.
-- `isAdmin` em uma única fonte da verdade (`shared/roles.ts:isAdminRoleName`, re-exportada por `server/ownership.ts`).
-
-## Fase 2 — Matriz de papéis funcionais (em andamento)
-
-- **Fase 2.0** (planejamento, sem código): diagnóstico das 5 tabelas de RBAC, matriz papel × módulo × ação proposta para 19 módulos, matriz endpoint × papel mínimo para os 137 endpoints, decisões consolidadas com o usuário.
-- **Fase 2.1** (2026-05-28): infraestrutura mínima de RBAC.
-  - Criados `shared/roles.ts` (isomórfico: `ROLES`, `normalizeRoleName`, `isAdminRoleName`, `rolesMatch`) e `server/authz.ts` (`getUserRoleNames` com cache por-request, `hasRole`/`hasAnyRole`, middlewares `requireRole`/`requireAnyRole`/`requireAdmin`).
-  - `server/ownership.ts:isAdminRoleName` agora é re-export do helper compartilhado — fonte única migrou para `shared/`.
-  - Super-admin opcional via env var `EMERGENCY_ADMIN_USERNAME` (off-by-default; não aparece em `/api/user`; loga warning a cada uso).
-  - Aplicado `requireAdmin` apenas em `DELETE /api/suppliers/:id` e `DELETE /api/drivers/:id` (rotas que já eram admin-only). Comportamento, mensagens e status codes idênticos ao anterior. Demais 135 endpoints intocados. Front-end, sidebar, ProtectedRoute, schema, seed, migrations e `permissions`/`role_permissions` não foram tocados.
-  - `npm run check` zerado; `npm run build` passando; smoke completo (admin/não-admin/anônimo) ok.
-- **Fase 2.2** (2026-05-28): RBAC em rotas administrativas e configurações.
-  - Aplicado `requireAdmin` em **33 rotas** administrativas/config: usuários admin (GET/PATCH + approve/reject), papéis e permissões inteiras (incluindo GETs — telas admin-only), user_roles, role_permissions, e POST/PATCH/DELETE de configurações (`/api/movement-groups`, `/api/movement-types-config`, `/api/product-statuses`, `/api/locations`, `/api/vehicle-types`).
-  - **GETs de catálogos operacionais permanecem apenas `requireAuth`** (alimentam dropdowns de qualquer logado): `/api/movement-groups`, `/api/movement-types-config`, `/api/product-statuses`, `/api/locations`, `/api/vehicle-types`.
-  - `POST /api/users` continua **público** (auto-cadastro com `approval_status='pending'`). `/api/register`, `/api/login`, `/api/logout`, `/api/auth/request-password-reset`, `/api/auth/reset-password`, `GET /api/user` intocados.
-  - Removidos blocos inline `if (!req.isAuthenticated()) return 401 "Not authenticated"` redundantes (substituídos pelo middleware que retorna "Não autenticado" pt-BR — ganho de consistência sem mudança funcional para o usuário).
-  - Mensagens padronizadas em 3 famílias: usuários / papéis e permissões / configurações do sistema.
-  - **`PATCH /api/users/:id` ganhou auth pela primeira vez** — antes não tinha nenhuma checagem (correção de hole de segurança crítico).
-  - Módulos operacionais (events, products, kits, requests, loading-orders, trips, drivers POST/PATCH, suppliers POST/PATCH, vehicles, docks, movements, returns, reports) intocados — escopo de fases posteriores.
-  - `npm run check` zerado; `npm run build` passando; smoke completo (anônimo em 30+ rotas, admin em 8 GETs e 5 escritas, auto-cadastro público preservado) ok.
-
-- **Fase 2.3** (2026-05-28): RBAC em rotas de escrita de Logística. Adicionado `ROLES.LOGISTICA = "logistica"` em `shared/roles.ts` com aliases que reconhecem `"Gestor Logistica"` (nome real do seed, sem renomear o banco), `"gestor logística"`, `"logística"`. Aplicado `requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA])` em **10 rotas de escrita**: POST/PATCH `/api/trips`, POST `/api/trips/bulk`, POST/PATCH `/api/drivers`, POST `/api/drivers/:id/cnh-upload`, POST `/api/vehicles`, POST `/api/docks`, POST/DELETE `/api/loading-orders/:id/trips`. `canEditResource` em `PATCH /api/trips/:id` **preservado** após o role gate (owner 200, outro logística 403, admin override 200). `DELETE /api/drivers/:id` continua admin-only. GETs e demais módulos (loading-orders central, movements, returns, requests, products, kits, reports) intocados. Sem alterações em banco/seed/migration/sidebar/ProtectedRoute/front-end. `npm run check` zerado; `npm run build` passando; smoke completo (anônimo 401, admin 200/204, logística 201/200, não-logística 403 em todas) ok. **Limitação**: `pftelles` (holder real da role) não usado por proibição de alterar senha real — em vez disso, usuários transientes recebem a role real via `INSERT user_roles` e são removidos.
-
-- **Fase 2.3.1** (2026-05-28): front-end alinhado ao RBAC das Fases 2.2/2.3 (apenas UX defensiva; back continua a fonte da verdade). Criado `client/src/lib/authz.ts` reusando `shared/roles.ts` (`userIsAdmin`, `userHasRoleName`, `userHasAnyRoleName`, `userIsLogistica`, `userCanWriteLogistics`). `useAuth()` agora tipado como `AuthUser = Omit<User,"password"> & { roles: string[]; isAdmin: boolean }` (payload já entregue por `/api/user` desde a Fase 2.1). `ProtectedRoute` ganhou prop opcional `requireAdmin` + tela amigável `<AccessDenied />` (Card shadcn, link "Voltar ao Dashboard"). Aplicado `requireAdmin` em 7 rotas: `/config/users`, `/config/roles`, `/config/vehicle-types`, `/config/movement-groups`, `/config/movement-types`, `/config/product-statuses`, `/config/locations`. Catálogos operacionais (`/config/vehicles`, `/config/drivers`, `/config/docks`) **permanecem acessíveis a qualquer logado** — só botões de escrita são gated. Sidebar filtrada (`adminOnly` em itens; bloco "Tipos de Movimentação" envolto em `{isAdmin && ...}`). Botões de escrita escondidos para não-logística em: trips (header, empty-state, card/calendar clicáveis), drivers (Novo/Editar; Excluir continua admin-only), vehicles (Editar/Excluir), docks (Nova Doca), trip-upload (Importar desabilitado), loading-order-dialog (seção "Viagens" para vincular/desvincular). Sem alterações em banco/seed/schema/migrations/back-end. `npm run check` zerado; `npm run build` passando; review aprovada (architect: APPROVED, sem issues bloqueantes).
-
-- **Fase 2.4** (2026-05-28): RBAC em escrita de Catálogo/Estoque base. Aplicado `requireAdmin` em **9 rotas**: `POST/PATCH /api/products`, `POST /api/products/bulk`, `PUT /api/products/:id/image`, `POST/PATCH /api/kits`, `PUT /api/kits/:id/image`, `POST/PATCH /api/suppliers` (DELETE de suppliers já era admin-only desde 2.1; não há DELETE de products/kits). Mensagens pt-BR específicas por recurso ("Apenas administradores podem gerenciar {produtos|kits|fornecedores}"). GETs (`/api/products`, `/api/kits`, `/api/suppliers`, variantes, BOM, fornecedores-recentes) permanecem `requireAuth` — qualquer logado lê e dropdowns continuam funcionando em toda a aplicação. Front-end: botões "Adicionar Produto"/"Criar Kit"/"Novo Fornecedor", Editar/Excluir de suppliers, `button-configure` de kits, click/hover de cards de products/kits gated por `userIsAdmin(user)`; "Importar" em `product-upload` recebe `disabled !canWrite`; item de sidebar "Upload em Lote" de produtos ganhou `adminOnly`. Catálogos continuam navegáveis (Listagem, Variantes, Fornecedores, Kits) — só ações de escrita escondidas. Sem alterações em banco/seed/schema/migrations/`permissions`/`role_permissions`. Sem novos papéis. `npm run check` zerado; `npm run build` passando; smoke completo (anônimo 401, não-admin 403 com mensagem pt-BR específica, admin 201, GETs 200) ok.
-
-- **Fase 2.4.1** (2026-05-28): padronização técnica — `GET /api/suppliers/recent` e `GET /api/products/:sku/recent-suppliers` migrados de check inline `req.isAuthenticated()` para `requireAuth` (mensagem 401 pt-BR consistente). Zero mudança funcional, zero mudança de payload. Detalhes em `docs/CHANGELOG-fase2.md`.
-
-- **Fase 2.4.2** (2026-05-28): correção de bug pré-existente em Fornecedores. `GET /api/suppliers/recent` movido para antes de `GET /api/suppliers/:id` em `server/routes.ts` (rota específica antes da paramétrica — antes retornava 404 mascarado). Reordenação expôs bug SQL latente em `storage.getRecentSuppliers` (`SELECT DISTINCT + ORDER BY` em coluna fora do select); corrigido com `GROUP BY ownerName` + `ORDER BY MAX(processedAt) DESC NULLS LAST` (mesma assinatura, mesma semântica "N nomes distintos mais recentes"). Auditoria em Produtos: sem risco (`/api/products/:sku/recent-suppliers` tem 2 segmentos, não conflita com `/api/products/:id`). Sem RBAC novo, sem mudança de payload, mensagens ou banco. `npm run check` zerado; `npm run build` passando; smoke completo (anônimo 401, logado 200 com `["R2R"]`, admin idêntico, `/suppliers/:id` válido 200, inválido 404 preservado) ok. Detalhes em `docs/CHANGELOG-fase2.md`.
-
-- **Fase 2.5.1** (2026-05-28): RBAC em Ordens de Carregamento. Aplicado `requireAnyRole([ADMIN, LOGISTICA])` em 5 rotas (`POST /api/loading-orders`, `PATCH /:id`, `POST /:id/items`, `POST /:id/mark-ready`, `POST /:id/optimize` em `routes-optimization.ts`) e `requireAdmin` em 2 rotas (`POST /:id/approve`, `POST /:id/disapprove`) — admin-only **provisório** até existir role Supervisor/Aprovador (Fase 2.6). Fechou 3 holes críticos abertos: `mark-ready`/`approve`/`disapprove` não tinham nenhum middleware (anônimo podia alterar status de qualquer ordem). `optimize` também fechado (antes `if (!req.user)` com mensagem em inglês). `POST /:id/items` ganhou checagem mínima de status para bloquear injeção em ordem `completed`/`cancelled`. Ownership de `PATCH` preservado após o role gate (admin override, owner edita). `POST /:id/trips` e `DELETE /:id/trips` (já protegidos na 2.3) intocados. GETs intocados (qualquer logado lê). Front-end: botões "Nova Ordem"/Edit (`loading-orders.tsx`), submit do `loading-order-dialog.tsx`, "Marcar como Pronta"/"Aprovar"/"Desaprovar" (`loading-order-details.tsx`), "Otimizar" (`loading-optimization-dialog.tsx`) gated por `userCanWriteLogistics`/`userIsAdmin`. Sem alterações em banco/seed/migrations/schema/sidebar/ProtectedRoute/`permissions`/`role_permissions`. Sem novas roles. `npm run check` zerado; `npm run build` passando (`dist/index.js 271.4kb`); smoke matriz completa (anônimo 401 em 7 rotas, admin 200, Gestor Logistica 200/400/403 conforme esperado incluindo 403 em approve/disapprove, Usuario Requisitor 403 em 7 escritas + 200 em GETs) ok. Usuários transientes criados e removidos. Detalhes em `docs/CHANGELOG-fase2.md`.
-
-- **Fase 2.2.1** (2026-05-28): correção de regressão de @mention. Criado `GET /api/users/mention-lookup` com `requireAuth` (declarado antes de `/api/users/:id`) retornando apenas `{id, username, name}` de usuários ativos+aprovados, ordenado por nome. `client/src/components/comment-section.tsx` passou a consumir esse endpoint. `GET /api/users` e `GET /api/users/:id` continuam `requireAdmin`. Novo método `getUsersForMentionLookup()` em `IStorage`/`DatabaseStorage` com SELECT explícito de 3 colunas (sem leak). `npm run check` zerado; `npm run build` passando; smoke completo (anônimo 401, não-admin 403 em `/api/users` + 200 em mention-lookup com payload mínimo, admin 200 em ambas) ok.
-
-**Histórico detalhado da Fase 2**: ver [`docs/CHANGELOG-fase2.md`](docs/CHANGELOG-fase2.md).
+### Próximas fases (planejadas)
+- **2.6**: criar role Supervisor/Aprovador e migrar approve/disapprove de loading-orders para `requireAnyRole([ADMIN, SUPERVISOR])`.
+- **Fases futuras** (roadmap de longo prazo): hierarquia de roles, sistema de auditoria, templates, interface master-detail, dependências automáticas. Roadmap detalhado em [`docs/RBAC-future-guide.md`](docs/RBAC-future-guide.md).
 
 ## System Architecture
 
@@ -70,29 +48,29 @@ Sub-fases 1.0 a 1.6 estabilizaram a base do sistema antes da Fase 2 (matriz de p
 The frontend utilizes React 18 with TypeScript and Vite. It features a desktop-first responsive design based on Radix UI and shadcn/ui (New York style) with Tailwind CSS. Design principles include Material Design, a custom dark blue/light blue/pink/purple color palette, and the Inter font. Emphasis is placed on information density, keyboard-first interaction, semantic color-coded status badges, data tables, and minimal modal usage.
 
 ### Technical Implementations
-- **Frontend**: State management is handled by TanStack Query for server state and React Hook Form with Zod for form validation.
-- **Backend**: Built with Node.js, Express.js, and TypeScript (ES Modules). It exposes a RESTful API with JSON, featuring route registration, a storage layer abstraction, request logging, and centralized error handling.
-- **Database**: Drizzle ORM is used with Neon serverless PostgreSQL, supporting WebSocket and connection pooling. The design is schema-first with migrations.
-- **Authentication & Authorization**: Session-based authentication via Passport.js (local strategy), bcrypt for password hashing, `express-session` with PostgreSQL store, role-based access control (RBAC), password recovery, and a user approval system.
+- **Frontend**: TanStack Query for server state; React Hook Form + Zod for forms.
+- **Backend**: Node.js, Express.js, TypeScript (ES Modules), RESTful API with JSON, storage layer abstraction, centralized error handling.
+- **Database**: Drizzle ORM with Neon serverless PostgreSQL (WebSocket + connection pooling); schema-first with migrations.
+- **Authentication & Authorization**: Passport.js (local strategy), bcrypt, `express-session` com PostgreSQL store, RBAC, password recovery, user approval system.
 - **Key Features**:
-    - **Material Request Management**: Supports creation, approval workflows (approve-all, approve-partial, reject-all), item list management, status tracking, and event requisition window enforcement.
-    - **Loading Orders**: Consolidates approved material requests into picking lists, including parametric kit expansion (BOM), grouping identical products, and tracking source breakdown.
-    - **Warehouse Movements**: Manages loading/unloading operations with a scanner interface, supporting various movement types, status transitions, real-time item tracking, and multi-event association.
-    - **Product & Kit Management**: Provides dialogs for editing products and kits, including image upload.
-    - **Bulk Import System**: Allows Excel-based bulk import for events, products, and transport planning with data preview, validation, and error reporting.
-    - **Notification System**: Comprehensive system with @mention support, in-app notifications, preferences panel, and dashboard display.
-    - **Transport Planning**: Manages vehicle types and detailed trip planning with multiple destinations, offering both list and calendar views.
-    - **AI-Powered Optimization**: Incorporates 3D bin packing algorithms (First-Fit Decreasing Height) for vehicle loading and nearest neighbor heuristic for route planning, providing distance, duration, fuel estimates, and detailed loading sequences.
-    - **Reports Module - Stock Simulation**: Proactive shortage identification by aggregating material needs, comparing against inventory, and identifying potential shortages. Features multi-select filters, status classification (FALTA/CRÍTICO/ADEQUADO), drill-down, and Excel export.
-    - **Product Variants & Equivalencies System**: Tracks material ownership (owned, rented, third_party) and automatically resolves supplier-specific SKUs to principal SKUs, ensuring traceability.
-    - **Configurable Movement Types System**: Organizes warehouse movements into customizable groups and types, supporting configurable properties like nature, approval requirements, and supplier tracking. Includes a dedicated approval workflow for movements.
-    - **Product Status & Location Control System**: Manages product lifecycle states (statuses) and physical locations, allowing for CRUD operations and integration with movement types to control permitted source and target statuses/locations.
-    - **Driver Management**: Manages driver registration, including CNH document upload, with full CRUD functionality and CNH validation.
-    - **User Approval System**: Manages user registration approval workflows with role-based access control, allowing for pending, approved, and rejected statuses with audit trails.
+    - **Material Request Management**: criação, fluxos de aprovação (all/partial/reject), itens, status, janela de requisição por evento.
+    - **Loading Orders**: consolidação de requests aprovados em picking lists, expansão paramétrica de kits (BOM), agrupamento e breakdown por origem.
+    - **Warehouse Movements**: carregamento/descarregamento via scanner, tipos configuráveis, transições de status, multi-evento.
+    - **Product & Kit Management**: edição com upload de imagem.
+    - **Bulk Import System**: importação Excel para events, products e planejamento de transporte, com preview e validação.
+    - **Notification System**: @mentions, notificações in-app, preferências e dashboard.
+    - **Transport Planning**: tipos de veículo e planejamento de viagens com múltiplos destinos (list + calendar).
+    - **AI-Powered Optimization**: 3D bin packing (First-Fit Decreasing Height) para carregamento e nearest-neighbor para rota; distância, duração, combustível e sequência de carregamento.
+    - **Reports — Stock Simulation**: identificação proativa de faltas (FALTA/CRÍTICO/ADEQUADO) com filtros multi-select, drill-down e export Excel.
+    - **Product Variants & Equivalencies**: ownership (owned/rented/third_party) e resolução de SKU fornecedor → SKU principal.
+    - **Configurable Movement Types**: grupos e tipos customizáveis com regras de natureza, aprovação e fornecedor.
+    - **Product Status & Location Control**: estados e locais físicos com CRUD e integração a tipos de movimento.
+    - **Driver Management**: cadastro, upload de CNH e validação.
+    - **User Approval System**: workflow pending/approved/rejected com audit trail.
 
 ### System Design Choices
-- **Data Model**: Event-centric with robust schemas for material requests, trips, inventory movements, returns, and audit logs. Utilizes PostgreSQL enums for status management.
-- **Architectural Patterns**: Employs separation of concerns (client/server/shared), type sharing between frontend and backend, and the Repository pattern. Zod schemas are derived from Drizzle for validation.
+- **Data Model**: event-centric; schemas para requests, trips, movements, returns, audit logs; enums PostgreSQL para status.
+- **Architectural Patterns**: separação client/server/shared, type sharing, Repository pattern, Zod derivado do Drizzle.
 
 ## External Dependencies
 
@@ -102,166 +80,13 @@ The frontend utilizes React 18 with TypeScript and Vite. It features a desktop-f
 - **Form & Validation**: React Hook Form, Zod.
 - **Styling**: Tailwind CSS, PostCSS.
 - **Authentication**: Passport.js, express-session, connect-pg-simple, bcrypt.
-- **Object Storage**: Replit Object Storage (utilizing Google Cloud Storage).
+- **Object Storage**: Replit Object Storage (Google Cloud Storage).
 - **Excel Export**: SheetJS (xlsx).
 
----
+## Documentos relacionados
 
-## Guia de Implementação Futura: Sistema Avançado de Papéis e Permissões
-
-### Visão Geral
-Este guia documenta melhorias planejadas para o sistema de gerenciamento de papéis e permissões, baseado em boas práticas de UX, segurança e usabilidade corporativa.
-
-### Problemas da Implementação Atual
-- Lista simples sem agrupamento lógico de módulos
-- Falta de hierarquia visual entre permissões
-- Ausência de busca/filtros eficientes
-- Sem indicação de dependências entre permissões
-- Processo manual individual para cada checkbox
-- Falta de templates ou perfis pré-definidos
-- Sem preview do impacto de cada permissão
-- Ausência de auditoria (quem alterou, quando)
-
-### Estrutura Proposta
-
-#### Layout Master-Detail
-Interface dividida em dois painéis:
-- **Painel Esquerdo**: Árvore hierárquica de módulos com indicadores visuais
-- **Painel Direito**: Configuração detalhada de permissões com contexto
-
-#### Organização Hierárquica de Módulos
-
-**Categorias Principais:**
-1. **OPERACIONAL**: Estoque, Movimentações, Eventos, Localizações
-2. **ADMINISTRATIVO**: Usuários, Papéis, Configurações, Relatórios
-3. **FINANCEIRO**: Contratos, Custos, Análises
-4. **MANUTENÇÃO**: Ordens de Serviço, Histórico, Preventiva
-
-**Indicadores Visuais:**
-- [•] = Todas as permissões concedidas
-- [◐] = Algumas permissões concedidas
-- [○] = Nenhuma permissão concedida
-- Contador de permissões: (2/4)
-
-#### Sistema de Permissões Detalhado
-
-**Níveis de Permissão:**
-1. **Básicas**: Visualizar, Criar, Editar, Excluir
-2. **Avançadas**: Configurações específicas do módulo
-3. **Relatórios**: Acesso a diferentes tipos de relatórios
-
-**Informações por Permissão:**
-- Descrição clara do que permite
-- Dependências (auto-seleção de pré-requisitos)
-- Nível de impacto (Baixo, Médio, Alto, Crítico)
-- Ícones intuitivos para cada ação
-
-**Sistema de Dependências Automáticas:**
-- Criar/Editar/Excluir → Auto-seleciona Visualizar
-- Excluir → Requer Editar
-- Relatórios → Requer Visualizar do módulo
-- Alertas visuais para dependências não atendidas
-
-### Funcionalidades Avançadas
-
-#### Templates Pré-Definidos
-1. **Operador Básico**: Visualizar módulos operacionais, criar/editar eventos e movimentações
-2. **Supervisor**: Operador Básico + edição de produtos, relatórios gerenciais
-3. **Gerente**: Supervisor + administração de usuários, relatórios completos
-4. **Administrador**: Acesso total ao sistema
-
-#### Ferramentas de Produtividade
-- Busca em tempo real por módulos/permissões
-- Seleção em massa por categoria
-- Copiar permissões de outro papel
-- Exportar/Importar configurações
-- Resetar para padrões
-- Visualizar como usuário (preview)
-
-#### Resumo e Validação
-Modal de confirmação antes de salvar mostrando:
-- Módulos com acesso total
-- Módulos com acesso parcial
-- Módulos sem acesso
-- Alertas de segurança para permissões críticas
-- Lista de mudanças realizadas
-
-### Sistema de Auditoria
-
-**Rastreamento Completo:**
-- Data/hora da alteração
-- Usuário que fez a alteração
-- Permissões adicionadas
-- Permissões removidas
-- Templates aplicados
-- Histórico completo de modificações
-
-### Códigos Visuais
-
-**Cores por Nível de Acesso:**
-- Verde: Acesso total ao módulo
-- Amarelo: Acesso parcial ao módulo
-- Vermelho: Nenhum acesso ao módulo
-- Azul: Permissões administrativas
-- Roxo: Permissões de relatórios
-
-**Ícones Padronizados:**
-- 👁️ Visualizar | ➕ Criar | ✏️ Editar | 🗑️ Excluir
-- 📊 Relatórios | ⚙️ Configuração | 🔐 Admin | ⚠️ Crítico
-
-**Indicadores de Status:**
-- ✅ Permissão concedida
-- ❌ Permissão negada
-- 🔒 Permissão bloqueada (dependência)
-- ⚠️ Permissão com impacto alto
-- 🔄 Permissão herdada de template
-
-### Benefícios Esperados
-
-**Para Administradores:**
-- Configuração 70% mais rápida com templates
-- Visão clara e estruturada de permissões
-- Auditoria completa de alterações
-- Prevenção de erros com validação automática
-
-**Para Segurança:**
-- Controle granular de acessos
-- Rastreabilidade total de mudanças
-- Alertas para permissões críticas
-- Validação antes de aplicar mudanças
-
-**Para Usuários:**
-- Interface intuitiva e organizada
-- Feedback claro sobre permissões
-- Menos erros de configuração
-- Melhor experiência geral
-
-### Implementação Técnica Sugerida
-
-**Backend:**
-- Expandir tabela `permissions` com campos: `module`, `category`, `impact_level`, `dependencies`
-- Criar tabela `permission_templates` para perfis pré-definidos
-- Implementar auditoria em tabela `permission_audit_log`
-- API para validação de dependências
-
-**Frontend:**
-- Componente de árvore hierárquica (React)
-- Sistema de busca/filtro em tempo real
-- Modal de confirmação com resumo
-- Componente de histórico de auditoria
-- Sistema de notificações para mudanças críticas
-
-**Estado Atual (Phase 1):**
-- ✅ Ownership-based permissions implementado
-- ✅ Admin override funcional
-- ✅ Validação dupla (UI + backend)
-- ✅ Sistema básico de roles via userRoles table
-
-**Próximas Fases:**
-- Phase 2: Implementar hierarquia de roles e herança de permissões
-- Phase 3: Sistema de auditoria completo
-- Phase 4: Templates e seleção em massa
-- Phase 5: Interface avançada master-detail
-- Phase 6: Sistema de dependências automáticas
-
----
+- [`docs/CHANGELOG-fase1.md`](docs/CHANGELOG-fase1.md) — histórico detalhado da Fase 1.
+- [`docs/CHANGELOG-fase2.md`](docs/CHANGELOG-fase2.md) — histórico detalhado da Fase 2.
+- [`docs/RBAC-future-guide.md`](docs/RBAC-future-guide.md) — roadmap de longo prazo do sistema de papéis e permissões.
+- [`docs/PRODUCT_VARIANTS_PLAN.md`](docs/PRODUCT_VARIANTS_PLAN.md) — plano do sistema de variantes/equivalências de produto.
+- [`docs/controle-status-movimentacoes.md`](docs/controle-status-movimentacoes.md) — controle de status de movimentações.
