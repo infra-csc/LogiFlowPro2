@@ -1,0 +1,82 @@
+Antes de avançarmos para a Fase 2 de papéis funcionais, quero fazer uma Fase 1.1 focada em segurança das rotas de leitura.
+
+Contexto:
+Na Fase 1 você protegeu rotas POST/PATCH/DELETE, mas confirmou que os GET de leitura continuam públicos, por exemplo:
+
+* GET /api/events
+* GET /api/products
+* GET /api/kits
+* GET /api/drivers
+* GET /api/vehicles
+* GET /api/suppliers
+* GET /api/vehicle-types
+* GET /api/docks
+* e outras rotas de consulta
+
+Como este sistema é interno e operacional, quero revisar se essas leituras devem continuar públicas ou exigir autenticação.
+
+Objetivo:
+Auditar todas as rotas GET do back-end e separar em:
+
+1. Rotas realmente públicas
+2. Rotas que devem exigir usuário logado
+3. Rotas que futuramente também precisarão de permissão por papel
+
+Importante:
+Neste primeiro passo, não altere código ainda. Apenas audite e proponha.
+
+Tarefa:
+
+1. Liste todas as rotas GET existentes no back-end.
+2. Para cada rota, informe:
+
+* Path da rota
+* O que ela retorna
+* Se hoje exige autenticação ou não
+* Se deveria continuar pública
+* Se deveria exigir requireAuth
+* Se no futuro deveria exigir papel específico
+* Justificativa
+
+3. Considere como públicas apenas rotas como:
+
+* GET /api/user, mantendo o comportamento atual de 401 para anônimo
+* Assets públicos, se existirem
+* Rotas necessárias para login/cadastro/reset, se existirem
+* Health check, se existir
+
+4. Considere como internas, por padrão:
+
+* Eventos
+* Produtos
+* Kits
+* Estoque
+* Fornecedores
+* Motoristas
+* Veículos
+* Viagens
+* Ordens de carga
+* Movimentações
+* Devoluções
+* Usuários
+* Configurações
+* Relatórios
+* Notificações
+
+5. Não implemente papéis funcionais ainda.
+6. Não altere banco.
+7. Não altere payloads.
+8. Não altere nomes de rotas.
+9. Não mexa no front-end.
+10. Não faça refatoração grande.
+
+Entrega esperada:
+
+* Tabela com todas as rotas GET.
+* Classificação: pública / autenticada / autenticada + papel futuro.
+* Lista das rotas que você recomenda proteger agora com requireAuth.
+* Lista das rotas que devem ficar públicas.
+* Riscos de proteger essas rotas agora.
+* Como testar manualmente depois.
+
+Após essa auditoria, eu vou aprovar quais GETs devem receber requireAuth antes de você alterar código.
