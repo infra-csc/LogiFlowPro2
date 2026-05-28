@@ -7,8 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import type { Product } from "@shared/schema";
 import { ProductDialog } from "@/components/product-dialog";
+import { useAuth } from "@/hooks/use-auth";
+import { userIsAdmin } from "@/lib/authz";
 
 export default function Products() {
+  const { user } = useAuth();
+  const canWrite = userIsAdmin(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
   const [search, setSearch] = useState("");
@@ -69,10 +73,12 @@ export default function Products() {
           <h1 className="text-2xl font-semibold text-foreground">Catálogo de Produtos</h1>
           <p className="text-sm text-muted-foreground mt-1">Gerencie itens de estoque e materiais</p>
         </div>
-        <Button onClick={() => setShowDialog(true)} data-testid="button-create-product">
-          <Plus className="h-4 w-4 mr-2" />
-          Adicionar Produto
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setShowDialog(true)} data-testid="button-create-product">
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar Produto
+          </Button>
+        )}
       </div>
 
       <div className="relative">
@@ -97,7 +103,7 @@ export default function Products() {
               <p className="mt-2 text-sm text-muted-foreground">
                 {search ? "Tente ajustar sua busca" : "Comece adicionando seu primeiro produto"}
               </p>
-              {!search && (
+              {!search && canWrite && (
                 <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-add-first-product">
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar Produto
@@ -111,8 +117,8 @@ export default function Products() {
           {filteredProducts.map((product) => (
             <Card 
               key={product.id}
-              className="hover-elevate cursor-pointer overflow-hidden"
-              onClick={() => handleEdit(product)}
+              className={`overflow-hidden ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
+              onClick={canWrite ? () => handleEdit(product) : undefined}
               data-testid={`card-product-${product.id}`}
             >
               {product.imageUrl && (

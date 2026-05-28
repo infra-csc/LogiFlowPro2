@@ -134,7 +134,14 @@ const catalogItems = [
   },
 ];
 
-const productItems = [
+type ProductItem = {
+  title: string;
+  url: string;
+  icon: typeof Package;
+  adminOnly?: boolean;
+};
+
+const productItems: ProductItem[] = [
   {
     title: "Listagem",
     url: "/products",
@@ -154,6 +161,7 @@ const productItems = [
     title: "Upload em Lote",
     url: "/products/upload",
     icon: Upload,
+    adminOnly: true,
   },
 ];
 
@@ -433,7 +441,7 @@ export function AppSidebar() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                      {productItems.map((item) => (
+                      {productItems.filter((item) => !item.adminOnly || isAdmin).map((item) => (
                         <SidebarMenuSubItem key={item.title}>
                           <SidebarMenuSubButton 
                             href={item.url}

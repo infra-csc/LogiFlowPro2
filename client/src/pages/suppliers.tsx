@@ -47,11 +47,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/hooks/use-auth";
+import { userIsAdmin } from "@/lib/authz";
 
 const formSchema = insertSupplierSchema;
 
 export default function SuppliersPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canWrite = userIsAdmin(user);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -172,12 +176,14 @@ export default function SuppliersPage() {
                 form.reset();
               }
             }}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-add-supplier">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Fornecedor
-                </Button>
-              </DialogTrigger>
+              {canWrite && (
+                <DialogTrigger asChild>
+                  <Button data-testid="button-add-supplier">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Fornecedor
+                  </Button>
+                </DialogTrigger>
+              )}
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>
@@ -379,22 +385,26 @@ export default function SuppliersPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => handleEdit(supplier)}
-                              data-testid={`button-edit-${supplier.id}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => handleDelete(supplier)}
-                              data-testid={`button-delete-${supplier.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canWrite && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleEdit(supplier)}
+                                  data-testid={`button-edit-${supplier.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleDelete(supplier)}
+                                  data-testid={`button-delete-${supplier.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

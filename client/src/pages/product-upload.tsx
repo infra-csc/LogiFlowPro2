@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
+import { userIsAdmin } from "@/lib/authz";
 
 type ParsedProduct = {
   sku: string;
@@ -36,6 +38,8 @@ type BulkResult = {
 
 export default function ProductUpload() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canWrite = userIsAdmin(user);
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedProduct[]>([]);
   const [uploadResult, setUploadResult] = useState<BulkResult | null>(null);
@@ -170,7 +174,7 @@ export default function ProductUpload() {
               <div className="flex gap-2">
                 <Button
                   onClick={handleUpload}
-                  disabled={uploadMutation.isPending || parsedData.length === 0}
+                  disabled={uploadMutation.isPending || parsedData.length === 0 || !canWrite}
                   data-testid="button-upload"
                 >
                   <Upload className="h-4 w-4 mr-2" />

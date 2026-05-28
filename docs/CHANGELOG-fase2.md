@@ -749,3 +749,68 @@ não-logística**:
   JavaScript ou abrir as rotas direto para ver listas. Toda escrita
   efetiva continua barrada no back pelas Fases 2.2/2.3. Esconder
   botão **não é** controle de acesso — é redução de ruído.
+
+---
+
+## Fase 2.4 — RBAC em Catálogo/Estoque base (2026-05-28)
+
+**Objetivo**: tornar escrita de Produtos, Kits e Fornecedores admin-only,
+mantendo leitura disponível a qualquer logado (alimenta dropdowns,
+listagens e telas de consulta de toda a aplicação).
+
+### Back-end (`server/routes.ts`)
+
+Aplicado `requireAdmin({ message: "Apenas administradores podem gerenciar {produtos|kits|fornecedores}" })` em **9 rotas de escrita**:
+
+- `POST /api/products`
+- `POST /api/products/bulk`
+- `PATCH /api/products/:id`
+- `PUT /api/products/:id/image` (removido check inline `isAuthenticated`)
+- `POST /api/kits`
+- `PATCH /api/kits/:id`
+- `PUT /api/kits/:id/image` (removido check inline `isAuthenticated`)
+- `POST /api/suppliers`
+- `PATCH /api/suppliers/:id`
+
+`DELETE /api/suppliers/:id` já era admin-only desde a Fase 2.1. Não há
+DELETE de products/kits no código. GETs (`/api/products`, `/api/kits`,
+`/api/suppliers`, `:id`, `by-sku`, `target`, `recent`, `bom`,
+`recent-suppliers`) permanecem `requireAuth` — qualquer logado lê.
+
+### Front-end (UX defensiva, back continua fonte da verdade)
+
+- `pages/products.tsx`: botão "Adicionar Produto" (header + empty-state)
+  e card `onClick`/`hover-elevate`/`cursor-pointer` gated por
+  `canWrite = userIsAdmin(user)`. Cards continuam visíveis para todos.
+- `pages/kits.tsx`: botões "Criar Kit" (header + empty-state),
+  `button-configure-${id}` e card `onClick`/`hover-elevate` gated.
+- `pages/suppliers.tsx`: `DialogTrigger` "Novo Fornecedor", botões
+  Editar/Excluir por linha gated. Tabela continua visível para todos.
+- `pages/product-upload.tsx`: botão "Importar" recebe `!canWrite` no
+  `disabled` (preview/parse continuam disponíveis para inspecionar).
+- `components/app-sidebar.tsx`: item "Upload em Lote" (`/products/upload`)
+  ganhou `adminOnly: true` e é filtrado para não-admins. "Kits & BOM",
+  "Listagem", "Variantes", "Fornecedores" continuam visíveis para todos.
+- `components/{product-dialog,kit-dialog}.tsx`: não tocados — só são
+  abertos pelos botões já gated nas páginas pai.
+
+### Não tocados
+
+- Banco, migrations, seed, schema, `permissions`/`role_permissions`.
+- Nenhum novo papel.
+- Demais módulos (requests, loading-orders, trips, movements, returns,
+  reports, events) — escopo de fases posteriores.
+
+### Validação
+
+- `npm run check` zerado.
+- `npm run build` passando.
+- Smoke (curl com sessão admin vs. usuário transiente sem role admin):
+  - Anônimo em 7 escritas → 401 "Não autenticado".
+  - Não-admin em `POST /api/products|kits|suppliers`, `POST /products/bulk`,
+    `PATCH /api/{products,kits,suppliers}/:id`, `PUT /api/{products,kits}/:id/image`
+    → 403 com mensagem pt-BR específica.
+  - Não-admin em `GET /api/products|kits|suppliers` → 200.
+  - Admin em `POST /api/suppliers` → 201.
+- Usuário transiente (`smokefase24`) criado e removido após smoke;
+  fornecedor de teste removido.

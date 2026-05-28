@@ -254,7 +254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/kits", requireAuth, async (req, res) => {
+  app.post("/api/kits", requireAdmin({ message: "Apenas administradores podem gerenciar kits" }), async (req, res) => {
     try {
       const { kit: kitData, bomLines: bomLinesData } = req.body;
       const validatedKit = insertKitSchema.parse(kitData);
@@ -273,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/kits/:id", requireAuth, async (req, res) => {
+  app.patch("/api/kits/:id", requireAdmin({ message: "Apenas administradores podem gerenciar kits" }), async (req, res) => {
     try {
       // Support both { kit, bomLines } and flat body for backward compatibility
       const raw = req.body;
@@ -332,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/suppliers", requireAuth, async (req, res) => {
+  app.post("/api/suppliers", requireAdmin({ message: "Apenas administradores podem gerenciar fornecedores" }), async (req, res) => {
     try {
       const data = insertSupplierSchema.parse(req.body);
       const supplier = await storage.createSupplier(data);
@@ -342,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/suppliers/:id", requireAuth, async (req, res) => {
+  app.patch("/api/suppliers/:id", requireAdmin({ message: "Apenas administradores podem gerenciar fornecedores" }), async (req, res) => {
     try {
       const data = insertSupplierSchema.partial().parse(req.body);
       const supplier = await storage.updateSupplier(req.params.id, data);
@@ -430,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products", requireAuth, async (req, res) => {
+  app.post("/api/products", requireAdmin({ message: "Apenas administradores podem gerenciar produtos" }), async (req, res) => {
     try {
       const data = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(data);
@@ -440,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products/bulk", requireAuth, async (req, res) => {
+  app.post("/api/products/bulk", requireAdmin({ message: "Apenas administradores podem gerenciar produtos" }), async (req, res) => {
     try {
       const { products: productsData } = req.body;
       
@@ -477,7 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/products/:id", requireAuth, async (req, res) => {
+  app.patch("/api/products/:id", requireAdmin({ message: "Apenas administradores podem gerenciar produtos" }), async (req, res) => {
     try {
       const data = insertProductSchema.partial().parse(req.body);
       const product = await storage.updateProduct(req.params.id, data);
@@ -2478,11 +2478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update product image
-  app.put("/api/products/:id/image", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.put("/api/products/:id/image", requireAdmin({ message: "Apenas administradores podem gerenciar produtos" }), async (req, res) => {
     if (!req.body.imageUrl) {
       return res.status(400).json({ error: "imageUrl is required" });
     }
@@ -2501,11 +2497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update kit image
-  app.put("/api/kits/:id/image", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.put("/api/kits/:id/image", requireAdmin({ message: "Apenas administradores podem gerenciar kits" }), async (req, res) => {
     if (!req.body.imageUrl) {
       return res.status(400).json({ error: "imageUrl is required" });
     }
