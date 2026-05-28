@@ -1,0 +1,131 @@
+Vamos fazer a Fase 2.4.2 — correção de ordem de rotas em Fornecedores, com escopo mínimo.
+
+Objetivo:
+Corrigir o bug pré-existente em que GET /api/suppliers/recent retorna 404 porque está sendo capturado antes por GET /api/suppliers/:id.
+
+Contexto:
+Na Fase 2.4.1, as rotas abaixo foram padronizadas para requireAuth:
+
+* GET /api/suppliers/recent
+* GET /api/products/:sku/recent-suppliers
+
+Durante os smoke tests, foi identificado que:
+
+* GET /api/suppliers/recent retorna 404
+* O motivo é que GET /api/suppliers/:id está declarado antes e captura "recent" como parâmetro id
+* Esse comportamento é pré-existente, não foi introduzido na Fase 2.4.1
+
+Agora quero corrigir apenas a ordem de declaração das rotas, sem alterar comportamento funcional.
+
+Escopo permitido:
+
+1. Back-end
+   Reordenar as rotas de fornecedores para garantir que rotas específicas venham antes de rotas dinâmicas.
+
+A ordem correta deve ser algo como:
+
+* GET /api/suppliers
+* GET /api/suppliers/recent
+* GET /api/suppliers/:id
+
+Ou a ordem equivalente que preserve o comportamento atual e garanta que /recent não seja capturado por :id.
+
+Importante:
+
+* Não alterar handler.
+* Não alterar query.
+* Não alterar payload.
+* Não alterar requireAuth.
+* Não alterar requireAdmin.
+* Não alterar mensagens.
+* Não alterar storage.
+* Não alterar regra de negócio.
+* Apenas mover a declaração da rota para a posição correta.
+
+2. Auditoria rápida de rotas estáticas vs dinâmicas próximas
+   Verificar rapidamente se existe o mesmo risco em Produtos:
+
+* GET /api/products/by-sku/:sku
+* GET /api/products/target/:sku
+* GET /api/products/:sku/recent-suppliers
+* GET /api/products/:id
+
+Se já estiver funcionando, não alterar.
+Se houver risco claro de rota estática ser capturada por /api/products/:id, apenas reordenar com o mesmo cuidado.
+
+Não fazer auditoria ampla no servidor inteiro nesta fase.
+
+3. Não alterar
+
+* Banco
+* Seed
+* Migration
+* Schema
+* Payloads
+* Endpoints
+* Front-end
+* Sidebar
+* ProtectedRoute
+* Roles
+* permissions/role_permissions
+* Requisições
+* Ordens de carregamento
+* Viagens
+* Movimentações
+* Devoluções
+* Relatórios
+* Regras de RBAC
+* Mensagens de erro
+
+4. Validação obrigatória
+   Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Anônimo:
+
+* GET /api/suppliers/recent → 401
+* GET /api/suppliers/:id → 401
+* GET /api/products/:sku/recent-suppliers → 401
+
+Usuário logado:
+
+* GET /api/suppliers/recent → 200
+* GET /api/products/:sku/recent-suppliers → 200
+* GET /api/suppliers/:id com id válido → 200
+* GET /api/suppliers/:id com id inválido → manter comportamento anterior
+
+Admin:
+
+* Mesmo comportamento de usuário logado.
+
+5. Documentação
+   Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.4.2
+* replit.md apenas com bullet curto, se fizer sentido
+
+Registrar:
+
+* bug corrigido
+* causa
+* rota reordenada
+* validações executadas
+* confirmação de que não houve alteração funcional além de corrigir o 404
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Rotas reordenadas.
+* Confirmação da nova ordem.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que GET /api/suppliers/recent agora funciona para usuário logado.
+* Confirmação de que /api/suppliers/:id continua funcionando.
+* Confirmação de que nenhum RBAC novo foi aplicado.
+* Confirmação de que banco, front-end, payloads e endpoints não foram alterados.

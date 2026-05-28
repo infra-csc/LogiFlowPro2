@@ -320,6 +320,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Specific routes MUST come before generic :id route
+  app.get("/api/suppliers/recent", requireAuth, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const suppliers = await storage.getRecentSuppliers(limit);
+      res.json(suppliers);
+    } catch (error) {
+      console.error("Error fetching recent suppliers:", error);
+      res.status(500).json({ error: "Failed to fetch recent suppliers" });
+    }
+  });
+
   app.get("/api/suppliers/:id", requireAuth, async (req, res) => {
     try {
       const supplier = await storage.getSupplier(req.params.id);
@@ -400,17 +412,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error resolving target product:", error);
       res.status(500).json({ error: "Failed to resolve product" });
-    }
-  });
-
-  app.get("/api/suppliers/recent", requireAuth, async (req, res) => {
-    try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const suppliers = await storage.getRecentSuppliers(limit);
-      res.json(suppliers);
-    } catch (error) {
-      console.error("Error fetching recent suppliers:", error);
-      res.status(500).json({ error: "Failed to fetch recent suppliers" });
     }
   });
 
