@@ -1,0 +1,187 @@
+Vamos fazer a Fase 2.5 — auditoria e plano de RBAC para Ordens de Carregamento, sem alteração de código.
+
+Objetivo:
+Mapear com precisão todas as rotas, telas, botões, regras de negócio e papéis envolvidos em Ordens de Carregamento antes de aplicar qualquer requireRole/requireAnyRole.
+
+Contexto:
+Já concluímos:
+
+* Fase 2.1: infraestrutura de RBAC.
+* Fase 2.2: admin/config admin-only.
+* Fase 2.2.1: mention lookup seguro.
+* Fase 2.3: escrita de logística protegida.
+* Fase 2.3.1: front alinhado para logística/admin.
+* Fase 2.4: catálogo admin-only para escrita.
+* Fase 2.4.1: padronização requireAuth.
+* Fase 2.4.2: correção de ordem de rota e SQL em suppliers/recent.
+
+Agora vamos preparar Ordens de Carregamento, mas sem codar ainda.
+
+Importante:
+Nesta fase, NÃO ALTERE CÓDIGO.
+Quero apenas diagnóstico, proposta e plano de execução.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar front-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não renomear roles.
+* Não criar roles novas.
+* Não aplicar requireRole ainda.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar sidebar.
+* Não alterar ProtectedRoute.
+* Não consumir permissions/role_permissions.
+* Apenas analisar e propor.
+
+Tarefa 1 — Auditar rotas de Ordens de Carregamento
+Liste todas as rotas relacionadas a loading-orders, incluindo:
+
+* GET /api/loading-orders
+* GET /api/loading-orders/:id
+* GET /api/loading-orders/:id/requests
+* GET /api/loading-orders/:id/items
+* GET /api/loading-orders/:id/trips
+* GET /api/loading-orders/:id/can-edit
+* GET /api/loading-orders/:id/movements
+* GET /api/loading-orders/:id/optimizations
+* POST /api/loading-orders
+* PATCH /api/loading-orders/:id, se existir
+* DELETE /api/loading-orders/:id, se existir
+* POST /api/loading-orders/:id/items
+* POST /api/loading-orders/:id/trips
+* DELETE /api/loading-orders/:id/trips
+* rotas de approve/disapprove/mark-ready, se existirem
+* qualquer rota de otimização relacionada
+
+Para cada rota, informe:
+
+* método
+* path
+* handler/arquivo/linha aproximada
+* o que faz
+* middleware atual
+* se já tem requireAuth
+* se já tem requireAnyRole
+* se tem canEditResource/ownership
+* se altera dados ou só lê
+* se depende de status da ordem
+* payload esperado
+* papel sugerido
+* risco de bloquear errado
+
+Tarefa 2 — Auditar telas/componentes do front
+Mapeie os arquivos do front que consomem loading-orders, por exemplo:
+
+* páginas de loading orders
+* dialogs
+* loading-order-dialog
+* componentes de vínculo de trips
+* componentes de itens
+* botões de aprovar/reprovar/marcar pronto
+* botões de editar/excluir
+* otimizações
+
+Para cada ação visual, informe:
+
+* arquivo
+* botão/ação
+* endpoint chamado
+* quem deveria ver
+* quem deveria apenas visualizar
+* qual helper de front poderia ser usado
+
+Tarefa 3 — Propor matriz específica de Loading Orders
+Proponha uma matriz só para Ordens de Carregamento com os papéis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor/Aprovador
+* Usuário comum autenticado
+
+Considere que hoje existem no banco:
+
+* Adm
+* Gestor Logistica
+* Usuario Requisitor
+
+E que ainda NÃO existe role real de almoxarifado ou supervisor.
+
+Por isso, se sugerir Almoxarifado ou Supervisor, deixe claro:
+
+* se pode ser implementado agora
+* se depende de role nova/seed/migração
+* se deve ficar em fase posterior
+
+Matriz esperada:
+
+* Ver ordens
+* Criar ordem
+* Editar ordem
+* Excluir ordem
+* Adicionar/remover itens
+* Vincular/desvincular viagens
+* Aprovar
+* Reprovar
+* Marcar como pronta
+* Ver movimentos
+* Ver otimizações
+* Executar otimização
+
+Tarefa 4 — Propor escopo seguro da implementação
+Sugira a menor Fase 2.5.1 possível, com baixo risco.
+
+Minha preferência inicial:
+
+* Não mexer nos GETs.
+* Não mexer em aprovação ainda.
+* Não mexer em itens se exigir Almoxarifado.
+* Manter o que já foi feito para trips de loading order na Fase 2.3.
+* Aplicar RBAC apenas em criação/edição básica de loading order se for claramente Logística/Admin.
+* Se houver dúvida, deixar em shadow/audit ou adiar.
+
+Você deve propor:
+
+* quais rotas podem receber requireAnyRole([admin, logistica]) agora
+* quais rotas devem aguardar role almoxarifado
+* quais rotas devem aguardar role supervisor
+* quais rotas devem ficar apenas requireAuth por enquanto
+* quais ajustes de front devem acompanhar
+
+Tarefa 5 — Riscos e decisões pendentes
+Liste decisões que eu preciso tomar antes de codar, por exemplo:
+
+* Criar role Almoxarifado agora ou depois?
+* Criar role Supervisor agora ou depois?
+* Quem pode aprovar uma ordem de carregamento: logística, supervisor ou admin?
+* Quem pode adicionar/remover itens: logística ou almoxarifado?
+* Quem pode marcar como pronta?
+* Usuário comum pode visualizar loading orders?
+* Gestor/relatórios deve visualizar?
+
+Tarefa 6 — Plano de testes futuro
+Proponha smoke tests para quando implementarmos, separando:
+
+* anônimo
+* admin
+* Gestor Logistica
+* usuário comum
+* futuro almoxarifado
+* futuro supervisor
+
+Entrega final:
+Quero uma resposta estruturada com:
+
+1. Rotas loading-orders auditadas.
+2. Componentes front auditados.
+3. Matriz específica de Loading Orders.
+4. Escopo recomendado para Fase 2.5.1.
+5. Rotas que NÃO devem ser mexidas ainda.
+6. Decisões que dependem de mim.
+7. Plano de testes.
+8. Confirmação de que nenhum código foi alterado.
