@@ -1,0 +1,217 @@
+Fase 2.7 — Auditoria de Movimentações
+Nenhum código foi alterado. Esta é uma auditoria pura, com mapeamento, classificação de risco e proposta de escopo para a Fase 2.8.
+
+1. Rotas de Movimentações auditadas
+Todas as rotas estão em server/routes.ts. Coluna Auth mostra o middleware/check atual.
+
+#	Método	Path	Linha	Auth	Lê/Escreve	Altera status?	Altera estoque?
+R1	GET	/api/loading-orders/:id/movements	1599	requireAuth	Lê	—	—
+R2	GET	/api/movements	1609	requireAuth	Lê	—	—
+R3	GET	/api/movements/pending-approval	1620	requireAuth + check inline	Lê	—	—
+R4	GET	/api/movements/:id	1634	requireAuth	Lê	—	—
+R5	GET	/api/movements/:id/items	1646	requireAuth	Lê	—	—
+R6	POST	/api/movements	1655	req.isAuthenticated() inline	Escreve	Cria com status created	Indireto (cria base do estoque)
+R7	PATCH	/api/movements/:id	1718	req.isAuthenticated() inline + ownership-em-created	Escreve	Sim (transitions validadas)	Sim (timestamps + status)
+R8	POST	/api/movements/:id/items	1788	NENHUMA	Escreve	—	Sim (itens carregados)
+R9	PATCH	/api/movements/:id/items/:itemId/decrement	1840	NENHUMA	Escreve	—	Sim
+R10	DELETE	/api/movements/:id/items/:itemId	1864	NENHUMA	Escreve	—	Sim
+R11	GET	/api/movements/:id/audit-logs	1911	requireAuth	Lê	—	—
+R12	PATCH	/api/movements/:id/status	1921	NENHUMA	Escreve	Sim, sem validação de transição!	Indireto
+R13	POST	/api/movements/:id/approve	1958	check inline if (!req.user)	Escreve	Sim (status approved via storage)	Sim
+R14	POST	/api/movements/:id/reject	1993	check inline if (!req.user)	Escreve	Sim	Sim
+Observações importantes:
+
+Não existe POST /api/movements/:id/cancel, POST /:id/complete nem DELETE /api/movements/:id. Cancelamento e conclusão acontecem via PATCH /:id (R7) ou PATCH /:id/status (R12) — esta última, sem auth nem validação de transição.
+R7 (PATCH /:id) valida transições (created→in_progress|cancelled, in_progress→paused|completed|cancelled, etc.) — mas não trata pending_approval.
+R12 (PATCH /:id/status) aceita os 6 status do enum (created, pending_approval, in_progress, paused, completed, cancelled) sem nenhuma validação de transição. Conflita com a tabela do R7.
+2. Holes críticos encontrados (priorizados)
+🔴 CRÍTICO — Anônimo consegue escrever
+#	Rota	Risco
+H1	POST /api/movements/:id/items (R8)	Anônimo adiciona itens em qualquer movimentação in_progress. Cria registro de carga sem actor.
+H2	PATCH /api/movements/:id/items/:itemId/decrement (R9)	Anônimo decrementa quantidades em itens de qualquer movimentação.
+H3	DELETE /api/movements/:id/items/:itemId (R10)	Anônimo remove itens de qualquer movimentação.
+H4	PATCH /api/movements/:id/status (R12)	Anônimo muda o status de qualquer movimentação para qualquer valor (completed, cancelled, pending_approval), sem validação de transição. Permite contornar todo o fluxo.
+🟠 MÉDIO — Login exigido, mas sem RBAC
+#	Rota	Risco
+H5	POST /api/movements/:id/approve (R13)	Qualquer usuário logado aprova movimentação. Hoje só é gated por "estar logado".
+H6	POST /api/movements/:id/reject (R14)	Qualquer usuário logado rejeita. Idem.
+H7	POST /api/movements (R6)	Qualquer logado cria movimentação de qualquer tipo (inclusive inventory_adjustment).
+H8	PATCH /api/movements/:id (R7)	Logado-não-dono pode alterar movimentação fora de status created (a checagem de ownership só existe no created).
+H9	GET /api/movements/pending-approval (R3)	Fila de aprovação visível para qualquer logado. Vaza fluxo decisório.
+🟢 BAIXO — Leitura adequadamente gated
+R1, R2, R4, R5, R11 — requireAuth, somente leitura. Aceitável manter assim por enquanto.
+3. Regras de status / transição
+Enum movementStatusEnum (shared/schema.ts:76)
+created, pending_approval, in_progress, paused, completed, cancelled.
+
+Transições válidas (definidas em R7, linhas 1742-1748)
+created → in_progress | cancelled
+in_progress → paused | completed | cancelled
+paused → in_progress | cancelled
+completed → ∅
+cancelled → ∅
+pending_approval não aparece na tabela — buraco lógico: aprovar/rejeitar muda status via storage sem passar pelas transições.
+Regras de edição por status
+Itens só podem ser adicionados/removidos/decrementados se status = in_progress (R8/R9/R10).
+PATCH só permite ao criador editar quando status = created (linha 1730).
+Aprovação só funciona se status = pending_approval (R13).
+Rejeição idem (R14).
+Onde pending_approval é setado?
+Não está no fluxo de transição do R7. Provavelmente vem de storage.createMovementWithEvents quando movementTypeConfig.requiresApproval = true (campo em shared/schema.ts:442). Confirmar via auditoria do storage.ts antes de codar 2.8.
+Aprovação obrigatória depende do tipo de movimento
+movement_types_config.requires_approval (boolean) define se aquele tipo precisa de aprovação. Não há lookup desse flag nos middlewares — só na camada storage.
+Audit trail
+Existe movement_audit_logs (criados em R7, R8, R10, R12) com actor snapshot.
+Existe audit_logs (global, criado em R13, R14).
+R9 (decrement) não cria audit log. Pequeno gap.
+4. Componentes front auditados
+Arquivo	Linha(s)	Botão / ação	Endpoint	Quem deveria ver
+client/src/pages/movements.tsx	210	"Nova Movimentação"	abre MovementDialog	Admin, Almoxarifado
+client/src/pages/movements.tsx	438, 493	Editar (lápis)	abre MovementDialog	Admin, Almoxarifado, dono
+client/src/pages/movements.tsx	447, 469	"Iniciar" / "Pausar"	PATCH /api/movements/:id (R7, status)	Admin, Almoxarifado
+client/src/pages/movements.tsx	479	"Concluir"	PATCH /api/movements/:id (status completed)	Admin, Almoxarifado
+client/src/pages/movements.tsx	502	"Continuar" (de paused)	PATCH /api/movements/:id (status in_progress)	Admin, Almoxarifado
+client/src/pages/movements.tsx	513	"Detalhes"	navega para /movements/:id	qualquer logado
+client/src/pages/movement-details.tsx	737	"Editar Status"	PATCH /api/movements/:id/status (R12)	Admin (mudança livre é poderosa)
+client/src/pages/movement-details.tsx	745	"Iniciar"	PATCH /api/movements/:id/status (R12)	Admin, Almoxarifado
+client/src/pages/movement-details.tsx	757	"Pausar"	idem	Admin, Almoxarifado
+client/src/pages/movement-details.tsx	765	"Finalizar"	idem	Admin, Almoxarifado
+client/src/pages/movement-details.tsx	776	"Continuar"	idem	Admin, Almoxarifado
+client/src/pages/movement-details.tsx	1041	"Adicionar Item"	POST /api/movements/:id/items (R8)	Admin, Almoxarifado
+client/src/pages/movement-details.tsx	1239	Decrementar item	PATCH /api/movements/:id/items/:itemId/decrement (R9)	Admin, Almoxarifado
+client/src/pages/movement-details.tsx	1250	Remover item	DELETE /api/movements/:id/items/:itemId (R10)	Admin, Almoxarifado
+client/src/pages/movement-approvals.tsx	251	"Aprovar"	POST /api/movements/:id/approve (R13)	Admin, Supervisor
+client/src/pages/movement-approvals.tsx	260	"Rejeitar"	POST /api/movements/:id/reject (R14)	Admin, Supervisor
+client/src/components/movement-dialog.tsx	525	"Salvar" (criar/editar)	POST /api/movements ou PATCH /api/movements/:id	Admin, Almoxarifado, dono em created
+Nenhum dos quatro arquivos importa useAuth ou helpers de @/lib/authz hoje. Todos os botões são renderizados para qualquer logado.
+
+5. Matriz proposta de Movimentações
+Ação	Admin	Logística	Almoxarifado	Supervisor	Usuário comum
+Ver lista	✅	✅	✅	✅	✅
+Ver pending approval	✅	❌	❌	✅	❌
+Ver detalhes	✅	✅	✅	✅	✅
+Ver itens	✅	✅	✅	✅	✅
+Ver audit logs	✅	✅	✅	✅	❌ (decidir)
+Criar movimentação	✅	✅¹	✅	❌	❌
+Editar movimentação (status created)	✅	✅(owner)¹	✅(owner)	❌	❌
+Iniciar / Pausar / Continuar	✅	❌	✅	❌	❌
+Concluir	✅	❌	✅	❌	❌
+Cancelar	✅	❌	✅(owner)	❌	❌
+Adicionar item	✅	❌	✅	❌	❌
+Editar/decrementar item	✅	❌	✅	❌	❌
+Remover item	✅	❌	✅	❌	❌
+Aprovar	✅	❌	❌	✅	❌
+Rejeitar	✅	❌	❌	✅	❌
+Alterar status livre (PATCH /status)	✅	❌	❌	❌	❌
+¹ Pendente decisão D3: "Logística participa de criação de movimentação?" (ver §10).
+
+6. Escopo recomendado para Fase 2.8
+A) Corrigir IMEDIATAMENTE (holes críticos)
+Mínimo absoluto para fechar superfície anônima/sem-RBAC. Quatro middlewares novos, zero mudança de lógica de negócio:
+
+R8 POST /api/movements/:id/items → requireAnyRole([ADMIN, ALMOXARIFADO])
+R9 PATCH /api/movements/:id/items/:itemId/decrement → requireAnyRole([ADMIN, ALMOXARIFADO])
+R10 DELETE /api/movements/:id/items/:itemId → requireAnyRole([ADMIN, ALMOXARIFADO])
+R12 PATCH /api/movements/:id/status → requireAdmin (provisório — esta rota é "alterar status livre" e contorna validação de transição; restringir até decidirmos se ela continua existindo, ver D7)
+R13 POST /api/movements/:id/approve → requireAnyRole([ADMIN, SUPERVISOR])
+R14 POST /api/movements/:id/reject → requireAnyRole([ADMIN, SUPERVISOR])
+B) Aplicar RBAC com baixo risco
+R6 POST /api/movements → trocar req.isAuthenticated() inline por requireAnyRole([ADMIN, ALMOXARIFADO]) (+ LOGISTICA se D3 = sim).
+R7 PATCH /api/movements/:id → requireAnyRole([ADMIN, ALMOXARIFADO]) + manter ownership em created. Estender ownership check para todos os status, não só created (corrige H8).
+R3 GET /api/movements/pending-approval → requireAnyRole([ADMIN, SUPERVISOR]) (corrige H9).
+C) AGUARDAR decisão antes de mexer
+R12 longo prazo: decidir se "Editar Status" continua existindo como caminho livre ou se deve ser removida e substituída pelo fluxo R7 + endpoints específicos (/cancel, /complete). Veja D7.
+R7 transições: incluir pending_approval na tabela de transições; decidir quem pode marcar como pending_approval. D6.
+R8/R9/R10 com Logística: decidir se Logística participa quando a movimentação está ligada a loadingOrderId. D3.
+D) Manter apenas requireAuth por enquanto
+R1, R2, R4, R5, R11. São leitura. Leitura ampla preserva paridade com loading-orders.
+7. Rotas que NÃO devem ser mexidas ainda
+Todas as rotas de configuração já protegidas: R em /api/movement-groups/* (2802–2868) e /api/movement-types-config/* (2868–2935) — todas usam adminConfig e foram fechadas na Fase 2.2.
+/api/loading-orders/:id/movements (R1) já com requireAuth adequado.
+Storage layer (server/storage.ts) — só leitura nesta fase.
+Schema, migrations, seed, ProtectedRoute, sidebar.
+8. Helpers de front sugeridos (a criar na Fase 2.8.x do front)
+A criar em client/src/lib/authz.ts:
+
+Helper	Roles aceitas	Espelha gate back-end
+userCanCreateMovement(user)	Admin, Almoxarifado (+ Logística se D3)	POST /api/movements (R6)
+userCanEditMovement(user, movement)	Admin ou (Almoxarifado/Logística + ownership + status editável)	PATCH /api/movements/:id (R7)
+userCanManageMovementItems(user)	Admin, Almoxarifado	R8/R9/R10
+userCanChangeMovementStatus(user)	Admin, Almoxarifado (apenas transições da máquina de estado da R7)	R7
+userCanApproveMovement(user)	Admin, Supervisor	R13
+userCanRejectMovement(user)	Admin, Supervisor	R14
+userCanViewMovementApprovalQueue(user)	Admin, Supervisor	R3
+userCanForceMovementStatus(user)	Admin (apenas)	R12 — botão "Editar Status"
+userCanCancelMovement(user, movement)	Admin ou (Almoxarifado + dono)	R7 com status cancelled
+userCanCompleteMovement(user)	Admin, Almoxarifado	R7 com status completed
+Reaproveitar: userIsAdmin, userIsLogistica, userIsAlmoxarifado, userIsSupervisor já existentes.
+
+9. Plano de testes (smoke) para a Fase 2.8
+Padrão non-mutating já validado nas fases 2.6.2/2.6.3: usar movimentação em status "errado" para extrair 400 (gate passou + validação de status falhou) sem mutar estado.
+
+Movimentações fixtures necessárias no DB de teste:
+
+M-CREATED em status created
+M-PROGRESS em status in_progress (com 1+ item)
+M-PENDING em status pending_approval
+M-DONE em status completed
+Anônimo (esperado 401 em tudo)
+POST/PATCH/DELETE em R6, R7, R8, R9, R10, R12, R13, R14 → 401.
+GET R1–R5, R11 → 401.
+Admin (esperado: gate-pass = 200 ou 400 status-violation, nunca 403)
+Todas as escritas → ≠ 403.
+Almoxarifado
+R8/R9/R10 em M-PROGRESS → gate-pass (200 / 400 conforme caso).
+R6 → 201 (criação).
+R7 em M-CREATED (próprio) → gate-pass; em M-PROGRESS (próprio) com status: completed → gate-pass.
+R12 → 403.
+R13/R14 → 403.
+R3 → 403.
+Supervisor
+R13/R14 em M-PENDING → gate-pass.
+R13 em M-CREATED → 400 (gate-pass + status inválido).
+R3 → 200.
+R6/R7/R8/R9/R10/R12 → 403.
+Logística
+R6 → depende de D3.
+R8/R9/R10 → depende de D3 (sugestão: 403 a menos que movement.loadingOrderId esteja setado).
+R13/R14 → 403.
+Usuário comum
+R1, R2, R4, R5 → 200 (leitura).
+R3 → 403.
+R11 → 200 ou 403 conforme D9.
+Todas as escritas → 403.
+Front smoke (visual matrix)
+Verificar para cada persona quais botões aparecem em movements.tsx, movement-details.tsx, movement-approvals.tsx, movement-dialog.tsx.
+10. Decisões pendentes para você aprovar
+#	Decisão	Sugestão padrão
+D1	Usuário comum pode ver lista/detalhes/itens de qualquer movimentação?	Sim (mantém paridade com Loading Orders; back já permite).
+D2	Almoxarifado pode criar qualquer tipo de movimentação (inclusive inventory_adjustment que normalmente requer aprovação)?	Sim, contando que tipos com requiresApproval = true automaticamente caiam em pending_approval.
+D3	Logística participa de criação/edição de movimentações ou só de loading-orders/trips?	Não participa diretamente — Logística cuida de trips/loading-orders; Almoxarifado executa movimentações. Simplifica a matriz.
+D4	Supervisor aprova todas as movimentações ou só as com requiresApproval = true?	Supervisor aprova as que chegam em pending_approval. Movimentações que não exigem aprovação nunca aparecem na fila.
+D5	Quem pode cancelar movimentação?	Admin sempre; Almoxarifado dono enquanto created ou in_progress.
+D6	Quem pode marcar movimentação como pending_approval manualmente?	Ninguém — o sistema marca automaticamente quando o tipo exige aprovação. Não exporr botão.
+D7	Manter PATCH /api/movements/:id/status (R12) como "alterar status livre" só para Admin, ou remover e usar só R7?	Manter como Admin-only nesta fase (correção mínima). Marcar como dívida futura para refatoração.
+D8	Editar movimentação após status in_progress/completed: alguém pode?	Não — só campos cosméticos (notas) ou nenhum. Hoje H8 deixa ownership escapar fora de created; corrigir.
+D9	Audit logs (R11) visíveis para todos os logados ou só Admin/Supervisor/Almoxarifado?	Todos logados (sem PII sensível; já é leitura).
+D10	Botão "Editar Status" no front (movement-details.tsx:737) — esconder de não-Admin ou remover de vez?	Esconder nesta fase (Admin-only) e marcar como dívida para remoção.
+D11	Adicionar audit log na rota de decrement (R9) que hoje não loga?	Sim, na mesma fase 2.8 (mudança pequena, fortalece audit trail).
+11. Confirmação de não alteração
+✅ Nenhum arquivo foi modificado nesta auditoria. Não houve edição em:
+
+server/routes.ts, server/authz.ts, server/storage.ts, qualquer middleware
+shared/schema.ts, shared/roles.ts
+Banco, migrations, seed (server/seed-roles.ts), permissions/role_permissions
+Front-end (client/src/pages/movements.tsx, movement-details.tsx, movement-approvals.tsx, client/src/components/movement-dialog.tsx)
+client/src/lib/authz.ts, ProtectedRoute, sidebar
+package.json, tsconfig.json, configs Vite
+Não executei npm run check/build nem mexi em DB (apenas leituras de código).
+
+Próximo passo sugerido
+Você aprovar (ou ajustar) as 11 decisões acima. Com as respostas, a Fase 2.8 fica escopada como:
+
+2.8.1 (back, escopo mínimo): aplicar 6 middlewares dos items A do §6 → fecha todos os holes críticos e médios em ~10 linhas de mudança, smoke matrix non-mutating.
+2.8.2 (back, item B): R6, R7 (corrigir ownership), R3.
+2.8.3 (front): helpers de §8 + gating dos botões mapeados em §4.
+2.8.4 (opcional): adicionar audit log em R9; documentar dívida para refatoração de R12.
+Aguardando suas respostas para D1–D11 antes de codar qualquer coisa.
