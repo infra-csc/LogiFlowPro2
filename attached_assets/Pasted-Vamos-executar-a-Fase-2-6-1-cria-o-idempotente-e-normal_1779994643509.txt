@@ -1,0 +1,175 @@
+Vamos executar a Fase 2.6.1 — criação idempotente e normalização das roles Almoxarifado e Supervisor.
+
+Objetivo:
+Criar a base segura para as novas roles funcionais Almoxarifado e Supervisor, sem aplicar essas roles em endpoints ainda.
+
+Contexto:
+A Fase 2.6 foi apenas planejamento e não alterou código.
+Decisões aprovadas:
+
+7.a Nome oficial da role de Supervisor: Supervisor.
+7.b Almoxarifado pode adicionar/remover itens em loading-orders futuramente: sim.
+7.c Logística continua podendo adicionar/remover itens junto com Almoxarifado: sim.
+7.d Supervisor aprova loading-orders e movimentações futuramente.
+7.e Supervisor também pode desaprovar.
+7.f Almoxarifado pode marcar ordem como pronta futuramente.
+7.g GET /api/movements/pending-approval será restrito a Admin/Supervisor futuramente.
+7.h Usuário comum continua podendo visualizar loading-orders e movimentações por enquanto.
+7.i Role de Gestor/Relatórios fica para fase posterior.
+7.j As roles criadas devem ter description populada.
+7.k POST /api/roles não deve bloquear roles custom agora; no máximo fica como melhoria futura de aviso.
+
+Escopo desta fase:
+1. Criar script idempotente de roles.
+2. Adicionar constantes e aliases em shared/roles.ts.
+3. Não aplicar nenhuma role nova em endpoints.
+4. Não alterar front-end.
+5. Não alterar sidebar.
+6. Não alterar ProtectedRoute.
+7. Não consumir permissions/role_permissions.
+
+Parte 1 — Atualizar shared/roles.ts
+
+Adicionar:
+
+- ROLES.ALMOXARIFADO = "almoxarifado"
+- ROLES.SUPERVISOR = "supervisor"
+
+Adicionar aliases:
+
+Para Almoxarifado:
+- "almoxarifado"
+- "almox"
+- "estoque"
+
+Para Supervisor:
+- "supervisor"
+- "aprovador"
+- "supervisor aprovador"
+- "supervisor/aprovador"
+
+Manter intactos:
+- ROLES.ADMIN
+- ROLES.LOGISTICA
+- aliases admin/adm
+- aliases logistica/gestor logistica
+- normalizeRoleName
+- rolesMatch
+- isAdminRoleName
+
+Garantir:
+- comparação case-insensitive
+- suporte a acento onde já existe
+- sem quebrar admin/logistica existentes
+
+Parte 2 — Criar script idempotente
+
+Criar arquivo:
+- server/seed-roles.ts
+
+O script deve criar, se não existirem:
+
+1. Role:
+- name: "Almoxarifado"
+- description: "Operação de almoxarifado: itens, separação, preparação e prontidão de ordens"
+
+2. Role:
+- name: "Supervisor"
+- description: "Aprova e desaprova ordens de carregamento e movimentações sensíveis"
+
+Regras do script:
+- Deve ser idempotente.
+- Rodar duas vezes não pode duplicar roles.
+- Usar INSERT com ON CONFLICT (name) DO NOTHING, ou padrão equivalente seguro no Drizzle/PostgreSQL.
+- Não alterar roles existentes.
+- Não renomear roles existentes.
+- Não criar user_roles.
+- Não atribuir roles a usuários.
+- Não tocar em permissions/role_permissions.
+- Não alterar seed-permissions.ts.
+- Não rodar automaticamente no boot.
+- Deve poder ser executado manualmente com tsx server/seed-roles.ts.
+
+Parte 3 — Opcional: script package.json
+
+Não alterar package.json se não for necessário.
+
+Se julgar útil criar um script, propor antes no resumo, por exemplo:
+- "seed:roles": "tsx server/seed-roles.ts"
+
+Mas, nesta fase, prefiro não alterar package.json sem necessidade. Pode apenas documentar o comando manual.
+
+Parte 4 — Validações obrigatórias
+
+Rodar:
+
+- npm run check
+- npm run build
+
+Executar o script de roles duas vezes:
+
+1ª execução:
+- Deve criar Almoxarifado e Supervisor se não existirem.
+
+2ª execução:
+- Deve ser no-op, sem duplicar.
+
+Depois validar no banco:
+- Adm continua existindo.
+- Gestor Logistica continua existindo.
+- Usuario Requisitor continua existindo.
+- Almoxarifado existe uma única vez.
+- Supervisor existe uma única vez.
+- descriptions preenchidas.
+- Nenhum user_roles foi criado automaticamente.
+
+Smoke de regressão:
+- Admin continua isAdmin:true.
+- Gestor Logistica continua reconhecido como logistica.
+- DELETE /api/drivers/:id continua admin-only.
+- POST /api/loading-orders continua Admin/Logística, sem Almoxarifado ainda.
+- approve/disapprove continuam admin-only nesta fase.
+
+Parte 5 — Documentação
+
+Atualizar:
+- docs/CHANGELOG-fase2.md com Fase 2.6.1
+- replit.md com bullet curto
+
+Registrar:
+- roles criadas
+- aliases adicionados
+- comando de execução do script
+- resultado da execução dupla
+- confirmação de que nenhuma role foi atribuída a usuário
+- confirmação de que nenhum endpoint passou a usar Almoxarifado/Supervisor ainda
+
+Regras obrigatórias:
+- Não alterar endpoints.
+- Não alterar payloads.
+- Não alterar middlewares de rotas.
+- Não alterar front-end.
+- Não alterar sidebar.
+- Não alterar ProtectedRoute.
+- Não criar migration.
+- Não alterar seed existente.
+- Não renomear roles.
+- Não atribuir roles a usuários.
+- Não consumir permissions/role_permissions.
+- Não criar any/as any.
+- Não refatorar código fora do necessário.
+
+Entrega final:
+Liste:
+- Arquivos alterados/criados.
+- Constantes adicionadas.
+- Aliases adicionados.
+- Script criado.
+- Resultado da primeira execução.
+- Resultado da segunda execução.
+- Roles finais encontradas no banco.
+- Resultado de npm run check.
+- Resultado de npm run build.
+- Smoke tests executados.
+- Confirmação de que nenhum endpoint foi alterado.
+- Confirmação de que Almoxarifado e Supervisor ainda não foram aplicados em RBAC de runtime.

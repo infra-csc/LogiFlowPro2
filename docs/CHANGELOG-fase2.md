@@ -1184,3 +1184,93 @@ ao final. Usuários transientes deletados.
 ### Confirmação de não-funcional
 
 Nenhum `.ts`/`.tsx`/`.sql`/`.json` de código foi tocado. `git diff --stat` esperado apenas em `replit.md`, `docs/RBAC-future-guide.md` (novo) e `docs/CHANGELOG-fase2.md`.
+
+---
+
+## Fase 2.6.1 (2026-05-28) — Roles canônicas Almoxarifado e Supervisor
+
+### Objetivo
+Criar a base segura para as novas roles funcionais **Almoxarifado** e **Supervisor**, sem aplicar essas roles em endpoints de runtime.
+
+### Decisões aprovadas (origem: Fase 2.6)
+- 7.a Nome oficial do supervisor: **Supervisor**.
+- 7.b Almoxarifado poderá adicionar/remover itens em loading-orders (futuro).
+- 7.c Logística continua podendo adicionar/remover itens junto com Almoxarifado.
+- 7.d/7.e Supervisor aprova **e** desaprova loading-orders e movimentações (futuro).
+- 7.f Almoxarifado poderá marcar ordem como pronta (futuro).
+- 7.g `GET /api/movements/pending-approval` será restrito a Admin/Supervisor (futuro).
+- 7.h Usuário comum continua vendo loading-orders e movimentações.
+- 7.i Role de Gestor/Relatórios fica para fase posterior.
+- 7.j Roles criadas com `description` preenchida.
+- 7.k `POST /api/roles` não bloqueia roles custom.
+
+### Arquivos alterados/criados
+- **Alterado**: `shared/roles.ts` — adicionados canônicos `ALMOXARIFADO` e `SUPERVISOR`, com aliases case-insensitive.
+- **Criado**: `server/seed-roles.ts` — script idempotente standalone.
+- **Alterado**: `docs/CHANGELOG-fase2.md` (este registro) e `replit.md` (bullet curto).
+
+### Constantes adicionadas em `shared/roles.ts`
+```ts
+ROLES.ALMOXARIFADO = "almoxarifado";
+ROLES.SUPERVISOR   = "supervisor";
+```
+
+### Aliases adicionados
+- `almoxarifado`: `["almoxarifado", "almox", "estoque"]`
+- `supervisor`: `["supervisor", "aprovador", "supervisor aprovador", "supervisor/aprovador"]`
+
+Helpers `normalizeRoleName`, `rolesMatch`, `isAdminRoleName` intactos. Aliases de `admin`/`adm` e `logistica`/`gestor logistica` intactos.
+
+### Script `server/seed-roles.ts`
+- Idempotente via `db.insert(roles).values(...).onConflictDoNothing({ target: roles.name })`.
+- Cria 2 roles se ausentes; segunda execução = no-op.
+- **Não** roda no boot. **Não** wired em `package.json`.
+- Comando manual: `npx tsx server/seed-roles.ts`
+- Não cria `user_roles`, não atribui roles, não toca `permissions`/`role_permissions`, não renomeia roles existentes.
+
+### Resultado das execuções
+**1ª execução**:
+```
+✅ Created role: Almoxarifado (id=d1242314-…)
+✅ Created role: Supervisor (id=21c7e0f4-…)
+```
+**2ª execução**:
+```
+⏭️ Already exists, skipped: Almoxarifado
+⏭️ Already exists, skipped: Supervisor
+```
+
+### Estado final do banco
+| Role | Description | Usuários |
+|---|---|---|
+| Adm | tudo | 1 (admin) |
+| Almoxarifado | Operação de almoxarifado: itens, separação, preparação e prontidão de ordens | **0** |
+| Gestor Logistica | _(vazio)_ | 1 (pftelles) |
+| Supervisor | Aprova e desaprova ordens de carregamento e movimentações sensíveis | **0** |
+| Usuario Requisitor | _(vazio)_ | 0 |
+
+Confirmado: `COUNT(*) WHERE name='Almoxarifado' = 1` e `COUNT(*) WHERE name='Supervisor' = 1`. Nenhum `user_roles` novo.
+
+### Validação
+- `npm run check` — zerado.
+- `npm run build` — passou (`dist/index.js 271.7kb`, vite build ok).
+- Smoke regressão:
+  - `GET /api/user` (admin): `isAdmin=True`, `roles=['Adm']` ✅
+  - `DELETE /api/drivers/:id` anon → 401 ✅
+  - `POST /api/loading-orders` anon → 401 ✅
+  - `POST /api/loading-orders/:id/approve` anon → 401 ✅
+  - `POST /api/loading-orders/:id/approve` admin → 400 (gate passa, falha na validação de status) ✅
+  - `POST /api/loading-orders` admin com body inválido → 400 (gate passa) ✅
+- Reconhecimento de `Gestor Logistica` como `logistica` já validado em fases anteriores; sem alteração no `ROLE_ALIASES[logistica]` nesta fase.
+
+### Confirmação de escopo
+- ✅ Nenhum endpoint alterado (`server/routes.ts` intocado).
+- ✅ Nenhum middleware de rota alterado (`server/authz.ts`, `server/ownership.ts` intocados).
+- ✅ Nenhuma alteração em payload.
+- ✅ Front-end intocado (`client/*`).
+- ✅ Sidebar e `ProtectedRoute` intocados.
+- ✅ `permissions`/`role_permissions` não consumidos.
+- ✅ `package.json` intocado.
+- ✅ Sem migration nova; sem alteração em `drizzle.config.ts`.
+- ✅ Sem `any`/`as any`.
+- ✅ Almoxarifado e Supervisor **não foram aplicados em nenhum RBAC de runtime**. Existem apenas como linhas no banco e canônicos no código, prontos para a Fase 2.6.2.

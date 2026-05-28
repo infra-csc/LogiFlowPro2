@@ -36,10 +36,15 @@ Preferred communication style: Simple, everyday language.
 - **2.4 / 2.4.1 / 2.4.2**: `requireAdmin` em 9 rotas de catálogo (products/kits/suppliers); padronização de auth em `/suppliers/recent` e `/products/:sku/recent-suppliers`; correção de bug de ordem de rotas e bug SQL latente em `getRecentSuppliers`.
 - **2.5.1**: RBAC em loading-orders — 3 holes críticos fechados (`mark-ready`, `approve`, `disapprove` agora autenticados); `requireAnyRole([ADMIN, LOGISTICA])` em 5 rotas; `requireAdmin` em approve/disapprove (provisório até existir Supervisor).
 - **2.5.2** (2026-05-28): limpeza de documentação — `replit.md` enxugado, histórico detalhado consolidado em `docs/CHANGELOG-fase1.md` e `docs/CHANGELOG-fase2.md`. Sem alteração funcional.
+- **2.6** (2026-05-28): planejamento das roles funcionais Almoxarifado e Supervisor — diagnóstico, matriz revisada, plano de fases e 11 decisões aprovadas. Sem código alterado.
+- **2.6.1** (2026-05-28): base das novas roles — canônicos `ROLES.ALMOXARIFADO`/`ROLES.SUPERVISOR` + aliases em `shared/roles.ts`; script idempotente `server/seed-roles.ts` (rodar via `npx tsx server/seed-roles.ts`); 2 roles criadas no banco com `description` preenchida, 0 usuários vinculados, nenhum endpoint aplicando ainda.
 - **Detalhes**: [`docs/CHANGELOG-fase2.md`](docs/CHANGELOG-fase2.md).
 
 ### Próximas fases (planejadas)
-- **2.6**: criar role Supervisor/Aprovador e migrar approve/disapprove de loading-orders para `requireAnyRole([ADMIN, SUPERVISOR])`.
+- **2.6.2**: aplicar `[ADMIN, SUPERVISOR]` em approve/disapprove de loading-orders; `[ADMIN, LOGISTICA, ALMOXARIFADO]` em items e mark-ready.
+- **2.6.3**: front-end de loading-orders alinhado aos novos papéis.
+- **2.7 / 2.8**: auditoria + aplicação de RBAC em movimentações (6 holes de escrita ainda abertos hoje).
+- **2.9**: auditoria + RBAC em devoluções.
 - **Fases futuras** (roadmap de longo prazo): hierarquia de roles, sistema de auditoria, templates, interface master-detail, dependências automáticas. Roadmap detalhado em [`docs/RBAC-future-guide.md`](docs/RBAC-future-guide.md).
 
 ## System Architecture

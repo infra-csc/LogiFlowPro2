@@ -16,6 +16,8 @@
 export const ROLES = {
   ADMIN: "admin",
   LOGISTICA: "logistica",
+  ALMOXARIFADO: "almoxarifado",
+  SUPERVISOR: "supervisor",
 } as const;
 
 /**
@@ -34,6 +36,17 @@ const ROLE_ALIASES: Record<string, readonly string[]> = {
     "logística",
     "gestor logistica",
     "gestor logística",
+  ],
+  [ROLES.ALMOXARIFADO]: [
+    "almoxarifado",
+    "almox",
+    "estoque",
+  ],
+  [ROLES.SUPERVISOR]: [
+    "supervisor",
+    "aprovador",
+    "supervisor aprovador",
+    "supervisor/aprovador",
   ],
 };
 
