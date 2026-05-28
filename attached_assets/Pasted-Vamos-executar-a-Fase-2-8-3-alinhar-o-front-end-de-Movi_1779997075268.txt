@@ -1,0 +1,326 @@
+Vamos executar a Fase 2.8.3 — alinhar o front-end de Movimentações ao RBAC aplicado no back-end.
+
+Objetivo:
+Atualizar a UX do módulo de Movimentações para refletir as permissões aplicadas nas Fases 2.8.1 e 2.8.2, sem alterar back-end, banco, endpoints, payloads ou regras de negócio.
+
+Contexto:
+A Fase 2.8.1 fechou holes críticos em:
+
+* itens da movimentação
+* decremento de item
+* remoção de item
+* alteração livre de status
+* aprovação
+* rejeição
+
+A Fase 2.8.2 aplicou RBAC em:
+
+* POST /api/movements → Admin/Almoxarifado
+* PATCH /api/movements/:id → Admin/Almoxarifado + ownership consistente
+* GET /api/movements/pending-approval → Admin/Supervisor
+
+Também corrigiu:
+
+* escape de ownership
+* escape de status via PATCH geral
+
+Agora o front precisa espelhar essa matriz para evitar botões visíveis que geram 403.
+
+Permissões atuais efetivas:
+
+* Admin: tudo.
+* Almoxarifado: cria movimentações, edita movimentações próprias quando o status permitir, gerencia itens.
+* Supervisor: visualiza fila de aprovação, aprova e rejeita movimentações.
+* Logística: não participa de movimentações nesta fase.
+* Usuário comum: leitura geral por enquanto.
+* Anônimo: login obrigatório.
+
+Regras obrigatórias:
+
+* Não alterar back-end.
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não alterar middlewares.
+* Não alterar rules/status/transições.
+* Não alterar permissions/role_permissions.
+* Não alterar package.json.
+* Não alterar CI.
+* Não fazer redesign.
+* Não criar any/as any.
+* Não mexer em módulos fora de Movimentações.
+* Back-end continua sendo a fonte da verdade; front é apenas UX defensiva.
+
+Escopo permitido:
+
+1. Atualizar helper de RBAC do front
+
+Alterar:
+
+* client/src/lib/authz.ts
+
+Adicionar helpers semânticos para Movimentações, reaproveitando ROLES de shared/roles.ts e funções existentes.
+
+Helpers sugeridos:
+
+* userCanCreateMovement(user)
+
+  * Admin ou Almoxarifado
+
+* userCanEditMovement(user, movement)
+
+  * Admin
+  * ou Almoxarifado se for owner/createdBy e se o status permitir edição
+  * não permitir edição visual para in_progress/completed/cancelled
+  * respeitar a mesma lógica que o back passou a impor
+
+* userCanManageMovementItems(user)
+
+  * Admin ou Almoxarifado
+
+* userCanApproveMovement(user)
+
+  * Admin ou Supervisor
+
+* userCanViewMovementApprovalQueue(user)
+
+  * Admin ou Supervisor
+
+* userCanChangeMovementStatusFreely(user)
+
+  * Admin only
+  * usado para esconder “Editar Status” ou equivalente
+
+* userCanCancelMovement(user, movement), se existir ação visual
+
+  * seguir regra atual se houver; se não estiver claro, não liberar visualmente
+
+* userCanCompleteMovement(user, movement), se existir ação visual
+
+  * seguir regra atual se houver; se não estiver claro, não liberar visualmente
+
+Importante:
+
+* Logística não entra nos helpers de Movimentações.
+* Usuário comum não deve ter helper de escrita retornando true.
+* Evitar string solta; usar ROLES e helpers já existentes.
+* Sem duplicar normalização de roles.
+
+2. Ajustar página/lista de Movimentações
+
+Alterar arquivo(s) relacionados, provavelmente:
+
+* client/src/pages/movements.tsx
+
+Aplicar:
+
+* Botão “Nova Movimentação” visível apenas para Admin/Almoxarifado.
+* Botão/ícone de editar visível apenas quando userCanEditMovement(user, movement) for true.
+* Ações de iniciar/pausar/continuar/concluir/cancelar, se existirem na lista, devem ser exibidas apenas para roles permitidas conforme helper.
+* Usuário comum continua vendo lista.
+* Logística continua vendo lista, mas sem ações de escrita.
+* Supervisor vê lista, mas sem ações de escrita operacional, exceto se houver link para aprovação/fila específica.
+
+Não esconder a página inteira de lista, pois GET /api/movements continua permitido para qualquer logado.
+
+3. Ajustar tela de detalhes de Movimentação
+
+Alterar arquivo provável:
+
+* client/src/pages/movement-details.tsx
+
+Aplicar gates em:
+
+A) Edição geral:
+
+* Admin ou Almoxarifado owner quando status permitir.
+* Não mostrar edição se status estiver in_progress/completed/cancelled, salvo se a tela tiver regra muito clara e já suportada pelo back.
+
+B) Itens:
+
+* Adicionar item: Admin ou Almoxarifado.
+* Decrementar item: Admin ou Almoxarifado.
+* Remover item: Admin ou Almoxarifado.
+* Usuário comum, Supervisor e Logística não devem ver ações de item.
+* Respeitar status atual se já houver bloqueio visual.
+
+C) Status livre / “Editar Status”:
+
+* Apenas Admin.
+* Esconder totalmente para não-admin.
+* Isso espelha PATCH /api/movements/:id/status, que ficou Admin-only.
+
+D) Aprovar/Rejeitar:
+
+* Apenas Admin ou Supervisor.
+* Mostrar somente quando status/regra atual permitir.
+* Almoxarifado não deve ver aprovar/rejeitar.
+* Usuário comum e Logística não devem ver aprovar/rejeitar.
+
+E) Cancelar/Concluir/Iniciar/Pausar/Continuar:
+
+* Auditar botões reais existentes.
+* Se chamarem endpoints já protegidos ou sensíveis, aplicar helper adequado.
+* Se a regra não estiver clara, preferir esconder de não-admin/almoxarifado e registrar como limitação.
+
+F) Audit logs:
+
+* Não adicionar gate novo.
+* Continuam visíveis para usuários logados, conforme decisão D9.
+
+4. Ajustar página/fila de aprovações de movimentações
+
+Alterar arquivo provável:
+
+* client/src/pages/movement-approvals.tsx
+
+Aplicar:
+
+* Página/conteúdo visível apenas para Admin/Supervisor.
+* Se usuário sem permissão acessar URL direta, mostrar mensagem amigável:
+
+  * “Você não tem permissão para acessar as aprovações de movimentações.”
+  * botão/link para Dashboard ou Movimentações
+* Não quebrar com 403 visual.
+* Botões Aprovar/Rejeitar visíveis apenas para Admin/Supervisor.
+
+Se ProtectedRoute já suportar requiredAnyRole, pode usar.
+Se não suportar, não alterar ProtectedRoute nesta fase; fazer gate dentro da própria página.
+
+5. Ajustar dialog/modal de movimentação
+
+Alterar arquivo provável:
+
+* client/src/components/movement-dialog.tsx
+
+Aplicar:
+
+* Submit/criação permitido apenas para Admin/Almoxarifado.
+* Edição permitida apenas conforme userCanEditMovement.
+* Se o modal abrir por caminho residual sem permissão, desabilitar submit e mostrar mensagem amigável.
+* Preservar payload, validações e layout.
+
+6. Não alterar nesta fase
+
+Não alterar:
+
+* server/routes.ts
+* server/storage.ts
+* server/authz.ts
+* banco
+* seed
+* migrations
+* schema
+* endpoints
+* payloads
+* status/transições
+* audit logs
+* sidebar, salvo se existir item exclusivo da fila de aprovação e já for claramente admin/supervisor
+* ProtectedRoute, salvo se já suportar requiredAnyRole
+* Loading Orders
+* Produtos
+* Kits
+* Fornecedores
+* Viagens
+* Motoristas
+* Veículos
+* Docas
+* Devoluções
+* Relatórios
+
+7. Validações obrigatórias
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke visual/manual:
+
+Admin:
+
+* Vê “Nova Movimentação”.
+* Vê editar.
+* Vê ações de itens.
+* Vê “Editar Status”.
+* Vê Aprovar/Rejeitar.
+* Acessa fila de pending approval.
+
+Almoxarifado:
+
+* Vê “Nova Movimentação”.
+* Vê editar apenas quando for permitido.
+* Vê ações de itens.
+* Não vê “Editar Status”.
+* Não vê Aprovar/Rejeitar.
+* Não acessa fila de pending approval.
+* Continua vendo lista e detalhes.
+
+Supervisor:
+
+* Não vê “Nova Movimentação”.
+* Não vê edição operacional.
+* Não vê ações de itens.
+* Não vê “Editar Status”.
+* Vê Aprovar/Rejeitar quando aplicável.
+* Acessa fila de pending approval.
+* Continua vendo lista e detalhes.
+
+Logística:
+
+* Não vê “Nova Movimentação”.
+* Não vê edição.
+* Não vê ações de itens.
+* Não vê “Editar Status”.
+* Não vê Aprovar/Rejeitar.
+* Não acessa fila de pending approval.
+* Continua vendo lista e detalhes.
+
+Usuário comum:
+
+* Não vê ações de escrita.
+* Não vê “Editar Status”.
+* Não vê Aprovar/Rejeitar.
+* Não acessa fila de pending approval.
+* Continua vendo lista e detalhes.
+* Não recebe tela quebrada.
+
+Anônimo:
+
+* Continua sendo redirecionado para login nas rotas protegidas.
+
+8. Documentação
+
+Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.8.3
+* replit.md com bullet curto
+
+Registrar:
+
+* helpers adicionados
+* telas ajustadas
+* botões/actions gated
+* matriz visual aplicada
+* testes executados
+* confirmação de que o back continua fonte da verdade
+* próximas fases:
+
+  * 2.8.4 audit log no decrement
+  * 2.9 auditoria/RBAC em devoluções
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Helpers criados/alterados.
+* Telas/componentes ajustados.
+* Ações escondidas/desabilitadas por role.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que Logística continua fora de Movimentações.
+* Confirmação de que usuário comum continua podendo ler movimentações.
+* Confirmação de que back-end, banco, seed, endpoints, payloads, ProtectedRoute e permissions/role_permissions não foram alterados.

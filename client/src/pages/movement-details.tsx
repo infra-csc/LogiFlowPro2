@@ -46,7 +46,12 @@ import {
   FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  userCanManageMovementItems,
+  userCanChangeMovementStatusFreely,
+} from "@/lib/authz";
 import { useSidebar } from "@/components/ui/sidebar";
 import { format } from "date-fns";
 import type { Movement, MovementItem, Product, LoadingOrderItem, MovementTypeConfig, MovementAuditLog } from "@shared/schema";
@@ -106,6 +111,7 @@ export default function MovementDetails() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const sidebar = useSidebar();
   const [focusMode, setFocusMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -732,15 +738,17 @@ export default function MovementDetails() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowEditStatusDialog(true)}
-            data-testid="button-edit-status"
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Editar Status
-          </Button>
-          {movement.status === "created" && (
+          {userCanChangeMovementStatusFreely(user) && (
+            <Button
+              variant="outline"
+              onClick={() => setShowEditStatusDialog(true)}
+              data-testid="button-edit-status"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Editar Status
+            </Button>
+          )}
+          {movement.status === "created" && userCanManageMovementItems(user) && (
             <Button
               onClick={handleStartMovement}
               disabled={updateStatusMutation.isPending}
@@ -750,7 +758,7 @@ export default function MovementDetails() {
               Iniciar Movimentação
             </Button>
           )}
-          {movement.status === "in_progress" && (
+          {movement.status === "in_progress" && userCanManageMovementItems(user) && (
             <>
               <Button
                 variant="outline"
@@ -771,7 +779,7 @@ export default function MovementDetails() {
               </Button>
             </>
           )}
-          {movement.status === "paused" && (
+          {movement.status === "paused" && userCanManageMovementItems(user) && (
             <Button
               onClick={handleContinueMovement}
               disabled={updateStatusMutation.isPending}
@@ -845,7 +853,7 @@ export default function MovementDetails() {
         </Alert>
       )}
 
-      {isEditable && (
+      {isEditable && userCanManageMovementItems(user) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1231,7 +1239,7 @@ export default function MovementDetails() {
                         <Badge variant="outline" className="text-lg px-4 py-1">
                           {item.totalQuantity}x
                         </Badge>
-                        {movement?.status === "in_progress" && (
+                        {movement?.status === "in_progress" && userCanManageMovementItems(user) && (
                           <div className="flex items-center gap-1">
                             <Button
                               variant="outline"

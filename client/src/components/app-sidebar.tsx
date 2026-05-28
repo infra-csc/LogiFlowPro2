@@ -43,7 +43,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/use-auth";
-import { userIsAdmin } from "@/lib/authz";
+import { userIsAdmin, userCanViewMovementApprovalQueue } from "@/lib/authz";
 import { Button } from "@/components/ui/button";
 
 const approvalItems = [
@@ -329,20 +329,26 @@ export function AppSidebar() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                      {approvalItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={location === item.url}
-                            data-testid={`link-approvals-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <Link href={item.url}>
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
+                      {approvalItems.map((item) => {
+                        // Gate "Movimentações" link in approvals menu to Admin/Supervisor
+                        if (item.title === "Movimentações" && !userCanViewMovementApprovalQueue(user)) {
+                          return null;
+                        }
+                        return (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={location === item.url}
+                              data-testid={`link-approvals-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                            >
+                              <Link href={item.url}>
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        );
+                      })}
                     </SidebarMenuSub>
                   </CollapsibleContent>
                 </SidebarMenuItem>

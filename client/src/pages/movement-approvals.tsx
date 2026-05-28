@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { userCanApproveMovement } from "@/lib/authz";
 import {
   Table,
   TableBody,
@@ -22,8 +24,10 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, AlertCircle, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "wouter";
 
 interface Movement {
   id: string;
@@ -49,6 +53,7 @@ interface Movement {
 
 export default function MovementApprovals() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedMovement, setSelectedMovement] = useState<Movement | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
@@ -147,6 +152,29 @@ export default function MovementApprovals() {
       </Badge>
     );
   };
+
+  if (!userCanApproveMovement(user)) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-6">
+        <Card className="max-w-md w-full" data-testid="card-access-denied">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              <CardTitle data-testid="text-access-denied-title">Acesso negado</CardTitle>
+            </div>
+            <CardDescription data-testid="text-access-denied-description">
+              Você não tem permissão para acessar esta área. A aprovação de movimentações é restrita a administradores e supervisores.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" data-testid="button-back-to-dashboard">
+              <Link href="/">Voltar ao Dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

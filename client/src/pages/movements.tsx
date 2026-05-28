@@ -21,7 +21,12 @@ import {
 import { useLocation } from "wouter";
 import { MovementDialog } from "@/components/movement-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  userCanCreateMovement,
+  userCanEditMovement,
+} from "@/lib/authz";
 import type { Movement, LoadingOrder, Event, Dock, Trip, MovementTypeConfig } from "@shared/schema";
 
 type MovementWithRelations = Movement & {
@@ -68,6 +73,7 @@ const formatDuration = (minutes?: number | null) => {
 export default function Movements() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showFilters, setShowFilters] = useState(false);
 
   // Filtros
@@ -206,12 +212,14 @@ export default function Movements() {
             Gerencie movimentações operacionais do armazém
           </p>
         </div>
-        <MovementDialog>
-          <Button data-testid="button-new-movement">
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Movimentação
-          </Button>
-        </MovementDialog>
+        {userCanCreateMovement(user) && (
+          <MovementDialog>
+            <Button data-testid="button-new-movement">
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Movimentação
+            </Button>
+          </MovementDialog>
+        )}
       </div>
 
       {/* Filtros */}
@@ -434,80 +442,92 @@ export default function Movements() {
                   <div className="flex gap-2">
                     {movement.status === "created" && (
                       <>
-                        <MovementDialog movement={movement}>
+                        {userCanEditMovement(user) && (
+                          <MovementDialog movement={movement}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-testid={`button-edit-${movement.id}`}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                          </MovementDialog>
+                        )}
+                        {userCanEditMovement(user) && (
                           <Button
                             size="sm"
-                            variant="outline"
-                            data-testid={`button-edit-${movement.id}`}
-                          >
-                            <Pencil className="h-4 w-4 mr-1" />
-                            Editar
-                          </Button>
-                        </MovementDialog>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            updateStatusMutation.mutate(
-                              { id: movement.id, status: "in_progress" },
-                              {
-                                onSuccess: () => {
-                                  navigate(`/movements/${movement.id}`);
+                            onClick={() => {
+                              updateStatusMutation.mutate(
+                                { id: movement.id, status: "in_progress" },
+                                {
+                                  onSuccess: () => {
+                                    navigate(`/movements/${movement.id}`);
+                                  }
                                 }
-                              }
-                            );
-                          }}
-                          disabled={updateStatusMutation.isPending}
-                          data-testid={`button-start-${movement.id}`}
-                        >
-                          <PlayCircle className="h-4 w-4 mr-1" />
-                          Iniciar
-                        </Button>
+                              );
+                            }}
+                            disabled={updateStatusMutation.isPending}
+                            data-testid={`button-start-${movement.id}`}
+                          >
+                            <PlayCircle className="h-4 w-4 mr-1" />
+                            Iniciar
+                          </Button>
+                        )}
                       </>
                     )}
                     {movement.status === "in_progress" && (
                       <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "paused" })}
-                          disabled={updateStatusMutation.isPending}
-                          data-testid={`button-pause-${movement.id}`}
-                        >
-                          <PauseCircle className="h-4 w-4 mr-1" />
-                          Pausar
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "completed" })}
-                          disabled={updateStatusMutation.isPending}
-                          data-testid={`button-finish-${movement.id}`}
-                        >
-                          <CheckCircle2 className="h-4 w-4 mr-1" />
-                          Finalizar
-                        </Button>
+                        {userCanEditMovement(user) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "paused" })}
+                            disabled={updateStatusMutation.isPending}
+                            data-testid={`button-pause-${movement.id}`}
+                          >
+                            <PauseCircle className="h-4 w-4 mr-1" />
+                            Pausar
+                          </Button>
+                        )}
+                        {userCanEditMovement(user) && (
+                          <Button
+                            size="sm"
+                            onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "completed" })}
+                            disabled={updateStatusMutation.isPending}
+                            data-testid={`button-finish-${movement.id}`}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            Finalizar
+                          </Button>
+                        )}
                       </>
                     )}
                     {movement.status === "paused" && (
                       <>
-                        <MovementDialog movement={movement}>
+                        {userCanEditMovement(user) && (
+                          <MovementDialog movement={movement}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-testid={`button-edit-${movement.id}`}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                          </MovementDialog>
+                        )}
+                        {userCanEditMovement(user) && (
                           <Button
                             size="sm"
-                            variant="outline"
-                            data-testid={`button-edit-${movement.id}`}
+                            onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "in_progress" })}
+                            disabled={updateStatusMutation.isPending}
+                            data-testid={`button-continue-${movement.id}`}
                           >
-                            <Pencil className="h-4 w-4 mr-1" />
-                            Editar
+                            <PlayCircle className="h-4 w-4 mr-1" />
+                            Continuar
                           </Button>
-                        </MovementDialog>
-                        <Button
-                          size="sm"
-                          onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "in_progress" })}
-                          disabled={updateStatusMutation.isPending}
-                          data-testid={`button-continue-${movement.id}`}
-                        >
-                          <PlayCircle className="h-4 w-4 mr-1" />
-                          Continuar
-                        </Button>
+                        )}
                       </>
                     )}
                     <Button

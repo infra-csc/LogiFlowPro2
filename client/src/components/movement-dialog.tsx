@@ -28,7 +28,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { userCanCreateMovement, userCanEditMovement } from "@/lib/authz";
 import type { LoadingOrder, Dock, Event, Trip, Movement, MovementTypeConfig } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
@@ -58,6 +60,7 @@ interface MovementDialogProps {
 export function MovementDialog({ children, movement }: MovementDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const isEditMode = !!movement;
 
   const { data: loadingOrders = [] } = useQuery<LoadingOrder[]>({
@@ -519,15 +522,17 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
               >
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
-                data-testid="button-submit"
-              >
-                {isEditMode
-                  ? (updateMutation.isPending ? "Salvando..." : "Salvar Alterações")
-                  : (createMutation.isPending ? "Criando..." : "Criar Movimentação")}
-              </Button>
+              {(isEditMode ? userCanEditMovement(user) : userCanCreateMovement(user)) && (
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  data-testid="button-submit"
+                >
+                  {isEditMode
+                    ? (updateMutation.isPending ? "Salvando..." : "Salvar Alterações")
+                    : (createMutation.isPending ? "Criando..." : "Criar Movimentação")}
+                </Button>
+              )}
             </div>
           </form>
         </Form>

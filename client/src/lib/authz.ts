@@ -129,3 +129,73 @@ export function userCanApproveLoadingOrder(
 ): boolean {
   return userIsAdmin(user) || userIsSupervisor(user);
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Movement RBAC helpers (Phase 2.8.3)
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+
+/**
+ * Mirrors back-end gate `requireAnyRole([ADMIN, ALMOXARIFADO])` on
+ * `POST /api/movements` and `POST /api/movements/:id/items`.
+ */
+export function userCanCreateMovement(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userIsAdmin(user) || userIsAlmoxarifado(user);
+}
+
+/**
+ * Mirrors back-end gate `requireAnyRole([ADMIN, ALMOXARIFADO])` on
+ * `PATCH /api/movements/:id` (general edit) and `DELETE` on items.
+ * Ownership is enforced server-side; the front-end only decides whether to
+ * show the edit affordance at all.
+ */
+export function userCanEditMovement(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userIsAdmin(user) || userIsAlmoxarifado(user);
+}
+
+/**
+ * Alias for item-level operations inside a movement (add/remove/decrement).
+ * Mirrors the same gate as `userCanCreateMovement` — back-end enforces it
+ * on `POST /api/movements/:id/items` and `DELETE /api/movements/:id/items`.
+ */
+export function userCanManageMovementItems(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userIsAdmin(user) || userIsAlmoxarifado(user);
+}
+
+/**
+ * Mirrors back-end gate `requireAnyRole([ADMIN, SUPERVISOR])` on
+ * `POST /api/movements/:id/approve` and `POST /api/movements/:id/reject`.
+ */
+export function userCanApproveMovement(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userIsAdmin(user) || userIsSupervisor(user);
+}
+
+/**
+ * Mirrors back-end gate `requireAnyRole([ADMIN, SUPERVISOR])` on
+ * `GET /api/movements/pending-approval`. Controls whether the approval
+ * queue page is reachable and the link is shown in the sidebar.
+ */
+export function userCanViewMovementApprovalQueue(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userIsAdmin(user) || userIsSupervisor(user);
+}
+
+/**
+ * The free-form "Editar Status" button in the details page calls
+ * `PATCH /api/movements/:id/status` which is gated to `requireAdmin()`
+ * (D7).  Hide the button entirely for non-admins.
+ */
+export function userCanChangeMovementStatusFreely(
+  user: AuthUserLike | null | undefined,
+): boolean {
+  return userIsAdmin(user);
+}

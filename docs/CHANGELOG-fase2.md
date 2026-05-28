@@ -1646,8 +1646,58 @@ Validações específicas:
 - ✅ Sem `any`/`as any` introduzido; nenhum import novo em `server/routes.ts`.
 - ✅ Usuário transiente do smoke (`smoke282`) removido ao final; movimentações de smoke (`SMK-282-*`) deletadas; `actor_id`/`user_id` nullificados em tabelas de audit para preservar histórico sem violar FK.
 
+---
+
+## Fase 2.8.3 — Front-end de movimentações alinhado à matriz RBAC (2026-05-28)
+
+**Objetivo**: aplicar gating defensivo no front-end das telas de movimentações
+sem alterar back-end, endpoints, banco ou payloads. Back-end continua a
+fonte da verdade; front-end é UX defensiva apenas.
+
+### Arquivos alterados
+
+| Arquivo | Alteração |
+|---|---|
+| `client/src/lib/authz.ts` | 6 helpers novos: `userCanCreateMovement`, `userCanEditMovement`, `userCanManageMovementItems`, `userCanApproveMovement`, `userCanViewMovementApprovalQueue`, `userCanChangeMovementStatusFreely` |
+| `client/src/pages/movements.tsx` | Gated: "Nova Movimentação", Editar, Iniciar, Pausar, Finalizar, Continuar |
+| `client/src/pages/movement-details.tsx` | Gated: "Editar Status" (admin-only), botões de status (Almoxarifado), scanner de produtos (Almoxarifado), decrement/remove de itens (Almoxarifado) |
+| `client/src/pages/movement-approvals.tsx` | Page-level guard (Admin/Supervisor), botões Aprovar/Rejeitar ocultos para não-qualificados |
+| `client/src/components/movement-dialog.tsx` | Botão de submit oculto quando usuário não tem role para create/edit |
+| `client/src/components/app-sidebar.tsx` | Link "Movimentações" dentro de Aprovações oculto para não-Admin/Supervisor |
+
+### Matriz de gating aplicado no front-end
+
+| Componente / Ação | Quem vê / pode clicar |
+|---|---|
+| `movements.tsx` — "Nova Movimentação" | Admin, Almoxarifado |
+| `movements.tsx` — "Editar" (status created/paused) | Admin, Almoxarifado |
+| `movements.tsx` — "Iniciar" / "Pausar" / "Finalizar" / "Continuar" | Admin, Almoxarifado |
+| `movement-details.tsx` — "Editar Status" | Admin apenas |
+| `movement-details.tsx` — "Iniciar/Pausar/Finalizar/Continuar" | Admin, Almoxarifado |
+| `movement-details.tsx` — Scanner de produtos | Admin, Almoxarifado |
+| `movement-details.tsx` — Decrementar / Remover item | Admin, Almoxarifado |
+| `movement-approvals.tsx` — Página + botões Aprovar/Rejeitar | Admin, Supervisor |
+| `movement-dialog.tsx` — Botão submit (create/edit) | Admin, Almoxarifado |
+| `app-sidebar.tsx` — Link "Aprovações → Movimentações" | Admin, Supervisor |
+
+### Decisões implementadas
+
+- **D10**: "Editar Status" escondido para não-admin (back-end já era `requireAdmin()`).
+- **D2**: Almoxarifado vê ações de itens (add/remove/decrement) e scanner.
+- **D4**: Supervisor vê aprovação/rejeição em `movement-approvals.tsx`.
+- **D3**: Logística **não** recebe nenhum gate de movimentação no front-end (consistente com back-end).
+- Leitura (lista, detalhe, itens, audit-logs) **não** gated — qualquer logado vê (D1).
+
+### Back-end inalterado
+
+- Nenhuma rota, middleware, schema ou payload modificado.
+- `server/routes.ts`, `server/authz.ts`, `shared/schema.ts` intocados.
+- `server/seed-roles.ts` intocado.
+- `permissions`/`role_permissions` não consumidos.
+- `npm run check` zerado (back-end + front-end).
+- `npm run build` passou (`dist/index.js 271.3kb`).
+
 ### Dívida futura registrada
-- **Fase 2.8.3**: front-end de movimentações — esconder botão "Editar Status" para não-admin (D10), esconder ações de Approve/Reject para não-Supervisor/Admin, esconder ações de itens para não-Almoxarifado/Admin.
 - **Fase 2.8.4**: introduzir audit log no decrement (D11).
 - **Fase 2.9**: auditoria + RBAC em devoluções.
 
