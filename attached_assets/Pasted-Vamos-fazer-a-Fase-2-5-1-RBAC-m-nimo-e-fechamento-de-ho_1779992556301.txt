@@ -1,0 +1,307 @@
+Vamos fazer a Fase 2.5.1 — RBAC mínimo e fechamento de holes críticos em Ordens de Carregamento.
+
+Objetivo:
+Fechar as rotas críticas abertas de loading-orders e aplicar RBAC mínimo em criação/edição/operação básica, sem criar roles novas e sem alterar regras de negócio, payloads ou banco.
+
+Contexto:
+A auditoria da Fase 2.5 identificou:
+
+1. Rotas já seguras:
+
+* GETs de loading-orders usam requireAuth.
+* POST/DELETE /api/loading-orders/:id/trips já usam requireAnyRole([ADMIN, LOGISTICA]) desde a Fase 2.3.
+* PATCH /api/loading-orders/:id já tem canEditResource, mas ainda usa auth inline e não tem role gate.
+
+2. Riscos encontrados:
+
+* POST /api/loading-orders/:id/approve não tem middleware.
+* POST /api/loading-orders/:id/disapprove não tem middleware.
+* POST /api/loading-orders/:id/mark-ready não tem middleware.
+* POST /api/loading-orders usa req.isAuthenticated() inline, sem role gate.
+* PATCH /api/loading-orders/:id usa req.isAuthenticated() inline + ownership, sem role gate.
+* POST /api/loading-orders/:id/items usa apenas requireAuth, sem role gate e sem checagem suficiente de status.
+* POST /api/loading-orders/:id/optimize usa check inline !req.user e mensagem fora do padrão pt-BR.
+
+Decisões aprovadas:
+
+1. Não criar role Almoxarifado agora. Fica para Fase 2.6.
+2. Não criar role Supervisor/Aprovador agora. Fica para Fase 2.6.
+3. Até existir Supervisor, approve/disapprove de loading-order será admin-only provisório.
+4. Marcar como pronta será permitido para Admin ou Logística.
+5. Criar/editar loading-order será permitido para Admin ou Logística, preservando ownership onde já existe.
+6. Adicionar item avulso será permitido para Admin ou Logística provisoriamente, até existir Almoxarifado.
+7. Executar otimização será permitido para Admin ou Logística.
+8. Usuário comum continua podendo visualizar loading-orders via GET.
+9. GETs não serão restringidos nesta fase.
+10. Não consumir permissions/role_permissions no runtime.
+
+Escopo permitido:
+
+1. Back-end — aplicar RBAC nas rotas de loading-orders
+
+Aplicar requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA]) em:
+
+* POST /api/loading-orders
+* PATCH /api/loading-orders/:id
+* POST /api/loading-orders/:id/items
+* POST /api/loading-orders/:id/mark-ready
+
+Aplicar requireAdmin em:
+
+* POST /api/loading-orders/:id/approve
+* POST /api/loading-orders/:id/disapprove
+
+Aplicar requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA]) em routes-optimization.ts:
+
+* POST /api/loading-orders/:id/optimize
+
+2. Preservar ownership e regras existentes
+
+Para PATCH /api/loading-orders/:id:
+
+* manter canEditResource após o role gate.
+* admin continua tendo override.
+* logística só edita se for owner, como já funciona hoje pelo canEditResource.
+* manter bloqueios atuais por status/movimentos ativos.
+
+Para POST /api/loading-orders:
+
+* manter createdBy = req.user.id.
+* não alterar payload.
+* não alterar criação dos itens consolidados.
+
+Para POST /api/loading-orders/:id/items:
+
+* adicionar role gate Admin/Logística.
+* adicionar ou preservar checagem de status para impedir item em ordem completed/cancelled.
+* Se já existir helper de can-edit/status, reutilizar.
+* Se não existir, fazer checagem mínima e clara.
+* Não alterar payload.
+* Não alterar regra de consolidação de itens além do bloqueio por status.
+
+Para mark-ready/approve/disapprove:
+
+* preservar as regras atuais de transição:
+
+  * mark-ready exige draft.
+  * approve exige ready.
+  * disapprove exige approved.
+* Apenas adicionar middleware de autorização.
+* Não alterar nomes de status.
+* Não alterar payload de resposta.
+
+Para optimize:
+
+* trocar check inline !req.user por middleware RBAC.
+* Padronizar 401/403:
+
+  * anônimo → 401 { error: "Não autenticado" }
+  * sem papel → 403
+* Não alterar algoritmo de otimização.
+* Não alterar payload da otimização.
+* Não alterar persistência dos resultados.
+
+3. Front-end — UX defensiva
+
+Ajustar apenas telas/componentes de loading-orders:
+
+* client/src/pages/loading-orders.tsx
+
+  * esconder botão "Nova Ordem" do header para quem não é Admin/Logística.
+  * esconder botão "Nova Ordem" do empty-state para quem não é Admin/Logística.
+  * esconder botão de edição do card para quem não é Admin/Logística.
+  * manter navegação/leitura do card para qualquer logado.
+
+* client/src/components/loading-order-dialog.tsx
+
+  * desabilitar ou impedir submit se usuário não for Admin/Logística.
+  * preservar lógica atual de canEdit/status.
+  * não alterar layout.
+
+* client/src/pages/loading-order-details.tsx
+
+  * esconder "Marcar como Pronta" para quem não é Admin/Logística.
+  * esconder "Aprovar para Carga" e "Desaprovar" para quem não é Admin.
+  * manter leitura da página para qualquer logado.
+
+* client/src/components/loading-optimization-dialog.tsx
+
+  * esconder/desabilitar botão "Otimizar" para quem não é Admin/Logística.
+
+Não alterar sidebar nesta fase, porque leitura de ordens continua permitida.
+
+4. Não alterar nesta fase
+
+* Banco.
+* Migration.
+* Seed.
+* Roles novas.
+* Renomeação de roles.
+* permissions/role_permissions.
+* GETs de loading-orders.
+* POST/DELETE /api/loading-orders/:id/trips, pois já foram protegidos na Fase 2.3.
+* Requisições.
+* Movimentações.
+* Devoluções.
+* Produtos.
+* Kits.
+* Fornecedores.
+* Viagens.
+* Motoristas.
+* Veículos.
+* Docas.
+* Relatórios.
+* Endpoints.
+* Payloads.
+* Algoritmo de otimização.
+* Regras de status, exceto bloqueio mínimo de item em ordem completed/cancelled.
+* Redesign visual.
+
+5. Mensagens de erro sugeridas
+
+Para Admin/Logística:
+
+* "Apenas administradores ou logística podem gerenciar ordens de carregamento"
+* "Apenas administradores ou logística podem adicionar itens à ordem"
+* "Apenas administradores ou logística podem marcar ordem como pronta"
+* "Apenas administradores ou logística podem executar otimizações"
+
+Para Admin-only:
+
+* "Apenas administradores podem aprovar ou desaprovar ordens de carregamento"
+
+Manter:
+
+* Anônimo → 401 { error: "Não autenticado" }
+* Logado sem papel → 403
+* Admin/Logística autorizado → comportamento anterior
+
+6. Testes obrigatórios
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests back-end:
+
+Anônimo:
+
+* POST /api/loading-orders → 401
+* PATCH /api/loading-orders/:id → 401
+* POST /api/loading-orders/:id/items → 401
+* POST /api/loading-orders/:id/mark-ready → 401
+* POST /api/loading-orders/:id/approve → 401
+* POST /api/loading-orders/:id/disapprove → 401
+* POST /api/loading-orders/:id/optimize → 401
+
+Admin:
+
+* POST /api/loading-orders → 201
+* PATCH /api/loading-orders/:id → 200
+* POST /api/loading-orders/:id/items em ordem draft → 201 ou comportamento atual equivalente
+* POST /api/loading-orders/:id/items em ordem completed/cancelled → 400 ou 409 com mensagem clara
+* POST /api/loading-orders/:id/mark-ready em draft → 200
+* POST /api/loading-orders/:id/approve em ready → 200
+* POST /api/loading-orders/:id/disapprove em approved → 200
+* POST /api/loading-orders/:id/optimize → 200 ou comportamento atual equivalente
+
+Usuário com role real "Gestor Logistica":
+
+* POST /api/loading-orders → 201
+* PATCH /api/loading-orders/:id própria → 200
+* PATCH /api/loading-orders/:id de outro → 403
+* POST /api/loading-orders/:id/items em ordem válida → permitido
+* POST /api/loading-orders/:id/mark-ready → 200
+* POST /api/loading-orders/:id/approve → 403
+* POST /api/loading-orders/:id/disapprove → 403
+* POST /api/loading-orders/:id/optimize → 200
+* GETs de loading-orders continuam 200
+
+Usuário comum sem logística:
+
+* GET /api/loading-orders → 200
+* GET /api/loading-orders/:id → 200
+* POST /api/loading-orders → 403
+* PATCH /api/loading-orders/:id → 403
+* POST /api/loading-orders/:id/items → 403
+* POST /api/loading-orders/:id/mark-ready → 403
+* POST /api/loading-orders/:id/approve → 403
+* POST /api/loading-orders/:id/disapprove → 403
+* POST /api/loading-orders/:id/optimize → 403
+
+Smoke tests front-end:
+
+Admin:
+
+* vê "Nova Ordem".
+* vê edição de ordem.
+* vê "Marcar como Pronta".
+* vê "Aprovar para Carga" e "Desaprovar".
+* vê "Otimizar".
+
+Gestor Logistica:
+
+* vê "Nova Ordem".
+* vê edição quando permitido.
+* vê "Marcar como Pronta".
+* não vê "Aprovar para Carga" nem "Desaprovar".
+* vê "Otimizar".
+
+Usuário comum:
+
+* vê lista e detalhe de loading-orders.
+* não vê "Nova Ordem".
+* não vê edição.
+* não vê "Marcar como Pronta".
+* não vê "Aprovar para Carga" nem "Desaprovar".
+* não vê "Otimizar".
+* não recebe tela quebrada.
+
+7. Documentação
+   Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.5.1
+* replit.md com bullet curto
+
+Registrar:
+
+* rotas protegidas
+* decisões D1 a D8
+* motivo de approve/disapprove admin-only provisório
+* rotas mantidas apenas requireAuth
+* testes executados
+* limitações conhecidas
+* dívida futura: criar roles Almoxarifado e Supervisor/Aprovador na Fase 2.6 e revisar approve/disapprove/items
+
+8. Regras obrigatórias
+
+* Não alterar banco.
+* Não criar migration.
+* Não alterar seed.
+* Não criar role nova.
+* Não renomear role.
+* Não consumir permissions/role_permissions.
+* Não alterar endpoints.
+* Não alterar payloads.
+* Não mexer em módulos fora de loading-orders.
+* Não criar any/as any.
+* Não refatorar routes.ts inteiro.
+* Não fazer redesign.
+* Não alterar algoritmo de otimização.
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Rotas que receberam requireAnyRole([ADMIN, LOGISTICA]).
+* Rotas que receberam requireAdmin.
+* Regras de status preservadas.
+* Ajustes de front-end.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que anônimo não consegue mais alterar status de ordem.
+* Confirmação de que approve/disapprove ficaram admin-only provisoriamente.
+* Confirmação de que GETs continuam liberados para qualquer usuário logado.
+* Confirmação de que banco, seed, endpoints, payloads e permissions/role_permissions não foram alterados.

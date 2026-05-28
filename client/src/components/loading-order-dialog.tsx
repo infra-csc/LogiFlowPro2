@@ -199,11 +199,20 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     );
   };
 
-  const canEdit = !order || (canEditData?.canEdit !== false);
-  const canLinkTrips = userCanWriteLogistics(user);
+  const canWriteLogistics = userCanWriteLogistics(user);
+  const canEdit = canWriteLogistics && (!order || (canEditData?.canEdit !== false));
+  const canLinkTrips = canWriteLogistics;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canWriteLogistics) {
+      toast({
+        description: "Apenas administradores ou logística podem gerenciar ordens de carregamento",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!canEdit) {
       toast({ description: "Esta ordem não pode ser editada no momento", variant: "destructive" });

@@ -1295,11 +1295,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loading-orders/:id/items", requireAuth, async (req, res) => {
+  app.post(
+    "/api/loading-orders/:id/items",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem adicionar itens à ordem",
+    }),
+    async (req, res) => {
     try {
       const loadingOrderId = req.params.id;
       const { insertLoadingOrderItemSchema } = await import("@shared/schema");
-      
+
+      const existingOrder = await storage.getLoadingOrder(loadingOrderId);
+      if (!existingOrder) {
+        return res.status(404).json({ error: "Ordem de carregamento não encontrada" });
+      }
+      if (existingOrder.status === "completed" || existingOrder.status === "cancelled") {
+        return res.status(400).json({
+          error: "Ordens concluídas ou canceladas não podem receber novos itens",
+        });
+      }
+
       // Validate the request body
       const itemData = insertLoadingOrderItemSchema.parse({
         loadingOrderId,
@@ -1360,12 +1375,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loading-orders", async (req, res) => {
+  app.post(
+    "/api/loading-orders",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem gerenciar ordens de carregamento",
+    }),
+    async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-
       const { consolidateLoadingOrderItems } = await import("./loadingOrderUtils");
       
       const orderData = insertLoadingOrderSchema.parse(req.body);
@@ -1455,12 +1471,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/loading-orders/:id", async (req, res) => {
+  app.patch(
+    "/api/loading-orders/:id",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem gerenciar ordens de carregamento",
+    }),
+    async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-
       const order = await storage.getLoadingOrder(req.params.id);
       if (!order) {
         return res.status(404).json({ error: "Loading order not found" });
@@ -1510,7 +1527,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loading-orders/:id/approve", async (req, res) => {
+  app.post(
+    "/api/loading-orders/:id/approve",
+    requireAdmin({
+      message: "Apenas administradores podem aprovar ou desaprovar ordens de carregamento",
+    }),
+    async (req, res) => {
     try {
       const order = await storage.getLoadingOrder(req.params.id);
       if (!order) {
@@ -1528,7 +1550,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loading-orders/:id/disapprove", async (req, res) => {
+  app.post(
+    "/api/loading-orders/:id/disapprove",
+    requireAdmin({
+      message: "Apenas administradores podem aprovar ou desaprovar ordens de carregamento",
+    }),
+    async (req, res) => {
     try {
       const order = await storage.getLoadingOrder(req.params.id);
       if (!order) {
@@ -1546,7 +1573,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loading-orders/:id/mark-ready", async (req, res) => {
+  app.post(
+    "/api/loading-orders/:id/mark-ready",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem marcar ordem como pronta",
+    }),
+    async (req, res) => {
     try {
       const order = await storage.getLoadingOrder(req.params.id);
       if (!order) {

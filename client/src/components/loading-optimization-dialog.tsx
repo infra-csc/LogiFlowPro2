@@ -9,6 +9,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/use-auth";
+import { userCanWriteLogistics } from "@/lib/authz";
 
 interface LoadingOptimizationDialogProps {
   open: boolean;
@@ -18,6 +20,8 @@ interface LoadingOptimizationDialogProps {
 
 export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }: LoadingOptimizationDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canRunOptimization = userCanWriteLogistics(user);
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>("");
 
   // Fetch vehicle types
@@ -93,20 +97,22 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
                     </SelectContent>
                   </Select>
                 </div>
-                <Button
-                  data-testid="button-run-optimization"
-                  onClick={() => runOptimization.mutate()}
-                  disabled={!selectedVehicleType || runOptimization.isPending}
-                >
-                  {runOptimization.isPending ? (
-                    <>Processando...</>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Otimizar
-                    </>
-                  )}
-                </Button>
+                {canRunOptimization && (
+                  <Button
+                    data-testid="button-run-optimization"
+                    onClick={() => runOptimization.mutate()}
+                    disabled={!selectedVehicleType || runOptimization.isPending}
+                  >
+                    {runOptimization.isPending ? (
+                      <>Processando...</>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Otimizar
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

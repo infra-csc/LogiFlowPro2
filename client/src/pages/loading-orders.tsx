@@ -9,6 +9,8 @@ import { format } from "date-fns";
 import type { LoadingOrder, Event } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { LoadingOrderDialog } from "@/components/loading-order-dialog";
+import { useAuth } from "@/hooks/use-auth";
+import { userCanWriteLogistics } from "@/lib/authz";
 
 interface LoadingOrderWithRelations extends LoadingOrder {
   event?: Event;
@@ -18,6 +20,8 @@ export default function LoadingOrders() {
   const [, navigate] = useLocation();
   const [showDialog, setShowDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<LoadingOrder | undefined>();
+  const { user } = useAuth();
+  const canWrite = userCanWriteLogistics(user);
 
   const { data: orders, isLoading } = useQuery<LoadingOrderWithRelations[]>({
     queryKey: ["/api/loading-orders"],
@@ -51,10 +55,12 @@ export default function LoadingOrders() {
           <h1 className="text-2xl font-semibold text-foreground">Ordens de Carregamento</h1>
           <p className="text-sm text-muted-foreground mt-1">Gerencie listas consolidadas para picking e carregamento</p>
         </div>
-        <Button onClick={() => setShowDialog(true)} data-testid="button-create-loading-order">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Ordem
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setShowDialog(true)} data-testid="button-create-loading-order">
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Ordem
+          </Button>
+        )}
       </div>
 
       {!orders || orders.length === 0 ? (
@@ -64,10 +70,12 @@ export default function LoadingOrders() {
               <Package className="h-16 w-16 mx-auto text-muted-foreground/50" />
               <h3 className="mt-4 text-lg font-medium">Nenhuma ordem de carregamento</h3>
               <p className="mt-2 text-sm text-muted-foreground">Crie uma ordem consolidando requisições aprovadas</p>
-              <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-order">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Ordem
-              </Button>
+              {canWrite && (
+                <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-order">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Ordem
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -87,17 +95,19 @@ export default function LoadingOrders() {
                     {order.orderNumber}
                   </CardTitle>
                   <div className="flex items-center gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(order);
-                      }}
-                      data-testid={`button-edit-${order.id}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    {canWrite && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(order);
+                        }}
+                        data-testid={`button-edit-${order.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
                     <StatusBadge status={order.status} />
                   </div>
                 </div>

@@ -2,18 +2,21 @@ import { Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { optimizeVehicleLoading, optimizeRoute } from "./optimization-engine";
 import { requireAuth } from "./ownership";
+import { requireAnyRole } from "./authz";
+import { ROLES } from "@shared/roles";
 
 export function registerOptimizationRoutes(app: Express) {
   // Request vehicle loading optimization
-  app.post("/api/loading-orders/:id/optimize", async (req: Request, res: Response) => {
+  app.post(
+    "/api/loading-orders/:id/optimize",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem executar otimizações",
+    }),
+    async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { vehicleTypeId } = req.body;
-      
-      if (!req.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      
+
       // Get loading order with items
       const loadingOrder = await storage.getLoadingOrder(id);
       if (!loadingOrder) {
@@ -48,7 +51,7 @@ export function registerOptimizationRoutes(app: Express) {
         type: 'vehicle_loading',
         status: 'processing',
         loadingOrderId: id,
-        requestedBy: req.user.id,
+        requestedBy: req.user!.id,
         inputParams: {
           productIds: items.map(i => i.productId),
           vehicleTypeId
@@ -148,7 +151,7 @@ export function registerOptimizationRoutes(app: Express) {
         type: 'route_planning',
         status: 'processing',
         tripId: id,
-        requestedBy: req.user.id,
+        requestedBy: req.user!.id,
         inputParams: {
           destinations: destinations.map(d => ({
             location: d.location,
