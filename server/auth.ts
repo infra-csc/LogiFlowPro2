@@ -191,12 +191,9 @@ export function setupAuth(app: Express): void {
         .execute();
       
       const roleNames = userRoleRecords.map(r => r.roleName);
-      // Seed role is "Adm" (pt-BR); accept both spellings case-insensitively
-      // to match server/ownership.ts isAdmin(). See ownership.ts for rationale.
-      const isAdminUser = roleNames.some(n => {
-        const lower = n?.toLowerCase();
-        return lower === 'admin' || lower === 'adm';
-      });
+      // Single source of truth — see server/ownership.ts:isAdminRoleName().
+      const { isAdminRoleName } = await import("./ownership");
+      const isAdminUser = roleNames.some(isAdminRoleName);
 
       res.json({
         ...req.user,

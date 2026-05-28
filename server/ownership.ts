@@ -79,6 +79,24 @@ export function checkOwnership(
 }
 
 /**
+ * Pure helper: decide whether a given role name represents the admin role.
+ *
+ * The seeded admin role in this database is named "Adm" (pt-BR), while
+ * earlier code paths assumed the literal "admin". Accept both spellings
+ * case-insensitively so the existing seed and any future installs that
+ * use the English name both resolve to admin. No new role is granted —
+ * callers only honor roles already assigned via `user_roles`.
+ *
+ * Single source of truth — used by `isAdmin()` here and by `GET /api/user`
+ * in `server/auth.ts`.
+ */
+export function isAdminRoleName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return lower === 'admin' || lower === 'adm';
+}
+
+/**
  * Check if user has admin role
  */
 export async function isAdmin(user: AuthUser | undefined): Promise<boolean> {
@@ -93,15 +111,7 @@ export async function isAdmin(user: AuthUser | undefined): Promise<boolean> {
       .where(eq(userRoles.userId, user.id))
       .execute();
     
-    // The seeded admin role in this database is named "Adm" (pt-BR), while
-    // earlier code paths assumed the literal "admin". Accept both spellings
-    // case-insensitively so the existing seed and any future installs that
-    // use the English name both resolve to admin. No new role is granted —
-    // we only honor the role already assigned via user_roles.
-    return userRoleRecords.some(record => {
-      const name = record.roleName?.toLowerCase();
-      return name === 'admin' || name === 'adm';
-    });
+    return userRoleRecords.some(record => isAdminRoleName(record.roleName));
   } catch (error) {
     console.error("Error checking admin status:", error);
     return false;

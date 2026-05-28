@@ -1,0 +1,133 @@
+Vamos fazer a Fase 1.5 — limpeza segura de duplicações e consolidação de isAdmin.
+
+Objetivo:
+Remover código morto comprovado e evitar duplicação de regra de admin, sem alterar comportamento funcional do sistema.
+
+Contexto:
+Na Fase 1.4 foi identificado e corrigido um bug real:
+
+* A role no banco/seed estava como "Adm"
+* O código verificava apenas "admin"
+* Isso fazia GET /api/user retornar isAdmin:false para usuário admin
+* Rotas admin-only retornavam 403 indevidamente
+
+Também foi auditado que existem 3 declarações de GET /api/users:
+
+* Linha 1994: rota ativa, primeira no Express, protegida com requireAuth
+* Linha 2723: código morto, inalcançável
+* Linha 3059: código morto, inalcançável
+
+GET /api/users/:id existe apenas uma vez.
+
+Escopo da Fase 1.5:
+
+1. Remover apenas as duas declarações mortas de GET /api/users.
+2. Manter intacta a rota ativa de GET /api/users.
+3. Consolidar a regra de isAdmin em uma única função reutilizável.
+4. Fazer auth.ts usar a mesma regra de isAdmin do ownership.ts, se isso não criar dependência circular.
+5. Se houver risco de dependência circular, criar um helper neutro em arquivo separado, por exemplo:
+
+   * server/authz.ts
+   * server/permissions.ts
+   * ou outro nome simples e coerente
+
+Regras obrigatórias:
+
+* Não alterar banco de dados.
+* Não criar migration.
+* Não alterar payloads da API.
+* Não alterar nomes de rotas.
+* Não alterar endpoints públicos.
+* Não alterar regra de negócio.
+* Não implementar papéis funcionais novos.
+* Não criar matriz de papéis ainda.
+* Não mexer no front-end.
+* Não refatorar routes.ts inteiro.
+* Não remover a rota ativa GET /api/users da linha 1994.
+* Não remover GET /api/users/:id.
+* Não criar novos any.
+* Não criar novos as any.
+* Não usar cast solto para calar TypeScript.
+
+Parte 1 — Remoção das rotas mortas
+Remover somente as declarações duplicadas e inalcançáveis de:
+
+* GET /api/users na região da linha 2723
+* GET /api/users na região da linha 3059
+
+Antes de remover:
+
+* Confirme que elas são realmente posteriores à rota ativa.
+* Confirme que não têm path diferente.
+* Confirme que não são usadas por nenhum middleware especial.
+* Confirme que a rota ativa retorna todos os campos necessários para os fluxos de @mention e user-management.
+
+Depois de remover:
+
+* Garantir que GET /api/users continue respondendo normalmente pela rota ativa.
+* Garantir que GET /api/users/:id continue funcionando.
+
+Parte 2 — Consolidação de isAdmin
+Hoje a lógica de admin foi corrigida em:
+
+* server/ownership.ts
+* server/auth.ts
+
+Quero evitar drift no futuro.
+
+Faça uma das opções abaixo:
+
+Opção A — preferida, se não houver circular import:
+
+* Exportar/reutilizar a função isAdmin de server/ownership.ts no auth.ts.
+* Garantir que GET /api/user use a mesma lógica.
+
+Opção B — se houver risco de circular import:
+
+* Criar helper neutro, por exemplo server/authz.ts.
+* Colocar nele uma função reutilizável para normalizar/verificar nomes de roles.
+* ownership.ts e auth.ts devem consumir essa função.
+* A função deve aceitar "admin" e "adm" case-insensitive.
+* Não deve conceder admin por username, email ou outro campo.
+* Deve depender apenas das roles reais do usuário.
+
+Importante:
+Não ampliar permissão. Apenas reconhecer corretamente as roles já atribuídas.
+
+Parte 3 — Testes obrigatórios
+Rodar:
+
+* npm run check
+* npm run build
+
+Testes manuais:
+
+1. Admin:
+
+* GET /api/user deve retornar isAdmin:true
+* GET /api/users deve retornar 200
+* GET /api/users/:id deve retornar 200
+* DELETE /api/drivers/:id deve continuar permitindo admin
+
+2. Usuário não-admin:
+
+* GET /api/user deve retornar isAdmin:false
+* DELETE /api/drivers/:id deve continuar retornando 403
+
+3. Anônimo:
+
+* GET /api/users deve retornar 401
+* GET /api/users/:id deve retornar 401
+
+Parte 4 — Entrega final
+Liste:
+
+* Arquivos alterados.
+* Rotas duplicadas removidas.
+* Rota ativa preservada.
+* Onde ficou a função/regra única de isAdmin.
+* Confirmação se houve ou não dependência circular.
+* Resultado do npm run check.
+* Resultado do npm run build.
+* Testes manuais executados.
+* Confirmação de que não houve alteração de banco, payloads, endpoints, front-end, regras de negócio ou papéis funcionais.

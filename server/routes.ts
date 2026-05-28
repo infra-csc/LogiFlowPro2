@@ -2719,26 +2719,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all users for @mention autocomplete
-  app.get("/api/users", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    try {
-      const users = await storage.getUsers();
-      // Return only necessary fields for autocomplete
-      const simplifiedUsers = users.map(u => ({
-        id: u.id,
-        username: u.username,
-        name: u.name,
-      }));
-      res.json(simplifiedUsers);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
-  });
+  // NOTE: A duplicate GET /api/users for @mention autocomplete used to live
+  // here. It was unreachable because Express resolves the first matching
+  // route (the requireAuth-protected one declared earlier in this file),
+  // and the active route already returns a superset of the fields used by
+  // @mention. Removed in Fase 1.5 — see replit.md.
 
   // ========== PHASE 1: Movement Groups & Types Config ==========
   
@@ -3055,36 +3040,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User Management
-  app.get("/api/users", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-    try {
-      const { db } = await import("./db");
-      const { users } = await import("@shared/schema");
-      const { desc } = await import("drizzle-orm");
-      const allUsers = await db.select({
-        id: users.id,
-        username: users.username,
-        name: users.name,
-        email: users.email,
-        active: users.active,
-        approvalStatus: users.approvalStatus,
-        approvedBy: users.approvedBy,
-        approvedAt: users.approvedAt,
-        rejectedBy: users.rejectedBy,
-        rejectedAt: users.rejectedAt,
-        rejectionReason: users.rejectionReason,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-      }).from(users).orderBy(desc(users.createdAt));
-      res.json(allUsers);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
-  });
+  // NOTE: A duplicate GET /api/users for user management used to live here.
+  // It was unreachable for the same reason as the @mention duplicate above
+  // (Express first-match). The active route declared earlier already returns
+  // a superset of these fields. Removed in Fase 1.5 — see replit.md.
 
   app.patch("/api/users/:id/approve", async (req, res) => {
     if (!req.isAuthenticated()) {
