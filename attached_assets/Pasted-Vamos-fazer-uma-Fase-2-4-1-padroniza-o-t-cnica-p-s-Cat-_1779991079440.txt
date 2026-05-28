@@ -1,0 +1,92 @@
+Vamos fazer uma Fase 2.4.1 — padronização técnica pós-Catálogo, com escopo mínimo.
+
+Objetivo:
+Padronizar duas rotas GET que ainda usam req.isAuthenticated() inline, substituindo por requireAuth, sem alterar comportamento funcional, payload, permissões ou front-end.
+
+Contexto:
+Na Fase 2.4, Produtos, Kits e Fornecedores tiveram escrita protegida por requireAdmin e leitura mantida para qualquer usuário autenticado.
+
+O code review sugeriu padronizar:
+
+* GET /api/suppliers/recent
+* GET /api/products/:sku/recent-suppliers
+
+Essas rotas já exigem autenticação via req.isAuthenticated() inline, mas ainda não usam requireAuth como o restante das rotas internas.
+
+Escopo permitido:
+
+1. Back-end
+   Substituir o check inline de autenticação por requireAuth nas rotas:
+
+* GET /api/suppliers/recent
+* GET /api/products/:sku/recent-suppliers
+
+Comportamento esperado:
+
+* Anônimo continua recebendo 401.
+* Usuário logado continua recebendo 200.
+* Payload continua idêntico.
+* Query/ordenação/filtros continuam idênticos.
+* Nenhuma regra de negócio muda.
+
+2. Não alterar
+
+* Banco
+* Seed
+* Migration
+* Schema
+* Payloads
+* Endpoints
+* Front-end
+* Sidebar
+* ProtectedRoute
+* Roles
+* Permissions/role_permissions
+* Produtos/Kits/Fornecedores além dessas duas rotas
+* Requisições
+* Ordens de carregamento
+* Viagens
+* Movimentações
+* Devoluções
+* Relatórios
+
+3. Documentação
+   Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.4.1 curta
+* replit.md com bullet mínimo, se fizer sentido
+
+Não expandir demais o replit.md. Se possível, deixar apenas uma linha resumida apontando para o changelog.
+
+4. Validação obrigatória
+   Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Anônimo:
+
+* GET /api/suppliers/recent → 401
+* GET /api/products/:sku/recent-suppliers → 401
+
+Usuário logado:
+
+* GET /api/suppliers/recent → 200
+* GET /api/products/:sku/recent-suppliers → 200
+
+Admin:
+
+* comportamento igual ao usuário logado
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Rotas padronizadas.
+* Confirmação de que o payload não mudou.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que não houve alteração funcional.

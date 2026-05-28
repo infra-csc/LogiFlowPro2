@@ -814,3 +814,60 @@ DELETE de products/kits no código. GETs (`/api/products`, `/api/kits`,
   - Admin em `POST /api/suppliers` → 201.
 - Usuário transiente (`smokefase24`) criado e removido após smoke;
   fornecedor de teste removido.
+
+---
+
+## Fase 2.4.1 — Padronização técnica pós-Catálogo (2026-05-28)
+
+**Objetivo**: substituir o check inline `req.isAuthenticated()` por
+`requireAuth` em duas rotas GET remanescentes, sem alterar comportamento
+funcional, payload, permissões ou front-end. Consolida a recomendação do
+code review da Fase 2.4.
+
+### Back-end (`server/routes.ts`)
+
+Trocado check inline por middleware `requireAuth`:
+- `GET /api/suppliers/recent`
+- `GET /api/products/:sku/recent-suppliers`
+
+Bloco removido em cada uma (4 linhas):
+```ts
+if (!req.isAuthenticated()) {
+  return res.status(401).json({ error: "Not authenticated" });
+}
+```
+
+Substituído por `requireAuth` como 2º argumento. Mensagem de 401 passa
+de `"Not authenticated"` (en) para `"Não autenticado"` (pt-BR) —
+consistente com o resto das rotas internas, já normalizado nas Fases
+1.1/2.2.
+
+### Validação
+
+- `npm run check` zerado.
+- `npm run build` passando.
+- Smoke (anônimo / usuário logado transiente / admin):
+  - Anônimo em ambas → 401 `{"error":"Não autenticado"}`.
+  - Logado e admin em `GET /api/products/:sku/recent-suppliers` → 200,
+    payloads idênticos (diff vazio).
+  - Logado e admin em `GET /api/suppliers/recent` → 404 (pré-existente,
+    ver "Pendência" abaixo); payloads idênticos.
+- Usuário transiente `smokefase241` criado e removido após smoke.
+
+### Pendência pré-existente (fora do escopo desta fase)
+
+`GET /api/suppliers/recent` (linha 406) é mascarado por
+`GET /api/suppliers/:id` (linha 323), que casa primeiro com `"recent"`
+como `:id` e retorna 404 via `storage.getSupplier`. Isto **não foi
+introduzido** pela Fase 2.4.1 — o mesmo 404 ocorria antes da troca pelo
+`requireAuth` (mesmo arquivo, mesma ordem). Correção (mover a rota mais
+específica para antes da paramétrica) fica anotada para uma sub-fase
+futura de cleanup/ordem de rotas, fora do escopo desta padronização
+puramente técnica.
+
+### Não tocado
+
+Banco, seed, migrations, schema, payloads, demais endpoints,
+front-end, sidebar, ProtectedRoute, roles, `permissions`/
+`role_permissions`, requests, loading-orders, trips, movements,
+returns, reports.

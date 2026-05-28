@@ -403,11 +403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/suppliers/recent", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.get("/api/suppliers/recent", requireAuth, async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const suppliers = await storage.getRecentSuppliers(limit);
@@ -2905,11 +2901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Supplier tracking
-  app.get("/api/products/:sku/recent-suppliers", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.get("/api/products/:sku/recent-suppliers", requireAuth, async (req, res) => {
     try {
       const months = req.query.months ? parseInt(req.query.months as string) : 3;
       const suppliers = await storage.getRecentSuppliersBySku(req.params.sku, months);
