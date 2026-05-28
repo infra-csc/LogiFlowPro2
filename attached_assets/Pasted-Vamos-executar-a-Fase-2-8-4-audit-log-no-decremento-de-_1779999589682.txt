@@ -1,0 +1,173 @@
+Vamos executar a Fase 2.8.4 — audit log no decremento de item de Movimentações + documentação da dívida técnica de status.
+
+Objetivo:
+Adicionar registro de auditoria quando um item de movimentação for decrementado, fechando a dívida D11 identificada na auditoria, sem alterar permissões, payloads, endpoints, banco ou front-end.
+
+Contexto:
+Já concluímos:
+
+* Fase 2.8.1: holes críticos de Movimentações fechados.
+* Fase 2.8.2: RBAC aplicado em criação/edição/pending-approval e escape de ownership/status corrigido.
+* Fase 2.8.3: front-end de Movimentações alinhado ao RBAC.
+
+Dívida restante da auditoria:
+
+* PATCH /api/movements/:id/items/:itemId/decrement já está protegido por Admin/Almoxarifado.
+* Porém, o decremento ainda precisa registrar audit log, conforme D11.
+* PATCH /api/movements/:id/status continua existindo como rota Admin-only provisória e deve ser documentada como dívida técnica futura, não refatorada agora.
+
+Escopo permitido:
+
+1. Back-end — audit log no decrement
+
+Alterar somente a rota:
+
+* PATCH /api/movements/:id/items/:itemId/decrement
+
+Objetivo:
+
+* Após decremento bem-sucedido, registrar uma entrada em movement_audit_logs, usando o mesmo padrão já existente no projeto para logs de movimentação.
+
+Regras:
+
+* Reutilizar helper/função/padrão existente de audit log, se houver.
+* Não criar novo schema.
+* Não criar migration.
+* Não alterar tabela.
+* Não alterar payload da rota.
+* Não alterar resposta da rota.
+* Não alterar permissão da rota.
+* Não alterar regra de decremento.
+* Não alterar estoque além do que a rota já faz.
+* Não alterar status/transições.
+* Não alterar front-end.
+
+O audit log deve registrar, se os dados estiverem disponíveis:
+
+* movementId
+* actor/user id
+* ação relacionada a decremento de item
+* item afetado
+* quantidade decrementada
+* timestamp conforme padrão atual
+* detalhes em formato compatível com logs existentes
+
+Se não houver campos específicos para todos esses dados, usar o padrão existente sem forçar alteração estrutural.
+
+2. Verificar padrão existente
+
+Antes de alterar, auditar rapidamente:
+
+* como audit logs são criados em aprovar/rejeitar/status/itens;
+* quais campos são obrigatórios;
+* quais valores de action já existem;
+* qual nomenclatura faz mais sentido para decremento.
+
+Escolher a menor alteração compatível.
+
+3. Documentar dívida técnica do PATCH /status
+
+Não alterar a rota:
+
+* PATCH /api/movements/:id/status
+
+Apenas documentar em docs/CHANGELOG-fase2.md:
+
+* hoje está Admin-only;
+* é uma rota de alteração livre de status;
+* no futuro deve ser substituída ou limitada por transições explícitas;
+* a transição manual para pending_approval não deve ser aberta para usuários;
+* pending_approval deve continuar sendo definido pela regra de criação/tipo de movimentação.
+
+4. Não alterar nesta fase
+
+Não mexer em:
+
+* RBAC/middlewares.
+* POST /api/movements.
+* PATCH /api/movements/:id.
+* GET /api/movements/pending-approval.
+* approve/reject.
+* items add/delete.
+* front-end.
+* sidebar.
+* ProtectedRoute.
+* banco.
+* seed.
+* migrations.
+* schema.
+* endpoints.
+* payloads.
+* permissions/role_permissions.
+* package.json.
+* CI.
+* design/layout.
+
+5. Validações obrigatórias
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke tests:
+
+Admin:
+
+* PATCH /api/movements/:id/items/:itemId/decrement passa pelo gate.
+* Quando o decremento for bem-sucedido, deve existir audit log correspondente.
+
+Almoxarifado:
+
+* PATCH /api/movements/:id/items/:itemId/decrement passa pelo gate.
+* Quando o decremento for bem-sucedido, deve existir audit log correspondente.
+
+Supervisor:
+
+* PATCH decrement → 403.
+
+Usuário comum:
+
+* PATCH decrement → 403.
+
+Anônimo:
+
+* PATCH decrement → 401.
+
+Importante:
+
+* Usar fixture segura.
+* Restaurar dados alterados ao final, se necessário.
+* Remover usuários transientes ao final.
+* Não alterar senha de usuário real.
+* Se não for possível executar decremento real sem risco, explicar a limitação e validar ao menos que o código segue o padrão de audit log existente.
+
+6. Documentação
+
+Atualizar:
+
+* docs/CHANGELOG-fase2.md com Fase 2.8.4.
+* replit.md com bullet curto.
+
+Registrar:
+
+* rota alterada;
+* padrão de audit log utilizado;
+* campos registrados;
+* testes executados;
+* confirmação de que RBAC não mudou;
+* confirmação de que PATCH /status ficou apenas documentado como dívida futura;
+* próxima fase recomendada: 2.9 auditoria de Devoluções.
+
+Entrega final:
+Liste:
+
+* Arquivos alterados.
+* Rota alterada.
+* Como o audit log foi implementado.
+* Exemplo do registro de audit log criado, sem expor dados sensíveis.
+* Resultado de npm run check.
+* Resultado de npm run build.
+* Smoke tests executados.
+* Confirmação de que RBAC, endpoints, payloads, banco, seed, schema e front-end não foram alterados.
+* Confirmação de que PATCH /api/movements/:id/status não foi refatorado, apenas documentado como dívida técnica.

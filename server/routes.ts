@@ -1805,7 +1805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!movement) {
         return res.status(404).json({ error: "Movement not found" });
       }
-      
+
       // Only allow modifying items if movement is in progress
       if (movement.status !== "in_progress") {
         return res.status(400).json({
@@ -1813,10 +1813,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get item details before decrement for audit log
+      const movementItems = await storage.getMovementItems(req.params.id);
+      const itemToDecrement = movementItems.find(item => item.id === req.params.itemId);
+      const previousQuantity = itemToDecrement?.quantity ?? 1;
+
       const updatedItem = await storage.decrementMovementItemQuantity(req.params.itemId);
       if (!updatedItem) {
         return res.status(404).json({ error: "Item not found" });
       }
+
+      // Create audit log for quantity decrement
+      if (itemToDecrement) {
+        const product = await storage.getProduct(itemToDecrement.productId);
+        await storage.createMovementAuditLog({
+          movementId: req.params.id,
+          action: "item_quantity_changed",
+          actorId: req.user?.id || null,
+          actorName: req.user?.name || "Sistema",
+          metadata: {
+            productId: itemToDecrement.productId,
+            productName: product?.name || "Unknown",
+            sku: product?.sku || "",
+            previousQuantity,
+            newQuantity: updatedItem.quantity,
+            quantityDecremented: 1,
+            ownerName: itemToDecrement.ownerName || undefined,
+            ownerType: itemToDecrement.ownerType || undefined,
+          },
+        });
+      }
+
       res.json(updatedItem);
     } catch (error) {
       res.status(400).json({ error: "Failed to decrement item quantity" });

@@ -1697,7 +1697,79 @@ fonte da verdade; front-end é UX defensiva apenas.
 - `npm run check` zerado (back-end + front-end).
 - `npm run build` passou (`dist/index.js 271.3kb`).
 
+---
+
+## Fase 2.8.4 — Audit log no decremento de item de movimentações (2026-05-28)
+
+**Objetivo**: adicionar registro de auditoria quando um item de movimentação
+é decrementado, fechando a dívida D11 identificada na auditoria, sem alterar
+permissões, payloads, endpoints, banco, front-end ou schema.
+
+### Arquivos alterados
+
+| Arquivo | Alteração |
+|---|---|
+| `server/routes.ts` | Após `storage.decrementMovementItemQuantity()` na rota `PATCH /api/movements/:id/items/:itemId/decrement`, adicionado bloco de `createMovementAuditLog` com `action: "item_quantity_changed"`, `actorId`, `actorName`, `metadata` (productId, productName, sku, previousQuantity, newQuantity, quantityDecremented, ownerName, ownerType). |
+
+### Rota alterada
+
+- `PATCH /api/movements/:id/items/:itemId/decrement` — agora registra audit log
+  no `movement_audit_logs` após decremento bem-sucedido.
+
+### Padrão de audit log utilizado
+
+Reutilizado `storage.createMovementAuditLog` (já existente, usado em
+item_added, item_removed, status_changed). Action escolhida:
+`item_quantity_changed` (já definida no `movementAuditActionEnum`).
+
+Metadata preenchido conforme padrão dos outros logs:
+- `productId`, `productName`, `sku`
+- `previousQuantity`, `newQuantity`, `quantityDecremented`
+- `ownerName`, `ownerType` (quando existentes)
+
+### Smoke tests executados
+
+| Persona | Resultado | Comentário |
+|---|---|---|
+| Admin (`admin`) | 200 + audit log | Decrementou de 45→44; log registrado com `actorName: "Administrador"` |
+| Almoxarifado (`smoke_almox`) | 200 + audit log | Decrementou de 41→40; log registrado com `actorName: "Smoke Almoxarifado"` |
+| Supervisor (`smoke_superv`) | 403 | `requireAnyRole([ADMIN, ALMOXARIFADO])` rejeitou corretamente |
+| Usuário comum (`smoke_comum`) | 403 | Rejeitado corretamente |
+| Anônimo | 401 | Rejeitado corretamente |
+
+Dados de smoke restaurados ao final:
+- Quantidades dos itens revertidas (+1 cada).
+- Audit logs de smoke removidos.
+- Usuários transientes (`smoke_almox`, `smoke_superv`, `smoke_comum`) mantidos
+  para uso futuro (podem ser deletados quando não mais necessários).
+
+### O que NÃO foi alterado
+
+- RBAC/middleware: `requireAnyRole([ADMIN, ALMOXARIFADO])` permanece igual.
+- Payload da rota: nenhum campo adicionado ao body.
+- Resposta da rota: `res.json(updatedItem)` continua igual.
+- Regra de decremento: `storage.decrementMovementItemQuantity` não modificada.
+- Estoque: nenhuma alteração além do que a rota já fazia.
+- Status/transições: nenhuma alteração.
+- Front-end: nenhuma alteração.
+- Banco: nenhuma migration, tabela ou schema alterado.
+- `server/seed-roles.ts` intocado.
+- `package.json`, CI, design/layout intocados.
+- `npm run check` zerado.
+- `npm run build` passou (`dist/index.js 272.3kb`).
+
+### Dívida técnica do PATCH /api/movements/:id/status documentada
+
+A rota `PATCH /api/movements/:id/status` continua existindo como **rota
+Admin-only provisória**. Não foi refatorada nesta fase.
+
+- Hoje: `requireAdmin()` permite alteração livre de status.
+- No futuro: deve ser substituída ou limitada por transições explícitas
+  (iniciar, pausar, finalizar, continuar) com regras de negócio.
+- A transição manual para `pending_approval` **não deve** ser aberta para
+  usuários — `pending_approval` deve continuar sendo definido pela regra de
+  criação/tipo de movimentação.
+
 ### Dívida futura registrada
-- **Fase 2.8.4**: introduzir audit log no decrement (D11).
 - **Fase 2.9**: auditoria + RBAC em devoluções.
 

@@ -46,9 +46,9 @@ Preferred communication style: Simple, everyday language.
 - **2.8.1** (2026-05-28): RBAC efetivo em 6 rotas críticas de movimentações — `POST/PATCH/DELETE` em items → `[ADMIN, ALMOXARIFADO]`; `PATCH /:id/status` → `requireAdmin()`; `POST /approve`/`/reject` → `[ADMIN, SUPERVISOR]`. Smoke matrix 6×5 (30 cenários) validado; front e demais rotas intactos.
 - **2.8.2** (2026-05-28): RBAC nas 3 rotas médias de movimentações — `POST /api/movements` → `[ADMIN, ALMOXARIFADO]`; `PATCH /api/movements/:id` → `[ADMIN, ALMOXARIFADO]` + correção do ownership escape (D8) e do escape de status via PATCH geral; `GET /api/movements/pending-approval` → `[ADMIN, SUPERVISOR]`. Smoke matrix 7×5 (35 cenários) validado; front e demais rotas intactos.
 - **2.8.3** (2026-05-28): front-end de movimentações alinhado — 6 helpers novos em `authz.ts`; botões de escrita (create, edit, status, items, aprovações) e scanner gated por persona; sidebar oculta link de aprovações de movimentações para não-Admin/Supervisor. `npm run check` e `build` zerados. Back-end inalterado.
+- **2.8.4** (2026-05-28): audit log no decremento — rota `PATCH /api/movements/:id/items/:itemId/decrement` agora registra `movement_audit_logs` com `action: "item_quantity_changed"`, `actorId`, `actorName`, `metadata` (previousQuantity, newQuantity, quantityDecremented, productName, sku, ownerName, ownerType). Padrão existente `createMovementAuditLog` reutilizado. Smoke tests 5×5 validados (Admin/Almox passam; Supervisor/Comum/Anônimo rejeitados). Dados restaurados. `npm run check` e `build` zerados. Dívida técnica do `PATCH /status` documentada (rota Admin-only provisória; no futuro deve ser substituída por transições explícitas).
 
 ### Próximas fases (planejadas)
-- **2.8.4**: audit log no decrement (D11).
 - **2.9**: auditoria + RBAC em devoluções.
 - **Fases futuras** (roadmap de longo prazo): hierarquia de roles, sistema de auditoria, templates, interface master-detail, dependências automáticas. Roadmap detalhado em [`docs/RBAC-future-guide.md`](docs/RBAC-future-guide.md).
 
