@@ -1,0 +1,71 @@
+Fase 1.4 concluída ✅
+Arquivos alterados (3)
+Arquivo	Mudança
+server/ownership.ts	isAdmin() aceita 'admin' ou 'adm' case-insensitive
+server/auth.ts	GET /api/user usa a mesma regra para calcular isAdmin
+replit.md	nota da Fase 1.4
+Parte 1 — Causa real do 403
+Bug confirmado (não comportamento esperado).
+
+O que o sistema esperava	O que estava no banco
+Role chamada 'admin'	Role chamada 'Adm' (seed pt-BR)
+Usuário admin tem a role Adm corretamente atribuída via user_roles ✓
+Mas isAdmin() em server/ownership.ts:97 comparava roleName === 'admin' (literal)
+E GET /api/user em server/auth.ts:198 fazia roleNames.includes('admin')
+Resultado: isAdmin sempre false para o admin → 403 em qualquer rota admin-only + UI inteira sub-permissionada (qualquer menu condicional a user.isAdmin escondido)
+Prova antes da correção: GET /api/user devolvia "roles":["Adm"],"isAdmin":false
+Resposta às perguntas do plano:
+Rota usada: DELETE /api/drivers/:id (routes.ts:962) — admin-only, sem ownership
+O que retornou 403: o if (!(await isAdmin(req.user))) na própria handler
+Regra esperada: admin-only (não é ownership) — está correta como intenção
+Identificação de admin: tabela user_roles joinada com roles por nome
+req.user tem id válido (Passport ok); o problema é puramente string match no nome da role
+Causa final: rota correta, regra correta, mas string do nome da role não bate com o seed
+Parte 2 — Correção mínima aplicada
+Comparação agora é case-insensitive e aceita as duas grafias do seed ('admin' em inglês ou 'adm' em pt-BR). Nenhuma role nova é concedida — só é honrada a role já registrada em user_roles. Sem alterar banco, sem migration, sem ampliar permissões.
+
+Smoke obrigatório (todos passaram)
+Cenário	Esperado	Resultado
+Admin GET /api/user	isAdmin:true	✅ roles=['Adm'] isAdmin=True
+Admin cria motorista	201	✅ 201
+Admin edita motorista	200	✅ 200
+Anônimo DELETE driver	401	✅ 401 {"error":"Não autenticado"}
+Não-admin (role Gestor Logistica) DELETE driver	403	✅ 403 "Apenas administradores podem excluir motoristas"
+Admin DELETE driver	204	✅ 204 (era 403)
+Parte 3 — Auditoria das duplicações GET /api/users
+Apenas diagnóstico, sem remoção (proposta para Fase 1.5 dedicada).
+
+Linha	Auth	Resposta	Status em runtime
+1994	requireAuth middleware	users.map(({password, ...u}) => u) — full minus password	🟢 ATIVA (primeira no Express)
+2723	auth inline manual	{id, username, name} para @mention	❌ código morto
+3059	auth inline manual	campos de user-management via Drizzle direto	❌ código morto
+Quantidade exata: 3 declarações de GET /api/users, nas linhas 1994 / 2723 / 3059.
+Quem responde de fato: linha 1994 (Express resolve a primeira que casa method+path).
+Diferença: linha 1994 é superset funcional de 2723 e 3059 — todos os campos que @mention e user-management precisam estão presentes lá. Por isso o front-end nunca quebrou, apesar da duplicação.
+GET /api/users/:id: declarada uma única vez (linha 2005). Sem duplicação.
+Risco de remover 2723 e 3059: baixíssimo — são inalcançáveis e a rota ativa cobre os payloads. Architect confirmou.
+Outras observações do code review: a lógica de isAdmin está duplicada entre ownership.ts e auth.ts — vale consolidar numa só função, mas é refatoração, fica para outra fase.
+Parte 4 — Validações finais
+Check	Resultado
+npm run check	exit 0, zero erros TS
+npm run build	✅ built in 21.04s
+Code review (architect)	Aprovado — "fix sound, no other hardcoded 'admin' strings break, dead-code removal safe"
+Confirmação das restrições
+✅ Sem papéis funcionais novos / sem matriz de papéis
+✅ Sem alteração de banco / sem migration
+✅ Sem alteração de payload (/api/user mantém roles e isAdmin)
+✅ Sem alteração de nomes de rotas
+✅ Sem alteração de regras de negócio de estoque/kits/viagens/requisições/movimentações
+✅ Sem alteração de front-end
+✅ Sem refatorar routes.ts inteiro
+✅ Sem remover duplicações sem provar qual era a ativa
+✅ Sem novos any / as any / cast solto
+
+Recomendação objetiva para próxima fase
+Em ordem de prioridade:
+
+Fase 1.5 — limpeza segura (1–2 horas):
+Remover as 2 declarações mortas de GET /api/users (linhas 2723 e 3059). Substituir suas chamadas internas se houver alguma (não há — são inalcançáveis).
+Consolidar a função isAdmin num único lugar (server/ownership.ts) e fazer auth.ts importá-la, eliminando o risco de drift que o architect levantou.
+Fase 2 — papéis funcionais depois disso, já com a base de auth/admin consistente e sem duplicatas pendentes.
+Não vejo necessidade de CI dedicado agora; npm run check + npm run build cobrem o ciclo enquanto o projeto for monolito.
