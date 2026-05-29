@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
 /* Precision Logistics Light Theme */
 :root {
   --button-outline: rgba(0,0,0, .10);
@@ -11,49 +10,49 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 20% 96%;
-  --foreground: 210 40% 12%;
+  --background: 210 33% 98%;
+  --foreground: 200 9% 12%;
 
-  --border: 210 15% 82%;
+  --border: 210 14% 89%;
 
   --card: 0 0% 100%;
-  --card-foreground: 210 40% 12%;
-  --card-border: 210 15% 85%;
+  --card-foreground: 200 9% 12%;
+  --card-border: 210 14% 89%;
 
-  --sidebar: 210 40% 12%;
-  --sidebar-foreground: 210 20% 96%;
-  --sidebar-border: 210 20% 22%;
+  --sidebar: 210 33% 98%;
+  --sidebar-foreground: 200 9% 12%;
+  --sidebar-border: 210 14% 89%;
 
-  --sidebar-primary: 206 100% 50%;
+  --sidebar-primary: 206 100% 39%;
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 210 30% 22%;
-  --sidebar-accent-foreground: 210 20% 96%;
-  --sidebar-ring: 206 100% 50%;
+  --sidebar-accent: 210 30% 94%;
+  --sidebar-accent-foreground: 200 9% 12%;
+  --sidebar-ring: 206 100% 39%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 210 40% 12%;
-  --popover-border: 210 15% 85%;
+  --popover-foreground: 200 9% 12%;
+  --popover-border: 210 14% 89%;
 
-  --primary: 206 100% 50%;
+  --primary: 206 100% 39%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 210 20% 90%;
-  --secondary-foreground: 210 40% 12%;
+  --secondary-foreground: 200 9% 12%;
 
-  --muted: 210 15% 92%;
-  --muted-foreground: 210 10% 45%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 210 10% 40%;
 
   --accent: 197 100% 68%;
-  --accent-foreground: 210 40% 12%;
+  --accent-foreground: 200 9% 12%;
 
-  --destructive: 0 72% 51%;
+  --destructive: 0 72% 42%;
   --destructive-foreground: 0 0% 98%;
 
-  --input: 210 15% 78%;
-  --ring: 206 100% 50%;
+  --input: 210 15% 85%;
+  --ring: 206 100% 39%;
 
-  --chart-1: 206 100% 50%;
+  --chart-1: 206 100% 39%;
   --chart-2: 197 100% 68%;
   --chart-3: 330 81% 60%;
   --chart-4: 160 84% 39%;
@@ -304,4 +303,39 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+}
+
+/* Sidebar scrollbar — custom, premium, discrete */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--sidebar-border) / 0.4) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--sidebar-border) / 0.4);
+  border-radius: 999px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--sidebar-border) / 0.7);
+}
+
+/* Sidebar menu overrides for active/hover states */
+[data-sidebar="menu-button"].active-item {
+  position: relative;
+}
+[data-sidebar="menu-button"].active-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 20px;
+  width: 3px;
+  border-radius: 999px;
+  background: hsl(var(--primary));
 }

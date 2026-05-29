@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { NotificationBell } from "@/components/notification-bell";
@@ -132,10 +133,13 @@ function AppLayout() {
               <div className="text-sm text-muted-foreground">
                 Gestão de Logística de Eventos
               </div>
-              <NotificationBell />
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <NotificationBell />
+              </div>
             </header>
           )}
-          <main className="flex-1 overflow-y-auto bg-[#051424]">
+          <main className="flex-1 overflow-y-auto bg-background">
             <div className="p-8">
               <Router />
             </div>

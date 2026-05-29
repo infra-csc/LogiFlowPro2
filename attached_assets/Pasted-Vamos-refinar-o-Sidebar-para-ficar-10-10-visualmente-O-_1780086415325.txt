@@ -1,0 +1,138 @@
+Vamos refinar o Sidebar para ficar 10/10 visualmente.
+
+O sidebar já melhorou em identidade visual, mas o scroll ainda está com aparência bruta/padrão do navegador e quebra o visual premium do dark mode.
+
+Objetivo:
+Transformar o sidebar em uma navegação profissional, limpa, operacional e consistente com o Design System do EventFlow.
+
+Escopo:
+Refinar apenas o front-end visual do sidebar/app shell.
+
+Não alterar:
+
+* rotas;
+* RBAC;
+* permissões;
+* lógica de navegação;
+* helpers;
+* back-end;
+* endpoints;
+* payloads;
+* regras de negócio.
+
+Melhorias obrigatórias:
+
+1. Scrollbar customizado
+
+* Remover aparência padrão branca/cinza do navegador.
+* Usar scrollbar fino.
+* Track transparente.
+* Thumb discreto usando tokens do Design System, como border/muted.
+* Thumb mais visível apenas no hover.
+* Manter acessibilidade e scroll funcional.
+* Evitar scrollbar chamando mais atenção que os itens do menu.
+
+Sugestão visual:
+
+* scrollbar-width: thin;
+* scrollbar-color com hsl(var(--border)) transparent;
+* ::-webkit-scrollbar width 6px;
+* ::-webkit-scrollbar-track transparent;
+* ::-webkit-scrollbar-thumb com bg-border/40;
+* hover com bg-border/70.
+
+2. Estrutura correta do sidebar
+   Garantir estrutura flex:
+
+* Sidebar com h-screen ou h-dvh;
+* Header/logo fixo no topo;
+* Área de navegação com flex-1 overflow-y-auto;
+* Footer/usuário fixo no rodapé;
+* Evitar scroll no sidebar inteiro quando apenas o menu precisa rolar.
+
+3. Área rolável mais elegante
+
+* Adicionar padding adequado na área de navegação.
+* Evitar que o scrollbar fique colado visualmente no conteúdo.
+* Se possível, adicionar fade/mask sutil no topo/rodapé da área rolável para indicar continuidade.
+* Não exagerar em gradientes.
+
+4. Item ativo
+   Melhorar o item ativo:
+
+* fundo sutil;
+* texto com boa legibilidade;
+* ícone destacado;
+* opcional: barra lateral fina em primary;
+* hover suave;
+* sem excesso de brilho.
+
+5. Submenus
+   Refinar submenus:
+
+* linha vertical mais sutil;
+* espaçamento consistente;
+* subitem ativo claro;
+* ícones alinhados;
+* evitar aparência de árvore pesada.
+
+6. Header do sidebar
+   Manter o logo forte, mas garantir:
+
+* alinhamento perfeito entre ícone, título e subtítulo;
+* espaçamento consistente;
+* sem altura exagerada;
+* visual limpo.
+
+7. Footer do usuário
+   Refinar o bloco do usuário:
+
+* manter fixo no rodapé;
+* separar com border-t sutil;
+* alinhar avatar, nome, e-mail e logout;
+* garantir que não seja afetado pelo scroll da navegação.
+
+8. Collapsed state
+   Se o app possui sidebar recolhida:
+
+* garantir que o estado collapsed continue bonito;
+* ícones centralizados;
+* item ativo visível;
+* tooltips se já existirem;
+* sem textos cortados.
+
+9. Responsividade
+   Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Em mobile/tablet, garantir que a sidebar não quebre o conteúdo principal nem gere scroll horizontal.
+
+Critério de aceite visual:
+O sidebar deve parecer parte de um produto finalizado, não um menu com scrollbar padrão.
+
+Deve ficar:
+
+* mais premium;
+* mais limpo;
+* mais integrado ao dark mode;
+* com scroll discreto;
+* com navegação clara;
+* com header e footer fixos;
+* com menu rolando de forma elegante.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias aplicadas no scrollbar;
+* melhorias aplicadas no header/sidebar/footer;
+* confirmação de que navegação, rotas e permissões não foram alteradas;
+* resultado do npm run check;
+* resultado do npm run build.
