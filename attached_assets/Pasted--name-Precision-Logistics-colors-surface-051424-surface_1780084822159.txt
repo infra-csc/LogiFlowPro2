@@ -1,0 +1,199 @@
+---
+name: Precision Logistics
+colors:
+  surface: '#051424'
+  surface-dim: '#051424'
+  surface-bright: '#2c3a4c'
+  surface-container-lowest: '#010f1f'
+  surface-container-low: '#0e1c2d'
+  surface-container: '#122031'
+  surface-container-high: '#1d2b3c'
+  surface-container-highest: '#283647'
+  on-surface: '#d5e4fa'
+  on-surface-variant: '#bec7d4'
+  inverse-surface: '#d5e4fa'
+  inverse-on-surface: '#233142'
+  outline: '#88919d'
+  outline-variant: '#3f4852'
+  surface-tint: '#98cbff'
+  primary: '#98cbff'
+  on-primary: '#003354'
+  primary-container: '#00a3ff'
+  on-primary-container: '#00375a'
+  inverse-primary: '#00629d'
+  secondary: '#b0c9e8'
+  on-secondary: '#19324b'
+  secondary-container: '#314863'
+  on-secondary-container: '#9fb7d6'
+  tertiary: '#89ceff'
+  on-tertiary: '#00344d'
+  tertiary-container: '#12a6ea'
+  on-tertiary-container: '#003852'
+  error: '#ffb4ab'
+  on-error: '#690005'
+  error-container: '#93000a'
+  on-error-container: '#ffdad6'
+  primary-fixed: '#cfe5ff'
+  primary-fixed-dim: '#98cbff'
+  on-primary-fixed: '#001d33'
+  on-primary-fixed-variant: '#004a77'
+  secondary-fixed: '#d1e4ff'
+  secondary-fixed-dim: '#b0c9e8'
+  on-secondary-fixed: '#011d35'
+  on-secondary-fixed-variant: '#314863'
+  tertiary-fixed: '#c9e6ff'
+  tertiary-fixed-dim: '#89ceff'
+  on-tertiary-fixed: '#001e2f'
+  on-tertiary-fixed-variant: '#004c6e'
+  background: '#051424'
+  on-background: '#d5e4fa'
+  surface-variant: '#283647'
+  status-success: '#10B981'
+  status-warning: '#F59E0B'
+  status-error: '#EF4444'
+  surface-border: '#1E293B'
+  text-primary: '#F8FAFC'
+  text-secondary: '#94A3B8'
+typography:
+  headline-xl:
+    fontFamily: Inter
+    fontSize: 36px
+    fontWeight: '600'
+    lineHeight: 44px
+    letterSpacing: -0.02em
+  headline-lg:
+    fontFamily: Inter
+    fontSize: 28px
+    fontWeight: '600'
+    lineHeight: 36px
+    letterSpacing: -0.01em
+  headline-md:
+    fontFamily: Inter
+    fontSize: 20px
+    fontWeight: '600'
+    lineHeight: 28px
+  body-lg:
+    fontFamily: Inter
+    fontSize: 18px
+    fontWeight: '400'
+    lineHeight: 28px
+  body-md:
+    fontFamily: Inter
+    fontSize: 16px
+    fontWeight: '400'
+    lineHeight: 24px
+  body-sm:
+    fontFamily: Inter
+    fontSize: 14px
+    fontWeight: '400'
+    lineHeight: 20px
+  label-md:
+    fontFamily: Inter
+    fontSize: 14px
+    fontWeight: '600'
+    lineHeight: 16px
+    letterSpacing: 0.05em
+  label-sm:
+    fontFamily: Inter
+    fontSize: 12px
+    fontWeight: '500'
+    lineHeight: 16px
+  headline-xl-mobile:
+    fontFamily: Inter
+    fontSize: 30px
+    fontWeight: '600'
+    lineHeight: 38px
+rounded:
+  sm: 0.25rem
+  DEFAULT: 0.5rem
+  md: 0.75rem
+  lg: 1rem
+  xl: 1.5rem
+  full: 9999px
+spacing:
+  unit: 4px
+  gutter: 24px
+  margin-desktop: 40px
+  margin-mobile: 16px
+  container-max-width: 1440px
+---
+
+## Brand & Style
+
+The design system is engineered for high-performance logistics and supply chain management. It evokes a sense of mission-critical reliability, speed, and data-driven precision. The aesthetic is **Corporate / Modern**, leaning into a "Dark Mode First" philosophy to reduce eye strain for operators monitoring dashboards over long shifts.
+
+The visual language prioritizes utility and density without sacrificing clarity. It balances technical sophistication with an approachable interface, ensuring that complex data sets—from real-time fleet tracking to inventory metrics—are instantly digestible. The result is a professional environment that feels robust, secure, and technologically advanced.
+
+## Colors
+
+This design system utilizes a deep, layered dark palette to establish hierarchy. The foundation is built on **Deep Navy (#0A1929)** for primary backgrounds and **Slate Blue (#102A43)** for surface containers and cards. 
+
+**Primary Actions:** High-contrast **Azure (#00A3FF)** is reserved for primary actions, active states, and critical paths, ensuring high visibility against the dark backgrounds.
+
+**Semantic Colors:** 
+- **Emerald Green:** Signifies active shipments, successful deliveries, and "on-time" status.
+- **Amber:** Indicates delays, pending approvals, or low-priority warnings.
+- **Ruby Red:** Reserved for critical failures, route obstructions, or immediate system alerts.
+
+Borders should use the low-contrast **Slate (#1E293B)** to define structure without creating visual noise.
+
+## Typography
+
+The design system relies exclusively on **Inter**, a highly legible sans-serif font optimized for screens. Its tall x-height and clear letterforms ensure that technical data and numerical values remain readable at small sizes.
+
+- **Headlines:** Use Semi-Bold (600) weights to provide clear section anchors. Larger headlines use slight negative letter-spacing to maintain a compact, modern look.
+- **Data Labels:** Small labels and captions use Medium (500) weights and uppercase styling where appropriate to differentiate metadata from primary body content.
+- **Numbers:** Tabular lining should be used for all numerical data in tables and dashboards to ensure vertical alignment of digits.
+
+## Layout & Spacing
+
+The design system employs a **12-column fluid grid** for desktop, transitioning to a **4-column grid** for mobile. A strict **8px base unit** (with a 4px sub-grid for icons and labels) governs all padding and margins to maintain a rhythmic, structured feel.
+
+- **Dashboards:** Use a "Sticky Sidebar" layout with a fluid main content area to maximize horizontal space for tables and maps.
+- **Reflow Rules:** On tablet (under 1024px), sidebars should collapse into a hamburger menu or narrow rail.
+- **Density:** High-density layouts are preferred for monitoring screens, using `16px` padding within cards and `8px` between related data groups.
+
+## Elevation & Depth
+
+Visual hierarchy is achieved through **Tonal Layering** supplemented by **Soft Shadows**. In this dark theme, depth is communicated by making surfaces lighter as they "rise" closer to the user.
+
+- **Level 0 (Base):** #0A1929 (Deep Navy background).
+- **Level 1 (Cards/Panels):** #102A43 (Slate Blue) with a subtle 1px border of #1E293B.
+- **Level 2 (Modals/Popovers):** Slightly lighter navy with a more pronounced shadow.
+- **Shadows:** Shadows are soft and diffused (e.g., `box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5)`), with a slight cyan tint for active elements to make them "glow" off the page.
+
+## Shapes
+
+The design system uses **Rounded (8px base)** corners. This radius provides a professional and modern look that softens the "cold" technical feel of a logistics system without appearing too playful or consumer-oriented.
+
+- **Standard Elements:** Buttons, Input fields, and Cards use `0.5rem` (8px).
+- **Large Containers:** Modals and large dashboard widgets use `rounded-lg` (16px).
+- **Status Indicators:** Small chips and badges use `rounded-xl` (24px) for a pill-shaped appearance to distinguish them from actionable buttons.
+
+## Components
+
+### Buttons
+- **Primary:** Azure background, white text. Subtle 2px "glow" shadow on hover.
+- **Secondary:** Transparent with a 1px Slate border. On hover, the background fills with a low-opacity Azure.
+- **Ghost:** No border or background. High-contrast Azure text.
+
+### Input Fields
+- Dark background (#0A1929), Slate border (#1E293B), and 8px corner radius.
+- **Focus State:** 2px Azure border with a soft outer glow.
+
+### Chips & Status Badges
+- Small, compact tags used for shipment status (e.g., "In Transit").
+- Uses a "Subtle" style: Low-opacity background of the status color (e.g., 10% Emerald) with high-opacity text.
+
+### Cards
+- Slate Blue background (#102A43).
+- Subtle 1px border.
+- Cards used for tracking should include a vertical "status strip" on the left edge using the semantic status colors.
+
+### Progress Bars
+- Thick, 8px tracks with rounded ends.
+- Background track is dark slate; the fill uses a gradient of Azure or the relevant semantic color.
+
+### Interactive States
+- **Hover:** Elements should subtly brighten or increase border-opacity.
+- **Active:** A distinct "pressed" feel via slight scale reduction (98%) and darkened background color.

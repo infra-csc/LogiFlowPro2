@@ -2,10 +2,10 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { StatusBadge } from "@/components/status-badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -79,17 +79,6 @@ type ItemApproval = {
   status: "pending" | "approved" | "rejected";
   approvedQuantity: number;
   rejectionReason: string;
-};
-
-const StatusBadge = ({ status }: { status: string }) => {
-  const variants: Record<string, { label: string; className: string }> = {
-    pending: { label: "Pendente", className: "bg-chart-3 text-white" },
-    approved: { label: "Aprovado", className: "bg-chart-4 text-white" },
-    rejected: { label: "Rejeitado", className: "bg-destructive text-destructive-foreground" },
-  };
-
-  const config = variants[status] || { label: status, className: "bg-muted text-muted-foreground" };
-  return <Badge className={config.className}>{config.label}</Badge>;
 };
 
 export default function ApprovalDetail() {
@@ -276,9 +265,10 @@ export default function ApprovalDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         <Button
           variant="ghost"
+          size="sm"
           onClick={() => navigate("/approvals")}
           data-testid="button-back"
         >
@@ -287,51 +277,57 @@ export default function ApprovalDetail() {
         </Button>
       </div>
 
+      <PageHeader
+        title="Aprovação de Requisição"
+        description={request.event?.name || ""}
+      >
+        <div className="flex items-center gap-2">
+          <StatusBadge status={request.status} />
+        </div>
+      </PageHeader>
+
       <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <div className="font-semibold text-base">Detalhes da Requisição</div>
-              <StatusBadge status={request.status} />
+        <CardContent className="p-4 space-y-3">
+          <div className="font-semibold text-base">Detalhes da Requisição</div>
+          <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Evento:</span>
+              <span className="font-medium">{request.event?.name}</span>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <span className="text-sm text-muted-foreground">Evento</span>
-              <p className="font-semibold">{request.event?.name}</p>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Cliente:</span>
+              <span className="font-medium">{request.event?.client}</span>
             </div>
-            <div>
-              <span className="text-sm text-muted-foreground">Cliente</span>
-              <p className="font-semibold">{request.event?.client}</p>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Área:</span>
+              <span className="font-medium">{request.area}</span>
             </div>
-            <div>
-              <span className="text-sm text-muted-foreground">Área</span>
-              <p className="font-semibold">{request.area}</p>
-            </div>
-            <div>
-              <span className="text-sm text-muted-foreground">Solicitante</span>
-              <p className="font-semibold">{request.requestedByUser?.name || "Usuário não encontrado"}</p>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Solicitante:</span>
+              <span className="font-medium">{request.requestedByUser?.name || "Usuário não encontrado"}</span>
             </div>
             {request.submittedAt && (
-              <div>
-                <span className="text-sm text-muted-foreground">Data de Envio</span>
-                <p className="font-semibold">
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Enviado:</span>
+                <span className="font-medium">
                   {format(new Date(request.submittedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </p>
+                </span>
               </div>
             )}
             {request.approvedBy && (
-              <div>
-                <span className="text-sm text-muted-foreground">Aprovado por</span>
-                <p className="font-semibold">{request.approvedBy}</p>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Aprovado por:</span>
+                <span className="font-medium">{request.approvedBy}</span>
               </div>
             )}
           </div>
 
           {request.rejectionReason && (
-            <div className="bg-destructive/10 p-4 rounded-md">
-              <p className="text-sm font-medium text-destructive mb-1">Motivo da Rejeição:</p>
-              <p className="text-sm">{request.rejectionReason}</p>
+            <div className="mt-2 pt-2 border-t border-border/40">
+              <div className="bg-destructive/10 p-3 rounded-md">
+                <p className="text-sm font-medium text-destructive mb-1">Motivo da Rejeição:</p>
+                <p className="text-sm">{request.rejectionReason}</p>
+              </div>
             </div>
           )}
         </CardContent>
@@ -352,13 +348,13 @@ export default function ApprovalDetail() {
               </Button>
             )}
           </div>
-          <div className="mt-4">
+          <div className="mt-3 pt-3 border-t border-border/40">
           {items.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Nenhum item nesta requisição
             </p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {items.map((item: RequestItem) => {
                 const isSelected = selectedItems.has(item.id);
                 const approval = itemApprovals.get(item.id);
@@ -368,7 +364,7 @@ export default function ApprovalDetail() {
                 return (
                   <div
                     key={item.id}
-                    className={`border rounded-lg p-4 ${
+                    className={`border rounded-lg p-3 ${
                       isSelected ? "border-primary bg-primary/5" : ""
                     }`}
                     data-testid={`item-${item.id}`}
@@ -407,8 +403,8 @@ export default function ApprovalDetail() {
                         </div>
 
                         {isSelected && canApprove && (
-                          <div className="space-y-3 pt-3 border-t">
-                            <div className="flex gap-2">
+                          <div className="mt-2 pt-2 border-t border-border/40 space-y-2">
+                            <div className="flex gap-2 flex-wrap">
                               <Button
                                 size="sm"
                                 variant={isApproved ? "default" : "outline"}
@@ -434,8 +430,8 @@ export default function ApprovalDetail() {
                             </div>
 
                             {isApproved && (
-                              <div className="flex items-center gap-2">
-                                <label className="text-sm font-medium w-40">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <label className="text-sm font-medium">
                                   Quantidade Aprovada:
                                 </label>
                                 <Input
@@ -451,7 +447,7 @@ export default function ApprovalDetail() {
                                       val
                                     );
                                   }}
-                                  className="w-32"
+                                  className="w-24"
                                   data-testid={`input-quantity-${item.id}`}
                                 />
                                 <span className="text-sm text-muted-foreground">
@@ -475,7 +471,7 @@ export default function ApprovalDetail() {
                                     )
                                   }
                                   placeholder="Explique o motivo..."
-                                  className="min-h-20"
+                                  className="min-h-16"
                                   data-testid={`textarea-reason-${item.id}`}
                                 />
                               </div>

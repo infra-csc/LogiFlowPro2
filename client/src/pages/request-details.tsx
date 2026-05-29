@@ -354,29 +354,17 @@ export default function RequestDetails() {
       <Card>
         <CardContent className="p-4 space-y-3">
           <div className="font-semibold text-base">Informações da Requisição</div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Solicitado por:</span>
-            <span className="text-sm font-medium" data-testid="text-requested-by">
-              {request.requestedByUser?.name || "Usuário não encontrado"}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Data de criação:</span>
-            <span className="text-sm font-medium" data-testid="text-created-at">
-              {new Date(request.createdAt).toLocaleDateString('pt-BR', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </span>
-          </div>
-          {request.submittedAt && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Submetido em:</span>
-              <span className="text-sm font-medium" data-testid="text-submitted-at">
-                {new Date(request.submittedAt).toLocaleDateString('pt-BR', { 
+          <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Solicitado por:</span>
+              <span className="font-medium" data-testid="text-requested-by">
+                {request.requestedByUser?.name || "Usuário não encontrado"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Criação:</span>
+              <span className="font-medium" data-testid="text-created-at">
+                {new Date(request.createdAt).toLocaleDateString('pt-BR', { 
                   day: '2-digit', 
                   month: '2-digit', 
                   year: 'numeric',
@@ -385,8 +373,23 @@ export default function RequestDetails() {
                 })}
               </span>
             </div>
-          )}
-          <div className="space-y-2 pt-2 border-t">
+            {request.submittedAt && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Submetido:</span>
+                <span className="font-medium" data-testid="text-submitted-at">
+                  {new Date(request.submittedAt).toLocaleDateString('pt-BR', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+            )}
+            <SharedStatusBadge status={request.status} />
+          </div>
+          <div className="space-y-2 pt-2 border-t border-border/40">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Observações:</span>
               {canEdit && notesChanged && (
@@ -434,12 +437,12 @@ export default function RequestDetails() {
               </Button>
             )}
           </div>
-          <div className="mt-4">
+          <div className="mt-3 pt-3 border-t border-border/40">
           {items.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground">
               <p>Nenhum material adicionado ainda</p>
               {canEdit && (
-                <p className="text-sm mt-2">Clique em "Adicionar Material" para começar</p>
+                <p className="text-sm mt-1">Clique em "Adicionar Material" para começar</p>
               )}
             </div>
           ) : (
@@ -447,7 +450,7 @@ export default function RequestDetails() {
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="border rounded-md p-3"
+                  className="border rounded-lg p-3 hover-elevate"
                   data-testid={`item-${item.id}`}
                 >
                   <div className="flex items-start justify-between">
@@ -456,7 +459,7 @@ export default function RequestDetails() {
                         {item.kit ? item.kit.name : item.product?.name}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {item.kit ? "Kit" : item.product?.sku} • 
+                        {item.kit ? "Kit" : item.product?.sku} •
                         {item.approvalStatus === "approved" ? (
                           <span className="font-medium text-chart-4">
                             {" "}Aprovado: {item.approvedQuantity} de {item.quantity} {item.product?.unit || "unid"}

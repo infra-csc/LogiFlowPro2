@@ -761,40 +761,38 @@ export default function MovementDetails() {
       {/* Status e Informações */}
       {!focusMode && (
         <PageSection>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Status</p>
-                <div className="mt-1">
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="font-semibold text-base">Status e Informações</div>
+              <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Status:</span>
                   <StatusBadge status={movement.status} />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Doca</p>
-                <p className="text-lg font-semibold">{movement.dock?.name || "-"}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Veículo</p>
-                <p className="text-lg font-semibold">{movement.vehiclePlate || "-"}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Progresso</p>
-                <p className="text-lg font-semibold mb-2">
-                  {totalLoaded} / {totalExpected} ({progress}%)
-                </p>
-                <Progress value={progress} className="h-2" />
-              </CardContent>
-            </Card>
-          </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Doca:</span>
+                  <span className="font-medium">{movement.dock?.name || "-"}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Veículo:</span>
+                  <span className="font-medium">{movement.vehiclePlate || "-"}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Progresso:</span>
+                  <span className="font-medium">{totalLoaded} / {totalExpected} ({progress}%)</span>
+                </div>
+                {movement.events && movement.events.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-muted-foreground">Eventos:</span>
+                    {movement.events.map(e => (
+                      <Badge key={e.id} variant="outline" className="text-xs">{e.name}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Progress value={progress} className="h-2" />
+            </CardContent>
+          </Card>
         </PageSection>
       )}
 
@@ -1056,7 +1054,7 @@ export default function MovementDetails() {
                     return (
                       <div
                         key={item.productId}
-                        className={`border rounded-lg p-4 space-y-2 cursor-pointer hover-elevate active-elevate-2 ${
+                        className={`border rounded-lg p-3 space-y-2 cursor-pointer hover-elevate ${
                           isExceeded
                             ? "bg-destructive/10 border-destructive"
                             : isComplete
@@ -1090,7 +1088,7 @@ export default function MovementDetails() {
                             </Badge>
                           )}
                         </div>
-                        <div className="space-y-1">
+                        <div className="mt-2 pt-2 border-t border-border/40 space-y-1">
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Progresso:</span>
                             <span className={`font-medium ${isExceeded ? "text-destructive" : ""}`}>
@@ -1167,12 +1165,12 @@ export default function MovementDetails() {
                             )}
                             {item.ownerTypes.has("rented") && (
                               <Badge variant="outline" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500">
-                                🟡 LOCADO
+                                LOCADO
                               </Badge>
                             )}
                             {item.ownerTypes.has("third_party") && (
                               <Badge variant="outline" className="bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500">
-                                🔵 TERCEIROS
+                                TERCEIROS
                               </Badge>
                             )}
                           </div>

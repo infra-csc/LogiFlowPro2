@@ -4,14 +4,6 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanApproveMovement } from "@/lib/authz";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -177,7 +169,7 @@ export default function MovementApprovals() {
 
   if (isLoading) {
     return (
-      <div>
+      <div className="space-y-6">
         <PageHeader
           title="Aprovações de Movimentações"
           description="Movimentações aguardando aprovação"
@@ -208,91 +200,72 @@ export default function MovementApprovals() {
           description="Todas as movimentações foram processadas."
         />
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead data-testid="header-number">Número</TableHead>
-                <TableHead data-testid="header-name">Nome</TableHead>
-                <TableHead data-testid="header-type">Tipo</TableHead>
-                <TableHead data-testid="header-nature">Natureza</TableHead>
-                <TableHead data-testid="header-group">Grupo</TableHead>
-                <TableHead data-testid="header-events">Eventos</TableHead>
-                <TableHead data-testid="header-created-by">Criado por</TableHead>
-                <TableHead data-testid="header-created-at">Data</TableHead>
-                <TableHead className="text-right" data-testid="header-actions">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pendingMovements.map((movement) => (
-                <TableRow key={movement.id} data-testid={`row-movement-${movement.id}`}>
-                  <TableCell className="font-medium" data-testid={`text-number-${movement.id}`}>
-                    {movement.movementNumber}
-                  </TableCell>
-                  <TableCell data-testid={`text-name-${movement.id}`}>
-                    {movement.name}
-                  </TableCell>
-                  <TableCell data-testid={`text-type-${movement.id}`}>
-                    {movement.movementTypeConfig?.name || "—"}
-                  </TableCell>
-                  <TableCell>
-                    {movement.movementTypeConfig?.nature
-                      ? getNatureBadge(movement.movementTypeConfig.nature)
-                      : "—"}
-                  </TableCell>
-                  <TableCell data-testid={`text-group-${movement.id}`}>
-                    {movement.movementTypeConfig?.group ? (
-                      <Badge
-                        variant="outline"
-                        style={{
-                          backgroundColor: `${movement.movementTypeConfig.group.color}15`,
-                          borderColor: movement.movementTypeConfig.group.color,
-                          color: movement.movementTypeConfig.group.color,
-                        }}
-                      >
-                        {movement.movementTypeConfig.group.name}
-                      </Badge>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell data-testid={`text-events-${movement.id}`}>
-                    {movement.events && movement.events.length > 0
-                      ? movement.events.map((e) => e.name).join(", ")
-                      : "—"}
-                  </TableCell>
-                  <TableCell data-testid={`text-created-by-${movement.id}`}>
-                    {movement.createdBy}
-                  </TableCell>
-                  <TableCell data-testid={`text-created-at-${movement.id}`}>
-                    {format(new Date(movement.createdAt), "dd/MM/yyyy HH:mm")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleApprove(movement)}
-                        data-testid={`button-approve-${movement.id}`}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Aprovar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleReject(movement)}
-                        data-testid={`button-reject-${movement.id}`}
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Rejeitar
-                      </Button>
+        <div className="space-y-3">
+          {pendingMovements.map((movement) => (
+            <Card
+              key={movement.id}
+              className="hover-elevate border-border/60"
+              data-testid={`card-movement-${movement.id}`}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground font-mono">{movement.movementNumber}</span>
+                      {movement.movementTypeConfig?.nature && getNatureBadge(movement.movementTypeConfig.nature)}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    <h3 className="font-semibold text-base text-foreground mt-1">{movement.name}</h3>
+                    {movement.movementTypeConfig?.name && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{movement.movementTypeConfig.name}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleApprove(movement)}
+                      data-testid={`button-approve-${movement.id}`}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      Aprovar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleReject(movement)}
+                      data-testid={`button-reject-${movement.id}`}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Rejeitar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40">
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">Criado por:</span>{" "}
+                    <span className="text-foreground font-medium">{movement.createdBy}</span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">Data:</span>{" "}
+                    <span className="text-foreground font-medium">{format(new Date(movement.createdAt), "dd/MM/yyyy HH:mm")}</span>
+                  </div>
+                  {movement.movementTypeConfig?.group && (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Grupo:</span>{" "}
+                      <span className="text-foreground font-medium">{movement.movementTypeConfig.group.name}</span>
+                    </div>
+                  )}
+                  {movement.events && movement.events.length > 0 && (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Eventos:</span>{" "}
+                      <span className="text-foreground font-medium">{movement.events.map((e) => e.name).join(", ")}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 

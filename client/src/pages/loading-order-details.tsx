@@ -244,40 +244,43 @@ export default function LoadingOrderDetails() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardContent className="p-4 space-y-3">
-            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+            <div className="font-semibold text-base flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Informações da Ordem
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Início Planejado</div>
-              <div className="font-medium" data-testid="text-planned-start">
-                {format(new Date(order.plannedStartTime), "dd/MM/yyyy, HH:mm")}
+            <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Início:</span>
+                <span className="font-medium" data-testid="text-planned-start">
+                  {format(new Date(order.plannedStartTime), "dd/MM/yyyy, HH:mm")}
+                </span>
               </div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Fim Planejado</div>
-              <div className="font-medium" data-testid="text-planned-end">
-                {format(new Date(order.plannedEndTime), "dd/MM/yyyy, HH:mm")}
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Fim:</span>
+                <span className="font-medium" data-testid="text-planned-end">
+                  {format(new Date(order.plannedEndTime), "dd/MM/yyyy, HH:mm")}
+                </span>
               </div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Criado por</div>
-              <div className="font-medium" data-testid="text-created-by">
-                {order.createdBy}
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Criado por:</span>
+                <span className="font-medium" data-testid="text-created-by">
+                  {order.createdBy}
+                </span>
               </div>
+              <StatusBadge status={order.status} />
             </div>
             {order.notes && (
-              <div>
+              <div className="mt-2 pt-2 border-t border-border/40">
                 <div className="text-sm text-muted-foreground">Observações</div>
-                <div className="text-sm" data-testid="text-notes">{order.notes}</div>
+                <div className="text-sm mt-1" data-testid="text-notes">{order.notes}</div>
               </div>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+          <CardContent className="p-4 space-y-3">
+            <div className="font-semibold text-base flex items-center gap-2">
               <FileText className="h-5 w-5" />
               Requisições Incluídas ({requests.length})
             </div>
@@ -290,16 +293,19 @@ export default function LoadingOrderDetails() {
                 {requests.map((request) => (
                   <div
                     key={request.id}
-                    className="flex items-center justify-between p-2 rounded border"
+                    className="border rounded-lg p-3 hover-elevate cursor-pointer"
+                    onClick={() => navigate(`/requests/${request.id}`)}
                     data-testid={`request-${request.id}`}
                   >
-                    <div>
-                      <div className="font-medium text-sm">{request.area}</div>
-                      <div className="text-xs text-muted-foreground">
-                        #{request.id.slice(0, 8)}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{request.area}</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          #{request.id.slice(0, 8)}
+                        </span>
                       </div>
+                      <StatusBadge status={request.status} />
                     </div>
-                    <StatusBadge status={request.status} />
                   </div>
                 ))}
               </div>
@@ -310,10 +316,11 @@ export default function LoadingOrderDetails() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="font-semibold text-base flex items-center gap-2 mb-3">
+          <div className="font-semibold text-base flex items-center gap-2">
             <Package className="h-5 w-5" />
             Itens Consolidados ({items.length})
           </div>
+          <div className="mt-3 pt-3 border-t border-border/40">
           {itemsLoading ? (
             <p className="text-sm text-muted-foreground">Carregando itens...</p>
           ) : items.length === 0 ? (
@@ -321,14 +328,14 @@ export default function LoadingOrderDetails() {
               Nenhum item consolidado
             </p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="border rounded-lg p-4"
+                  className="border rounded-lg p-3 hover-elevate"
                   data-testid={`item-${item.id}`}
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="font-semibold text-base" data-testid={`item-name-${item.id}`}>
                         {item.product?.name || "Produto não encontrado"}
@@ -348,11 +355,11 @@ export default function LoadingOrderDetails() {
                   </div>
 
                   {item.sourceRequests && item.sourceRequests.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="mt-2 pt-2 border-t border-border/40">
                       <div className="text-sm font-medium text-muted-foreground">
                         Origem:
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mt-1">
                         {item.sourceRequests.map((source, idx) => (
                           <Badge
                             key={idx}
@@ -370,6 +377,7 @@ export default function LoadingOrderDetails() {
               ))}
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
 

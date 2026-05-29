@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/filter-bar";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, ArrowRight } from "lucide-react";
+import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -36,7 +36,7 @@ type MovementWithRelations = Movement & {
 };
 
 const formatDuration = (minutes?: number | null) => {
-  if (!minutes) return "-";
+  if (!minutes) return "—";
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (hours > 0) {
@@ -44,6 +44,38 @@ const formatDuration = (minutes?: number | null) => {
   }
   return `${mins}min`;
 };
+
+// Stat counter mini-card
+function StatCounter({
+  label,
+  count,
+  active,
+  onClick,
+  colorClass,
+}: {
+  label: string;
+  count: number;
+  active?: boolean;
+  onClick?: () => void;
+  colorClass?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-colors ${
+        active
+          ? "bg-primary/10 border-primary/30"
+          : "bg-card border-border/60 hover:bg-muted/50"
+      } ${onClick ? "cursor-pointer" : "cursor-default"}`}
+    >
+      <div className={`h-2 w-2 rounded-full ${colorClass || "bg-muted-foreground"}`} />
+      <div>
+        <div className="text-lg font-semibold leading-none text-foreground">{count}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+      </div>
+    </button>
+  );
+}
 
 export default function Movements() {
   const [, navigate] = useLocation();
@@ -95,6 +127,16 @@ export default function Movements() {
     });
   }, [movements, filterEventId, filterStartDate, filterEndDate, filterStatus, filterType, filterVehiclePlate, filterDockId]);
 
+  // Contadores por status
+  const stats = useMemo(() => {
+    const all = movements.length;
+    const created = movements.filter((m) => m.status === "created").length;
+    const inProgress = movements.filter((m) => m.status === "in_progress").length;
+    const paused = movements.filter((m) => m.status === "paused").length;
+    const completed = movements.filter((m) => m.status === "completed").length;
+    return { all, created, inProgress, paused, completed };
+  }, [movements]);
+
   // Contar filtros ativos
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -107,6 +149,43 @@ export default function Movements() {
     if (filterDockId) count++;
     return count;
   }, [filterEventId, filterStartDate, filterEndDate, filterStatus, filterType, filterVehiclePlate, filterDockId]);
+
+  // Labels dos filtros ativos (para pills no FilterBar fechado)
+  const activeFilterPills = useMemo(() => {
+    const pills: { label: string; onRemove: () => void }[] = [];
+    if (filterEventId) {
+      const ev = events.find((e) => e.id === filterEventId);
+      pills.push({ label: ev?.name || "Evento", onRemove: () => setFilterEventId("") });
+    }
+    if (filterStatus) {
+      const labels: Record<string, string> = {
+        created: "Criada",
+        in_progress: "Em Andamento",
+        paused: "Pausada",
+        completed: "Finalizada",
+        cancelled: "Cancelada",
+      };
+      pills.push({ label: labels[filterStatus] || filterStatus, onRemove: () => setFilterStatus("") });
+    }
+    if (filterType) {
+      const mt = movementTypes.find((t) => t.id === filterType);
+      pills.push({ label: mt?.name || "Tipo", onRemove: () => setFilterType("") });
+    }
+    if (filterDockId) {
+      const dk = docks.find((d) => d.id === filterDockId);
+      pills.push({ label: dk?.name || "Doca", onRemove: () => setFilterDockId("") });
+    }
+    if (filterVehiclePlate) {
+      pills.push({ label: `Placa: ${filterVehiclePlate}`, onRemove: () => setFilterVehiclePlate("") });
+    }
+    if (filterStartDate) {
+      pills.push({ label: `De: ${filterStartDate}`, onRemove: () => setFilterStartDate("") });
+    }
+    if (filterEndDate) {
+      pills.push({ label: `Até: ${filterEndDate}`, onRemove: () => setFilterEndDate("") });
+    }
+    return pills;
+  }, [filterEventId, filterStatus, filterType, filterDockId, filterVehiclePlate, filterStartDate, filterEndDate, events, movementTypes, docks]);
 
   // Limpar todos os filtros
   const clearAllFilters = () => {
@@ -168,6 +247,45 @@ export default function Movements() {
           </MovementDialog>
         )}
       </PageHeader>
+
+      {/* Stats Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <StatCounter
+          label="Total"
+          count={stats.all}
+          active={!filterStatus}
+          onClick={() => setFilterStatus("")}
+          colorClass="bg-primary"
+        />
+        <StatCounter
+          label="Criadas"
+          count={stats.created}
+          active={filterStatus === "created"}
+          onClick={() => setFilterStatus(filterStatus === "created" ? "" : "created")}
+          colorClass="bg-muted-foreground"
+        />
+        <StatCounter
+          label="Em Andamento"
+          count={stats.inProgress}
+          active={filterStatus === "in_progress"}
+          onClick={() => setFilterStatus(filterStatus === "in_progress" ? "" : "in_progress")}
+          colorClass="bg-primary"
+        />
+        <StatCounter
+          label="Pausadas"
+          count={stats.paused}
+          active={filterStatus === "paused"}
+          onClick={() => setFilterStatus(filterStatus === "paused" ? "" : "paused")}
+          colorClass="bg-chart-5"
+        />
+        <StatCounter
+          label="Finalizadas"
+          count={stats.completed}
+          active={filterStatus === "completed"}
+          onClick={() => setFilterStatus(filterStatus === "completed" ? "" : "completed")}
+          colorClass="bg-chart-4"
+        />
+      </div>
 
       {/* Filtros */}
       <FilterBar badgeCount={activeFiltersCount} onClear={clearAllFilters}>
@@ -272,6 +390,23 @@ export default function Movements() {
         </div>
       </FilterBar>
 
+      {/* Active filter pills — shown when FilterBar is closed */}
+      {activeFilterPills.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {activeFilterPills.map((pill, i) => (
+            <Badge
+              key={i}
+              variant="secondary"
+              className="text-xs font-normal gap-1 pr-1 cursor-pointer"
+              onClick={pill.onRemove}
+            >
+              {pill.label}
+              <X className="h-3 w-3" />
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {/* Lista de Movimentações */}
       <div className="space-y-3">
         {filteredMovements.length === 0 ? (
@@ -284,116 +419,122 @@ export default function Movements() {
           />
         ) : (
           filteredMovements.map((movement) => (
-            <Card key={movement.id} className="hover-elevate border-border/60" data-testid={`card-movement-${movement.id}`}>
+            <Card
+              key={movement.id}
+              className="hover-elevate border-border/60 cursor-pointer"
+              onClick={() => navigate(`/movements/${movement.id}`)}
+              data-testid={`card-movement-${movement.id}`}
+            >
               <CardContent className="p-4">
-                {/* Header: status + título + ações */}
+                {/* Row 1: Status + Number + Name + Actions */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <StatusBadge status={movement.status} />
                       <span className="text-xs text-muted-foreground font-mono">
                         {movement.movementNumber}
                       </span>
+                      {movement.movementTypeConfig && (
+                        <span className="text-xs text-muted-foreground">
+                          {movement.movementTypeConfig.name}
+                        </span>
+                      )}
                     </div>
-                    <h3 className="font-semibold text-base text-foreground" data-testid={`text-movement-name-${movement.id}`}>
+                    <h3 className="font-semibold text-base text-foreground mt-1" data-testid={`text-movement-name-${movement.id}`}>
                       {movement.name}
                     </h3>
-                    {movement.movementTypeConfig && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {movement.movementTypeConfig.name}
-                      </p>
-                    )}
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {movement.status === "created" && (
+                    {/* Edit button — always visible but only clickable when applicable */}
+                    {(movement.status === "created" || movement.status === "paused") && userCanEditMovement(user) && (
+                      <MovementDialog movement={movement}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`button-edit-${movement.id}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </MovementDialog>
+                    )}
+                    {movement.status === "created" && userCanEditMovement(user) && (
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateStatusMutation.mutate(
+                            { id: movement.id, status: "in_progress" },
+                            { onSuccess: () => navigate(`/movements/${movement.id}`) }
+                          );
+                        }}
+                        disabled={updateStatusMutation.isPending}
+                        data-testid={`button-start-${movement.id}`}
+                      >
+                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                        Iniciar
+                      </Button>
+                    )}
+                    {movement.status === "in_progress" && userCanEditMovement(user) && (
                       <>
-                        {userCanEditMovement(user) && (
-                          <MovementDialog movement={movement}>
-                            <Button size="sm" variant="ghost" data-testid={`button-edit-${movement.id}`}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                          </MovementDialog>
-                        )}
-                        {userCanEditMovement(user) && (
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              updateStatusMutation.mutate(
-                                { id: movement.id, status: "in_progress" },
-                                { onSuccess: () => navigate(`/movements/${movement.id}`) }
-                              );
-                            }}
-                            disabled={updateStatusMutation.isPending}
-                            data-testid={`button-start-${movement.id}`}
-                          >
-                            <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                            Iniciar
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateStatusMutation.mutate({ id: movement.id, status: "paused" });
+                          }}
+                          disabled={updateStatusMutation.isPending}
+                          data-testid={`button-pause-${movement.id}`}
+                        >
+                          <PauseCircle className="h-3.5 w-3.5 mr-1" />
+                          Pausar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateStatusMutation.mutate({ id: movement.id, status: "completed" });
+                          }}
+                          disabled={updateStatusMutation.isPending}
+                          data-testid={`button-finish-${movement.id}`}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                          Finalizar
+                        </Button>
                       </>
                     )}
-                    {movement.status === "in_progress" && (
-                      <>
-                        {userCanEditMovement(user) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "paused" })}
-                            disabled={updateStatusMutation.isPending}
-                            data-testid={`button-pause-${movement.id}`}
-                          >
-                            <PauseCircle className="h-3.5 w-3.5 mr-1" />
-                            Pausar
-                          </Button>
-                        )}
-                        {userCanEditMovement(user) && (
-                          <Button
-                            size="sm"
-                            onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "completed" })}
-                            disabled={updateStatusMutation.isPending}
-                            data-testid={`button-finish-${movement.id}`}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                            Finalizar
-                          </Button>
-                        )}
-                      </>
-                    )}
-                    {movement.status === "paused" && (
-                      <>
-                        {userCanEditMovement(user) && (
-                          <MovementDialog movement={movement}>
-                            <Button size="sm" variant="ghost" data-testid={`button-edit-${movement.id}`}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                          </MovementDialog>
-                        )}
-                        {userCanEditMovement(user) && (
-                          <Button
-                            size="sm"
-                            onClick={() => updateStatusMutation.mutate({ id: movement.id, status: "in_progress" })}
-                            disabled={updateStatusMutation.isPending}
-                            data-testid={`button-continue-${movement.id}`}
-                          >
-                            <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                            Continuar
-                          </Button>
-                        )}
-                      </>
+                    {movement.status === "paused" && userCanEditMovement(user) && (
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateStatusMutation.mutate({ id: movement.id, status: "in_progress" });
+                        }}
+                        disabled={updateStatusMutation.isPending}
+                        data-testid={`button-continue-${movement.id}`}
+                      >
+                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                        Continuar
+                      </Button>
                     )}
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => navigate(`/movements/${movement.id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/movements/${movement.id}`);
+                      }}
                       data-testid={`button-details-${movement.id}`}
+                      title="Ver detalhes"
                     >
-                      <ArrowRight className="h-3.5 w-3.5" />
+                      <Eye className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
 
-                {/* Metadados */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40">
+                {/* Row 2: Compact metadata strip */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40">
                   {movement.loadingOrder && (
                     <div className="text-xs">
                       <span className="text-muted-foreground">Ordem:</span>{" "}
@@ -418,19 +559,16 @@ export default function Movements() {
                       <span className="text-foreground font-medium">{formatDuration(movement.totalDuration)}</span>
                     </div>
                   )}
+                  {movement.events && movement.events.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      {movement.events.map((event) => (
+                        <Badge key={event.id} variant="outline" className="text-xs font-normal" data-testid={`badge-movement-event-${event.id}`}>
+                          {event.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                {/* Eventos */}
-                {movement.events && movement.events.length > 0 && (
-                  <div className="flex items-center gap-2 mt-3 flex-wrap">
-                    <span className="text-xs text-muted-foreground">Eventos:</span>
-                    {movement.events.map((event) => (
-                      <Badge key={event.id} variant="outline" className="text-xs font-normal" data-testid={`badge-movement-event-${event.id}`}>
-                        {event.name}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))

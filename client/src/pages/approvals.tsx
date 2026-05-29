@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FilterBar } from "@/components/filter-bar";
+import { StatusBadge } from "@/components/status-badge";
 import { CheckCircle2, XCircle, Clock, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -35,21 +35,6 @@ type MaterialRequest = {
     name: string;
     username: string;
   };
-};
-
-const StatusBadge = ({ status }: { status: string }) => {
-  const variants: Record<string, { label: string; className: string }> = {
-    pending_approval: { label: "Pendente Aprovação", className: "bg-chart-3 text-white" },
-    approved: { label: "Aprovado", className: "bg-chart-4 text-white" },
-    rejected: { label: "Rejeitado", className: "bg-destructive text-destructive-foreground" },
-  };
-
-  const config = variants[status] || { label: status, className: "bg-muted text-muted-foreground" };
-  return (
-    <Badge className={config.className} data-testid={`badge-status-${status}`}>
-      {config.label}
-    </Badge>
-  );
 };
 
 export default function Approvals() {
@@ -113,9 +98,20 @@ export default function Approvals() {
       return dateB - dateA;
     });
 
+  // Stats
+  const totalPending = requests.filter(r => r.status === "pending_approval").length;
+  const totalApproved = requests.filter(r => r.status === "approved").length;
+  const totalRejected = requests.filter(r => r.status === "rejected").length;
+
   if (isLoading) {
     return (
-      <PageLoading message="Carregando requisições..." />
+      <div className="space-y-6">
+        <PageHeader
+          title="Aprovação de Requisições"
+          description="Gerencie aprovações de requisições de materiais"
+        />
+        <PageLoading message="Carregando requisições..." />
+      </div>
     );
   }
 
@@ -125,6 +121,31 @@ export default function Approvals() {
         title="Aprovação de Requisições"
         description="Gerencie aprovações de requisições de materiais"
       />
+
+      {/* Stats Bar */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
+          <div className="h-2 w-2 rounded-full bg-chart-3" />
+          <div>
+            <div className="text-lg font-semibold leading-none text-foreground">{totalPending}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Pendentes</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
+          <div className="h-2 w-2 rounded-full bg-chart-4" />
+          <div>
+            <div className="text-lg font-semibold leading-none text-foreground">{totalApproved}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Aprovados</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
+          <div className="h-2 w-2 rounded-full bg-destructive" />
+          <div>
+            <div className="text-lg font-semibold leading-none text-foreground">{totalRejected}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Rejeitados</div>
+          </div>
+        </div>
+      </div>
 
       {/* Filters */}
       <FilterBar badgeCount={activeFiltersCount} onClear={activeFiltersCount > 0 ? clearFilters : undefined}>
@@ -179,10 +200,11 @@ export default function Approvals() {
       </FilterBar>
 
       {/* Pending Approvals */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 pb-2 border-b border-border/40">
           <Clock className="h-5 w-5 text-chart-3" />
-          <h2 className="text-xl font-semibold">Pendentes ({pendingRequests.length})</h2>
+          <h2 className="text-lg font-semibold">Pendentes</h2>
+          <span className="text-xs text-muted-foreground">({pendingRequests.length})</span>
         </div>
 
         {pendingRequests.length === 0 ? (
@@ -192,48 +214,50 @@ export default function Approvals() {
             description="Nenhuma requisição aguardando aprovação no momento"
           />
         ) : (
-          <div className="grid gap-4">
+          <div className="space-y-3">
             {pendingRequests.map((request) => (
               <Card
                 key={request.id}
-                className="hover-elevate cursor-pointer"
+                className="hover-elevate border-border/60 cursor-pointer"
                 onClick={() => navigate(`/approvals/${request.id}`)}
                 data-testid={`card-request-${request.id}`}
               >
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <StatusBadge status={request.status} />
-                        <h3 className="font-semibold text-base">{request.event?.name}</h3>
+                        <span className="text-xs text-muted-foreground font-mono">{request.id.slice(0, 8)}</span>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2 pt-2 border-t border-border/40 text-sm">
-                        <div>
-                          <span className="text-xs text-muted-foreground">Cliente</span>
-                          <p className="font-medium">{request.event?.client}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs text-muted-foreground">Área</span>
-                          <p className="font-medium">{request.area}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs text-muted-foreground">Solicitante</span>
-                          <p className="font-medium">{request.requestedByUser?.name || "Usuário não encontrado"}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
-                        {request.submittedAt && (
-                          <span>Enviado em {format(new Date(request.submittedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                        )}
-                        {request.event?.eventDate && (
-                          <span>Evento: {format(new Date(request.event.eventDate), "dd/MM/yyyy", { locale: ptBR })}</span>
-                        )}
-                      </div>
+                      <h3 className="font-semibold text-base text-foreground mt-1">{request.event?.name}</h3>
+                      {request.area && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{request.area}</p>
+                      )}
                     </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground ml-2 flex-shrink-0 mt-1" />
+                  </div>
 
-                    <ChevronRight className="h-5 w-5 text-muted-foreground ml-3 flex-shrink-0 mt-1" />
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40">
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Cliente:</span>{" "}
+                      <span className="text-foreground font-medium">{request.event?.client || "—"}</span>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Solicitante:</span>{" "}
+                      <span className="text-foreground font-medium">{request.requestedByUser?.name || "—"}</span>
+                    </div>
+                    {request.submittedAt && (
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Enviado:</span>{" "}
+                        <span className="text-foreground font-medium">{format(new Date(request.submittedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                      </div>
+                    )}
+                    {request.event?.eventDate && (
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Evento:</span>{" "}
+                        <span className="text-foreground font-medium">{format(new Date(request.event.eventDate), "dd/MM/yyyy", { locale: ptBR })}</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -244,51 +268,52 @@ export default function Approvals() {
 
       {/* Processed Requests */}
       {processedRequests.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-2 border-b border-border/40">
             <CheckCircle2 className="h-5 w-5 text-chart-4" />
-            <h2 className="text-xl font-semibold">Processadas ({processedRequests.length})</h2>
+            <h2 className="text-lg font-semibold">Processadas</h2>
+            <span className="text-xs text-muted-foreground">({processedRequests.length})</span>
           </div>
 
-          <div className="grid gap-4">
+          <div className="space-y-3">
             {processedRequests.map((request) => (
               <Card
                 key={request.id}
-                className="hover-elevate cursor-pointer opacity-80"
+                className="hover-elevate border-border/60 cursor-pointer"
                 onClick={() => navigate(`/approvals/${request.id}`)}
                 data-testid={`card-request-${request.id}`}
               >
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <StatusBadge status={request.status} />
-                        <h3 className="font-semibold text-base">{request.event?.name}</h3>
+                        <span className="text-xs text-muted-foreground font-mono">{request.id.slice(0, 8)}</span>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2 pt-2 border-t border-border/40 text-sm">
-                        <div>
-                          <span className="text-xs text-muted-foreground">Cliente</span>
-                          <p className="font-medium">{request.event?.client}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs text-muted-foreground">Área</span>
-                          <p className="font-medium">{request.area}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs text-muted-foreground">Aprovador</span>
-                          <p className="font-medium">{request.approvedBy || "-"}</p>
-                        </div>
-                      </div>
-
-                      {request.approvedAt && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Processado em {format(new Date(request.approvedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </div>
-                      )}
+                      <h3 className="font-semibold text-base text-foreground mt-1">{request.event?.name}</h3>
                     </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground ml-2 flex-shrink-0 mt-1" />
+                  </div>
 
-                    <ChevronRight className="h-5 w-5 text-muted-foreground ml-3 flex-shrink-0 mt-1" />
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40">
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Cliente:</span>{" "}
+                      <span className="text-foreground font-medium">{request.event?.client || "—"}</span>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Área:</span>{" "}
+                      <span className="text-foreground font-medium">{request.area}</span>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Aprovador:</span>{" "}
+                      <span className="text-foreground font-medium">{request.approvedBy || "—"}</span>
+                    </div>
+                    {request.approvedAt && (
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Processado:</span>{" "}
+                        <span className="text-foreground font-medium">{format(new Date(request.approvedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

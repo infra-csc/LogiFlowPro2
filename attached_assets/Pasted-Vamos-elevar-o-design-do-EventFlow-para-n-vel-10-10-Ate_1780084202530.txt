@@ -1,0 +1,226 @@
+Vamos elevar o design do EventFlow para nível 10/10.
+
+Atenção:
+O Design System atual já existe e deve ser usado como fonte única de verdade visual.
+
+Não crie um novo Design System.
+Não altere tokens globais sem necessidade.
+Não invente padrões paralelos.
+Não faça alteração em lote superficial.
+
+Agora o objetivo é aplicar o Design System de forma profunda, começando pelas telas operacionais críticas.
+
+Fase 3.2.5 — 10/10 Operational UI Pass
+
+Objetivo:
+Transformar as principais telas operacionais do app em uma experiência visual realmente profissional, limpa, densa, organizada e fácil de usar.
+
+O app deve parecer uma central operacional moderna para logística, estoque, eventos, movimentações, loading orders, requisições e aprovações.
+
+Prioridade:
+Criar primeiro uma tela referência 10/10.
+
+Tela referência inicial:
+client/src/pages/movements.tsx
+
+Depois de Movimentações ficar excelente, replicar o mesmo padrão visual para:
+
+* loading-orders.tsx
+* loading-order-details.tsx
+* request-details.tsx
+* approvals.tsx
+* approval-detail.tsx
+* movement-details.tsx
+* movement-approvals.tsx
+
+Critério principal:
+A tela só pode ser considerada concluída se ficar claramente melhor visualmente, não apenas com mais componentes aplicados.
+
+Quero melhoria real em:
+
+1. Hierarquia visual
+
+* Status deve ser identificado rapidamente.
+* Título deve ser claro.
+* Código/ID deve ser secundário com font-mono text-xs.
+* Evento/contexto deve ficar bem posicionado.
+* Metadados devem estar agrupados e fáceis de ler.
+* Ações devem ser previsíveis.
+
+2. Cards operacionais
+   Aplicar o padrão oficial do Design System:
+
+* Card com hover-elevate border-border/60
+* CardContent com p-4
+* Header com status + código + título + ações
+* StatusBadge obrigatório para status
+* Código/ID com text-xs text-muted-foreground font-mono
+* Título com font-semibold text-base
+* Metadados com mt-3 pt-3 border-t border-border/40
+* Grid de metadados com grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1
+* Ações dentro do card com Button size="sm"
+* Cards compactos, sem altura exagerada
+* Nada de p-6 em cards de lista
+
+3. Filtros
+   O FilterBar precisa parecer uma ferramenta útil de operação.
+
+Aplicar:
+
+* badgeCount para filtros ativos;
+* onClear quando existir limpar filtros;
+* grid responsivo;
+* labels text-xs text-muted-foreground;
+* gap-3;
+* campos bem alinhados;
+* botões organizados;
+* visual claro quando fechado e quando aberto.
+
+Não pode parecer uma linha vazia.
+
+4. Botões e ações
+   Padronizar:
+
+* ação principal com variant default;
+* ações secundárias com outline;
+* ações terciárias com ghost;
+* ações negativas/destrutivas com destructive;
+* size="sm" dentro de cards;
+* size="icon" para ícone único;
+* gap-2 entre botões;
+* ActionBar quando fizer sentido.
+
+Evitar:
+
+* botões espalhados;
+* botões grandes dentro de cards;
+* ações desalinhadas;
+* hover:bg-* manual em Button.
+
+5. Status
+   Usar apenas StatusBadge.
+
+Não criar Badge manual com cores hardcoded.
+Não duplicar lógica local de status.
+Não criar cores novas de status sem necessidade.
+
+6. Responsividade
+   A tela deve funcionar bem em:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* sem overflow horizontal;
+* ações quebram corretamente;
+* filtros ficam em coluna no mobile;
+* cards continuam legíveis;
+* botões continuam utilizáveis;
+* layout não fica espremido.
+
+7. Tela de Movimentações como referência
+   A tela de Movimentações deve responder rapidamente:
+
+* O que é esta movimentação?
+* Qual é o status?
+* Qual é o código?
+* A qual evento/contexto pertence?
+* Qual é a próxima ação possível?
+* Quais ações o usuário pode executar?
+
+Ajustar visualmente:
+
+* lista;
+* cards;
+* filtros;
+* botões;
+* status;
+* empty state;
+* loading state;
+* espaçamento geral;
+* responsividade.
+
+8. Depois da tela referência
+   Após Movimentações ficar 10/10, aplicar o mesmo padrão visual nas outras telas críticas:
+
+* Loading Orders;
+* Detalhes de Loading Order;
+* Detalhes de Requisição;
+* Aprovações;
+* Detalhes de Aprovação;
+* Detalhes de Movimentação;
+* Aprovações de Movimentação.
+
+Não fazer tudo de uma vez sem critério.
+Reutilizar o padrão validado em Movimentações.
+
+Antes de implementar:
+Faça uma auditoria visual da tela de Movimentações e liste objetivamente:
+
+* problemas de hierarquia;
+* problemas de espaçamento;
+* problemas nos cards;
+* problemas nos filtros;
+* problemas nas ações;
+* problemas de status;
+* problemas de responsividade.
+
+Depois implemente.
+
+Restrições absolutas:
+Não alterar:
+
+* back-end;
+* RBAC;
+* helpers de autorização;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* scanner;
+* regras de negócio;
+* status/transições;
+* banco;
+* schema;
+* migrations;
+* seed;
+* permissions;
+* role_permissions.
+
+Pode alterar apenas:
+
+* layout;
+* JSX visual;
+* classes;
+* composição dos componentes;
+* espaçamentos;
+* organização de cards;
+* organização de filtros;
+* organização de botões;
+* organização de listas/tabelas;
+* responsividade;
+* uso dos componentes visuais.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Entrega final esperada:
+
+* problemas visuais encontrados;
+* decisões de design aplicadas;
+* arquivos alterados;
+* melhorias visuais reais feitas;
+* comparação conceitual antes/depois;
+* confirmação de que nenhuma lógica funcional foi alterada;
+* confirmação de que RBAC, back-end, endpoints, payloads, queries, mutations e regras de negócio ficaram intactos;
+* resultado do npm run check;
+* resultado do npm run build;
+* lista do padrão visual criado para replicar nas próximas telas.
+
+Critério de aceite:
+Não considerar concluído apenas porque aplicou componentes.
+A tela precisa parecer 10/10: mais profissional, mais limpa, mais compacta, mais operacional, mais organizada e mais fácil de usar.

@@ -387,11 +387,86 @@ Passo operacional de refinamento visual em telas críticas de movimentações, r
 - Status do back-end, fluxo operacional
 - Regras de negócio
 
+---
+
+## Fase 3.2.5 — 10/10 Operational UI Pass (2026-05-29)
+
+### Resumo
+Aplicação profunda do Design System nas telas operacionais críticas. Transformação de movimentações, ordens de carregamento e aprovações em experiência visual profissional, limpa e densa. Cada tela ganhou stats bar, filtros, cards compactos e padrão de metadata consistente.
+
+### movements.tsx (Tela Referência 10/10)
+
+**Stats Bar (novo)** — 5 contadores clicáveis (Total, Criadas, Em Andamento, Pausadas, Finalizadas) com dot de cor e estado `active` quando filtrado.
+
+**FilterBar** — 7 filtros com pills de filtros ativos visíveis abaixo do FilterBar (mesmo fechado).
+
+**Cards operacionais**:
+- Card inteiro clicável (`cursor-pointer` + `onClick` navigate)
+- `e.stopPropagation()` nos botões de ação (Iniciar, Pausar, Finalizar, Continuar, Editar, Ver)
+- `Eye` substituiu `ArrowRight` como botão de detalhes
+- Eventos integrados na metadata strip (sem label "Eventos:")
+- Metadata strip usa `flex-wrap` (mais flexível que `grid-cols-4`)
+
+**Ações** — Editável sempre visível para `created`/`paused`, status transição sempre visível para o status atual.
+
+### loading-orders.tsx
+
+**Stats Bar (novo)** — 5 contadores (Total, Rascunhos, Prontas, Em Andamento, Finalizadas).
+
+**FilterBar (novo)** — 2 filtros: Status + Evento, com `badgeCount` + `onClear`.
+
+**Cards operacionais**:
+- Alinhado com padrão movements: card clicável, `Eye` para detalhes, `Edit` para editar
+- Metadata strip com `flex-wrap` incluindo horários reais (start/end)
+- Loading state com `PageHeader` + `PageLoading`
+
+### approvals.tsx
+
+**Stats Bar (novo)** — 3 contadores (Pendentes, Aprovados, Rejeitados).
+
+**StatusBadge duplicado removido** — linha 40-52 (Badge local com `bg-chart-3`, `bg-chart-4`, `bg-destructive`) deletada. Agora usa `StatusBadge` compartilhado de `@/components/status-badge`.
+
+**Cards operacionais**:
+- Seção "Pendentes" e "Processadas" com `border-b` header (padrão movements)
+- Cards com `border-border/60`, metadata strip `flex-wrap`
+- ID curto (`slice(0,8)`) em `font-mono` como secondary info
+- Layout compacto: `space-y-3` entre cards
+
+### movement-approvals.tsx
+
+**Tabela → Cards (reformulação)** — Substituiu Table/TableHeader/TableBody/TableRow por cards operacionais seguindo padrão movements.
+
+**Cards** — Header com número + nature badge + nome + ações (Aprovar/Rejeitar). Metadata strip com criador, data, grupo, eventos.
+
+**Nature badge** — Mantido (local, não é status; é natureza de movimentação).
+
+**Loading state** — Alinhado com `PageHeader` + `PageLoading` dentro de `space-y-6`.
+
+### Arquivos alterados
+- `client/src/pages/movements.tsx` (tela referência 10/10)
+- `client/src/pages/loading-orders.tsx` (stats, filtros, cards)
+- `client/src/pages/approvals.tsx` (stats, StatusBadge compartilhado, cards)
+- `client/src/pages/movement-approvals.tsx` (tabela→cards, loading state)
+- `docs/CHANGELOG-fase3.md` (esta seção)
+- `docs/DESIGN_SYSTEM.md` (design tokens e padrões completos)
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (272.4kb)
+- Zero alteração de back-end, RBAC, endpoints, queries, mutations
+
+### O que NÃO foi alterado
+- Back-end, banco, seed, migrations, schema, endpoints, payloads
+- RBAC, permissions, roles, helpers de autorização
+- Chamadas de API, queries, mutations
+- Status do back-end, fluxo operacional
+- Regras de negócio
+
 ### Próximas fases
-- **3.3** — Loading Orders refinamento complementar
+- **3.3** — Detail pages (movement-details, loading-order-details, request-details, approval-detail)
 - **3.4** — Requisições
 - **3.5** — Catálogo
 - **3.6** — Devoluções
 - **3.7** — Admin/Configurações
 - **3.8** — Dashboard analítico
-- **3.9** — Login/Auth flow (já parcialmente coberto pela 3.0.1)
+- **3.9** — Login/Auth flow
