@@ -144,12 +144,13 @@
 2. **movement-details.tsx**
    - Removido `getStatusColor` local (substituído por `StatusBadge`)
    - Mantido `getStatusLabel` (necessário para audit logs de status changes)
-   - Header substituído por `PageHeader` com título, descrição e ações
+   - Header substituído por `PageHeader` com título, descrição (nome + tipo + ordem) e ações
    - Loading state com `PageLoading`
    - Card de Status usa `StatusBadge`
    - Botão "Iniciar Movimentação" encurtado para "Iniciar"
    - Botão de voltar movido para slot de ações do PageHeader
-   - Eventos removidos do header (mantidos apenas em info cards se existirem)
+   - `PageSection` aplicado em Status/Informações e Scanner
+   - Eventos e loadingOrder preservados na descrição do header
 
 3. **movement-approvals.tsx**
    - Header substituído por `PageHeader` com contador de pendentes no slot
@@ -177,10 +178,18 @@
 - Audit logs, produtos, fornecedores
 - Sidebars, navegação
 
-### O que ficou para 3.2.2
-- Aplicação de `PageSection` em seções do movement-details (scanner, itens, audit)
-- Aplicação de `DataCard` nos info cards (doca, veículo, progresso)
+### Revisão corretiva (2026-05-29)
+- **Lacuna encontrada**: Eventos e loadingOrder removidos acidentalmente do header de `movement-details.tsx`
+- **Correção**: Restaurados na descrição do `PageHeader` (nome + tipo + ordem)
+- **PageSection aplicado**: Status/Informações e Scanner do `movement-details.tsx` agora usam PageSection
+- **Smoke por código**: Validado que todos os helpers RBAC (`userCanCreateMovement`, `userCanEditMovement`, `userCanManageMovementItems`, `userCanChangeMovementStatusFreely`, `userCanApproveMovement`) permanecem intactos em todos os 3 arquivos; nenhuma ação sumiu ou apareceu indevidamente
+- **Diff revisado**: Nenhuma remoção acidental de API calls, queries, mutations, invalidações de cache, handlers, scanner, filtros, renderizações condicionais, imports ou tratamento de erro
+
+### O que fica para 3.2.2
+- Aplicação de `PageSection` nas listas de itens e no histórico de ações
+- Aplicação de `DataCard` nos info cards (doca, veículo, progresso) — apenas se encaixar naturalmente
 - Aplicação de `ActionBar` nos botões de ação
+- Aplicação de `EmptyState` nas listas vazias internas (itens esperados/carregados)
 - Responsividade refinada dos cards de movimentação
 
 ### Próximas fases

@@ -1,0 +1,238 @@
+Atenção: o problema visual não está apenas na tela de Movimentações. Precisamos tratar o layout e a UX/design do app como um todo.
+
+Antes de avançar para novas funcionalidades, faça uma revisão visual global do sistema, mantendo o escopo exclusivamente front-end e sem alterar regras de negócio.
+
+Nome da etapa:
+Fase 3.X — Refinamento Visual Global do App
+
+Objetivo:
+Melhorar a aparência geral, consistência visual, hierarquia, espaçamento, legibilidade e responsividade do sistema inteiro, usando o Design System já criado na Fase 3.1.
+
+O sistema deve deixar de parecer “cru” e passar a ter aparência mais profissional, limpa e operacional, sem redesign radical.
+
+Módulos/telas a revisar:
+
+* Dashboard
+* Produtos
+* Kits
+* Fornecedores
+* Requisições
+* Movimentações
+* Detalhes de movimentação
+* Aprovações de movimentações
+* Loading Orders
+* Logística
+* Devoluções
+* Administração
+* Usuários
+* Papéis/Permissões
+* Notificações
+* Telas de erro, loading e empty states
+
+Problemas visuais gerais a corrigir:
+
+1. Layout geral
+
+* Corrigir padding lateral das páginas.
+* Evitar conteúdo colado nas bordas.
+* Padronizar largura máxima quando fizer sentido.
+* Melhorar espaçamento entre header, filtros, cards, tabelas e ações.
+* Garantir consistência entre todas as telas.
+
+2. App shell
+
+* Revisar sidebar/header/topbar.
+* Melhorar alinhamento do título global.
+* Garantir que o layout principal tenha aparência mais profissional.
+* Evitar aparência de estrutura vazia ou desalinhada.
+* Preservar completamente a navegação existente.
+
+3. PageHeader
+
+* Aplicar PageHeader de forma consistente nas páginas principais.
+* Toda tela deve ter título, descrição curta e ações bem posicionadas.
+* Botões principais devem ficar no slot de ações.
+* Evitar títulos soltos ou desalinhados.
+
+4. Cards e seções
+
+* Reduzir cards excessivamente grandes.
+* Melhorar densidade visual.
+* Usar PageSection/DataCard onde fizer sentido.
+* Melhorar hierarquia entre título, descrição, código, status e ações.
+* Evitar cards gigantes com poucas informações.
+* Evitar excesso de bordas fortes.
+
+5. Filtros
+
+* Padronizar uso do FilterBar.
+* Filtros não devem parecer uma linha vazia.
+* Quando abertos, os campos devem ter espaçamento e responsividade adequados.
+* Botões de limpar/aplicar filtros devem ser claros e consistentes.
+
+6. Tabelas e listas
+
+* Melhorar leitura de listas e tabelas.
+* Padronizar espaçamento interno.
+* Melhorar alinhamento de colunas, ações e status.
+* Evitar excesso de informação solta.
+* Em mobile, listas/cards devem continuar utilizáveis sem overflow horizontal.
+
+7. Botões e ações
+
+* Padronizar botões primários, secundários e destrutivos.
+* Ações devem ficar agrupadas de forma previsível.
+* Usar ActionBar quando fizer sentido.
+* Evitar botões espalhados pela tela.
+* Em mobile, ações podem quebrar para nova linha de forma limpa.
+
+8. Status e badges
+
+* Padronizar StatusBadge em todos os módulos com status.
+* Melhorar posicionamento dos badges.
+* Evitar cores excessivamente agressivas.
+* Garantir boa legibilidade em dark mode.
+
+9. Empty/loading/error states
+
+* Aplicar EmptyState, PageLoading e ErrorState de forma consistente.
+* Estados vazios devem explicar o contexto.
+* Loading não deve parecer tela quebrada.
+* Erros devem ter mensagem clara e visual padronizado.
+
+10. Responsividade
+
+* Validar desktop, tablet e mobile básico.
+* Corrigir quebras de layout.
+* Evitar overflow horizontal.
+* Botões e filtros devem se adaptar bem.
+* Cards/listas devem manter boa leitura.
+
+Direção visual desejada:
+
+* Profissional
+* Limpa
+* Operacional
+* Mais moderna
+* Com melhor hierarquia
+* Menos poluída
+* Mais consistente entre telas
+* Sem aparência de sistema inacabado
+
+Evitar:
+
+* Redesign radical
+* Glassmorphism exagerado
+* Excesso de animações
+* Excesso de cores
+* Cards enormes
+* Visual “marketing”
+* Alterações funcionais
+* Alterações de fluxo
+
+Escopo permitido:
+
+Pode alterar:
+
+* componentes visuais;
+* composição de layout;
+* classes CSS/Tailwind;
+* espaçamentos;
+* hierarquia visual;
+* organização de cards;
+* organização de filtros;
+* organização de botões;
+* uso dos componentes do Design System;
+* responsividade;
+* empty/loading/error states.
+
+Não alterar:
+
+* back-end;
+* RBAC;
+* helpers de autorização;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* scanner;
+* regras de negócio;
+* status/transições;
+* banco;
+* schema;
+* migrations;
+* seed;
+* permissions;
+* role_permissions;
+* fluxos operacionais existentes.
+
+Importante:
+Se alguma tela exigir mudança estrutural maior, não faça tudo de uma vez. Primeiro aplique padrões globais seguros e registre o que deve ficar para uma próxima fase.
+
+Ordem recomendada de trabalho:
+
+1. Auditar visualmente o AppShell/layout base.
+2. Padronizar container, padding e espaçamento global.
+3. Revisar PageHeader nas telas principais.
+4. Revisar cards, filtros, botões, status e listas.
+5. Corrigir Movimentações como referência visual.
+6. Aplicar o mesmo padrão nos demais módulos.
+7. Validar responsividade básica.
+8. Rodar validações técnicas.
+9. Atualizar documentação.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Smoke visual obrigatório:
+
+Validar pelo código e, se possível, pela interface:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Confirmar:
+
+* nenhuma ação nova apareceu indevidamente;
+* nenhuma ação existente sumiu indevidamente;
+* botões continuam respeitando RBAC;
+* filtros continuam funcionando;
+* scanner continua funcionando;
+* aprovações continuam funcionando;
+* telas continuam carregando;
+* loading/error/empty states estão corretos;
+* mobile básico continua utilizável.
+
+Documentação:
+
+Atualizar:
+
+* docs/CHANGELOG-fase3.md
+* replit.md
+
+Registrar:
+
+* telas revisadas;
+* componentes aplicados;
+* padrões visuais criados ou ajustados;
+* melhorias feitas;
+* limitações encontradas;
+* o que ficou para próxima fase;
+* confirmação de zero alteração funcional.
+
+Entrega final esperada:
+
+* arquivos alterados;
+* telas/módulos revisados;
+* componentes aplicados;
+* melhorias visuais implementadas;
+* padrões globais definidos;
+* resultado do npm run check;
+* resultado do npm run build;
+* smoke tests executados;
+* confirmação explícita de que RBAC, back-end, endpoints, payloads, banco e regras de negócio permaneceram intactos.

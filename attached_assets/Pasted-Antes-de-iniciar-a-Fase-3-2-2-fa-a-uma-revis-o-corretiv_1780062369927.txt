@@ -1,0 +1,102 @@
+Antes de iniciar a Fase 3.2.2, faça uma revisão corretiva da Fase 3.2.1.
+
+A entrega foi aceita parcialmente, mas preciso confirmar e corrigir possíveis lacunas do escopo original.
+
+Valide e ajuste os seguintes pontos:
+
+1. Smoke visual
+
+Você informou que não estava logado e foi redirecionado para auth.
+
+Portanto, o smoke visual por perfil ainda não foi validado.
+
+Faça uma validação técnica alternativa no código para os perfis:
+
+* Admin
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Confirme no código que:
+
+* nenhuma ação nova apareceu indevidamente;
+* nenhuma ação existente sumiu indevidamente;
+* botões continuam respeitando os helpers de RBAC existentes;
+* as renderizações condicionais continuam intactas;
+* scanner continua preservado;
+* aprovações continuam preservadas;
+* filtros continuam preservados.
+
+2. Completar escopo visual da 3.2.1, sem abrir 3.2.2 ainda
+
+No resumo, você deixou para 3.2.2 alguns componentes que estavam previstos na 3.2.1.
+
+Revise se faz sentido aplicar ainda nesta fase, sem alterar lógica:
+
+* PageSection em seções de movement-details.tsx;
+* ActionBar nos grupos de ações;
+* StatusBadge onde houver status relevante;
+* EmptyState onde houver listas vazias;
+* PermissionHint apenas se já existir um local natural e sem alterar regra de permissão.
+
+Atenção:
+Não force DataCard se isso gerar redesign grande ou risco funcional. Use apenas se encaixar naturalmente.
+
+3. Revisão de diff
+
+Como movements.tsx foi reescrito, revise cuidadosamente o diff e confirme que não houve remoção acidental de:
+
+* chamadas de API;
+* queries;
+* mutations;
+* invalidações de cache;
+* lógica de scanner;
+* lógica de filtros;
+* handlers de criação/edição;
+* handlers de aprovação/rejeição;
+* renderizações condicionais por RBAC;
+* imports necessários;
+* tratamento de erro;
+* estados de loading.
+
+4. Escopo proibido continua proibido
+
+Confirme novamente que não houve alteração em:
+
+* server/
+* shared/schema
+* migrations
+* seeds
+* endpoints
+* payloads
+* permissions
+* role_permissions
+* helpers de autorização
+* regras de negócio
+* transitions/status do back-end
+
+5. Rodar validações novamente
+
+Execute:
+
+* npm run check
+* npm run build
+
+6. Atualizar documentação se houver patch corretivo
+
+Caso faça ajustes, atualize:
+
+* docs/CHANGELOG-fase3.md
+* replit.md
+
+Entrega final esperada:
+
+* arquivos alterados nesta revisão corretiva;
+* lacunas encontradas;
+* correções feitas;
+* componentes adicionais aplicados;
+* confirmação de preservação funcional;
+* resultado do npm run check;
+* resultado do npm run build;
+* confirmação de que a Fase 3.2.1 está realmente fechada;
+* lista final do que fica para a Fase 3.2.2.

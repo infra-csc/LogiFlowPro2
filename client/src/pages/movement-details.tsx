@@ -691,7 +691,8 @@ export default function MovementDetails() {
           title={movement.movementNumber}
           description={
             movement.name +
-            (movement.movementTypeConfig ? ` • ${movement.movementTypeConfig.name}` : "")
+            (movement.movementTypeConfig ? ` • ${movement.movementTypeConfig.name}` : "") +
+            (movement.loadingOrder ? ` • Ordem: ${movement.loadingOrder.orderNumber}` : "")
           }
         >
           {userCanChangeMovementStatusFreely(user) && (
@@ -759,46 +760,48 @@ export default function MovementDetails() {
 
       {/* Status e Informações */}
       {!focusMode && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatusBadge status={movement.status} />
-          </CardContent>
-        </Card>
+        <PageSection>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StatusBadge status={movement.status} />
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Doca</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-semibold">{movement.dock?.name || "-"}</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Doca</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold">{movement.dock?.name || "-"}</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Veículo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-semibold">{movement.vehiclePlate || "-"}</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Veículo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold">{movement.vehiclePlate || "-"}</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Progresso</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-semibold mb-2">
-              {totalLoaded} / {totalExpected} ({progress}%)
-            </p>
-            <Progress value={progress} className="h-2" />
-          </CardContent>
-        </Card>
-        </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Progresso</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold mb-2">
+                  {totalLoaded} / {totalExpected} ({progress}%)
+                </p>
+                <Progress value={progress} className="h-2" />
+              </CardContent>
+            </Card>
+          </div>
+        </PageSection>
       )}
 
       {/* Scanner */}
@@ -816,14 +819,9 @@ export default function MovementDetails() {
       )}
 
       {isEditable && userCanManageMovementItems(user) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Scan className="h-5 w-5" />
-              Scanner de Produtos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <PageSection title="Scanner de Produtos" description="Registre produtos via SKU, código de barras ou nome">
+          <Card>
+            <CardContent className="space-y-4 p-6">
             <div className="relative">
               <label className="block mb-2 font-medium flex items-center gap-2">
                 Produto
@@ -1023,6 +1021,7 @@ export default function MovementDetails() {
             )}
           </CardContent>
         </Card>
+      </PageSection>
       )}
 
       {/* Lista dupla: Esperado vs Carregado */}
