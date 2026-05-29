@@ -3,75 +3,58 @@
 @tailwind utilities;
 
 /* LIGHT MODE */
+/* Precision Logistics Light Theme */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
-
-  /* Automatic computation of border around primary / danger buttons */
-  --opaque-button-border-intensity: -8; /* In terms of percentages */
-
-  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 214 32% 91%;
+  --background: 210 20% 96%;
+  --foreground: 210 40% 12%;
 
-  --foreground: 220 26% 14%;
-
-  --border: 220 13% 85%;
+  --border: 210 15% 82%;
 
   --card: 0 0% 100%;
+  --card-foreground: 210 40% 12%;
+  --card-border: 210 15% 85%;
 
-  --card-foreground: 220 26% 14%;
+  --sidebar: 210 40% 12%;
+  --sidebar-foreground: 210 20% 96%;
+  --sidebar-border: 210 20% 22%;
 
-  --card-border: 220 13% 88%;
-
-  --sidebar: 222 47% 11%;
-
-  --sidebar-foreground: 214 32% 91%;
-
-  --sidebar-border: 217 19% 20%;
-
-  --sidebar-primary: 199 89% 48%;
-
+  --sidebar-primary: 206 100% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 220 20% 22%;
-
-  --sidebar-accent-foreground: 214 32% 91%;
-
-  --sidebar-ring: 199 89% 48%;
+  --sidebar-accent: 210 30% 22%;
+  --sidebar-accent-foreground: 210 20% 96%;
+  --sidebar-ring: 206 100% 50%;
 
   --popover: 0 0% 100%;
+  --popover-foreground: 210 40% 12%;
+  --popover-border: 210 15% 85%;
 
-  --popover-foreground: 220 26% 14%;
-
-  --popover-border: 220 13% 85%;
-
-  --primary: 199 89% 48%;
-
+  --primary: 206 100% 50%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 26% 14%;
+  --secondary: 210 20% 90%;
+  --secondary-foreground: 210 40% 12%;
 
-  --secondary-foreground: 214 32% 91%;
+  --muted: 210 15% 92%;
+  --muted-foreground: 210 10% 45%;
 
-  --muted: 220 14% 89%;
+  --accent: 197 100% 68%;
+  --accent-foreground: 210 40% 12%;
 
-  --muted-foreground: 220 9% 46%;
-
-  --accent: 330 81% 60%;
-
-  --accent-foreground: 0 0% 100%;
-
-  --destructive: 0 84% 60%;
-
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
 
-  --input: 220 13% 75%;
-  --ring: 199 89% 48%;
-  --chart-1: 199 89% 48%;
-  --chart-2: 258 90% 66%;
+  --input: 210 15% 78%;
+  --ring: 206 100% 50%;
+
+  --chart-1: 206 100% 50%;
+  --chart-2: 197 100% 68%;
   --chart-3: 330 81% 60%;
   --chart-4: 160 84% 39%;
   --chart-5: 38 92% 50%;
@@ -79,158 +62,124 @@
   --font-sans: Inter, system-ui, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
-  --radius: .5rem; /* 8px */
-  --shadow-2xs: 0px 2px 0px 0px hsl(220 13% 9% / 0.05);
-  --shadow-xs: 0px 1px 2px 0px hsl(220 13% 9% / 0.08);
-  --shadow-sm: 0px 1px 3px 0px hsl(220 13% 9% / 0.10), 0px 1px 2px -1px hsl(220 13% 9% / 0.10);
-  --shadow: 0px 1px 3px 0px hsl(220 13% 9% / 0.10), 0px 1px 2px -1px hsl(220 13% 9% / 0.10);
-  --shadow-md: 0px 4px 6px -1px hsl(220 13% 9% / 0.10), 0px 2px 4px -2px hsl(220 13% 9% / 0.10);
-  --shadow-lg: 0px 10px 15px -3px hsl(220 13% 9% / 0.10), 0px 4px 6px -4px hsl(220 13% 9% / 0.10);
-  --shadow-xl: 0px 20px 25px -5px hsl(220 13% 9% / 0.10), 0px 8px 10px -6px hsl(220 13% 9% / 0.10);
-  --shadow-2xl: 0px 25px 50px -12px hsl(220 13% 9% / 0.25);
+  --radius: .5rem;
+  --shadow-2xs: 0px 2px 0px 0px hsl(210 40% 12% / 0.05);
+  --shadow-xs: 0px 1px 2px 0px hsl(210 40% 12% / 0.08);
+  --shadow-sm: 0px 1px 3px 0px hsl(210 40% 12% / 0.10), 0px 1px 2px -1px hsl(210 40% 12% / 0.10);
+  --shadow: 0px 1px 3px 0px hsl(210 40% 12% / 0.10), 0px 1px 2px -1px hsl(210 40% 12% / 0.10);
+  --shadow-md: 0px 4px 6px -1px hsl(210 40% 12% / 0.10), 0px 2px 4px -2px hsl(210 40% 12% / 0.10);
+  --shadow-lg: 0px 10px 15px -3px hsl(210 40% 12% / 0.10), 0px 4px 6px -4px hsl(210 40% 12% / 0.10);
+  --shadow-xl: 0px 20px 25px -5px hsl(210 40% 12% / 0.10), 0px 8px 10px -6px hsl(210 40% 12% / 0.10);
+  --shadow-2xl: 0px 25px 50px -12px hsl(210 40% 12% / 0.25);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
-  /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
-
-  /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --sidebar-accent-border: hsl(var(--sidebar-accent));
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --primary-border: hsl(var(--primary));
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --secondary-border: hsl(var(--secondary));
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --muted-border: hsl(var(--muted));
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --accent-border: hsl(var(--accent));
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* Precision Logistics Dark Theme */
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
 
-  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+  --opaque-button-border-intensity: 9;
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 222 47% 11%;
+  /* Core surface colors */
+  --background: 210 71% 7%;
+  --foreground: 213 67% 91%;
 
-  --foreground: 214 32% 91%;
+  --border: 210 20% 18%;
 
-  --border: 217 19% 27%;
+  --card: 210 36% 12%;
+  --card-foreground: 213 67% 91%;
+  --card-border: 210 20% 18%;
 
-  --card: 220 26% 14%;
+  --sidebar: 210 71% 5%;
+  --sidebar-foreground: 213 67% 91%;
+  --sidebar-border: 210 20% 18%;
 
-  --card-foreground: 214 32% 91%;
+  --sidebar-primary: 206 100% 50%;
+  --sidebar-primary-foreground: 210 100% 17%;
 
-  --card-border: 217 19% 31%;
+  --sidebar-accent: 210 30% 18%;
+  --sidebar-accent-foreground: 213 67% 91%;
+  --sidebar-ring: 206 100% 50%;
 
-  --sidebar: 222 84% 5%;
+  --popover: 210 36% 12%;
+  --popover-foreground: 213 67% 91%;
+  --popover-border: 210 20% 18%;
 
-  --sidebar-foreground: 214 32% 91%;
+  /* Primary: Azure (#00A3FF) */
+  --primary: 206 100% 50%;
+  --primary-foreground: 210 100% 17%;
 
-  --sidebar-border: 217 19% 20%;
+  /* Secondary: Slate Blue */
+  --secondary: 210 30% 18%;
+  --secondary-foreground: 213 67% 91%;
 
-  --sidebar-primary: 199 89% 48%;
+  /* Muted: Deep navy */
+  --muted: 210 30% 15%;
+  --muted-foreground: 210 15% 55%;
 
-  --sidebar-primary-foreground: 0 0% 100%;
+  /* Accent: Cyan tint */
+  --accent: 197 100% 68%;
+  --accent-foreground: 210 100% 17%;
 
-  --sidebar-accent: 220 20% 22%;
-
-  --sidebar-accent-foreground: 214 32% 91%;
-
-  --sidebar-ring: 199 89% 48%;
-
-  --popover: 220 26% 14%;
-
-  --popover-foreground: 214 32% 91%;
-
-  --popover-border: 217 19% 35%;
-
-  --primary: 199 89% 48%;
-
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 220 18% 24%;
-
-  --secondary-foreground: 214 32% 91%;
-
-  --muted: 220 16% 20%;
-
-  --muted-foreground: 220 9% 68%;
-
-  --accent: 330 81% 60%;
-
-  --accent-foreground: 0 0% 100%;
-
-  --destructive: 0 84% 60%;
-
+  /* Destructive: Ruby Red */
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
 
-  /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
-  --input: 217 19% 40%;
-  --ring: 199 89% 48%;
-  --chart-1: 199 89% 48%;
-  --chart-2: 258 90% 66%;
+  /* Input border */
+  --input: 210 20% 22%;
+  --ring: 206 100% 50%;
+
+  /* Chart colors: Emerald, Amber, Azure, Emerald, Amber */
+  --chart-1: 206 100% 50%;
+  --chart-2: 197 100% 68%;
   --chart-3: 330 81% 60%;
   --chart-4: 160 84% 39%;
   --chart-5: 38 92% 50%;
 
-  --shadow-2xs: 0px 2px 0px 0px hsl(222 47% 5% / 0.20);
-  --shadow-xs: 0px 1px 2px 0px hsl(222 47% 5% / 0.30);
-  --shadow-sm: 0px 1px 3px 0px hsl(222 47% 5% / 0.40), 0px 1px 2px -1px hsl(222 47% 5% / 0.40);
-  --shadow: 0px 1px 3px 0px hsl(222 47% 5% / 0.40), 0px 1px 2px -1px hsl(222 47% 5% / 0.40);
-  --shadow-md: 0px 4px 6px -1px hsl(222 47% 5% / 0.40), 0px 2px 4px -2px hsl(222 47% 5% / 0.40);
-  --shadow-lg: 0px 10px 15px -3px hsl(222 47% 5% / 0.40), 0px 4px 6px -4px hsl(222 47% 5% / 0.40);
-  --shadow-xl: 0px 20px 25px -5px hsl(222 47% 5% / 0.40), 0px 8px 10px -6px hsl(222 47% 5% / 0.40);
-  --shadow-2xl: 0px 25px 50px -12px hsl(222 47% 5% / 0.50);
+  /* Shadows: dark navy with higher opacity */
+  --shadow-2xs: 0px 2px 0px 0px hsl(210 71% 5% / 0.30);
+  --shadow-xs: 0px 1px 2px 0px hsl(210 71% 5% / 0.40);
+  --shadow-sm: 0px 1px 3px 0px hsl(210 71% 5% / 0.50), 0px 1px 2px -1px hsl(210 71% 5% / 0.50);
+  --shadow: 0px 1px 3px 0px hsl(210 71% 5% / 0.50), 0px 1px 2px -1px hsl(210 71% 5% / 0.50);
+  --shadow-md: 0px 4px 6px -1px hsl(210 71% 5% / 0.50), 0px 2px 4px -2px hsl(210 71% 5% / 0.50);
+  --shadow-lg: 0px 10px 15px -3px hsl(210 71% 5% / 0.50), 0px 4px 6px -4px hsl(210 71% 5% / 0.50);
+  --shadow-xl: 0px 20px 25px -5px hsl(210 71% 5% / 0.50), 0px 8px 10px -6px hsl(210 71% 5% / 0.50);
+  --shadow-2xl: 0px 25px 50px -12px hsl(210 71% 5% / 0.60);
 
-  /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
-
-  /* Fallback for older browsers */
+  /* Borders */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --sidebar-accent-border: hsl(var(--sidebar-accent));
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --primary-border: hsl(var(--primary));
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --secondary-border: hsl(var(--secondary));
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --muted-border: hsl(var(--muted));
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --accent-border: hsl(var(--accent));
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }

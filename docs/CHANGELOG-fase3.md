@@ -1,5 +1,56 @@
 # Changelog - Fase 3 (UI/UX)
 
+## Fase 3.3.0 — Precision Logistics Design System (2026-05-29)
+
+### Novo Design System aplicado
+
+1. **Cores base atualizadas (Dark Mode First)**
+   - Background: `#0A1929` (Deep Navy) — antes `#111827` (slate-900)
+   - Card: `#102A43` (Slate Blue) — antes `#1f2937` (slate-800)
+   - Primary: `#00A3FF` (Azure) — antes `#0ea5e9` (cyan-500)
+   - Border: `#1E293B` (Slate) — antes `#374151` (slate-700)
+   - Destructive: `#EF4444` (Ruby) — antes `#ef4444` (red-500)
+   - Accent: `#89CEFF` (Cyan) — antes `#ec4899` (pink-500)
+   - Muted foreground: mais cinza para legibilidade em dark navy
+   - Shadows: fundo navy com opacidade mais alta (30-60%)
+
+2. **Light Mode também ajustado**
+   - Background: cinza claro `#f1f5f9` com base azulada
+   - Primary: Azure `#00A3FF` mantido
+   - Sidebar: dark navy `#1e3a5f` (antes slate-900)
+   - Cards: branco puro mantido
+   - Shadows: base azulada escura
+
+3. **Border Radius padronizado**
+   - `lg`: `1rem` (16px) — antes 9px
+   - `md`: `0.75rem` (12px) — antes 6px
+   - `sm`: `0.5rem` (8px) — antes 3px
+   - `xl`: `1.5rem` (24px) — novo, para pill badges
+
+4. **Documentação atualizada**
+   - `docs/DESIGN_SYSTEM.md`: tokens de cores, semântica, elevação, sombras
+   - `replit.md`: seção UI/UX atualizada com descrição do Precision Logistics
+
+### Arquivos alterados
+- `client/src/index.css` — light mode e dark mode (Precision Logistics)
+- `tailwind.config.ts` — border radius tokens
+- `docs/DESIGN_SYSTEM.md` — documentação do novo design system
+- `replit.md` — visão geral do design system
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (272.4kb)
+- Visual: tela de login com dark navy, cards slate blue, botão Azure brilhante ✅
+
+### O que NÃO foi alterado
+- Back-end, banco, seed, migrations, schema, endpoints, payloads
+- RBAC, permissions, roles
+- Componentes de UI/UX (PageHeader, FilterBar, etc.) — layout intacto
+- Sidebar, rotas, lógica de negócio
+- Todas as telas individuais mantêm estrutura, apenas herdam novas cores
+
+---
+
 ## Fase 3.0.1 — Quick Wins de primeira impressão (2026-05-28)
 
 ### Correções aplicadas

@@ -69,7 +69,7 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend utilizes React 18 with TypeScript and Vite. It features a desktop-first responsive design based on Radix UI and shadcn/ui (New York style) with Tailwind CSS. Design principles include Material Design, a custom dark blue/light blue/pink/purple color palette, and the Inter font. Emphasis is placed on information density, keyboard-first interaction, semantic color-coded status badges, data tables, and minimal modal usage.
+The frontend utilizes React 18 with TypeScript and Vite. It features a **desktop-first responsive design** based on Radix UI and shadcn/ui with Tailwind CSS. The visual identity is **Precision Logistics** — a dark-mode-first design system evoking mission-critical reliability and data-driven precision. The color palette is built on **Deep Navy (#0A1929)** for backgrounds, **Slate Blue (#102A43)** for cards/containers, **Azure (#00A3FF)** as primary action color, and semantic colors (Emerald for success, Amber for warnings, Ruby for errors). Typography uses **Inter** exclusively, with Semi-Bold (600) headlines and Medium (500) data labels. Key principles: information density, keyboard-first interaction, semantic color-coded status badges, data tables, minimal modal usage, and tonal layering for depth hierarchy.
 
 ### Technical Implementations
 - **Frontend**: TanStack Query for server state; React Hook Form + Zod for forms.

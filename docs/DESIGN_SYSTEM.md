@@ -1,6 +1,6 @@
-# Design System do EventFlow Logistics
+# Design System do EventFlow Logistics — Precision Logistics
 
-Documento de referência para todos os padrões visuais, componentes e tokens de design usados no projeto. Use este documento como guia para manter consistência em todas as telas.
+Documento de referência para todos os padrões visuais, componentes e tokens de design usados no projeto. Este design system segue a filosofia **Dark Mode First** inspirada em sistemas de missão crítica de logística, com cores profundas de navy, azul Azure como primário, e tipografia Inter otimizada para legibilidade em telas de monitoramento.
 
 ---
 
@@ -12,71 +12,71 @@ As cores são definidas em `client/src/index.css` usando HSL (sem wrapper `hsl()
 
 ```css
 /* LIGHT MODE */
---background: 214 32% 91%;           /* Azul claro, fundo principal */
---foreground: 220 26% 14%;           /* Texto principal, quase preto */
---border: 220 13% 85%;               /* Bordas padrão */
+--background: 210 20% 96%;            /* Cinza claro, fundo principal */
+--foreground: 210 40% 12%;          /* Texto principal, quase preto */
+--border: 210 15% 82%;               /* Bordas padrão */
 --card: 0 0% 100%;                   /* Branco puro */
---card-foreground: 220 26% 14%;      /* Texto em cards */
---card-border: 220 13% 88%;          /* Borda de cards */
+--card-foreground: 210 40% 12%;      /* Texto em cards */
+--card-border: 210 15% 85%;          /* Borda de cards */
 --popover: 0 0% 100%;                /* Branco */
---popover-foreground: 220 26% 14%;
---popover-border: 220 13% 85%;
---primary: 199 89% 48%;              /* Azul ciano (#0ea5e9) */
---primary-foreground: 0 0% 100%;      /* Branco sobre azul */
---secondary: 220 26% 14%;            /* Azul escuro */
---secondary-foreground: 214 32% 91%;
---muted: 220 14% 89%;                /* Cinza claro */
---muted-foreground: 220 9% 46%;       /* Texto secundário */
---accent: 330 81% 60%;               /* Rosa (#ec4899) */
---accent-foreground: 0 0% 100%;
---destructive: 0 84% 60%;            /* Vermelho (#ef4444) */
+--popover-foreground: 210 40% 12%;
+--popover-border: 210 15% 85%;
+--primary: 206 100% 50%;             /* Azure (#00A3FF) */
+--primary-foreground: 0 0% 100%;     /* Branco sobre Azure */
+--secondary: 210 20% 90%;            /* Cinza claro */
+--secondary-foreground: 210 40% 12%;
+--muted: 210 15% 92%;                /* Cinza claro */
+--muted-foreground: 210 10% 45%;      /* Texto secundário */
+--accent: 197 100% 68%;             /* Cyan claro (#89CEFF) */
+--accent-foreground: 210 40% 12%;
+--destructive: 0 72% 51%;           /* Ruby Red (#EF4444) */
 --destructive-foreground: 0 0% 98%;
---input: 220 13% 75%;                /* Input borders */
---ring: 199 89% 48%;                 /* Focus ring */
+--input: 210 15% 78%;                /* Input borders */
+--ring: 206 100% 50%;                /* Focus ring */
 
 /* Sidebar */
---sidebar: 222 47% 11%;              /* Azul marinho escuro */
---sidebar-foreground: 214 32% 91%;
---sidebar-border: 217 19% 20%;
---sidebar-primary: 199 89% 48%;      /* Azul ciano */
+--sidebar: 210 40% 12%;                /* Dark navy */
+--sidebar-foreground: 210 20% 96%;     /* Branco claro */
+--sidebar-border: 210 20% 22%;
+--sidebar-primary: 206 100% 50%;     /* Azure */
 --sidebar-primary-foreground: 0 0% 100%;
---sidebar-accent: 220 20% 22%;
---sidebar-accent-foreground: 214 32% 91%;
---sidebar-ring: 199 89% 48%;
+--sidebar-accent: 210 30% 22%;
+--sidebar-accent-foreground: 210 20% 96%;
+--sidebar-ring: 206 100% 50%;
 
 /* Charts */
---chart-1: 199 89% 48%;   /* Ciano */
---chart-2: 258 90% 66%;   /* Roxo */
---chart-3: 330 81% 60%;   /* Rosa */
---chart-4: 160 84% 39%;   /* Verde */
---chart-5: 38 92% 50%;    /* Laranja */
+--chart-1: 206 100% 50%;   /* Azure */
+--chart-2: 197 100% 68%;   /* Cyan */
+--chart-3: 330 81% 60%;    /* Rosa */
+--chart-4: 160 84% 39%;    /* Emerald */
+--chart-5: 38 92% 50%;     /* Amber */
 ```
 
-### 1.2 Dark Mode
+### 1.2 Dark Mode (Precision Logistics)
 
 ```css
 .dark {
-  --background: 220 20% 10%;
-  --foreground: 214 32% 91%;
-  --border: 220 13% 20%;
-  --card: 220 20% 12%;
-  --card-foreground: 214 32% 91%;
-  --card-border: 220 13% 18%;
-  --popover: 220 20% 12%;
-  --popover-foreground: 214 32% 91%;
-  --popover-border: 220 13% 20%;
-  --primary: 199 89% 48%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 220 20% 22%;
-  --secondary-foreground: 214 32% 91%;
-  --muted: 220 20% 18%;
-  --muted-foreground: 220 9% 60%;
-  --accent: 330 81% 60%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;
+  --background: 210 71% 7%;              /* Deep Navy (#0A1929) */
+  --foreground: 213 67% 91%;             /* Texto claro (#D5E4FA) */
+  --border: 210 20% 18%;                 /* Slate (#1E293B) */
+  --card: 210 36% 12%;                   /* Slate Blue (#102A43) */
+  --card-foreground: 213 67% 91%;
+  --card-border: 210 20% 18%;            /* Slate */
+  --popover: 210 36% 12%;
+  --popover-foreground: 213 67% 91%;
+  --popover-border: 210 20% 18%;
+  --primary: 206 100% 50%;               /* Azure (#00A3FF) */
+  --primary-foreground: 210 100% 17%;      /* Dark navy sobre Azure */
+  --secondary: 210 30% 18%;              /* Navy médio */
+  --secondary-foreground: 213 67% 91%;
+  --muted: 210 30% 15%;                  /* Deep navy */
+  --muted-foreground: 210 15% 55%;        /* Texto cinza */
+  --accent: 197 100% 68%;                /* Cyan (#89CEFF) */
+  --accent-foreground: 210 100% 17%;
+  --destructive: 0 72% 51%;              /* Ruby Red (#EF4444) */
   --destructive-foreground: 0 0% 98%;
-  --input: 220 13% 25%;
-  --ring: 199 89% 48%;
+  --input: 210 20% 22%;                  /* Input border */
+  --ring: 206 100% 50%;                  /* Azure ring */
 }
 ```
 
@@ -93,16 +93,18 @@ As cores são definidas em `client/src/index.css` usando HSL (sem wrapper `hsl()
 - H2 (PageSection): `text-lg font-semibold`
 - H3 (Card title): `text-base font-semibold`
 - Body: `text-sm` (padrão)
-- Caption/Label: `text-xs`
+- Caption/Label: `text-xs font-medium` (Medium 500 para labels)
 - Muted: `text-xs text-muted-foreground`
+- Data labels: uppercase quando apropriado para diferenciar metadados
 
 ### 1.4 Bordas
 
 ```css
---radius: .5rem; /* 8px - padrão */
-lg: .5625rem;   /* 9px */
-md: .375rem;    /* 6px */
-sm: .1875rem;   /* 3px */
+--radius: .5rem;  /* 8px - padrão */
+lg: 1rem;         /* 16px - large containers */
+md: 0.75rem;      /* 12px - medium */
+sm: 0.5rem;       /* 8px - small */
+xl: 1.5rem;       /* 24px - pill badges */
 ```
 
 ### 1.5 Espaçamento
@@ -113,19 +115,39 @@ sm: .1875rem;   /* 3px */
 - Gap entre metadados: `gap-x-4 gap-y-1`
 - Gap entre botões: `gap-2`
 - Gap em filtros: `gap-3`
+- Base unit: 8px (4px sub-grid para ícones e labels)
 
 ### 1.6 Sombras
 
 ```css
---shadow-2xs: 0px 2px 0px 0px hsl(220 13% 9% / 0.05);
---shadow-xs: 0px 1px 2px 0px hsl(220 13% 9% / 0.08);
---shadow-sm: 0px 1px 3px 0px hsl(220 13% 9% / 0.10), 0px 1px 2px -1px hsl(220 13% 9% / 0.10);
---shadow: 0px 1px 3px 0px hsl(220 13% 9% / 0.10), 0px 1px 2px -1px hsl(220 13% 9% / 0.10);
---shadow-md: 0px 4px 6px -1px hsl(220 13% 9% / 0.10), 0px 2px 4px -2px hsl(220 13% 9% / 0.10);
---shadow-lg: 0px 10px 15px -3px hsl(220 13% 9% / 0.10), 0px 4px 6px -4px hsl(220 13% 9% / 0.10);
---shadow-xl: 0px 20px 25px -5px hsl(220 13% 9% / 0.10), 0px 8px 10px -6px hsl(220 13% 9% / 0.10);
---shadow-2xl: 0px 25px 50px -12px hsl(220 13% 9% / 0.25);
+/* Dark mode - shadows com fundo navy */
+--shadow-2xs: 0px 2px 0px 0px hsl(210 71% 5% / 0.30);
+--shadow-xs: 0px 1px 2px 0px hsl(210 71% 5% / 0.40);
+--shadow-sm: 0px 1px 3px 0px hsl(210 71% 5% / 0.50), 0px 1px 2px -1px hsl(210 71% 5% / 0.50);
+--shadow: 0px 1px 3px 0px hsl(210 71% 5% / 0.50), 0px 1px 2px -1px hsl(210 71% 5% / 0.50);
+--shadow-md: 0px 4px 6px -1px hsl(210 71% 5% / 0.50), 0px 2px 4px -2px hsl(210 71% 5% / 0.50);
+--shadow-lg: 0px 10px 15px -3px hsl(210 71% 5% / 0.50), 0px 4px 6px -4px hsl(210 71% 5% / 0.50);
+--shadow-xl: 0px 20px 25px -5px hsl(210 71% 5% / 0.50), 0px 8px 10px -6px hsl(210 71% 5% / 0.50);
+--shadow-2xl: 0px 25px 50px -12px hsl(210 71% 5% / 0.60);
 ```
+
+### 1.7 Cores Semânticas
+
+| Status | Cor | Hex | Uso |
+|--------|-----|-----|-----|
+| Success | Emerald | #10B981 | Envios ativos, entregas no prazo |
+| Warning | Amber | #F59E0B | Atrasos, aprovações pendentes |
+| Error | Ruby | #EF4444 | Falhas críticas, obstruções |
+| Primary | Azure | #00A3FF | Ações principais, caminho crítico |
+| Info | Cyan | #89CEFF | Destaques, acentos |
+
+---
+
+## 2. Brand & Style
+
+O design system é projetado para **logística de alta performance** e **gestão de cadeia de suprimentos**. Evoca confiabilidade, velocidade e precisão data-driven. A estética é **Corporate / Modern**, com filosofia **Dark Mode First** para reduzir fadiga ocular de operadores que monitoram dashboards em turnos longos.
+
+**Visual Language:** Prioriza utilidade e densidade sem sacrificar clareza. Dados complexos — desde rastreamento de frota em tempo real até métricas de inventário — são instantaneamente digeríveis. O ambiente profissional transmite robustez, segurança e avanço tecnológico.
 
 ---
 
