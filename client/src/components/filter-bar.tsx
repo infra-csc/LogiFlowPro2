@@ -24,7 +24,9 @@ export function FilterBar({ children, className, defaultOpen = false, badgeCount
     <Collapsible open={open} onOpenChange={setOpen} className={cn("w-full", className)}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center">
+            <Filter className="h-3.5 w-3.5 text-primary/70" />
+          </div>
           <span>Filtros</span>
           {badgeCount !== undefined && badgeCount > 0 && (
             <Badge variant="secondary" className="text-xs">
@@ -34,14 +36,14 @@ export function FilterBar({ children, className, defaultOpen = false, badgeCount
         </div>
         <div className="flex items-center gap-1">
           {onClear && badgeCount !== undefined && badgeCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={onClear}>
+            <Button variant="ghost" size="sm" onClick={onClear} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4 mr-1" />
               Limpar
             </Button>
           )}
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground", open && "rotate-180")} />
               <span className="sr-only">Alternar filtros</span>
             </Button>
           </CollapsibleTrigger>

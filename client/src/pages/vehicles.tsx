@@ -153,7 +153,7 @@ export default function Vehicles() {
     <div className="space-y-6">
       <PageHeader
         title="Veículos"
-        description="Gerencie os veículos da frota"
+        description="Gerencie a frota e seus tipos"
       >
         <Dialog open={isCreateOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>

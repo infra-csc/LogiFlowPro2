@@ -87,7 +87,9 @@ export default function LoadingOrders() {
                       </span>
                     </div>
                     <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Package className="h-4 w-4 text-primary/70" />
+                      </div>
                       {order.orderNumber}
                     </h3>
                   </div>

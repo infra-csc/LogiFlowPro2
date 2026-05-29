@@ -87,6 +87,7 @@ export default function Dashboard() {
       icon: Calendar,
       description: "Em andamento",
       color: "text-chart-1",
+      bgColor: "bg-chart-1/10",
       testId: "stat-active-events"
     },
     {
@@ -95,6 +96,7 @@ export default function Dashboard() {
       icon: Truck,
       description: "Próximos 7 dias",
       color: "text-chart-2",
+      bgColor: "bg-chart-2/10",
       testId: "stat-upcoming-trips"
     },
     {
@@ -103,6 +105,7 @@ export default function Dashboard() {
       icon: Package,
       description: "Abaixo do mínimo",
       color: "text-chart-5",
+      bgColor: "bg-chart-5/10",
       testId: "stat-low-stock"
     },
     {
@@ -111,6 +114,7 @@ export default function Dashboard() {
       icon: AlertTriangle,
       description: "Requer atenção",
       color: "text-destructive",
+      bgColor: "bg-destructive/10",
       testId: "stat-conflicts"
     },
   ];
@@ -124,13 +128,15 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className="hover-elevate">
+          <Card key={stat.title} className="hover-elevate overflow-hidden">
             <CardContent className="p-4">
               <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <p className="text-sm font-medium">{stat.title}</p>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${stat.bgColor}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </div>
               </div>
-              <div className="text-2xl font-bold" data-testid={stat.testId}>{stat.value}</div>
+              <div className="text-2xl font-bold tracking-tight" data-testid={stat.testId}>{stat.value}</div>
               <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
             </CardContent>
           </Card>
@@ -142,8 +148,10 @@ export default function Dashboard() {
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="flex items-center gap-2 font-semibold text-base">
-                <Bell className="h-5 w-5" />
+              <div className="flex items-center gap-2 font-semibold text-base text-foreground">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Bell className="h-4 w-4 text-primary/70" />
+                </div>
                 Notificações Recentes
               </div>
               {unreadNotifications.length > 0 && (
@@ -167,9 +175,11 @@ export default function Dashboard() {
           </div>
           <ScrollArea className="h-[300px]">
             {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <Bell className="h-12 w-12 mb-3 opacity-20" />
-                <p className="text-sm">Nenhuma notificação</p>
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                  <Bell className="h-7 w-7 text-primary/40" />
+                </div>
+                <p className="text-sm font-medium">Nenhuma notificação</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -264,33 +274,35 @@ export default function Dashboard() {
 
         <Card>
           <CardContent className="p-4 space-y-2">
-            <div className="flex items-center gap-2 font-semibold text-base mb-1">
-              <TrendingUp className="h-5 w-5" />
-              Quick Actions
+            <div className="flex items-center gap-2 font-semibold text-base text-foreground mb-1">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-primary/70" />
+              </div>
+              Ações Rápidas
             </div>
-            <p className="text-sm text-muted-foreground mb-4">Common operations</p>
+            <p className="text-sm text-muted-foreground mb-4">Operações mais comuns</p>
             <Button asChild className="w-full justify-start" variant="outline" data-testid="button-new-event">
               <Link href="/events">
                 <Calendar className="h-4 w-4 mr-2" />
-                Create New Event
+                Criar Novo Evento
               </Link>
             </Button>
             <Button asChild className="w-full justify-start" variant="outline" data-testid="button-new-request">
               <Link href="/requests">
                 <Package className="h-4 w-4 mr-2" />
-                New Material Request
+                Nova Requisição
               </Link>
             </Button>
             <Button asChild className="w-full justify-start" variant="outline" data-testid="button-plan-trip">
               <Link href="/trips">
                 <Truck className="h-4 w-4 mr-2" />
-                Plan Trip
+                Planejar Viagem
               </Link>
             </Button>
             <Button asChild className="w-full justify-start" variant="outline" data-testid="button-view-inventory">
               <Link href="/inventory">
                 <Box className="h-4 w-4 mr-2" />
-                View Inventory
+                Ver Estoque
               </Link>
             </Button>
           </CardContent>

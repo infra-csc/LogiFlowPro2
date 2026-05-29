@@ -90,10 +90,12 @@ export default function Kits() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
-                      {!kit.imageUrl && <Boxes className="h-4 w-4 text-muted-foreground" />}
-                      {kit.name}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Boxes className="h-4 w-4 text-primary/70" />
+                      </div>
+                      <h3 className="font-semibold text-base text-foreground">{kit.name}</h3>
+                    </div>
                     {kit.description && (
                       <p className="text-sm text-muted-foreground mt-0.5">{kit.description}</p>
                     )}

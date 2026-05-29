@@ -75,9 +75,11 @@ export default function AuthPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Package className="h-10 w-10 text-primary" />
-              <h1 className="text-3xl font-bold">Sistema de Logística</h1>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Package className="h-7 w-7 text-primary" />
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight">Sistema de Logística</h1>
             </div>
             <p className="text-muted-foreground">
               Gerenciamento de eventos e operações de armazém
@@ -85,15 +87,15 @@ export default function AuthPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/50 rounded-lg border">
               <TabsTrigger value="login" data-testid="tab-login">Entrar</TabsTrigger>
               <TabsTrigger value="register" data-testid="tab-register">Criar Conta</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="login">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Entrar no Sistema</CardTitle>
+            <TabsContent value="login" className="mt-4">
+              <Card className="shadow-sm border border-border/60">
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-xl">Entrar no Sistema</CardTitle>
                   <CardDescription>
                     Digite suas credenciais para acessar o sistema
                   </CardDescription>
@@ -167,10 +169,10 @@ export default function AuthPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="register">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Criar Nova Conta</CardTitle>
+            <TabsContent value="register" className="mt-4">
+              <Card className="shadow-sm border border-border/60">
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-xl">Criar Nova Conta</CardTitle>
                   <CardDescription>
                     Preencha os dados abaixo para criar sua conta
                   </CardDescription>
@@ -277,34 +279,36 @@ export default function AuthPage() {
       </div>
 
       {/* Right side - Hero */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-primary/10 to-background items-center justify-center p-12">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/15 via-primary/5 to-background items-center justify-center p-12">
         <div className="max-w-lg text-center">
-          <Package className="h-24 w-24 mx-auto mb-6 text-primary" />
+          <div className="h-24 w-24 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Package className="h-14 w-14 text-primary" />
+          </div>
           <h2 className="text-4xl font-bold mb-4">Sistema de Gestão de Logística</h2>
-          <p className="text-lg text-muted-foreground mb-6">
+          <p className="text-lg text-muted-foreground mb-8">
             Gerencie eventos, requisições de materiais, estoque, viagens e devoluções de forma integrada e eficiente.
           </p>
           <div className="grid grid-cols-2 gap-4 text-left">
-            <div className="p-4 bg-card rounded-md border">
-              <h3 className="font-semibold mb-2">Gestão de Eventos</h3>
+            <div className="p-4 bg-card/80 backdrop-blur-sm rounded-lg border shadow-sm">
+              <h3 className="font-semibold mb-2 text-sm">Gestão de Eventos</h3>
               <p className="text-sm text-muted-foreground">
                 Controle completo de montagem e desmontagem
               </p>
             </div>
-            <div className="p-4 bg-card rounded-md border">
-              <h3 className="font-semibold mb-2">Inventário</h3>
+            <div className="p-4 bg-card/80 backdrop-blur-sm rounded-lg border shadow-sm">
+              <h3 className="font-semibold mb-2 text-sm">Inventário</h3>
               <p className="text-sm text-muted-foreground">
                 Projeção temporal e rastreamento
               </p>
             </div>
-            <div className="p-4 bg-card rounded-md border">
-              <h3 className="font-semibold mb-2">Planejamento</h3>
+            <div className="p-4 bg-card/80 backdrop-blur-sm rounded-lg border shadow-sm">
+              <h3 className="font-semibold mb-2 text-sm">Planejamento</h3>
               <p className="text-sm text-muted-foreground">
                 Viagens e carregamento otimizado
               </p>
             </div>
-            <div className="p-4 bg-card rounded-md border">
-              <h3 className="font-semibold mb-2">Logística Reversa</h3>
+            <div className="p-4 bg-card/80 backdrop-blur-sm rounded-lg border shadow-sm">
+              <h3 className="font-semibold mb-2 text-sm">Logística Reversa</h3>
               <p className="text-sm text-muted-foreground">
                 Gestão de devoluções e avarias
               </p>

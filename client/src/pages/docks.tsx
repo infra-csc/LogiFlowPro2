@@ -176,10 +176,12 @@ export default function Docks() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
-                      <Warehouse className="h-4 w-4 text-muted-foreground" />
-                      {dock.name}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Warehouse className="h-4 w-4 text-primary/70" />
+                      </div>
+                      <h3 className="font-semibold text-base text-foreground">{dock.name}</h3>
+                    </div>
                   </div>
                 </div>
                 <div className="mt-2 pt-2 border-t border-border/40 space-y-1 text-sm">

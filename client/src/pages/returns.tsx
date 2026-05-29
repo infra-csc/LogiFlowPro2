@@ -53,15 +53,18 @@ export default function Returns() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-base text-foreground">{returnItem.product?.name || "Product"}</h3>
-                        {hasDiscrepancy && (
-                          <AlertTriangle className="h-4 w-4 text-chart-5" />
-                        )}
+                      <div className="flex items-center gap-2 mb-1">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <RotateCcw className="h-4 w-4 text-primary/70" />
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {returnItem.product?.sku || "—"} | {format(new Date(returnItem.createdAt), "MMM dd, yyyy")}
-                      </p>
+                      <h3 className="font-semibold text-base text-foreground">{returnItem.product?.name || "Produto"}</h3>
+                      {hasDiscrepancy && (
+                        <AlertTriangle className="h-4 w-4 text-chart-5" />
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground ml-10">
+                      {returnItem.product?.sku || "—"} | {format(new Date(returnItem.createdAt), "dd/MM/yyyy")}
+                    </p>
 
                       <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
@@ -104,10 +107,10 @@ export default function Returns() {
                     </div>
 
                     <div className="ml-4 flex flex-col gap-2">
-                      {hasDamage && <Badge variant="destructive">Damaged</Badge>}
-                      {hasLoss && <Badge variant="destructive">Loss</Badge>}
+                      {hasDamage && <Badge variant="destructive">Avariado</Badge>}
+                      {hasLoss && <Badge variant="destructive">Perdido</Badge>}
                       {hasDiscrepancy && !hasDamage && !hasLoss && (
-                        <Badge className="bg-chart-5 text-white">Discrepancy</Badge>
+                        <Badge className="bg-chart-5 text-white">Discrepância</Badge>
                       )}
                     </div>
                   </div>

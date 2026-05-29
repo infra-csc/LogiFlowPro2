@@ -54,13 +54,15 @@ export default function Inventory() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title}>
+          <Card key={stat.title} className="hover-elevate overflow-hidden">
             <CardContent className="p-4">
               <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <p className="text-sm font-medium">{stat.title}</p>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${stat.color.replace('text-', 'bg-')}/10`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </div>
               </div>
-              <div className="text-2xl font-bold" data-testid={`stat-${stat.title.toLowerCase().replace(/\s/g, '-')}`}>
+              <div className="text-2xl font-bold tracking-tight" data-testid={`stat-${stat.title.toLowerCase().replace(/\s/g, '-')}`}>
                 {stat.value}
               </div>
             </CardContent>

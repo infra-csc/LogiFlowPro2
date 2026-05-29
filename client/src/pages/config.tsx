@@ -44,18 +44,20 @@ export default function Config() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {sections.map((section) => (
-          <Card key={section.title} className="hover-elevate" data-testid={section.testId}>
+          <Card key={section.title} className="hover-elevate overflow-hidden" data-testid={section.testId}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-base flex items-center gap-2">
-                  <section.icon className="h-5 w-5" />
+                <div className="font-semibold text-base text-foreground flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <section.icon className="h-4 w-4 text-primary/70" />
+                  </div>
                   {section.title}
                 </div>
                 <Button variant="ghost" size="icon" data-testid={`button-add-${section.title.toLowerCase()}`}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="text-2xl font-bold mb-1">{section.count}</div>
+              <div className="text-2xl font-bold tracking-tight mb-1">{section.count}</div>
               <p className="text-sm text-muted-foreground">{section.description}</p>
             </CardContent>
           </Card>
@@ -64,8 +66,10 @@ export default function Config() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="font-semibold text-base flex items-center gap-2 mb-3">
-            <Settings className="h-5 w-5" />
+          <div className="font-semibold text-base text-foreground flex items-center gap-2 mb-3">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Settings className="h-4 w-4 text-primary/70" />
+            </div>
             Configurações do Sistema
           </div>
           <p className="text-sm text-muted-foreground">

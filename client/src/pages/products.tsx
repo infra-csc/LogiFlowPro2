@@ -117,15 +117,19 @@ export default function Products() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-base text-foreground truncate">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Package className="h-4 w-4 text-primary/70" />
+                      </div>
+                      <h3 className="font-semibold text-base text-foreground truncate">{product.name}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground ml-10">SKU: {product.sku}</p>
                   </div>
-                  {!product.imageUrl && <Package className="h-5 w-5 text-muted-foreground ml-2" />}
                 </div>
                 
                 <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Stock:</span>
+                    <span className="text-xs text-muted-foreground">Estoque:</span>
                     <span className={`text-sm font-medium ${
                       product.currentStock && product.minimumStock && product.currentStock < product.minimumStock
                         ? "text-destructive"
@@ -137,14 +141,14 @@ export default function Products() {
 
                   {product.location && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Location:</span>
+                      <span className="text-xs text-muted-foreground">Localização:</span>
                       <span className="text-sm">{product.location}</span>
                     </div>
                   )}
 
                   <div className="pt-2">
                     <Badge className={getOwnershipColor(product.ownership)}>
-                      {product.ownership === "owned" ? "Owned" : product.ownership === "rented" ? "Rented" : "Third Party"}
+                      {product.ownership === "owned" ? "Proprietário" : product.ownership === "rented" ? "Alugado" : "Terceiro"}
                     </Badge>
                   </div>
                 </div>

@@ -264,9 +264,16 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarContent>
-        <div className="p-4 border-b border-sidebar-border">
-          <h1 className="text-lg font-semibold text-sidebar-foreground">EventFlow</h1>
-          <p className="text-xs text-muted-foreground">Logistics Manager</p>
+        <div className="px-4 py-5 border-b border-sidebar-border">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-sidebar-primary/20 flex items-center justify-center">
+              <Package className="h-5 w-5 text-sidebar-primary" />
+            </div>
+            <div>
+              <h1 className="text-sm font-semibold text-sidebar-foreground leading-tight">EventFlow</h1>
+              <p className="text-[11px] text-sidebar-foreground/60 leading-tight">Logistics Manager</p>
+            </div>
+          </div>
         </div>
         
         <SidebarGroup>
