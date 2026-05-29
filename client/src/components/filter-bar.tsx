@@ -20,8 +20,8 @@ export function FilterBar({ children, className, defaultOpen = false }: FilterBa
   return (
     <Collapsible open={open} onOpenChange={setOpen} className={cn("w-full", className)}>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Filter className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <Filter className="h-4 w-4 text-muted-foreground" />
           <span>Filtros</span>
         </div>
         <CollapsibleTrigger asChild>
@@ -32,7 +32,7 @@ export function FilterBar({ children, className, defaultOpen = false }: FilterBa
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent>
-        <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-4 bg-muted/40 rounded-lg border border-border/60">
           {children}
         </div>
       </CollapsibleContent>

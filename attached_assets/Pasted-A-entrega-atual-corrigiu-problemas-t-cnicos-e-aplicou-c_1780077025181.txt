@@ -1,0 +1,136 @@
+A entrega atual corrigiu problemas técnicos e aplicou componentes do Design System, mas ainda não atingiu o objetivo visual esperado.
+
+Aplicar PageHeader, PageLoading e EmptyState em várias páginas é uma padronização inicial, porém o app ainda precisa de um refinamento real de UX/design.
+
+Não quero apenas “envolver páginas em componentes”. Quero uma revisão visual prática do layout.
+
+Objetivo agora:
+Fazer um Design Pass real no app, começando por padrões globais e pelas telas mais críticas, sem alterar regras de negócio, RBAC, endpoints, payloads ou back-end.
+
+Problema atual:
+As páginas ainda parecem cruas. Os cards, listas, filtros, botões e espaçamentos continuam com baixa hierarquia visual. A aparência geral ainda não está profissional o suficiente.
+
+Antes de alterar mais 20 páginas, faça o seguinte:
+
+1. Auditoria visual do layout atual
+   Analise o app visualmente e liste os principais problemas de UX/UI encontrados, incluindo:
+
+* padding lateral;
+* espaçamento entre seções;
+* cards grandes demais;
+* botões desalinhados;
+* filtros pouco claros;
+* tabelas/listas pouco refinadas;
+* status badges mal posicionados;
+* hierarquia fraca entre título, descrição, código, status e ações;
+* responsividade básica;
+* consistência entre páginas.
+
+2. Criar um padrão visual global
+   Defina e aplique padrões reutilizáveis para:
+
+* container principal das páginas;
+* espaçamento vertical entre header, filtros e conteúdo;
+* largura máxima quando fizer sentido;
+* padrão de cards;
+* padrão de listas;
+* padrão de tabelas;
+* padrão de filtros;
+* padrão de grupos de ações;
+* padrão de badges/status;
+* comportamento mobile básico.
+
+3. Usar uma tela como referência visual
+   Escolha uma tela operacional crítica para virar referência visual, preferencialmente:
+
+* Movimentações
+
+Refine de verdade essa tela, corrigindo:
+
+* cards altos demais;
+* excesso de espaço vazio;
+* botões espalhados;
+* filtros visualmente fracos;
+* falta de hierarquia;
+* conteúdo colado nas bordas;
+* status pouco destacados;
+* layout ruim em telas menores.
+
+A tela de Movimentações deve ficar claramente melhor do que antes, não apenas com PageHeader aplicado.
+
+4. Depois replicar o padrão
+   Após Movimentações ficar boa, aplicar o mesmo padrão visual nas principais telas:
+
+* Loading Orders;
+* Requisições;
+* Aprovações;
+* Produtos;
+* Kits;
+* Fornecedores;
+* Logística;
+* Administração.
+
+Não precisa redesenhar tudo radicalmente. Mas precisa haver melhora real de espaçamento, alinhamento, densidade e hierarquia.
+
+5. O que NÃO é suficiente
+   Não considerar como refinamento visual suficiente apenas:
+
+* trocar spinner por PageLoading;
+* colocar PageHeader;
+* colocar EmptyState;
+* corrigir import;
+* remover div duplicada;
+* ajustar erro de build.
+
+Essas coisas são boas, mas são correções técnicas/padronização. O foco agora é aparência e usabilidade.
+
+6. Restrições absolutas
+   Não alterar:
+
+* back-end;
+* RBAC;
+* helpers de autorização;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* scanner;
+* regras de negócio;
+* status/transições;
+* banco;
+* schema;
+* migrations;
+* seed;
+* permissions;
+* role_permissions.
+
+Pode alterar apenas:
+
+* layout;
+* composição visual;
+* classes;
+* espaçamentos;
+* organização de cards;
+* organização de filtros;
+* organização de botões;
+* uso dos componentes visuais;
+* responsividade;
+* apresentação de listas/tabelas;
+* aparência de estados vazios, loading e erro.
+
+7. Entrega esperada
+   Ao final, entregue:
+
+* quais problemas visuais foram encontrados;
+* qual padrão visual global foi definido;
+* quais telas foram realmente refinadas;
+* o que mudou visualmente em cada tela;
+* antes/depois conceitual;
+* arquivos alterados;
+* confirmação de que nenhuma lógica funcional foi alterada;
+* confirmação de que RBAC, back-end, endpoints e payloads ficaram intactos;
+* resultado do npm run check;
+* resultado do npm run build.
+
+Importante:
+Não avance para novas funcionalidades. O foco agora é fazer o app parecer mais profissional, limpo, organizado e consistente.
