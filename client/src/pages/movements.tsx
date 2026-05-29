@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, X, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,7 +22,7 @@ import {
   userCanCreateMovement,
   userCanEditMovement,
 } from "@/lib/authz";
-import { PageHeader, PageLoading, EmptyState, StatusBadge, FilterBar } from "@/components";
+import { PageHeader, PageLoading, EmptyState, StatusBadge } from "@/components";
 import type { Movement, LoadingOrder, Event, Dock, Trip, MovementTypeConfig } from "@shared/schema";
 
 type MovementWithRelations = Movement & {
@@ -76,45 +77,19 @@ export default function Movements() {
   // Aplicar filtros
   const filteredMovements = useMemo(() => {
     return movements.filter((movement) => {
-      // Filtro por evento
-      if (filterEventId && movement.loadingOrder?.eventId !== filterEventId) {
-        return false;
-      }
-
-      // Filtro por período de carregamento
+      if (filterEventId && movement.loadingOrder?.eventId !== filterEventId) return false;
       if (filterStartDate && movement.startedAt) {
         const movementDate = new Date(movement.startedAt).toISOString().split('T')[0];
-        if (movementDate < filterStartDate) {
-          return false;
-        }
+        if (movementDate < filterStartDate) return false;
       }
       if (filterEndDate && movement.startedAt) {
         const movementDate = new Date(movement.startedAt).toISOString().split('T')[0];
-        if (movementDate > filterEndDate) {
-          return false;
-        }
+        if (movementDate > filterEndDate) return false;
       }
-
-      // Filtro por status
-      if (filterStatus && movement.status !== filterStatus) {
-        return false;
-      }
-
-      // Filtro por tipo
-      if (filterType && movement.movementTypeConfigId !== filterType) {
-        return false;
-      }
-
-      // Filtro por placa do veículo
-      if (filterVehiclePlate && !movement.vehiclePlate?.toLowerCase().includes(filterVehiclePlate.toLowerCase())) {
-        return false;
-      }
-
-      // Filtro por doca
-      if (filterDockId && movement.dockId !== filterDockId) {
-        return false;
-      }
-
+      if (filterStatus && movement.status !== filterStatus) return false;
+      if (filterType && movement.movementTypeConfigId !== filterType) return false;
+      if (filterVehiclePlate && !movement.vehiclePlate?.toLowerCase().includes(filterVehiclePlate.toLowerCase())) return false;
+      if (filterDockId && movement.dockId !== filterDockId) return false;
       return true;
     });
   }, [movements, filterEventId, filterStartDate, filterEndDate, filterStatus, filterType, filterVehiclePlate, filterDockId]);
@@ -167,7 +142,7 @@ export default function Movements() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="space-y-6">
         <PageHeader
           title="Carga e Descarga"
           description="Gerencie movimentações operacionais do armazém"
@@ -194,208 +169,173 @@ export default function Movements() {
       </PageHeader>
 
       {/* Filtros */}
-      <FilterBar>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-          {/* Filtro de Evento */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-event">Evento</Label>
-            <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
-              <SelectTrigger id="filter-event" data-testid="select-filter-event">
-                <SelectValue placeholder="Todos os eventos" />
-              </SelectTrigger>
-              <SelectContent>
-                {events.map((event) => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {event.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <Card className="border-border/60">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Truck className="h-4 w-4 text-muted-foreground" />
+              <span>Filtros</span>
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {activeFiltersCount} ativo{activeFiltersCount > 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
+            {activeFiltersCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                data-testid="button-clear-filters"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpar
+              </Button>
+            )}
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-event" className="text-xs text-muted-foreground">Evento</Label>
+              <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
+                <SelectTrigger id="filter-event" data-testid="select-filter-event" className="h-8 text-sm">
+                  <SelectValue placeholder="Todos os eventos" />
+                </SelectTrigger>
+                <SelectContent>
+                  {events.map((event) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      {event.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Filtro de Status */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-status">Status</Label>
-            <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
-              <SelectTrigger id="filter-status" data-testid="select-filter-status">
-                <SelectValue placeholder="Todos os status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="created">Criada</SelectItem>
-                <SelectItem value="in_progress">Em Andamento</SelectItem>
-                <SelectItem value="paused">Pausada</SelectItem>
-                <SelectItem value="completed">Finalizada</SelectItem>
-                <SelectItem value="cancelled">Cancelada</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-status" className="text-xs text-muted-foreground">Status</Label>
+              <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
+                <SelectTrigger id="filter-status" data-testid="select-filter-status" className="h-8 text-sm">
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created">Criada</SelectItem>
+                  <SelectItem value="in_progress">Em Andamento</SelectItem>
+                  <SelectItem value="paused">Pausada</SelectItem>
+                  <SelectItem value="completed">Finalizada</SelectItem>
+                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Filtro de Tipo de Movimentação */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-type">Tipo de Movimentação</Label>
-            <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
-              <SelectTrigger id="filter-type" data-testid="select-filter-type">
-                <SelectValue placeholder="Todos os tipos" />
-              </SelectTrigger>
-              <SelectContent>
-                {movementTypes.filter(mt => mt.active).map((type) => (
-                  <SelectItem key={type.id} value={type.id}>
-                    {type.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-type" className="text-xs text-muted-foreground">Tipo</Label>
+              <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
+                <SelectTrigger id="filter-type" data-testid="select-filter-type" className="h-8 text-sm">
+                  <SelectValue placeholder="Todos os tipos" />
+                </SelectTrigger>
+                <SelectContent>
+                  {movementTypes.filter(mt => mt.active).map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Filtro de Doca */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-dock">Doca</Label>
-            <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
-              <SelectTrigger id="filter-dock" data-testid="select-filter-dock">
-                <SelectValue placeholder="Todas as docas" />
-              </SelectTrigger>
-              <SelectContent>
-                {docks.map((dock) => (
-                  <SelectItem key={dock.id} value={dock.id}>
-                    {dock.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-dock" className="text-xs text-muted-foreground">Doca</Label>
+              <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
+                <SelectTrigger id="filter-dock" data-testid="select-filter-dock" className="h-8 text-sm">
+                  <SelectValue placeholder="Todas as docas" />
+                </SelectTrigger>
+                <SelectContent>
+                  {docks.map((dock) => (
+                    <SelectItem key={dock.id} value={dock.id}>
+                      {dock.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Filtro de Placa do Veículo */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-vehicle">Placa do Veículo</Label>
-            <Input
-              id="filter-vehicle"
-              placeholder="Digite a placa..."
-              value={filterVehiclePlate}
-              onChange={(e) => setFilterVehiclePlate(e.target.value)}
-              data-testid="input-filter-vehicle"
-            />
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-vehicle" className="text-xs text-muted-foreground">Placa</Label>
+              <Input
+                id="filter-vehicle"
+                placeholder="Digite a placa..."
+                value={filterVehiclePlate}
+                onChange={(e) => setFilterVehiclePlate(e.target.value)}
+                data-testid="input-filter-vehicle"
+                className="h-8 text-sm"
+              />
+            </div>
 
-          {/* Filtro de Data Início */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-start-date">Data Início</Label>
-            <Input
-              id="filter-start-date"
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              data-testid="input-filter-start-date"
-            />
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-start-date" className="text-xs text-muted-foreground">Data Início</Label>
+              <Input
+                id="filter-start-date"
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                data-testid="input-filter-start-date"
+                className="h-8 text-sm"
+              />
+            </div>
 
-          {/* Filtro de Data Fim */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-end-date">Data Fim</Label>
-            <Input
-              id="filter-end-date"
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              data-testid="input-filter-end-date"
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-end-date" className="text-xs text-muted-foreground">Data Fim</Label>
+              <Input
+                id="filter-end-date"
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                data-testid="input-filter-end-date"
+                className="h-8 text-sm"
+              />
+            </div>
           </div>
-        </div>
-        {activeFiltersCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearAllFilters}
-            data-testid="button-clear-filters"
-          >
-            <X className="h-4 w-4 mr-1" />
-            Limpar Filtros
-            <span className="ml-1 text-xs text-muted-foreground">({activeFiltersCount})</span>
-          </Button>
-        )}
-      </FilterBar>
+        </CardContent>
+      </Card>
 
       {/* Lista de Movimentações */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {filteredMovements.length === 0 ? (
-          <Card>
-            <CardContent>
-              <EmptyState
-                icon={Truck}
-                title="Nenhuma movimentação encontrada"
-                description={activeFiltersCount > 0
-                  ? "Tente ajustar os filtros para ver mais resultados"
-                  : "Crie uma nova movimentação para começar"}
-              />
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Truck}
+            title="Nenhuma movimentação encontrada"
+            description={activeFiltersCount > 0
+              ? "Tente ajustar os filtros para ver mais resultados"
+              : "Crie uma nova movimentação para começar"}
+          />
         ) : (
           filteredMovements.map((movement) => (
-            <Card key={movement.id} className="hover-elevate" data-testid={`card-movement-${movement.id}`}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-start gap-3">
+            <Card key={movement.id} className="hover-elevate border-border/60" data-testid={`card-movement-${movement.id}`}>
+              <CardContent className="p-4">
+                {/* Header: status + título + ações */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
                       <StatusBadge status={movement.status} />
-                      <div>
-                        <h3 className="font-bold text-2xl mb-1" data-testid={`text-movement-name-${movement.id}`}>
-                          {movement.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {movement.movementNumber}
-                          {movement.movementTypeConfig && (
-                            <span> • {movement.movementTypeConfig.name}</span>
-                          )}
-                        </p>
-                      </div>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {movement.movementNumber}
+                      </span>
                     </div>
-                    
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground pl-14">
-                      {movement.loadingOrder && (
-                        <div>
-                          <span className="font-medium">Ordem:</span> {movement.loadingOrder.orderNumber}
-                        </div>
-                      )}
-                      {movement.vehiclePlate && (
-                        <div>
-                          <span className="font-medium">Veículo:</span> {movement.vehiclePlate}
-                        </div>
-                      )}
-                      {movement.dock && (
-                        <div>
-                          <span className="font-medium">Doca:</span> {movement.dock.name}
-                        </div>
-                      )}
-                      {movement.totalDuration && (
-                        <div>
-                          <span className="font-medium">Duração:</span> {formatDuration(movement.totalDuration)}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {movement.events && movement.events.length > 0 && (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-muted-foreground">Eventos:</span>
-                        {movement.events.map((event) => (
-                          <span key={event.id} className="text-sm text-muted-foreground" data-testid={`badge-movement-event-${event.id}`}>
-                            {event.name}
-                          </span>
-                        ))}
-                      </div>
+                    <h3 className="font-semibold text-base text-foreground" data-testid={`text-movement-name-${movement.id}`}>
+                      {movement.name}
+                    </h3>
+                    {movement.movementTypeConfig && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {movement.movementTypeConfig.name}
+                      </p>
                     )}
                   </div>
-
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     {movement.status === "created" && (
                       <>
                         {userCanEditMovement(user) && (
                           <MovementDialog movement={movement}>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              data-testid={`button-edit-${movement.id}`}
-                            >
-                              <Pencil className="h-4 w-4 mr-1" />
-                              Editar
+                            <Button size="sm" variant="ghost" data-testid={`button-edit-${movement.id}`}>
+                              <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           </MovementDialog>
                         )}
@@ -405,17 +345,13 @@ export default function Movements() {
                             onClick={() => {
                               updateStatusMutation.mutate(
                                 { id: movement.id, status: "in_progress" },
-                                {
-                                  onSuccess: () => {
-                                    navigate(`/movements/${movement.id}`);
-                                  }
-                                }
+                                { onSuccess: () => navigate(`/movements/${movement.id}`) }
                               );
                             }}
                             disabled={updateStatusMutation.isPending}
                             data-testid={`button-start-${movement.id}`}
                           >
-                            <PlayCircle className="h-4 w-4 mr-1" />
+                            <PlayCircle className="h-3.5 w-3.5 mr-1" />
                             Iniciar
                           </Button>
                         )}
@@ -431,7 +367,7 @@ export default function Movements() {
                             disabled={updateStatusMutation.isPending}
                             data-testid={`button-pause-${movement.id}`}
                           >
-                            <PauseCircle className="h-4 w-4 mr-1" />
+                            <PauseCircle className="h-3.5 w-3.5 mr-1" />
                             Pausar
                           </Button>
                         )}
@@ -442,7 +378,7 @@ export default function Movements() {
                             disabled={updateStatusMutation.isPending}
                             data-testid={`button-finish-${movement.id}`}
                           >
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                             Finalizar
                           </Button>
                         )}
@@ -452,13 +388,8 @@ export default function Movements() {
                       <>
                         {userCanEditMovement(user) && (
                           <MovementDialog movement={movement}>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              data-testid={`button-edit-${movement.id}`}
-                            >
-                              <Pencil className="h-4 w-4 mr-1" />
-                              Editar
+                            <Button size="sm" variant="ghost" data-testid={`button-edit-${movement.id}`}>
+                              <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           </MovementDialog>
                         )}
@@ -469,7 +400,7 @@ export default function Movements() {
                             disabled={updateStatusMutation.isPending}
                             data-testid={`button-continue-${movement.id}`}
                           >
-                            <PlayCircle className="h-4 w-4 mr-1" />
+                            <PlayCircle className="h-3.5 w-3.5 mr-1" />
                             Continuar
                           </Button>
                         )}
@@ -477,15 +408,54 @@ export default function Movements() {
                     )}
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="ghost"
                       onClick={() => navigate(`/movements/${movement.id}`)}
                       data-testid={`button-details-${movement.id}`}
                     >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Detalhes
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
+
+                {/* Metadados */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40">
+                  {movement.loadingOrder && (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Ordem:</span>{" "}
+                      <span className="text-foreground font-medium">{movement.loadingOrder.orderNumber}</span>
+                    </div>
+                  )}
+                  {movement.vehiclePlate && (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Veículo:</span>{" "}
+                      <span className="text-foreground font-medium">{movement.vehiclePlate}</span>
+                    </div>
+                  )}
+                  {movement.dock && (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Doca:</span>{" "}
+                      <span className="text-foreground font-medium">{movement.dock.name}</span>
+                    </div>
+                  )}
+                  {movement.totalDuration && (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Duração:</span>{" "}
+                      <span className="text-foreground font-medium">{formatDuration(movement.totalDuration)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Eventos */}
+                {movement.events && movement.events.length > 0 && (
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <span className="text-xs text-muted-foreground">Eventos:</span>
+                    {movement.events.map((event) => (
+                      <Badge key={event.id} variant="outline" className="text-xs font-normal" data-testid={`badge-movement-event-${event.id}`}>
+                        {event.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))

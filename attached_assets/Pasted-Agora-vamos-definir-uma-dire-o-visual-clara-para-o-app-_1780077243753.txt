@@ -1,0 +1,262 @@
+Agora vamos definir uma direção visual clara para o app antes de continuar alterando telas.
+
+O problema atual é que o sistema está recebendo componentes do Design System, mas ainda não tem uma linguagem visual forte e coerente.
+
+Quero que você aplique um conceito visual adequado ao produto que estamos desenvolvendo.
+
+Conceito de design:
+Operational Command Center UI
+
+Tipo de sistema:
+Sistema interno operacional para logística de eventos, armazém, estoque, movimentações, loading orders, requisições, aprovações, produtos, kits, fornecedores e administração.
+
+Objetivo visual:
+O app deve parecer uma central operacional moderna, profissional e limpa — não um painel genérico e cru.
+
+Direção visual desejada:
+
+* Dark mode profissional;
+* visual operacional;
+* alta legibilidade;
+* boa densidade de informação;
+* cards compactos;
+* filtros úteis e bem organizados;
+* status bem posicionados;
+* ações agrupadas;
+* tabelas/listas mais refinadas;
+* aparência de sistema pronto para uso real;
+* sem visual marketing;
+* sem excesso de animações;
+* sem glassmorphism exagerado.
+
+Referência conceitual:
+O sistema deve lembrar uma ferramenta interna moderna de logística/warehouse/event operations, com leitura rápida de status e ações claras.
+
+Paleta e estilo:
+
+1. Fundo geral
+
+* Manter dark mode.
+* Usar fundo principal escuro, discreto e profissional.
+* Evitar preto puro.
+* Usar tons próximos de slate/navy.
+
+2. Superfícies
+
+* Cards e seções devem ter fundo levemente mais claro que o fundo principal.
+* Bordas discretas.
+* Hover sutil.
+* Evitar cards gigantes com muito espaço vazio.
+
+3. Cor de ação
+
+* Usar azul/ciano como cor principal de ação.
+* Botões primários devem ser claros e previsíveis.
+* Ações destrutivas devem usar vermelho com moderação.
+* Status não devem competir visualmente com os botões principais.
+
+4. Tipografia
+
+* Títulos de páginas fortes, mas sem exagero.
+* Descrições menores e secundárias.
+* Códigos como MVT, LO, REQ devem ter estilo monospace ou visual secundário.
+* Informações auxiliares devem ter menor peso visual.
+
+Padrão global de layout:
+
+1. App shell
+
+* Sidebar/topbar devem parecer parte de uma aplicação operacional.
+* Conteúdo principal com padding consistente.
+* Evitar conteúdo colado nas bordas.
+* Evitar excesso de espaço vazio no topo.
+* O título global não deve parecer solto.
+
+2. Page layout
+   Cada página principal deve seguir este padrão:
+
+* PageHeader no topo;
+* descrição curta e objetiva;
+* ação principal no canto direito;
+* FilterBar logo abaixo, quando existir filtro;
+* conteúdo principal em cards, tabela ou lista;
+* loading/error/empty states padronizados.
+
+3. Cards operacionais
+   Cards devem ser compactos e organizados assim:
+
+* topo: status + título + ações;
+* abaixo: código/identificador;
+* metadados em linha ou grid compacto;
+* informações importantes com destaque moderado;
+* ações agrupadas à direita no desktop;
+* ações quebrando para baixo no mobile.
+
+Evitar:
+
+* card muito alto;
+* título solto;
+* botão muito afastado;
+* status perdido;
+* evento/código sem hierarquia.
+
+4. Listas operacionais
+   Listas devem permitir leitura rápida.
+
+Cada item deve responder rapidamente:
+
+* O que é?
+* Qual o status?
+* Qual o código?
+* A que evento/pedido pertence?
+* Qual ação posso tomar agora?
+
+5. Tabelas administrativas
+   Tabelas devem ter:
+
+* cabeçalho discreto;
+* linhas com hover;
+* espaçamento confortável;
+* ações alinhadas;
+* status/badges padronizados;
+* boa leitura em dark mode.
+
+6. Filtros
+   FilterBar deve parecer uma ferramenta real de operação.
+
+Quando fechado:
+
+* mostrar claramente que existem filtros;
+* não parecer uma linha vazia.
+
+Quando aberto:
+
+* campos alinhados;
+* espaçamento consistente;
+* botões de limpar/aplicar bem posicionados;
+* responsivo em telas menores.
+
+7. Botões e ações
+   Ações devem ser previsíveis:
+
+* ação principal: botão azul/ciano;
+* ação secundária: botão outline;
+* ação destrutiva: vermelho discreto;
+* ações relacionadas agrupadas;
+* evitar botões espalhados pelo card.
+
+Usar ActionBar quando fizer sentido.
+
+8. Status
+   StatusBadge deve ser usado como linguagem visual principal.
+
+Padrão sugerido:
+
+* Criado: cinza/azul discreto;
+* Em andamento: azul/ciano;
+* Pendente: amarelo/âmbar;
+* Aprovado/Finalizado: verde;
+* Rejeitado/Cancelado: vermelho;
+* Pausado: laranja ou cinza quente.
+
+Os badges devem ser legíveis, consistentes e sem cores exageradas.
+
+9. Responsividade
+   Desktop:
+
+* ações podem ficar à direita;
+* metadados podem ficar em grid;
+* filtros em linha.
+
+Tablet:
+
+* ações podem quebrar parcialmente;
+* cards devem continuar compactos.
+
+Mobile:
+
+* conteúdo em coluna;
+* ações abaixo do conteúdo;
+* sem overflow horizontal;
+* botões com largura confortável.
+
+Tela de referência inicial:
+Use Movimentações como primeira tela para aplicar esse conceito.
+
+Refinar client/src/pages/movements.tsx para servir como padrão visual do app.
+
+A tela precisa melhorar de verdade:
+
+* cards mais compactos;
+* melhor hierarquia entre status, título, código e evento;
+* botões agrupados;
+* filtro mais útil visualmente;
+* melhor espaçamento geral;
+* melhor responsividade;
+* aparência mais profissional.
+
+Depois, aplicar o mesmo padrão visual em:
+
+* Loading Orders;
+* Requisições;
+* Aprovações;
+* Produtos/Kits/Fornecedores;
+* Logística;
+* Administração.
+
+Importante:
+Não quero uma alteração em lote apenas adicionando PageHeader/PageLoading/EmptyState.
+Quero melhoria visual perceptível.
+
+Antes de implementar:
+Liste os problemas visuais atuais e explique a proposta de ajuste.
+
+Depois implemente.
+
+Restrições absolutas:
+Não alterar:
+
+* back-end;
+* RBAC;
+* helpers de autorização;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* scanner;
+* regras de negócio;
+* status/transições;
+* banco;
+* schema;
+* migrations;
+* seed;
+* permissions;
+* role_permissions.
+
+Pode alterar apenas:
+
+* layout;
+* classes;
+* composição visual;
+* espaçamento;
+* organização de cards;
+* organização de filtros;
+* organização de listas/tabelas;
+* organização de botões;
+* aparência de status;
+* responsividade;
+* uso dos componentes visuais.
+
+Entrega esperada:
+
+* conceito visual adotado;
+* problemas visuais encontrados;
+* decisões de design aplicadas;
+* tela de referência refinada;
+* prints ou descrição do antes/depois se possível;
+* arquivos alterados;
+* padrões definidos para replicar no app;
+* resultado do npm run check;
+* resultado do npm run build;
+* confirmação de que nenhuma lógica funcional foi alterada;
+* confirmação de que RBAC, back-end, endpoints, payloads e regras de negócio ficaram intactos.
