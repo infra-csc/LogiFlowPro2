@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -324,13 +324,11 @@ export default function SuppliersPage() {
       </PageHeader>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de Fornecedores</CardTitle>
-          <CardDescription>
+        <CardContent className="p-4">
+          <div className="font-semibold text-base mb-1">Lista de Fornecedores</div>
+          <p className="text-sm text-muted-foreground mb-4">
             Todos os fornecedores cadastrados
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
           <div className="space-y-4">
             <Input
               placeholder="Buscar fornecedor por nome, contato ou e-mail..."

@@ -1,6 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueries, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Package, FileText, Calendar, CheckCircle, XCircle, TruckIcon, AlertCircle } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
@@ -243,13 +243,11 @@ export default function LoadingOrderDetails() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-4 space-y-3">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
               <Calendar className="h-5 w-5" />
               Informações da Ordem
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+            </div>
             <div>
               <div className="text-sm text-muted-foreground">Início Planejado</div>
               <div className="font-medium" data-testid="text-planned-start">
@@ -278,13 +276,11 @@ export default function LoadingOrderDetails() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
               <FileText className="h-5 w-5" />
               Requisições Incluídas ({requests.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </div>
             {requests.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Nenhuma requisição vinculada
@@ -313,13 +309,11 @@ export default function LoadingOrderDetails() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardContent className="p-4">
+          <div className="font-semibold text-base flex items-center gap-2 mb-3">
             <Package className="h-5 w-5" />
             Itens Consolidados ({items.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </div>
           {itemsLoading ? (
             <p className="text-sm text-muted-foreground">Carregando itens...</p>
           ) : items.length === 0 ? (
@@ -336,7 +330,7 @@ export default function LoadingOrderDetails() {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <div className="font-semibold text-lg" data-testid={`item-name-${item.id}`}>
+                      <div className="font-semibold text-base" data-testid={`item-name-${item.id}`}>
                         {item.product?.name || "Produto não encontrado"}
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -344,7 +338,7 @@ export default function LoadingOrderDetails() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold" data-testid={`item-quantity-${item.id}`}>
+                      <div className="text-xl font-bold" data-testid={`item-quantity-${item.id}`}>
                         {item.consolidatedQuantity}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -382,13 +376,11 @@ export default function LoadingOrderDetails() {
       {/* Seção de Movimentações e Progresso */}
       {movements.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-4 space-y-6">
+            <div className="font-semibold text-base flex items-center gap-2">
               <TruckIcon className="h-5 w-5" />
               Movimentações e Progresso ({movements.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+            </div>
             {/* Resumo de Progresso por Produto */}
             <div className="space-y-3">
               <h3 className="font-semibold text-sm text-muted-foreground">
@@ -414,7 +406,7 @@ export default function LoadingOrderDetails() {
                           <p className="text-sm text-muted-foreground">SKU: {progress.productSku}</p>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-bold">
+                          <div className="text-xl font-bold">
                             {progress.loadedQuantity} / {progress.expectedQuantity}
                           </div>
                           <div className="text-xs text-muted-foreground">{percentage}%</div>

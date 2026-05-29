@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Package, Calendar, FileText, Edit } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import type { LoadingOrder, Event } from "@shared/schema";
@@ -61,21 +61,12 @@ export default function LoadingOrders() {
       </PageHeader>
 
       {!orders || orders.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <Package className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">Nenhuma ordem de carregamento</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Crie uma ordem consolidando requisições aprovadas</p>
-              {canWrite && (
-                <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-order">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Ordem
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Package}
+          title="Nenhuma ordem de carregamento"
+          description="Crie uma ordem consolidando requisições aprovadas"
+          action={canWrite ? { label: "Nova Ordem", onClick: () => setShowDialog(true) } : undefined}
+        />
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
@@ -85,13 +76,22 @@ export default function LoadingOrders() {
               onClick={() => navigate(`/loading-orders/${order.id}`)}
               data-testid={`card-loading-order-${order.id}`}
             >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    {order.orderNumber}
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
+              <CardContent className="p-4">
+                {/* Header: status + título + ações */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StatusBadge status={order.status} />
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {order.orderNumber}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      {order.orderNumber}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     {canWrite && (
                       <Button
                         size="icon"
@@ -102,15 +102,14 @@ export default function LoadingOrders() {
                         }}
                         data-testid={`button-edit-${order.id}`}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    <StatusBadge status={order.status} />
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+                {/* Metadados */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 pt-3 border-t border-border/40">
                   <div>
                     <p className="text-xs text-muted-foreground">Evento</p>
                     <p className="text-sm font-medium">{order.event?.name || "—"}</p>
@@ -151,8 +150,8 @@ export default function LoadingOrders() {
                   </div>
                 )}
                 {order.notes && (
-                  <div className="mt-4">
-                    <p className="text-sm text-muted-foreground">{order.notes}</p>
+                  <div className="mt-2 pt-2 border-t border-border/40">
+                    <p className="text-xs text-muted-foreground">{order.notes}</p>
                   </div>
                 )}
               </CardContent>

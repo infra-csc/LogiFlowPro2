@@ -1,6 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save } from "lucide-react";
@@ -352,10 +352,8 @@ export default function RequestDetails() {
 
       {/* Request Info */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Informações da Requisição</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="p-4 space-y-3">
+          <div className="font-semibold text-base">Informações da Requisição</div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Solicitado por:</span>
             <span className="text-sm font-medium" data-testid="text-requested-by">
@@ -422,9 +420,9 @@ export default function RequestDetails() {
 
       {/* Items List */}
       <Card>
-        <CardHeader>
+        <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Materiais Requisitados</CardTitle>
+            <div className="font-semibold text-base">Materiais Requisitados</div>
             {canEdit && (
               <Button
                 size="sm"
@@ -436,8 +434,7 @@ export default function RequestDetails() {
               </Button>
             )}
           </div>
-        </CardHeader>
-        <CardContent>
+          <div className="mt-4">
           {items.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <p>Nenhum material adicionado ainda</p>
@@ -506,6 +503,7 @@ export default function RequestDetails() {
               ))}
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
 

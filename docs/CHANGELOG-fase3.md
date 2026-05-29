@@ -287,4 +287,74 @@
 - **3.6** — Devoluções
 - **3.7** — Admin/Configurações
 - **3.8** — Dashboard analítico
+---
+
+## Fase 3.2.3 — Padronização de Cards, Filtros e Hierarquia (2026-05-29)
+
+### Resumo
+Revisão visual global para unificar padrão de cards de lista, filtros e hierarquia tipográfica. Nenhuma regra de negócio, RBAC ou endpoint alterado.
+
+### FilterBar — Conversão de filtros manuais
+| Tela | Antes | Depois |
+|------|-------|--------|
+| movements.tsx | Card manual com filtros inline | FilterBar com badgeCount + onClear |
+| requests.tsx | Card manual com filtros inline | FilterBar padronizado |
+| approvals.tsx | Card manual com filtros inline | FilterBar com badgeCount + onClear |
+
+### Hierarquia de títulos em cards de lista
+Padrão aplicado: `<h3 className="font-semibold text-base text-foreground">` em todos os cards de lista.
+
+| Página | Estado |
+|---------|--------|
+| products.tsx | Convertido (h3 + border-t divider) |
+| returns.tsx | Convertido (h3 + border-t divider) |
+| kits.tsx | Já tinha border-t, h3 já correto |
+| vehicles.tsx | Já tinha border-t, h3 já correto |
+| docks.tsx | Já tinha border-t, h3 já correto |
+| loading-orders.tsx | Já tinha border-t, h3 já correto |
+| trips.tsx | Já tinha border-t, h3 já correto |
+| events.tsx | Já tinha border-t, h3 já correto |
+| movements.tsx | Já tinha border-t, h3 já correto |
+| requests.tsx | Já tinha border-t, h3 já correto |
+| approvals.tsx | Já tinha border-t, h3 já correto |
+| suppliers.tsx | Tabela (não aplica card) |
+| drivers.tsx | Tabela (não aplica card) |
+| users.tsx | Tabela (não aplica card) |
+| roles.tsx | Tabela (não aplica card) |
+| inventory.tsx | Layout progress bar (não aplica card) |
+| config.tsx | Cards grid com ícones (não aplica card) |
+
+### Padrão de metadados
+- **Divider**: `mt-3 pt-3 border-t border-border/40` antes de blocos de metadata/stats
+- **Título**: `font-semibold text-base text-foreground` (nunca `font-medium` ou `text-2xl`)
+- **Padding de cards**: `p-4` consistente (zero `p-6` remanescente)
+
+### Arquivos alterados
+- `client/src/components/filter-bar.tsx` (badgeCount + onClear)
+- `client/src/pages/movements.tsx`
+- `client/src/pages/requests.tsx`
+- `client/src/pages/approvals.tsx`
+- `client/src/pages/products.tsx`
+- `client/src/pages/returns.tsx`
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (272.4kb)
+- Sem `p-6` remanescente em cards de lista
+- Sem `h3 font-medium` remanescente em cards de lista
+
+### O que NÃO foi alterado
+- Back-end, banco, seed, migrations, schema, endpoints, payloads
+- RBAC, permissions, roles, helpers de autorização
+- Chamadas de API, queries, mutations
+- Status do back-end, fluxo operacional
+- Regras de negócio
+
+### Próximas fases
+- **3.3** — Loading Orders refinamento complementar
+- **3.4** — Requisições
+- **3.5** — Catálogo
+- **3.6** — Devoluções
+- **3.7** — Admin/Configurações
+- **3.8** — Dashboard analítico
 - **3.9** — Login/Auth flow (já parcialmente coberto pela 3.0.1)

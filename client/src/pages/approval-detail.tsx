@@ -1,6 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
@@ -288,15 +288,13 @@ export default function ApprovalDetail() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardContent className="p-4 space-y-4">
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <CardTitle>Detalhes da Requisição</CardTitle>
+              <div className="font-semibold text-base">Detalhes da Requisição</div>
               <StatusBadge status={request.status} />
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <span className="text-sm text-muted-foreground">Evento</span>
@@ -340,9 +338,9 @@ export default function ApprovalDetail() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <CardTitle>Itens da Requisição ({items.length})</CardTitle>
+            <div className="font-semibold text-base">Itens da Requisição ({items.length})</div>
             {canApprove && items.length > 0 && (
               <Button
                 variant="outline"
@@ -354,8 +352,7 @@ export default function ApprovalDetail() {
               </Button>
             )}
           </div>
-        </CardHeader>
-        <CardContent>
+          <div className="mt-4">
           {items.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Nenhum item nesta requisição
@@ -501,15 +498,14 @@ export default function ApprovalDetail() {
               })}
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
 
       {canApprove && items.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Comentários</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 space-y-4">
+            <div className="font-semibold text-base">Comentários</div>
             <Textarea
               value={comments}
               onChange={(e) => setComments(e.target.value)}

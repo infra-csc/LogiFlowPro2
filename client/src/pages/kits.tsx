@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Boxes, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Kit } from "@shared/schema";
 import { KitDialog } from "@/components/kit-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -63,16 +63,12 @@ export default function Kits() {
       </PageHeader>
 
       {!kits || kits.length === 0 ? (
-        <Card>
-          <CardContent>
-            <EmptyState
-              icon={Boxes}
-              title="Nenhum kit ainda"
-              description="Crie kits paramétricos que geram automaticamente listas de materiais"
-              action={canWrite ? { label: "Criar Kit", onClick: () => setShowDialog(true) } : undefined}
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Boxes}
+          title="Nenhum kit ainda"
+          description="Crie kits paramétricos que geram automaticamente listas de materiais"
+          action={canWrite ? { label: "Criar Kit", onClick: () => setShowDialog(true) } : undefined}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {kits.map((kit) => (
@@ -91,16 +87,22 @@ export default function Kits() {
                   />
                 </div>
               )}
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    {!kit.imageUrl && <Boxes className="h-5 w-5" />}
-                    {kit.name}
-                  </CardTitle>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
+                      {!kit.imageUrl && <Boxes className="h-4 w-4 text-muted-foreground" />}
+                      {kit.name}
+                    </h3>
+                    {kit.description && (
+                      <p className="text-sm text-muted-foreground mt-0.5">{kit.description}</p>
+                    )}
+                  </div>
                   {canWrite && (
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="flex-shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleEdit(kit);
@@ -111,12 +113,7 @@ export default function Kits() {
                     </Button>
                   )}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {kit.description && (
-                  <p className="text-sm text-muted-foreground">{kit.description}</p>
-                )}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/40">
                   {kit.parameters.map((param, idx) => (
                     <Badge key={idx} variant="outline">
                       {param.name}

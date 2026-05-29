@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, ClipboardList, Filter } from "lucide-react";
+import { Plus, ClipboardList } from "lucide-react";
 import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import type { MaterialRequest as BaseMaterialRequest, Event } from "@shared/schema";
@@ -19,6 +19,7 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { FilterBar } from "@/components/filter-bar";
 
 type MaterialRequest = BaseMaterialRequest & {
   event?: Event;
@@ -91,104 +92,73 @@ export default function Requests() {
 
       {/* Filtros */}
       {requests && requests.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              <CardTitle className="text-base">Filtros</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <label className="text-sm font-medium mb-2 block">Status</label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger data-testid="select-status-filter">
-                    <SelectValue placeholder="Todos os status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os status</SelectItem>
-                    <SelectItem value="draft">Rascunho</SelectItem>
-                    <SelectItem value="pending_approval">Pendente</SelectItem>
-                    <SelectItem value="approved">Aprovado</SelectItem>
-                    <SelectItem value="cutoff_locked">Bloqueado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1 min-w-[200px]">
-                <label className="text-sm font-medium mb-2 block">Evento</label>
-                <Select value={eventFilter} onValueChange={setEventFilter}>
-                  <SelectTrigger data-testid="select-event-filter">
-                    <SelectValue placeholder="Todos os eventos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os eventos</SelectItem>
-                    {events?.map((event) => (
-                      <SelectItem key={event.id} value={event.id}>
-                        {event.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <FilterBar>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Status</label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger data-testid="select-status-filter" className="h-8 text-sm">
+                <SelectValue placeholder="Todos os status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os status</SelectItem>
+                <SelectItem value="draft">Rascunho</SelectItem>
+                <SelectItem value="pending_approval">Pendente</SelectItem>
+                <SelectItem value="approved">Aprovado</SelectItem>
+                <SelectItem value="cutoff_locked">Bloqueado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Evento</label>
+            <Select value={eventFilter} onValueChange={setEventFilter}>
+              <SelectTrigger data-testid="select-event-filter" className="h-8 text-sm">
+                <SelectValue placeholder="Todos os eventos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os eventos</SelectItem>
+                {events?.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </FilterBar>
       )}
 
       {!requests || requests.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <ClipboardList className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">Nenhuma requisição ainda</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Crie requisições de materiais para seus eventos</p>
-              <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-request">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Requisição
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={ClipboardList}
+          title="Nenhuma requisição ainda"
+          description="Crie requisições de materiais para seus eventos"
+          action={{ label: "Nova Requisição", onClick: () => setShowDialog(true) }}
+        />
       ) : filteredRequests.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <ClipboardList className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">
-                {statusFilter === "all" && eventFilter === "all" 
-                  ? "Você não possui requisições" 
-                  : "Nenhuma requisição encontrada"}
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {statusFilter === "all" && eventFilter === "all"
-                  ? "Crie sua primeira requisição de materiais"
-                  : "Ajuste os filtros para ver mais requisições"}
-              </p>
-              {statusFilter === "all" && eventFilter === "all" && (
-                <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-request">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Requisição
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={ClipboardList}
+          title={statusFilter === "all" && eventFilter === "all" ? "Você não possui requisições" : "Nenhuma requisição encontrada"}
+          description={statusFilter === "all" && eventFilter === "all" ? "Crie sua primeira requisição de materiais" : "Ajuste os filtros para ver mais requisições"}
+          action={statusFilter === "all" && eventFilter === "all" ? { label: "Nova Requisição", onClick: () => setShowDialog(true) } : undefined}
+        />
       ) : (
         <div className="space-y-3">
           {filteredRequests.map((request) => (
-            <Card 
+            <Card
               key={request.id}
               className="hover-elevate cursor-pointer"
               onClick={() => handleEdit(request)}
               data-testid={`card-request-${request.id}`}
             >
-              <CardHeader>
-                <div className="flex items-center justify-between gap-4">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base font-medium truncate">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StatusBadge status={request.status} />
+                    </div>
+                    <h3 className="font-semibold text-base text-foreground truncate">
                       {request.area}
-                    </CardTitle>
+                    </h3>
                     <p className="text-sm text-muted-foreground mt-1 truncate">
                       {request.event?.name}
                     </p>
@@ -206,9 +176,8 @@ export default function Requests() {
                       </p>
                     )}
                   </div>
-                  <StatusBadge status={request.status} />
                 </div>
-              </CardHeader>
+              </CardContent>
             </Card>
           ))}
         </div>

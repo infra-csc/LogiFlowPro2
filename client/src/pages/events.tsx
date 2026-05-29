@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Calendar, MapPin, Clock } from "lucide-react";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import type { Event } from "@shared/schema";
@@ -48,46 +48,43 @@ export default function Events() {
       </PageHeader>
 
       {!events || events.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <Calendar className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">Nenhum evento ainda</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Comece criando seu primeiro evento</p>
-              <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-event">
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Evento
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Calendar}
+          title="Nenhum evento ainda"
+          description="Comece criando seu primeiro evento"
+          action={{ label: "Criar Evento", onClick: () => setShowDialog(true) }}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {events.map((event) => (
-            <Card 
-              key={event.id} 
+            <Card
+              key={event.id}
               className="hover-elevate cursor-pointer"
               onClick={() => handleEdit(event)}
               data-testid={`card-event-${event.id}`}
             >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{event.name}</CardTitle>
-                  <StatusBadge status={event.status} />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  {event.client}
-                </div>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  {event.location}
-                </div>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4 mr-2" />
-                  {format(new Date(event.eventDate), "MMM dd, yyyy")}
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StatusBadge status={event.status} />
+                    </div>
+                    <h3 className="font-semibold text-base text-foreground">{event.name}</h3>
+                    <div className="mt-2 pt-2 border-t border-border/40 space-y-1 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{event.client}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{event.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{format(new Date(event.eventDate), "dd/MM/yyyy")}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

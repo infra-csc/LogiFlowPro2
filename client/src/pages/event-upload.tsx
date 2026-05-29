@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
@@ -200,16 +200,15 @@ export default function EventUpload() {
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+        <CardContent className="p-4 space-y-4">
+          <div className="font-semibold text-base flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
             Upload de Planilha
-          </CardTitle>
+          </div>
           <CardDescription>
             A planilha deve conter as colunas: Nome do Evento, Cliente, Local, Data de Montagem, Data do evento, Data da desmontagem (opcionais: SKU, Janela de Início, Janela de Fim, Status, Observações)
           </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <div className="space-y-4">
           <div className="flex items-center gap-4">
             <Input
               type="file"
@@ -244,20 +243,19 @@ export default function EventUpload() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>{parsedData.length} eventos</strong> prontos para importação. 
+                <strong>{parsedData.length} eventos</strong> prontos para importação.
                 Revise os dados abaixo e clique em "Importar" para prosseguir.
               </AlertDescription>
             </Alert>
           )}
+          </div>
         </CardContent>
       </Card>
 
       {uploadResult && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Resultado da Importação</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-4 space-y-4">
+            <div className="font-semibold text-base">Resultado da Importação</div>
             <div className="flex gap-4">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-600" />
@@ -296,10 +294,8 @@ export default function EventUpload() {
 
       {parsedData.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Preview dos Dados ({parsedData.length} eventos)</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
+            <div className="font-semibold text-base mb-4">Preview dos Dados ({parsedData.length} eventos)</div>
             <div className="border rounded-md max-h-96 overflow-auto">
               <Table>
                 <TableHeader>

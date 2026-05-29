@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { FilterBar } from "@/components/filter-bar";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, X, ArrowRight } from "lucide-react";
+import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -169,133 +170,107 @@ export default function Movements() {
       </PageHeader>
 
       {/* Filtros */}
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Truck className="h-4 w-4 text-muted-foreground" />
-              <span>Filtros</span>
-              {activeFiltersCount > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {activeFiltersCount} ativo{activeFiltersCount > 1 ? "s" : ""}
-                </Badge>
-              )}
-            </div>
-            {activeFiltersCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllFilters}
-                data-testid="button-clear-filters"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Limpar
-              </Button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="filter-event" className="text-xs text-muted-foreground">Evento</Label>
-              <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
-                <SelectTrigger id="filter-event" data-testid="select-filter-event" className="h-8 text-sm">
-                  <SelectValue placeholder="Todos os eventos" />
-                </SelectTrigger>
-                <SelectContent>
-                  {events.map((event) => (
-                    <SelectItem key={event.id} value={event.id}>
-                      {event.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <FilterBar badgeCount={activeFiltersCount} onClear={clearAllFilters}>
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-event" className="text-xs text-muted-foreground">Evento</Label>
+          <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
+            <SelectTrigger id="filter-event" data-testid="select-filter-event" className="h-8 text-sm">
+              <SelectValue placeholder="Todos os eventos" />
+            </SelectTrigger>
+            <SelectContent>
+              {events.map((event) => (
+                <SelectItem key={event.id} value={event.id}>
+                  {event.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="filter-status" className="text-xs text-muted-foreground">Status</Label>
-              <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
-                <SelectTrigger id="filter-status" data-testid="select-filter-status" className="h-8 text-sm">
-                  <SelectValue placeholder="Todos os status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created">Criada</SelectItem>
-                  <SelectItem value="in_progress">Em Andamento</SelectItem>
-                  <SelectItem value="paused">Pausada</SelectItem>
-                  <SelectItem value="completed">Finalizada</SelectItem>
-                  <SelectItem value="cancelled">Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-status" className="text-xs text-muted-foreground">Status</Label>
+          <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
+            <SelectTrigger id="filter-status" data-testid="select-filter-status" className="h-8 text-sm">
+              <SelectValue placeholder="Todos os status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="created">Criada</SelectItem>
+              <SelectItem value="in_progress">Em Andamento</SelectItem>
+              <SelectItem value="paused">Pausada</SelectItem>
+              <SelectItem value="completed">Finalizada</SelectItem>
+              <SelectItem value="cancelled">Cancelada</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="filter-type" className="text-xs text-muted-foreground">Tipo</Label>
-              <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
-                <SelectTrigger id="filter-type" data-testid="select-filter-type" className="h-8 text-sm">
-                  <SelectValue placeholder="Todos os tipos" />
-                </SelectTrigger>
-                <SelectContent>
-                  {movementTypes.filter(mt => mt.active).map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-type" className="text-xs text-muted-foreground">Tipo</Label>
+          <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
+            <SelectTrigger id="filter-type" data-testid="select-filter-type" className="h-8 text-sm">
+              <SelectValue placeholder="Todos os tipos" />
+            </SelectTrigger>
+            <SelectContent>
+              {movementTypes.filter(mt => mt.active).map((type) => (
+                <SelectItem key={type.id} value={type.id}>
+                  {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="filter-dock" className="text-xs text-muted-foreground">Doca</Label>
-              <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
-                <SelectTrigger id="filter-dock" data-testid="select-filter-dock" className="h-8 text-sm">
-                  <SelectValue placeholder="Todas as docas" />
-                </SelectTrigger>
-                <SelectContent>
-                  {docks.map((dock) => (
-                    <SelectItem key={dock.id} value={dock.id}>
-                      {dock.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-dock" className="text-xs text-muted-foreground">Doca</Label>
+          <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
+            <SelectTrigger id="filter-dock" data-testid="select-filter-dock" className="h-8 text-sm">
+              <SelectValue placeholder="Todas as docas" />
+            </SelectTrigger>
+            <SelectContent>
+              {docks.map((dock) => (
+                <SelectItem key={dock.id} value={dock.id}>
+                  {dock.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="filter-vehicle" className="text-xs text-muted-foreground">Placa</Label>
-              <Input
-                id="filter-vehicle"
-                placeholder="Digite a placa..."
-                value={filterVehiclePlate}
-                onChange={(e) => setFilterVehiclePlate(e.target.value)}
-                data-testid="input-filter-vehicle"
-                className="h-8 text-sm"
-              />
-            </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-vehicle" className="text-xs text-muted-foreground">Placa</Label>
+          <Input
+            id="filter-vehicle"
+            placeholder="Digite a placa..."
+            value={filterVehiclePlate}
+            onChange={(e) => setFilterVehiclePlate(e.target.value)}
+            data-testid="input-filter-vehicle"
+            className="h-8 text-sm"
+          />
+        </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="filter-start-date" className="text-xs text-muted-foreground">Data Início</Label>
-              <Input
-                id="filter-start-date"
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
-                data-testid="input-filter-start-date"
-                className="h-8 text-sm"
-              />
-            </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-start-date" className="text-xs text-muted-foreground">Data Início</Label>
+          <Input
+            id="filter-start-date"
+            type="date"
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
+            data-testid="input-filter-start-date"
+            className="h-8 text-sm"
+          />
+        </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="filter-end-date" className="text-xs text-muted-foreground">Data Fim</Label>
-              <Input
-                id="filter-end-date"
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => setFilterEndDate(e.target.value)}
-                data-testid="input-filter-end-date"
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-end-date" className="text-xs text-muted-foreground">Data Fim</Label>
+          <Input
+            id="filter-end-date"
+            type="date"
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+            data-testid="input-filter-end-date"
+            className="h-8 text-sm"
+          />
+        </div>
+      </FilterBar>
 
       {/* Lista de Movimentações */}
       <div className="space-y-3">

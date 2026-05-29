@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
@@ -200,16 +200,15 @@ export default function TripUpload() {
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Upload de Arquivo</CardTitle>
+        <CardContent className="p-4 space-y-4">
+          <div className="font-semibold text-base">Upload de Arquivo</div>
           <CardDescription>
-            Selecione um arquivo Excel (.xlsx) com as colunas: Nome, Tipo de Veiculo, Evento, 
-            Local de Carregamento, Inicio do carregamento, Final do carregamento, Data/Hora de Saída, 
-            Destino/Endereço, Local de descarregamento, Inicio do descarregamento, 
+            Selecione um arquivo Excel (.xlsx) com as colunas: Nome, Tipo de Veiculo, Evento,
+            Local de Carregamento, Inicio do carregamento, Final do carregamento, Data/Hora de Saída,
+            Destino/Endereço, Local de descarregamento, Inicio do descarregamento,
             Final do descarregamento, status, Observações
           </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <div className="space-y-4">
           <div className="flex items-center gap-4">
             <Input
               type="file"
@@ -241,15 +240,14 @@ export default function TripUpload() {
               </AlertDescription>
             </Alert>
           )}
+          </div>
         </CardContent>
       </Card>
 
       {uploadResult && (
         <Card>
-          <CardHeader>
-            <CardTitle>Resultado da Importação</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-4 space-y-4">
+            <div className="font-semibold text-base">Resultado da Importação</div>
             <div className="flex gap-4">
               <Badge variant="default" className="gap-1">
                 <CheckCircle className="h-3 w-3" />
@@ -286,13 +284,12 @@ export default function TripUpload() {
 
       {parsedData.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Preview dos Dados</CardTitle>
-            <CardDescription>
+          <CardContent className="p-4">
+            <div className="font-semibold text-base">Preview dos Dados</div>
+            <CardDescription className="mt-1">
               Revise os dados antes de importar
             </CardDescription>
-          </CardHeader>
-          <CardContent>
+            <div className="mt-4">
             <div className="rounded-md border overflow-auto">
               <Table>
                 <TableHeader>
@@ -323,6 +320,7 @@ export default function TripUpload() {
                 </TableBody>
               </Table>
             </div>
+          </div>
           </CardContent>
         </Card>
       )}

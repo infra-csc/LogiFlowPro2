@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Package, TrendingDown, TrendingUp, Warehouse } from "lucide-react";
 import type { Product } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 export default function Inventory() {
   const { data: products, isLoading } = useQuery<Product[]>({
@@ -54,11 +55,11 @@ export default function Inventory() {
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
+              <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <p className="text-sm font-medium">{stat.title}</p>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </div>
               <div className="text-2xl font-bold" data-testid={`stat-${stat.title.toLowerCase().replace(/\s/g, '-')}`}>
                 {stat.value}
               </div>
@@ -68,15 +69,13 @@ export default function Inventory() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Níveis de Estoque</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           {!products || products.length === 0 ? (
-            <div className="text-center py-8">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="mt-4 text-sm text-muted-foreground">Nenhum produto no estoque</p>
-            </div>
+            <EmptyState
+              icon={Package}
+              title="Nenhum produto no estoque"
+              description="Produtos aparecerão aqui quando cadastrados"
+            />
           ) : (
             <div className="space-y-4">
               {products.map((product) => {

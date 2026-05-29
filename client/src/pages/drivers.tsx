@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Plus, UserCog, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -250,13 +250,11 @@ export default function DriversPage() {
       </PageHeader>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de Motoristas</CardTitle>
-          <CardDescription>
+        <CardContent className="p-4">
+          <div className="font-semibold text-base mb-1">Lista de Motoristas</div>
+          <p className="text-sm text-muted-foreground mb-4">
             Total de {drivers.length} motorista{drivers.length !== 1 ? "s" : ""} cadastrado{drivers.length !== 1 ? "s" : ""}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
           <Table>
             <TableHeader>
               <TableRow>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -173,24 +173,28 @@ export default function Docks() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {docks.map((dock) => (
             <Card key={dock.id} data-testid={`dock-card-${dock.id}`}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Warehouse className="h-5 w-5" />
-                  {dock.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Capacidade:</span>
-                  <span className="font-medium">{dock.capacity}</span>
-                </div>
-                {dock.restrictions && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{dock.restrictions}</span>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
+                      <Warehouse className="h-4 w-4 text-muted-foreground" />
+                      {dock.name}
+                    </h3>
                   </div>
-                )}
+                </div>
+                <div className="mt-2 pt-2 border-t border-border/40 space-y-1 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Capacidade:</span>
+                    <span className="font-medium">{dock.capacity}</span>
+                  </div>
+                  {dock.restrictions && (
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-3.5 w-3.5 text-chart-5 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">{dock.restrictions}</span>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}

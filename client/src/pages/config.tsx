@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Settings, Truck, User, Warehouse as WarehouseIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -45,18 +45,16 @@ export default function Config() {
       <div className="grid gap-4 md:grid-cols-3">
         {sections.map((section) => (
           <Card key={section.title} className="hover-elevate" data-testid={section.testId}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-semibold text-base flex items-center gap-2">
                   <section.icon className="h-5 w-5" />
                   {section.title}
-                </CardTitle>
+                </div>
                 <Button variant="ghost" size="icon" data-testid={`button-add-${section.title.toLowerCase()}`}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent>
               <div className="text-2xl font-bold mb-1">{section.count}</div>
               <p className="text-sm text-muted-foreground">{section.description}</p>
             </CardContent>
@@ -65,13 +63,11 @@ export default function Config() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardContent className="p-4">
+          <div className="font-semibold text-base flex items-center gap-2 mb-3">
             <Settings className="h-5 w-5" />
             Configurações do Sistema
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </div>
           <p className="text-sm text-muted-foreground">
             Opções de configuração para horários de corte, notificações e preferências do sistema estarão disponíveis aqui.
           </p>

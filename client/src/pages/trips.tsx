@@ -295,7 +295,7 @@ export default function Trips() {
       {/* Filters Panel */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
         <Card>
-          <CardHeader className="pb-4">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CollapsibleTrigger asChild>
@@ -325,7 +325,7 @@ export default function Trips() {
                 )}
               </div>
             </div>
-          </CardHeader>
+          </CardContent>
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -428,102 +428,83 @@ export default function Trips() {
       {viewMode === "list" && (
         <>
           {!sortedTrips || sortedTrips.length === 0 ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <Truck className="h-16 w-16 mx-auto text-muted-foreground/50" />
-                  <h3 className="mt-4 text-lg font-medium">
-                    {activeFilterCount > 0 ? "Nenhuma viagem encontrada" : "Nenhuma viagem agendada"}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {activeFilterCount > 0
-                      ? "Tente ajustar os filtros para ver mais resultados"
-                      : "Comece a planejar o transporte para seus eventos"}
-                  </p>
-                  {activeFilterCount === 0 && canWrite && (
-                    <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-plan-first-trip">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Planejar Viagem
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={Truck}
+              title={activeFilterCount > 0 ? "Nenhuma viagem encontrada" : "Nenhuma viagem agendada"}
+              description={activeFilterCount > 0 ? "Tente ajustar os filtros para ver mais resultados" : "Comece a planejar o transporte para seus eventos"}
+              action={activeFilterCount === 0 && canWrite ? { label: "Planejar Viagem", onClick: () => setShowDialog(true) } : undefined}
+            />
           ) : (
             <div className="space-y-4">
               {sortedTrips.map((trip) => (
-                <Card 
+                <Card
                   key={trip.id}
                   className={canWrite ? "hover-elevate cursor-pointer" : ""}
                   onClick={canWrite ? () => handleEdit(trip) : undefined}
                   data-testid={`card-trip-${trip.id}`}
                 >
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Truck className="h-5 w-5 text-primary" />
-                          <span className="text-lg font-semibold">{trip.event?.name || "Trip"}</span>
+                  <CardContent className="p-4">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <StatusBadge status={trip.status} />
+                          <span className="text-xs text-muted-foreground font-mono">{trip.vehicle?.plate || "—"}</span>
                         </div>
+                        <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-muted-foreground" />
+                          {trip.event?.name || "Viagem"}
+                        </h3>
                         {trip.description && (
-                          <p className="text-base font-medium">{trip.description}</p>
+                          <p className="text-sm text-muted-foreground mt-0.5">{trip.description}</p>
                         )}
                       </div>
-                      <StatusBadge status={trip.status} />
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tipo de Veículo</p>
-                        <p className="text-base font-semibold">{trip.vehicleType?.name || "—"}</p>
+
+                    {/* Metadados */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/40">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Tipo de Veículo</p>
+                        <p className="text-sm font-medium">{trip.vehicleType?.name || "—"}</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Carregamento</p>
-                        <div className="space-y-0.5">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Carregamento</p>
+                        <div>
                           {trip.loadingStartTime && trip.loadingEndTime ? (
                             <>
-                              <p className="text-base font-semibold">
-                                {format(new Date(trip.loadingStartTime), "dd/MM/yyyy")}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm font-medium">{format(new Date(trip.loadingStartTime), "dd/MM/yyyy")}</p>
+                              <p className="text-xs text-muted-foreground">
                                 {format(new Date(trip.loadingStartTime), "HH:mm")} - {format(new Date(trip.loadingEndTime), "HH:mm")}
                               </p>
                             </>
                           ) : trip.loadingStartTime ? (
-                            <p className="text-base font-semibold">
-                              {format(new Date(trip.loadingStartTime), "dd/MM/yyyy 'às' HH:mm")}
-                            </p>
+                            <p className="text-sm font-medium">{format(new Date(trip.loadingStartTime), "dd/MM/yyyy 'às' HH:mm")}</p>
                           ) : (
-                            <p className="text-base font-semibold">—</p>
+                            <p className="text-sm font-medium">—</p>
                           )}
                         </div>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Descarregamento</p>
-                        <div className="space-y-0.5">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Descarregamento</p>
+                        <div>
                           {trip.unloadingStartTime && trip.unloadingEndTime ? (
                             <>
-                              <p className="text-base font-semibold">
-                                {format(new Date(trip.unloadingStartTime), "dd/MM/yyyy")}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm font-medium">{format(new Date(trip.unloadingStartTime), "dd/MM/yyyy")}</p>
+                              <p className="text-xs text-muted-foreground">
                                 {format(new Date(trip.unloadingStartTime), "HH:mm")} - {format(new Date(trip.unloadingEndTime), "HH:mm")}
                               </p>
                             </>
                           ) : trip.unloadingStartTime ? (
-                            <p className="text-base font-semibold">
-                              {format(new Date(trip.unloadingStartTime), "dd/MM/yyyy 'às' HH:mm")}
-                            </p>
+                            <p className="text-sm font-medium">{format(new Date(trip.unloadingStartTime), "dd/MM/yyyy 'às' HH:mm")}</p>
                           ) : (
-                            <p className="text-base font-semibold">—</p>
+                            <p className="text-sm font-medium">—</p>
                           )}
                         </div>
                       </div>
                     </div>
                     {trip.notes && (
-                      <div className="mt-4 pt-4 border-t">
-                        <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                      <div className="mt-2 pt-2 border-t border-border/40">
+                        <p className="text-xs text-muted-foreground mb-0.5">Observações</p>
                         <p className="text-sm">{trip.notes}</p>
                       </div>
                     )}

@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Package, Truck, AlertTriangle, TrendingUp, Box, Bell, CheckCheck, ExternalLink } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -125,11 +125,11 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
           <Card key={stat.title} className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
+              <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <p className="text-sm font-medium">{stat.title}</p>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </div>
               <div className="text-2xl font-bold" data-testid={stat.testId}>{stat.value}</div>
               <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
             </CardContent>
@@ -139,17 +139,17 @@ export default function Dashboard() {
       
       {/* Notifications Section */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center gap-2 font-semibold text-base">
                 <Bell className="h-5 w-5" />
                 Notificações Recentes
-              </CardTitle>
+              </div>
               {unreadNotifications.length > 0 && (
-                <CardDescription className="mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {unreadNotifications.length} não lida{unreadNotifications.length > 1 ? 's' : ''}
-                </CardDescription>
+                </p>
               )}
             </div>
             {unreadNotifications.length > 0 && (
@@ -165,8 +165,6 @@ export default function Dashboard() {
               </Button>
             )}
           </div>
-        </CardHeader>
-        <CardContent>
           <ScrollArea className="h-[300px]">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
@@ -228,14 +226,12 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 font-semibold text-base mb-1">
               <Calendar className="h-5 w-5" />
               Eventos Recentes
-            </CardTitle>
-            <CardDescription>Atividade mais recente</CardDescription>
-          </CardHeader>
-          <CardContent>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">Atividade mais recente</p>
             {!recentEvents || recentEvents.length === 0 ? (
               <div className="text-center py-8">
                 <Box className="h-12 w-12 mx-auto text-muted-foreground/50" />
@@ -267,14 +263,12 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2 font-semibold text-base mb-1">
               <TrendingUp className="h-5 w-5" />
               Quick Actions
-            </CardTitle>
-            <CardDescription>Common operations</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">Common operations</p>
             <Button asChild className="w-full justify-start" variant="outline" data-testid="button-new-event">
               <Link href="/events">
                 <Calendar className="h-4 w-4 mr-2" />

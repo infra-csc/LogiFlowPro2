@@ -90,16 +90,12 @@ export default function Products() {
       </div>
 
       {!filteredProducts || filteredProducts.length === 0 ? (
-        <Card>
-          <CardContent>
-            <EmptyState
-              icon={Package}
-              title={search ? "Nenhum produto encontrado" : "Nenhum produto ainda"}
-              description={search ? "Tente ajustar sua busca" : "Comece adicionando seu primeiro produto"}
-              action={!search && canWrite ? { label: "Adicionar Produto", onClick: () => setShowDialog(true) } : undefined}
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Package}
+          title={search ? "Nenhum produto encontrado" : "Nenhum produto ainda"}
+          description={search ? "Tente ajustar sua busca" : "Comece adicionando seu primeiro produto"}
+          action={!search && canWrite ? { label: "Adicionar Produto", onClick: () => setShowDialog(true) } : undefined}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.map((product) => (
@@ -121,31 +117,31 @@ export default function Products() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">{product.name}</h3>
+                    <h3 className="font-semibold text-base text-foreground truncate">{product.name}</h3>
                     <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
                   </div>
                   {!product.imageUrl && <Package className="h-5 w-5 text-muted-foreground ml-2" />}
                 </div>
                 
-                <div className="space-y-2">
+                <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Stock:</span>
                     <span className={`text-sm font-medium ${
-                      product.currentStock && product.minimumStock && product.currentStock < product.minimumStock 
-                        ? "text-destructive" 
+                      product.currentStock && product.minimumStock && product.currentStock < product.minimumStock
+                        ? "text-destructive"
                         : "text-foreground"
                     }`}>
                       {product.currentStock || 0} {product.unit}
                     </span>
                   </div>
-                  
+
                   {product.location && (
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Location:</span>
                       <span className="text-sm">{product.location}</span>
                     </div>
                   )}
-                  
+
                   <div className="pt-2">
                     <Badge className={getOwnershipColor(product.ownership)}>
                       {product.ownership === "owned" ? "Owned" : product.ownership === "rented" ? "Rented" : "Third Party"}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -372,16 +372,14 @@ export default function VehicleTypes() {
               className="hover-elevate cursor-pointer"
               onClick={() => handleEdit(type)}
             >
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2 font-semibold text-base">
                   <Truck className="h-5 w-5" />
                   {type.name}
-                </CardTitle>
+                </div>
                 {type.description && (
-                  <p className="text-sm text-muted-foreground mt-2">{type.description}</p>
+                  <p className="text-sm text-muted-foreground">{type.description}</p>
                 )}
-              </CardHeader>
-              <CardContent className="space-y-3">
                 {/* Cargo Bay Measurements */}
                 {(type.cargoLength || type.cargoHeight || type.cargoWidth) && (
                   <div className="space-y-1">

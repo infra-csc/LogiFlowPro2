@@ -26,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, XCircle, Clock, AlertCircle, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { PageHeader, PageLoading, EmptyState } from "@/components";
 
@@ -156,18 +156,16 @@ export default function MovementApprovals() {
 
   if (!userCanApproveMovement(user)) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] p-6">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <Card className="max-w-md w-full" data-testid="card-access-denied">
-          <CardHeader>
+          <CardContent className="p-4 space-y-4">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-destructive" />
-              <CardTitle data-testid="text-access-denied-title">Acesso negado</CardTitle>
+              <div className="font-semibold text-base" data-testid="text-access-denied-title">Acesso negado</div>
             </div>
-            <CardDescription data-testid="text-access-denied-description">
+            <p className="text-sm text-muted-foreground" data-testid="text-access-denied-description">
               Você não tem permissão para acessar esta área. A aprovação de movimentações é restrita a administradores e supervisores.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
             <Button asChild variant="outline" data-testid="button-back-to-dashboard">
               <Link href="/">Voltar ao início</Link>
             </Button>
@@ -179,7 +177,7 @@ export default function MovementApprovals() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div>
         <PageHeader
           title="Aprovações de Movimentações"
           description="Movimentações aguardando aprovação"
@@ -190,7 +188,7 @@ export default function MovementApprovals() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <PageHeader
         title="Aprovações de Movimentações"
         description="Movimentações aguardando aprovação"

@@ -6,7 +6,7 @@ EventFlow Logistics is a web application designed to streamline event material m
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Estado Atual (2026-05-28)
+## Estado Atual (2026-05-29)
 
 - **Autenticação**: toda rota interna (leitura e escrita) exige login.
 - **Autorização (ownership)**: criador ou admin podem editar/excluir os recursos sensíveis (requests, trips, loading-orders, movements).
@@ -14,7 +14,7 @@ Preferred communication style: Simple, everyday language.
 - **Fonte única de `isAdmin`**: `shared/roles.ts:isAdminRoleName` (case-insensitive, reconhece `Adm`/`admin`), re-exportada por `server/ownership.ts` e consumida pelo front via `client/src/lib/authz.ts`.
 - **Front-end**: UX defensiva — botões de escrita escondidos por papel, leitura mantida para qualquer logado. Back-end continua a fonte da verdade.
 - **Qualidade**: `npm run check` zerado, `npm run build` passando, CI em `.github/workflows/ci.yml` rodando `npm ci` → `check` → `build` em push/PR.
-- **Design System**: PageHeader, PageLoading, EmptyState aplicados em ~40 páginas; padding global no App.tsx elimina duplo padding.
+- **Design System**: PageHeader, PageLoading, EmptyState aplicados em ~40 páginas; padding global no App.tsx elimina duplo padding. Cards padronizados com `p-4` e `font-semibold text-base` para títulos. Filtros convertidos para `FilterBar` com badgeCount e botão de limpar. Divider `border-t border-border/40` antes de metadata em todos os cards de lista.
 
 ## Histórico de Fases
 

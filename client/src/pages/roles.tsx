@@ -32,7 +32,7 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Shield, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -168,13 +168,11 @@ export default function RolesPage() {
       </PageHeader>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de Papéis</CardTitle>
-          <CardDescription>
+        <CardContent className="p-4">
+          <div className="font-semibold text-base mb-1">Lista de Papéis</div>
+          <p className="text-sm text-muted-foreground mb-4">
             Todos os papéis cadastrados no sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
           <Table>
             <TableHeader>
               <TableRow>

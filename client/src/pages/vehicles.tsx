@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -461,15 +461,17 @@ export default function Vehicles() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {vehicles?.map((vehicle) => (
           <Card key={vehicle.id} className="hover-elevate">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-lg">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-primary" />
-                  <span data-testid={`text-vehicle-plate-${vehicle.id}`}>
-                    {vehicle.plate}
-                  </span>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-muted-foreground" />
+                    <span data-testid={`text-vehicle-plate-${vehicle.id}`}>
+                      {vehicle.plate}
+                    </span>
+                  </h3>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-shrink-0">
                   {canWrite && (
                     <Button
                       size="icon"
@@ -491,97 +493,97 @@ export default function Vehicles() {
                     </Button>
                   )}
                 </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-muted-foreground">Tipo</p>
-                  <p className="font-medium" data-testid={`text-vehicle-type-${vehicle.id}`}>
-                    {getVehicleTypeName(vehicle.vehicleTypeId)}
-                  </p>
-                </div>
-                {vehicle.model && (
+              </div>
+              <div className="mt-3 pt-3 border-t border-border/40 space-y-2 text-sm">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <p className="text-muted-foreground">Modelo</p>
-                    <p className="font-medium" data-testid={`text-vehicle-model-${vehicle.id}`}>
-                      {vehicle.model}
+                    <p className="text-xs text-muted-foreground">Tipo</p>
+                    <p className="font-medium" data-testid={`text-vehicle-type-${vehicle.id}`}>
+                      {getVehicleTypeName(vehicle.vehicleTypeId)}
                     </p>
                   </div>
+                  {vehicle.model && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Modelo</p>
+                      <p className="font-medium" data-testid={`text-vehicle-model-${vehicle.id}`}>
+                        {vehicle.model}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {(vehicle.cargoLength || vehicle.cargoWidth || vehicle.cargoHeight) && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Medidas do Baú (m)</p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      {vehicle.cargoLength && (
+                        <div>
+                          <p className="text-muted-foreground">Comp.</p>
+                          <p className="font-medium">{vehicle.cargoLength}</p>
+                        </div>
+                      )}
+                      {vehicle.cargoWidth && (
+                        <div>
+                          <p className="text-muted-foreground">Larg.</p>
+                          <p className="font-medium">{vehicle.cargoWidth}</p>
+                        </div>
+                      )}
+                      {vehicle.cargoHeight && (
+                        <div>
+                          <p className="text-muted-foreground">Alt.</p>
+                          <p className="font-medium">{vehicle.cargoHeight}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </div>
 
-              {(vehicle.cargoLength || vehicle.cargoWidth || vehicle.cargoHeight) && (
-                <div>
-                  <p className="text-muted-foreground mb-1">Medidas do Baú (m)</p>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    {vehicle.cargoLength && (
+                {(vehicle.truckPlate || vehicle.trailerPlate) && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Placas</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {vehicle.truckPlate && (
+                        <div>
+                          <p className="text-muted-foreground">Cavalo</p>
+                          <p className="font-medium">{vehicle.truckPlate}</p>
+                        </div>
+                      )}
+                      {vehicle.trailerPlate && (
+                        <div>
+                          <p className="text-muted-foreground">Carreta</p>
+                          <p className="font-medium">{vehicle.trailerPlate}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(vehicle.maxWeight || vehicle.maxVolume) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {vehicle.maxWeight && (
                       <div>
-                        <p className="text-muted-foreground">Comp.</p>
-                        <p className="font-medium">{vehicle.cargoLength}</p>
+                        <p className="text-xs text-muted-foreground">Peso Máx.</p>
+                        <p className="font-medium">{vehicle.maxWeight} kg</p>
                       </div>
                     )}
-                    {vehicle.cargoWidth && (
+                    {vehicle.maxVolume && (
                       <div>
-                        <p className="text-muted-foreground">Larg.</p>
-                        <p className="font-medium">{vehicle.cargoWidth}</p>
-                      </div>
-                    )}
-                    {vehicle.cargoHeight && (
-                      <div>
-                        <p className="text-muted-foreground">Alt.</p>
-                        <p className="font-medium">{vehicle.cargoHeight}</p>
+                        <p className="text-xs text-muted-foreground">Volume Máx.</p>
+                        <p className="font-medium">{vehicle.maxVolume} m³</p>
                       </div>
                     )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {(vehicle.truckPlate || vehicle.trailerPlate) && (
-                <div>
-                  <p className="text-muted-foreground mb-1">Placas</p>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {vehicle.truckPlate && (
-                      <div>
-                        <p className="text-muted-foreground">Cavalo</p>
-                        <p className="font-medium">{vehicle.truckPlate}</p>
-                      </div>
-                    )}
-                    {vehicle.trailerPlate && (
-                      <div>
-                        <p className="text-muted-foreground">Carreta</p>
-                        <p className="font-medium">{vehicle.trailerPlate}</p>
-                      </div>
-                    )}
-                  </div>
+                <div className="pt-2 border-t border-border/40">
+                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs ${
+                    vehicle.active
+                      ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                      : "bg-gray-500/10 text-gray-700 dark:text-gray-400"
+                  }`}>
+                    {vehicle.active ? "Ativo" : "Inativo"}
+                  </span>
                 </div>
-              )}
-
-              {(vehicle.maxWeight || vehicle.maxVolume) && (
-                <div className="grid grid-cols-2 gap-2">
-                  {vehicle.maxWeight && (
-                    <div>
-                      <p className="text-muted-foreground">Peso Máx.</p>
-                      <p className="font-medium">{vehicle.maxWeight} kg</p>
-                    </div>
-                  )}
-                  {vehicle.maxVolume && (
-                    <div>
-                      <p className="text-muted-foreground">Volume Máx.</p>
-                      <p className="font-medium">{vehicle.maxVolume} m³</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="pt-2 border-t">
-                <span className={`inline-flex items-center px-2 py-1 rounded text-xs ${
-                  vehicle.active 
-                    ? "bg-green-500/10 text-green-700 dark:text-green-400" 
-                    : "bg-gray-500/10 text-gray-700 dark:text-gray-400"
-                }`}>
-                  {vehicle.active ? "Ativo" : "Inativo"}
-                </span>
               </div>
             </CardContent>
           </Card>
@@ -589,16 +591,11 @@ export default function Vehicles() {
       </div>
 
       {vehicles?.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
-              Nenhum veículo cadastrado ainda.
-              <br />
-              Clique em "Novo Veículo" para começar.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Truck}
+          title="Nenhum veículo cadastrado"
+          description="Clique em 'Novo Veículo' para começar."
+        />
       )}
     </div>
   );

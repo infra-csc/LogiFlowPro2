@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueries, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -654,7 +654,7 @@ export default function MovementDetails() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div>
         <PageHeader title="Movimentação" description="Detalhes operacionais" />
         <PageLoading message="Carregando movimentação..." />
       </div>
@@ -663,7 +663,7 @@ export default function MovementDetails() {
 
   if (!movement) {
     return (
-      <div className="p-6">
+      <div>
         <PageHeader title="Movimentação" description="Detalhes operacionais" />
         <PageLoading message="Movimentação não encontrada" />
       </div>
@@ -671,7 +671,7 @@ export default function MovementDetails() {
   }
 
   return (
-    <div className="p-6 space-y-6 relative">
+    <div className="space-y-6 relative">
       {/* Botão de Modo Foco - Sempre visível */}
       <div className="fixed top-20 right-6 z-50">
         <Button
@@ -763,37 +763,31 @@ export default function MovementDetails() {
         <PageSection>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StatusBadge status={movement.status} />
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">Status</p>
+                <div className="mt-1">
+                  <StatusBadge status={movement.status} />
+                </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Doca</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">Doca</p>
                 <p className="text-lg font-semibold">{movement.dock?.name || "-"}</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Veículo</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">Veículo</p>
                 <p className="text-lg font-semibold">{movement.vehiclePlate || "-"}</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Progresso</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">Progresso</p>
                 <p className="text-lg font-semibold mb-2">
                   {totalLoaded} / {totalExpected} ({progress}%)
                 </p>
@@ -821,7 +815,7 @@ export default function MovementDetails() {
       {isEditable && userCanManageMovementItems(user) && (
         <PageSection title="Scanner de Produtos" description="Registre produtos via SKU, código de barras ou nome">
           <Card>
-            <CardContent className="space-y-4 p-6">
+            <CardContent className="space-y-4 p-4">
             <div className="relative">
               <label className="block mb-2 font-medium flex items-center gap-2">
                 Produto
@@ -1029,12 +1023,12 @@ export default function MovementDetails() {
         {/* Itens Esperados (da Ordem) */}
         {expectedItems.length > 0 && (
           <Card>
-            <CardHeader className="space-y-4">
-              <CardTitle className="flex items-center gap-2">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3 font-semibold text-base">
                 <ClipboardList className="h-5 w-5" />
                 Itens da Ordem ({expectedItems.length})
-              </CardTitle>
-              <div className="relative">
+              </div>
+              <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nome, SKU ou código de barras..."
@@ -1044,8 +1038,6 @@ export default function MovementDetails() {
                   data-testid="input-search-order-items"
                 />
               </div>
-            </CardHeader>
-            <CardContent>
               <ScrollArea className="h-[500px] pr-4">
                 <div className="space-y-3">
                   {filteredExpectedItems.length === 0 ? (
@@ -1132,12 +1124,12 @@ export default function MovementDetails() {
 
         {/* Itens Carregados */}
         <Card>
-          <CardHeader className="space-y-4">
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3 font-semibold text-base">
               <PackageCheck className="h-5 w-5" />
               Itens Carregados ({consolidatedLoadedItems.length})
-            </CardTitle>
-            <div className="relative">
+            </div>
+            <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome, SKU ou código de barras..."
@@ -1147,8 +1139,6 @@ export default function MovementDetails() {
                 data-testid="input-search-loaded-items"
               />
             </div>
-          </CardHeader>
-          <CardContent>
             <ScrollArea className="h-[500px] pr-4">
               {filteredLoadedItems.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
@@ -1457,13 +1447,11 @@ export default function MovementDetails() {
       {/* Action History Section */}
       {!focusMode && auditLogs.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3 font-semibold text-base">
               <Clock className="h-5 w-5" />
               Histórico de Ações
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </div>
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-4">
                 {auditLogs.map((log) => {

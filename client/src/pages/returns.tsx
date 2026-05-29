@@ -32,15 +32,11 @@ export default function Returns() {
       />
 
       {!returns || returns.length === 0 ? (
-        <Card>
-          <CardContent>
-            <EmptyState
-              icon={RotateCcw}
-              title="Nenhuma devolução registrada"
-              description="As devoluções aparecerão aqui quando as viagens forem concluídas"
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={RotateCcw}
+          title="Nenhuma devolução registrada"
+          description="As devoluções aparecerão aqui quando as viagens forem concluídas"
+        />
       ) : (
         <div className="space-y-4">
           {returns.map((returnItem) => {
@@ -57,17 +53,17 @@ export default function Returns() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-medium">{returnItem.product?.name || "Product"}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-base text-foreground">{returnItem.product?.name || "Product"}</h3>
                         {hasDiscrepancy && (
                           <AlertTriangle className="h-4 w-4 text-chart-5" />
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3">
+                      <p className="text-sm text-muted-foreground mt-0.5">
                         {returnItem.product?.sku || "—"} | {format(new Date(returnItem.createdAt), "MMM dd, yyyy")}
                       </p>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground">Esperado</p>
                           <p className="text-sm font-medium">{returnItem.expectedQuantity}</p>

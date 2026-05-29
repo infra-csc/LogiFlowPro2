@@ -32,7 +32,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Search, UserPlus, Shield, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -290,13 +290,11 @@ export default function UsersPage() {
       </PageHeader>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de Usuários</CardTitle>
-          <CardDescription>
+        <CardContent className="p-4">
+          <div className="font-semibold text-base mb-1">Lista de Usuários</div>
+          <p className="text-sm text-muted-foreground mb-4">
             Todos os usuários cadastrados no sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
           <div className="mb-4 space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

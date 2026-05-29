@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
@@ -173,28 +173,25 @@ export default function ProductStatusesPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <PageHeader
-              title="Status de Produtos"
-              description="Cadastro de status para controle de estado dos produtos"
-            />
-            <Dialog open={dialogOpen} onOpenChange={(open) => {
-              setDialogOpen(open);
-              if (!open) {
-                setEditingStatus(null);
-                form.reset();
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-add-status">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Status
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
+      <PageHeader
+        title="Status de Produtos"
+        description="Cadastro de status para controle de estado dos produtos"
+      >
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setEditingStatus(null);
+            form.reset();
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-add-status">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Status
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
                   <DialogTitle>{editingStatus ? "Editar Status" : "Novo Status"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
@@ -362,10 +359,9 @@ export default function ProductStatusesPage() {
                 </Form>
               </DialogContent>
             </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+      </PageHeader>
+
+      <div className="space-y-4">
             <Input
               placeholder="Buscar por código ou nome..."
               value={searchQuery}
@@ -443,8 +439,6 @@ export default function ProductStatusesPage() {
               </Table>
             )}
           </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

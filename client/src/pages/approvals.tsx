@@ -1,14 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, Clock, ChevronRight, Filter, X } from "lucide-react";
+import { FilterBar } from "@/components/filter-bar";
+import { CheckCircle2, XCircle, Clock, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -120,79 +121,56 @@ export default function Approvals() {
       />
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              <CardTitle>Filtros</CardTitle>
-            </div>
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                data-testid="button-clear-filters"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Limpar Filtros
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger data-testid="select-status-filter">
-                  <SelectValue placeholder="Todos os status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="pending_approval">Pendente Aprovação</SelectItem>
-                  <SelectItem value="approved">Aprovado</SelectItem>
-                  <SelectItem value="rejected">Rejeitado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <FilterBar badgeCount={hasActiveFilters ? 1 : 0} onClear={hasActiveFilters ? clearFilters : undefined}>
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Status</label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger data-testid="select-status-filter" className="h-8 text-sm">
+              <SelectValue placeholder="Todos os status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="pending_approval">Pendente Aprovação</SelectItem>
+              <SelectItem value="approved">Aprovado</SelectItem>
+              <SelectItem value="rejected">Rejeitado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div>
-              <label className="text-sm font-medium mb-2 block">Evento</label>
-              <Select value={eventFilter} onValueChange={setEventFilter}>
-                <SelectTrigger data-testid="select-event-filter">
-                  <SelectValue placeholder="Todos os eventos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os eventos</SelectItem>
-                  {uniqueEvents.map((event) => (
-                    <SelectItem key={event.id} value={event.id}>
-                      {event.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Evento</label>
+          <Select value={eventFilter} onValueChange={setEventFilter}>
+            <SelectTrigger data-testid="select-event-filter" className="h-8 text-sm">
+              <SelectValue placeholder="Todos os eventos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os eventos</SelectItem>
+              {uniqueEvents.map((event) => (
+                <SelectItem key={event.id} value={event.id}>
+                  {event.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div>
-              <label className="text-sm font-medium mb-2 block">Solicitante</label>
-              <Select value={requesterFilter} onValueChange={setRequesterFilter}>
-                <SelectTrigger data-testid="select-requester-filter">
-                  <SelectValue placeholder="Todos os solicitantes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os solicitantes</SelectItem>
-                  {uniqueRequesters.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Solicitante</label>
+          <Select value={requesterFilter} onValueChange={setRequesterFilter}>
+            <SelectTrigger data-testid="select-requester-filter" className="h-8 text-sm">
+              <SelectValue placeholder="Todos os solicitantes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os solicitantes</SelectItem>
+              {uniqueRequesters.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </FilterBar>
 
       {/* Pending Approvals */}
       <div className="space-y-4">
@@ -202,12 +180,11 @@ export default function Approvals() {
         </div>
 
         {pendingRequests.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>Nenhuma requisição pendente de aprovação</p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Clock}
+            title="Nenhuma requisição pendente"
+            description="Nenhuma requisição aguardando aprovação no momento"
+          />
         ) : (
           <div className="grid gap-4">
             {pendingRequests.map((request) => (
@@ -217,46 +194,40 @@ export default function Approvals() {
                 onClick={() => navigate(`/approvals/${request.id}`)}
                 data-testid={`card-request-${request.id}`}
               >
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
                         <StatusBadge status={request.status} />
-                        <h3 className="font-semibold">{request.event?.name}</h3>
+                        <h3 className="font-semibold text-base">{request.event?.name}</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2 pt-2 border-t border-border/40 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Cliente:</span>
+                          <span className="text-xs text-muted-foreground">Cliente</span>
                           <p className="font-medium">{request.event?.client}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Área:</span>
+                          <span className="text-xs text-muted-foreground">Área</span>
                           <p className="font-medium">{request.area}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Solicitante:</span>
+                          <span className="text-xs text-muted-foreground">Solicitante</span>
                           <p className="font-medium">{request.requestedByUser?.name || "Usuário não encontrado"}</p>
                         </div>
                       </div>
 
-                      {request.submittedAt && (
-                        <div className="text-sm text-muted-foreground">
-                          Enviado em {format(new Date(request.submittedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </div>
-                      )}
-
-                      {request.event?.eventDate && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Data do evento:</span>{" "}
-                          <span className="font-medium">
-                            {format(new Date(request.event.eventDate), "dd/MM/yyyy", { locale: ptBR })}
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                        {request.submittedAt && (
+                          <span>Enviado em {format(new Date(request.submittedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                        )}
+                        {request.event?.eventDate && (
+                          <span>Evento: {format(new Date(request.event.eventDate), "dd/MM/yyyy", { locale: ptBR })}</span>
+                        )}
+                      </div>
                     </div>
 
-                    <ChevronRight className="h-5 w-5 text-muted-foreground ml-4" />
+                    <ChevronRight className="h-5 w-5 text-muted-foreground ml-3 flex-shrink-0 mt-1" />
                   </div>
                 </CardContent>
               </Card>
@@ -281,37 +252,37 @@ export default function Approvals() {
                 onClick={() => navigate(`/approvals/${request.id}`)}
                 data-testid={`card-request-${request.id}`}
               >
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
                         <StatusBadge status={request.status} />
-                        <h3 className="font-semibold">{request.event?.name}</h3>
+                        <h3 className="font-semibold text-base">{request.event?.name}</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2 pt-2 border-t border-border/40 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Cliente:</span>
+                          <span className="text-xs text-muted-foreground">Cliente</span>
                           <p className="font-medium">{request.event?.client}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Área:</span>
+                          <span className="text-xs text-muted-foreground">Área</span>
                           <p className="font-medium">{request.area}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Aprovador:</span>
+                          <span className="text-xs text-muted-foreground">Aprovador</span>
                           <p className="font-medium">{request.approvedBy || "-"}</p>
                         </div>
                       </div>
 
                       {request.approvedAt && (
-                        <div className="text-sm text-muted-foreground">
+                        <div className="mt-2 text-xs text-muted-foreground">
                           Processado em {format(new Date(request.approvedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </div>
                       )}
                     </div>
 
-                    <ChevronRight className="h-5 w-5 text-muted-foreground ml-4" />
+                    <ChevronRight className="h-5 w-5 text-muted-foreground ml-3 flex-shrink-0 mt-1" />
                   </div>
                 </CardContent>
               </Card>
