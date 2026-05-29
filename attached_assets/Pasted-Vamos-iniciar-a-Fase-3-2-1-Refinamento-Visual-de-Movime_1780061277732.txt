@@ -1,0 +1,185 @@
+Vamos iniciar a Fase 3.2.1 — Refinamento Visual de Movimentações.
+
+Objetivo:
+Melhorar a experiência visual e a legibilidade do módulo de Movimentações usando os componentes do Design System criados na Fase 3.1, sem alterar regras de negócio, RBAC, endpoints, payloads ou lógica operacional.
+
+Contexto:
+A Fase 3.1 já criou os componentes base:
+
+* PageHeader
+* PageSection
+* EmptyState
+* PageLoading
+* ErrorState
+* FilterBar
+* DataCard
+* ActionBar
+* PermissionHint
+* StatusBadge
+
+O módulo de movimentações já possui RBAC consolidado e alinhado entre front/back pelas Fases 2.8.1–2.8.4.
+
+Agora o foco é exclusivamente UX/UI estrutural.
+
+Escopo permitido:
+
+1. Aplicar Design System no módulo de Movimentações
+
+Aplicar os componentes criados na Fase 3.1 em:
+
+* client/src/pages/movements.tsx
+* client/src/pages/movement-details.tsx
+* client/src/pages/movement-approvals.tsx
+
+2. Melhorias esperadas
+
+2.1 Lista de movimentações
+Melhorar:
+
+* espaçamento;
+* hierarquia visual;
+* agrupamento de informações;
+* leitura dos status;
+* responsividade;
+* clareza das ações disponíveis;
+* consistência dos botões;
+* visual dos filtros;
+* estados vazios;
+* loading state.
+
+Aplicar:
+
+* PageHeader
+* FilterBar
+* DataCard
+* EmptyState
+* PageLoading
+* StatusBadge
+* ActionBar
+
+2.2 Tela de detalhes
+Melhorar:
+
+* organização das seções;
+* leitura dos itens;
+* destaque do status;
+* agrupamento de informações operacionais;
+* visual do histórico/audit;
+* alinhamento de ações;
+* legibilidade em telas menores.
+
+Aplicar:
+
+* PageSection
+* ActionBar
+* StatusBadge
+* EmptyState
+* PermissionHint (se fizer sentido)
+
+2.3 Aprovações
+Melhorar:
+
+* clareza da fila;
+* destaque visual de pendências;
+* consistência dos botões Aprovar/Rejeitar;
+* loading/error states;
+* responsividade.
+
+3. Regras importantes
+
+Não alterar:
+
+* lógica de RBAC;
+* helpers de autorização;
+* chamadas de API;
+* queries/mutations;
+* status do back-end;
+* fluxo operacional;
+* scanner;
+* regras de negócio;
+* transitions;
+* endpoints;
+* payloads;
+* banco;
+* schema;
+* migrations;
+* seed;
+* permissions/role_permissions.
+
+Back-end continua completamente intocado.
+
+4. Direção visual
+
+Objetivo:
+deixar o módulo com aparência mais profissional e limpa, sem redesign radical.
+
+Prioridades:
+
+* clareza operacional;
+* menos poluição visual;
+* status mais legíveis;
+* ações mais previsíveis;
+* melhor uso de espaçamento;
+* responsividade básica;
+* consistência entre telas.
+
+Evitar:
+
+* excesso de animações;
+* excesso de cores;
+* glassmorphism exagerado;
+* cards gigantes;
+* layouts muito “marketing”.
+
+5. Smoke visual obrigatório
+
+Validar:
+
+* Admin;
+* Almoxarifado;
+* Supervisor;
+* Usuário comum.
+
+Confirmar:
+
+* botões continuam respeitando RBAC;
+* nenhuma ação nova apareceu;
+* nenhuma ação sumiu indevidamente;
+* filtros continuam funcionando;
+* scanner continua funcionando;
+* aprovações continuam funcionando;
+* loading/error states corretos;
+* mobile básico continua utilizável.
+
+6. Validações técnicas
+
+Rodar:
+
+* npm run check
+* npm run build
+
+7. Documentação
+
+Atualizar:
+
+* docs/CHANGELOG-fase3.md
+* replit.md
+
+Registrar:
+
+* telas refinadas;
+* componentes aplicados;
+* melhorias visuais feitas;
+* o que ficou para 3.2.2;
+* confirmação de zero alteração funcional.
+
+Entrega final:
+Liste:
+
+* arquivos alterados;
+* componentes aplicados;
+* melhorias visuais implementadas;
+* resultado do npm run check;
+* resultado do npm run build;
+* smoke tests executados;
+* confirmação de que RBAC, back-end, endpoints, payloads e regras de negócio permaneceram intactos.

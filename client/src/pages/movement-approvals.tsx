@@ -28,6 +28,7 @@ import { CheckCircle2, XCircle, Clock, AlertCircle, ShieldAlert } from "lucide-r
 import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
+import { PageHeader, PageLoading, EmptyState } from "@/components";
 
 interface Movement {
   id: string;
@@ -178,39 +179,36 @@ export default function MovementApprovals() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64" data-testid="loading-approvals">
-        <p className="text-muted-foreground">Carregando...</p>
+      <div className="p-6">
+        <PageHeader
+          title="Aprovações de Movimentações"
+          description="Movimentações aguardando aprovação"
+        />
+        <PageLoading message="Carregando aprovações..." />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="heading-approvals">
-            Aprovações de Movimentações
-          </h1>
-          <p className="text-muted-foreground">
-            Movimentações aguardando aprovação
-          </p>
-        </div>
+      <PageHeader
+        title="Aprovações de Movimentações"
+        description="Movimentações aguardando aprovação"
+      >
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-yellow-500" />
           <span className="text-2xl font-bold" data-testid="count-pending">
             {pendingMovements.length}
           </span>
         </div>
-      </div>
+      </PageHeader>
 
       {pendingMovements.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-card" data-testid="empty-approvals">
-          <CheckCircle2 className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">Nenhuma aprovação pendente</h3>
-          <p className="text-muted-foreground">
-            Todas as movimentações foram processadas.
-          </p>
-        </div>
+        <EmptyState
+          icon={CheckCircle2}
+          title="Nenhuma aprovação pendente"
+          description="Todas as movimentações foram processadas."
+        />
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <Table>

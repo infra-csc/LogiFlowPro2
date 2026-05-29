@@ -118,8 +118,73 @@
 - Formulários, queries, mutations
 - Regras de negócio
 
+---
+
+## Fase 3.2.1 — Refinamento Visual de Movimentações (2026-05-29)
+
+### Telas refinadas
+
+| Tela | Componentes aplicados | Melhorias visuais |
+|------|------------------------|-------------------|
+| `movements.tsx` | PageHeader, PageLoading, EmptyState, StatusBadge, FilterBar | Header padronizado; loading com spinner; empty state com ícone; status via StatusBadge; filtros em FilterBar |
+| `movement-details.tsx` | PageHeader, PageLoading, StatusBadge | Header padronizado com ações; status via StatusBadge; loading com spinner |
+| `movement-approvals.tsx` | PageHeader, PageLoading, EmptyState | Header padronizado; loading com spinner; empty state com ícone |
+
+### Detalhes por tela
+
+1. **movements.tsx**
+   - Removidos `getStatusColor`/`getStatusLabel` locais (substituídos por `StatusBadge`)
+   - Header substituído por `PageHeader` com título + descrição + slot de ações
+   - Loading state com `PageLoading` (spinner + mensagem)
+   - Empty state com `EmptyState` (ícone `Truck`, título, descrição contextual)
+   - Filtros reestruturados em `FilterBar` (collapsible, layout flex-wrap)
+   - Eventos exibidos como texto simples (sem badges individuais) para reduzir poluição visual
+   - Botão "Iniciar Movimentação" encurtado para "Iniciar" (economia de espaço no header)
+
+2. **movement-details.tsx**
+   - Removido `getStatusColor` local (substituído por `StatusBadge`)
+   - Mantido `getStatusLabel` (necessário para audit logs de status changes)
+   - Header substituído por `PageHeader` com título, descrição e ações
+   - Loading state com `PageLoading`
+   - Card de Status usa `StatusBadge`
+   - Botão "Iniciar Movimentação" encurtado para "Iniciar"
+   - Botão de voltar movido para slot de ações do PageHeader
+   - Eventos removidos do header (mantidos apenas em info cards se existirem)
+
+3. **movement-approvals.tsx**
+   - Header substituído por `PageHeader` com contador de pendentes no slot
+   - Loading state com `PageLoading`
+   - Empty state com `EmptyState` (ícone `CheckCircle2`)
+   - Removido `Card` manual do empty state
+
+### Arquivos alterados
+- `client/src/pages/movements.tsx`
+- `client/src/pages/movement-details.tsx`
+- `client/src/pages/movement-approvals.tsx`
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando
+- Smoke visual (tentado; sem acesso logado, redirecionado para `/auth` — comportamento esperado)
+
+### O que NÃO foi alterado
+- Back-end, banco, seed, migrations, schema, endpoints, payloads
+- RBAC, permissions, roles, helpers de autorização
+- Chamadas de API, queries, mutations
+- Status do back-end, fluxo operacional
+- Scanner, regras de negócio, transitions
+- Formulários, dialogs, confirmações
+- Audit logs, produtos, fornecedores
+- Sidebars, navegação
+
+### O que ficou para 3.2.2
+- Aplicação de `PageSection` em seções do movement-details (scanner, itens, audit)
+- Aplicação de `DataCard` nos info cards (doca, veículo, progresso)
+- Aplicação de `ActionBar` nos botões de ação
+- Responsividade refinada dos cards de movimentação
+
 ### Próximas fases
-- **3.2** — Movimentações (aplicar PageHeader, EmptyState, FilterBar, StatusBadge)
+- **3.2.2** — Movimentações refinamento complementar (PageSection, DataCard, ActionBar)
 - **3.3** — Loading Orders
 - **3.4** — Requisições
 - **3.5** — Catálogo

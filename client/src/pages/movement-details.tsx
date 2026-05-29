@@ -54,6 +54,7 @@ import {
 } from "@/lib/authz";
 import { useSidebar } from "@/components/ui/sidebar";
 import { format } from "date-fns";
+import { PageHeader, PageLoading, PageSection, StatusBadge } from "@/components";
 import type { Movement, MovementItem, Product, LoadingOrderItem, MovementTypeConfig, MovementAuditLog } from "@shared/schema";
 
 type MovementWithDetails = Movement & {
@@ -83,17 +84,6 @@ type ExpectedItem = {
   expectedQuantity: number;
   loadedQuantity: number;
   remaining: number;
-};
-
-const getStatusColor = (status: string) => {
-  const colors: Record<string, string> = {
-    created: "bg-chart-5 text-white",
-    in_progress: "bg-primary text-primary-foreground",
-    paused: "bg-chart-5 text-white",
-    completed: "bg-chart-4 text-white",
-    cancelled: "bg-destructive text-destructive-foreground",
-  };
-  return colors[status] || "bg-muted text-muted-foreground";
 };
 
 const getStatusLabel = (status: string) => {
@@ -664,16 +654,18 @@ export default function MovementDetails() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-muted-foreground">Carregando...</div>
+      <div className="p-6">
+        <PageHeader title="Movimentação" description="Detalhes operacionais" />
+        <PageLoading message="Carregando movimentação..." />
       </div>
     );
   }
 
   if (!movement) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-muted-foreground">Movimentação não encontrada</div>
+      <div className="p-6">
+        <PageHeader title="Movimentação" description="Detalhes operacionais" />
+        <PageLoading message="Movimentação não encontrada" />
       </div>
     );
   }
@@ -695,49 +687,13 @@ export default function MovementDetails() {
 
       {/* Header */}
       {!focusMode && (
-        <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigate("/movements")}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold" data-testid="text-movement-title">
-              {movement.movementNumber}
-            </h1>
-            <p className="text-muted-foreground">{movement.name}</p>
-            {movement.movementTypeConfig && (
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium">Tipo:</span> {movement.movementTypeConfig.name}
-              </p>
-            )}
-            {movement.loadingOrder && (
-              <p className="text-sm text-muted-foreground">
-                Ordem: {movement.loadingOrder.orderNumber}
-              </p>
-            )}
-            {movement.events && movement.events.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap pt-1">
-                <span className="text-sm font-medium text-muted-foreground">Eventos:</span>
-                {movement.events.map((event) => (
-                  <Badge 
-                    key={event.id} 
-                    variant="default" 
-                    className="text-sm"
-                    data-testid={`badge-event-${event.id}`}
-                  >
-                    {event.name}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex gap-2">
+        <PageHeader
+          title={movement.movementNumber}
+          description={
+            movement.name +
+            (movement.movementTypeConfig ? ` • ${movement.movementTypeConfig.name}` : "")
+          }
+        >
           {userCanChangeMovementStatusFreely(user) && (
             <Button
               variant="outline"
@@ -755,7 +711,7 @@ export default function MovementDetails() {
               data-testid="button-start"
             >
               <PlayCircle className="h-4 w-4 mr-2" />
-              Iniciar Movimentação
+              Iniciar
             </Button>
           )}
           {movement.status === "in_progress" && userCanManageMovementItems(user) && (
@@ -789,8 +745,16 @@ export default function MovementDetails() {
               Continuar
             </Button>
           )}
-        </div>
-      </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/movements")}
+            data-testid="button-back"
+            title="Voltar"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </PageHeader>
       )}
 
       {/* Status e Informações */}
@@ -801,9 +765,7 @@ export default function MovementDetails() {
             <CardTitle className="text-sm font-medium">Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge className={getStatusColor(movement.status)}>
-              {getStatusLabel(movement.status)}
-            </Badge>
+            <StatusBadge status={movement.status} />
           </CardContent>
         </Card>
 

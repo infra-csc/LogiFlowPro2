@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Filter, X, Pencil } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,11 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { useLocation } from "wouter";
 import { MovementDialog } from "@/components/movement-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +21,7 @@ import {
   userCanCreateMovement,
   userCanEditMovement,
 } from "@/lib/authz";
+import { PageHeader, PageLoading, EmptyState, StatusBadge, FilterBar } from "@/components";
 import type { Movement, LoadingOrder, Event, Dock, Trip, MovementTypeConfig } from "@shared/schema";
 
 type MovementWithRelations = Movement & {
@@ -36,28 +31,6 @@ type MovementWithRelations = Movement & {
   events?: Event[];
   trips?: Trip[];
   movementTypeConfig?: MovementTypeConfig;
-};
-
-const getStatusColor = (status: string) => {
-  const colors: Record<string, string> = {
-    created: "bg-chart-5 text-white",
-    in_progress: "bg-primary text-primary-foreground",
-    paused: "bg-chart-5 text-white",
-    completed: "bg-chart-4 text-white",
-    cancelled: "bg-destructive text-destructive-foreground",
-  };
-  return colors[status] || "bg-muted text-muted-foreground";
-};
-
-const getStatusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    created: "Criada",
-    in_progress: "Em Andamento",
-    paused: "Pausada",
-    completed: "Finalizada",
-    cancelled: "Cancelada",
-  };
-  return labels[status] || status;
 };
 
 const formatDuration = (minutes?: number | null) => {
@@ -74,7 +47,6 @@ export default function Movements() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [showFilters, setShowFilters] = useState(false);
 
   // Filtros
   const [filterEventId, setFilterEventId] = useState<string>("");
@@ -195,23 +167,22 @@ export default function Movements() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-muted-foreground">Carregando...</div>
+      <div className="p-6">
+        <PageHeader
+          title="Carga e Descarga"
+          description="Gerencie movimentações operacionais do armazém"
+        />
+        <PageLoading message="Carregando movimentações..." />
       </div>
     );
   }
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">
-            🚛 Carga e Descarga
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie movimentações operacionais do armazém
-          </p>
-        </div>
+      <PageHeader
+        title="Carga e Descarga"
+        description="Gerencie movimentações operacionais do armazém"
+      >
         {userCanCreateMovement(user) && (
           <MovementDialog>
             <Button data-testid="button-new-movement">
@@ -220,165 +191,141 @@ export default function Movements() {
             </Button>
           </MovementDialog>
         )}
-      </div>
+      </PageHeader>
 
       {/* Filtros */}
-      <Card>
-        <Collapsible open={showFilters} onOpenChange={setShowFilters}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="gap-2 p-0 hover:bg-transparent" data-testid="button-toggle-filters">
-                  <Filter className="h-4 w-4" />
-                  <CardTitle className="text-base">
-                    Filtros
-                    {activeFiltersCount > 0 && (
-                      <Badge variant="default" className="ml-2">
-                        {activeFiltersCount}
-                      </Badge>
-                    )}
-                  </CardTitle>
-                </Button>
-              </CollapsibleTrigger>
-              {activeFiltersCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearAllFilters}
-                  className="gap-2"
-                  data-testid="button-clear-filters"
-                >
-                  <X className="h-4 w-4" />
-                  Limpar Filtros
-                </Button>
-              )}
-            </div>
-          </CardHeader>
+      <FilterBar>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+          {/* Filtro de Evento */}
+          <div className="space-y-2">
+            <Label htmlFor="filter-event">Evento</Label>
+            <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
+              <SelectTrigger id="filter-event" data-testid="select-filter-event">
+                <SelectValue placeholder="Todos os eventos" />
+              </SelectTrigger>
+              <SelectContent>
+                {events.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <CollapsibleContent>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Filtro de Evento */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-event">Evento</Label>
-                  <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
-                    <SelectTrigger id="filter-event" data-testid="select-filter-event">
-                      <SelectValue placeholder="Todos os eventos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {events.map((event) => (
-                        <SelectItem key={event.id} value={event.id}>
-                          {event.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* Filtro de Status */}
+          <div className="space-y-2">
+            <Label htmlFor="filter-status">Status</Label>
+            <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
+              <SelectTrigger id="filter-status" data-testid="select-filter-status">
+                <SelectValue placeholder="Todos os status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created">Criada</SelectItem>
+                <SelectItem value="in_progress">Em Andamento</SelectItem>
+                <SelectItem value="paused">Pausada</SelectItem>
+                <SelectItem value="completed">Finalizada</SelectItem>
+                <SelectItem value="cancelled">Cancelada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                {/* Filtro de Status */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-status">Status</Label>
-                  <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
-                    <SelectTrigger id="filter-status" data-testid="select-filter-status">
-                      <SelectValue placeholder="Todos os status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="created">Criada</SelectItem>
-                      <SelectItem value="in_progress">Em Andamento</SelectItem>
-                      <SelectItem value="paused">Pausada</SelectItem>
-                      <SelectItem value="completed">Finalizada</SelectItem>
-                      <SelectItem value="cancelled">Cancelada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* Filtro de Tipo de Movimentação */}
+          <div className="space-y-2">
+            <Label htmlFor="filter-type">Tipo de Movimentação</Label>
+            <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
+              <SelectTrigger id="filter-type" data-testid="select-filter-type">
+                <SelectValue placeholder="Todos os tipos" />
+              </SelectTrigger>
+              <SelectContent>
+                {movementTypes.filter(mt => mt.active).map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-                {/* Filtro de Tipo de Movimentação */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-type">Tipo de Movimentação</Label>
-                  <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
-                    <SelectTrigger id="filter-type" data-testid="select-filter-type">
-                      <SelectValue placeholder="Todos os tipos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {movementTypes.filter(mt => mt.active).map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* Filtro de Doca */}
+          <div className="space-y-2">
+            <Label htmlFor="filter-dock">Doca</Label>
+            <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
+              <SelectTrigger id="filter-dock" data-testid="select-filter-dock">
+                <SelectValue placeholder="Todas as docas" />
+              </SelectTrigger>
+              <SelectContent>
+                {docks.map((dock) => (
+                  <SelectItem key={dock.id} value={dock.id}>
+                    {dock.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-                {/* Filtro de Doca */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-dock">Doca</Label>
-                  <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
-                    <SelectTrigger id="filter-dock" data-testid="select-filter-dock">
-                      <SelectValue placeholder="Todas as docas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {docks.map((dock) => (
-                        <SelectItem key={dock.id} value={dock.id}>
-                          {dock.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* Filtro de Placa do Veículo */}
+          <div className="space-y-2">
+            <Label htmlFor="filter-vehicle">Placa do Veículo</Label>
+            <Input
+              id="filter-vehicle"
+              placeholder="Digite a placa..."
+              value={filterVehiclePlate}
+              onChange={(e) => setFilterVehiclePlate(e.target.value)}
+              data-testid="input-filter-vehicle"
+            />
+          </div>
 
-                {/* Filtro de Placa do Veículo */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-vehicle">Placa do Veículo</Label>
-                  <Input
-                    id="filter-vehicle"
-                    placeholder="Digite a placa..."
-                    value={filterVehiclePlate}
-                    onChange={(e) => setFilterVehiclePlate(e.target.value)}
-                    data-testid="input-filter-vehicle"
-                  />
-                </div>
+          {/* Filtro de Data Início */}
+          <div className="space-y-2">
+            <Label htmlFor="filter-start-date">Data Início</Label>
+            <Input
+              id="filter-start-date"
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              data-testid="input-filter-start-date"
+            />
+          </div>
 
-                {/* Filtro de Data Início */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-start-date">Data Início</Label>
-                  <Input
-                    id="filter-start-date"
-                    type="date"
-                    value={filterStartDate}
-                    onChange={(e) => setFilterStartDate(e.target.value)}
-                    data-testid="input-filter-start-date"
-                  />
-                </div>
-
-                {/* Filtro de Data Fim */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-end-date">Data Fim</Label>
-                  <Input
-                    id="filter-end-date"
-                    type="date"
-                    value={filterEndDate}
-                    onChange={(e) => setFilterEndDate(e.target.value)}
-                    data-testid="input-filter-end-date"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
-      </Card>
+          {/* Filtro de Data Fim */}
+          <div className="space-y-2">
+            <Label htmlFor="filter-end-date">Data Fim</Label>
+            <Input
+              id="filter-end-date"
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              data-testid="input-filter-end-date"
+            />
+          </div>
+        </div>
+        {activeFiltersCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            data-testid="button-clear-filters"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Limpar Filtros
+            <span className="ml-1 text-xs text-muted-foreground">({activeFiltersCount})</span>
+          </Button>
+        )}
+      </FilterBar>
 
       {/* Lista de Movimentações */}
       <div className="space-y-4">
         {filteredMovements.length === 0 ? (
           <Card>
-            <CardContent className="p-12 text-center">
-              <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-medium">Nenhuma movimentação encontrada</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {activeFiltersCount > 0 
-                  ? "Tente ajustar os filtros para ver mais resultados" 
+            <CardContent>
+              <EmptyState
+                icon={Truck}
+                title="Nenhuma movimentação encontrada"
+                description={activeFiltersCount > 0
+                  ? "Tente ajustar os filtros para ver mais resultados"
                   : "Crie uma nova movimentação para começar"}
-              </p>
+              />
             </CardContent>
           </Card>
         ) : (
@@ -388,9 +335,7 @@ export default function Movements() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-start gap-3">
-                      <Badge className={getStatusColor(movement.status)}>
-                        {getStatusLabel(movement.status)}
-                      </Badge>
+                      <StatusBadge status={movement.status} />
                       <div>
                         <h3 className="font-bold text-2xl mb-1" data-testid={`text-movement-name-${movement.id}`}>
                           {movement.name}
@@ -431,9 +376,9 @@ export default function Movements() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-muted-foreground">Eventos:</span>
                         {movement.events.map((event) => (
-                          <Badge key={event.id} variant="outline" data-testid={`badge-movement-event-${event.id}`}>
+                          <span key={event.id} className="text-sm text-muted-foreground" data-testid={`badge-movement-event-${event.id}`}>
                             {event.name}
-                          </Badge>
+                          </span>
                         ))}
                       </div>
                     )}
