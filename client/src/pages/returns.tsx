@@ -4,6 +4,9 @@ import { RotateCcw, AlertTriangle } from "lucide-react";
 import type { Return, Trip, Product } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 interface ReturnWithRelations extends Return {
   trip?: Trip;
@@ -17,30 +20,25 @@ export default function Returns() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando devoluções...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando devoluções..." />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Devoluções e Avarias</h1>
-        <p className="text-sm text-muted-foreground mt-1">Acompanhe devoluções e relatórios de danos</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Devoluções e Avarias"
+        description="Acompanhe devoluções e relatórios de danos"
+      />
 
       {!returns || returns.length === 0 ? (
         <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <RotateCcw className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">Nenhuma devolução registrada</h3>
-              <p className="mt-2 text-sm text-muted-foreground">As devoluções aparecerão aqui quando as viagens forem concluídas</p>
-            </div>
+          <CardContent>
+            <EmptyState
+              icon={RotateCcw}
+              title="Nenhuma devolução registrada"
+              description="As devoluções aparecerão aqui quando as viagens forem concluídas"
+            />
           </CardContent>
         </Card>
       ) : (

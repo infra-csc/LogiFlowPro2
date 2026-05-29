@@ -29,6 +29,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Shield, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -142,12 +145,11 @@ export default function RolesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Papéis e Permissões</h1>
-          <p className="text-muted-foreground">Gerencie papéis e permissões do sistema</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Papéis e Permissões"
+        description="Gerencie papéis e permissões do sistema"
+      >
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -163,7 +165,7 @@ export default function RolesPage() {
             Novo Papel
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader>
@@ -185,7 +187,7 @@ export default function RolesPage() {
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center">
-                    Carregando...
+                    <PageLoading message="Carregando papéis..." />
                   </TableCell>
                 </TableRow>
               ) : roles.length === 0 ? (

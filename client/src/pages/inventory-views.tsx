@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -87,17 +89,13 @@ export default function InventoryViews() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-6 border-b">
-        <div>
-          <h1 className="text-3xl font-bold">Visões de Estoque</h1>
-          <p className="text-muted-foreground mt-1">
-            Análise de estoque por localização, proprietário e status
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Visões de Estoque"
+        description="Análise de estoque por localização, proprietário e status"
+      />
 
       <div className="flex-1 overflow-auto">
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
           {/* Filter Bar */}
           <Card>
             <CardHeader className="pb-3">

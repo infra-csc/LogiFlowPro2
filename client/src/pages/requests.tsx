@@ -16,6 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 type MaterialRequest = BaseMaterialRequest & {
   event?: Event;
@@ -70,27 +73,21 @@ export default function Requests() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando requisições...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando requisições..." />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Requisição de Materiais</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie requisições de materiais para eventos</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Requisição de Materiais"
+        description="Gerencie requisições de materiais para eventos"
+      >
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-request">
           <Plus className="h-4 w-4 mr-2" />
           Nova Requisição
         </Button>
-      </div>
+      </PageHeader>
 
       {/* Filtros */}
       {requests && requests.length > 0 && (

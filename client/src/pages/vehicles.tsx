@@ -16,6 +16,9 @@ import { insertVehicleSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
 import type { z } from "zod";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 
@@ -141,21 +144,17 @@ export default function Vehicles() {
   };
 
   if (isLoading) {
-    return <div className="p-6">Carregando...</div>;
+    return (
+      <PageLoading message="Carregando veículos..." />
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
-            <Truck className="h-6 w-6" />
-            Veículos
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gerencie os veículos da frota
-          </p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Veículos"
+        description="Gerencie os veículos da frota"
+      >
         <Dialog open={isCreateOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-vehicle">
@@ -457,7 +456,7 @@ export default function Vehicles() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {vehicles?.map((vehicle) => (

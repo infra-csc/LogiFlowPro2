@@ -18,6 +18,7 @@ import { insertMovementTypeConfigSchema, type MovementGroup, type MovementTypeCo
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const formSchema = insertMovementTypeConfigSchema.extend({
@@ -250,19 +251,16 @@ export default function MovementTypesConfigPage() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Tipos de Movimentação</h1>
-          <p className="text-muted-foreground">
-            Configure os tipos de movimentação disponíveis no sistema
-          </p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Tipos de Movimentação"
+        description="Configure os tipos de movimentação disponíveis no sistema"
+      >
         <Button onClick={handleCreate} data-testid="button-create-type">
           <Plus className="mr-2 h-4 w-4" />
           Novo Tipo
         </Button>
-      </div>
+      </PageHeader>
 
       <Card className="p-4 mb-4">
         <div className="flex flex-col sm:flex-row gap-4">

@@ -178,7 +178,7 @@ export default function Movements() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Carga e Descarga"
         description="Gerencie movimentações operacionais do armazém"

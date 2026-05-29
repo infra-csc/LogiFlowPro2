@@ -3,6 +3,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -152,16 +155,14 @@ export default function LocationsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-3xl font-bold">Localizações</CardTitle>
-              <p className="text-sm text-muted-foreground mt-2">
-                Cadastro de localizações físicas para controle de produtos
-              </p>
-            </div>
+            <PageHeader
+              title="Localizações"
+              description="Cadastro de localizações físicas para controle de produtos"
+            />
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
               if (!open) {
@@ -363,7 +364,7 @@ export default function LocationsPage() {
             />
 
             {isLoading ? (
-              <p>Carregando...</p>
+              <PageLoading message="Carregando localizações..." />
             ) : (
               <Table>
                 <TableHeader>

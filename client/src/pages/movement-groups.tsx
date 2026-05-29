@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertMovementGroupSchema, type MovementGroup, type InsertMovementGroup } from "@shared/schema";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { PageHeader } from "@/components/page-header";
 
 const formSchema = insertMovementGroupSchema.extend({
   id: z.string().optional(),
@@ -160,19 +161,16 @@ export default function MovementGroupsPage() {
   const sortedGroups = [...groups].sort((a, b) => a.displayOrder - b.displayOrder);
 
   return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Grupos de Movimentação</h1>
-          <p className="text-muted-foreground">
-            Organize os tipos de movimentação em grupos lógicos
-          </p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Grupos de Movimentação"
+        description="Organize os tipos de movimentação em grupos lógicos"
+      >
         <Button onClick={handleCreate} data-testid="button-create-group">
           <Plus className="mr-2 h-4 w-4" />
           Novo Grupo
         </Button>
-      </div>
+      </PageHeader>
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

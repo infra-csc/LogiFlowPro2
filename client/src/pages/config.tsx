@@ -4,6 +4,7 @@ import { Settings, Truck, User, Warehouse as WarehouseIcon } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import type { Vehicle, Driver, Dock } from "@shared/schema";
+import { PageHeader } from "@/components/page-header";
 
 export default function Config() {
   const { data: vehicles } = useQuery<Vehicle[]>({ queryKey: ["/api/vehicles"] });
@@ -35,11 +36,11 @@ export default function Config() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Configuração</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gerencie configurações e recursos do sistema</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Configuração"
+        description="Gerencie configurações e recursos do sistema"
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         {sections.map((section) => (

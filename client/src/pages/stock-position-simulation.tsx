@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 interface StockPositionFilters {
   startDate: string;
@@ -144,15 +147,11 @@ export default function StockPositionSimulation() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="heading-title">Simulação de Posição de Estoque por Período</h1>
-          <p className="text-muted-foreground">
-            Visualize o saldo projetado considerando alocações temporais
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Simulação de Posição de Estoque"
+        description="Visualize o saldo projetado considerando alocações temporais"
+      />
 
       {/* Filters */}
       <Card>

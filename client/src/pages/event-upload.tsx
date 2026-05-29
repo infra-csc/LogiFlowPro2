@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/page-header";
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -192,15 +193,11 @@ export default function EventUpload() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Importação de Eventos</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Faça upload de uma planilha Excel para importar eventos em lote
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Importação de Eventos"
+        description="Faça upload de uma planilha Excel para importar eventos em lote"
+      />
 
       <Card>
         <CardHeader>

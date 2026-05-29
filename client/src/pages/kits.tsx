@@ -8,6 +8,9 @@ import { KitDialog } from "@/components/kit-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { userIsAdmin } from "@/lib/authz";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 export default function Kits() {
   const { user } = useAuth();
@@ -41,46 +44,33 @@ export default function Kits() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando kits...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando kits..." />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Kits & BOM</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie estruturas paramétricas e lista de materiais</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Kits & BOM"
+        description="Gerencie estruturas paramétricas e lista de materiais"
+      >
         {canWrite && (
           <Button onClick={() => setShowDialog(true)} data-testid="button-create-kit">
             <Plus className="h-4 w-4 mr-2" />
             Criar Kit
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       {!kits || kits.length === 0 ? (
         <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <Boxes className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">Nenhum kit ainda</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Crie kits paramétricos que geram automaticamente listas de materiais
-              </p>
-              {canWrite && (
-                <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-create-first-kit">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Kit
-                </Button>
-              )}
-            </div>
+          <CardContent>
+            <EmptyState
+              icon={Boxes}
+              title="Nenhum kit ainda"
+              description="Crie kits paramétricos que geram automaticamente listas de materiais"
+              action={canWrite ? { label: "Criar Kit", onClick: () => setShowDialog(true) } : undefined}
+            />
           </CardContent>
         </Card>
       ) : (

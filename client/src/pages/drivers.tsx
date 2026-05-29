@@ -28,6 +28,11 @@ import {
   FormField,
   FormItem,
   FormLabel,
+} from "@/components/ui/form";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
+import {
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -223,12 +228,11 @@ export default function DriversPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Motoristas</h1>
-          <p className="text-muted-foreground">Gerencie o cadastro de motoristas</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Motoristas"
+        description="Gerencie o cadastro de motoristas"
+      >
         {canWrite && (
           <Button
             onClick={() => {
@@ -243,7 +247,7 @@ export default function DriversPage() {
             Novo Motorista
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader>

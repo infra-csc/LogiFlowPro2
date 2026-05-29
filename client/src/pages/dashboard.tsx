@@ -116,7 +116,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Dashboard de Operações"
         description="Monitore eventos, estoque e operações logísticas"

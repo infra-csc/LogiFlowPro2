@@ -9,6 +9,9 @@ import type { Product } from "@shared/schema";
 import { ProductDialog } from "@/components/product-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { userIsAdmin } from "@/lib/authz";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 export default function Products() {
   const { user } = useAuth();
@@ -57,29 +60,23 @@ export default function Products() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando produtos...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando produtos..." />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Catálogo de Produtos</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie itens de estoque e materiais</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Catálogo de Produtos"
+        description="Gerencie itens de estoque e materiais"
+      >
         {canWrite && (
           <Button onClick={() => setShowDialog(true)} data-testid="button-create-product">
             <Plus className="h-4 w-4 mr-2" />
             Adicionar Produto
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -94,22 +91,13 @@ export default function Products() {
 
       {!filteredProducts || filteredProducts.length === 0 ? (
         <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <Package className="h-16 w-16 mx-auto text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">
-                {search ? "Nenhum produto encontrado" : "Nenhum produto ainda"}
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {search ? "Tente ajustar sua busca" : "Comece adicionando seu primeiro produto"}
-              </p>
-              {!search && canWrite && (
-                <Button onClick={() => setShowDialog(true)} className="mt-4" data-testid="button-add-first-product">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Produto
-                </Button>
-              )}
-            </div>
+          <CardContent>
+            <EmptyState
+              icon={Package}
+              title={search ? "Nenhum produto encontrado" : "Nenhum produto ainda"}
+              description={search ? "Tente ajustar sua busca" : "Comece adicionando seu primeiro produto"}
+              action={!search && canWrite ? { label: "Adicionar Produto", onClick: () => setShowDialog(true) } : undefined}
+            />
           </CardContent>
         </Card>
       ) : (

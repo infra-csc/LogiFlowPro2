@@ -3,6 +3,9 @@ import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, XCircle, Clock, ChevronRight, Filter, X } from "lucide-react";
@@ -105,20 +108,16 @@ export default function Approvals() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
-        <div className="text-muted-foreground">Carregando...</div>
-      </div>
+      <PageLoading message="Carregando requisições..." />
     );
   }
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Aprovação de Requisições</h1>
-        <p className="text-muted-foreground mt-2">
-          Gerencie aprovações de requisições de materiais
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Aprovação de Requisições"
+        description="Gerencie aprovações de requisições de materiais"
+      />
 
       {/* Filters */}
       <Card>

@@ -3,6 +3,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -253,22 +256,26 @@ export default function ApprovalDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
-        <div className="text-muted-foreground">Carregando...</div>
-      </div>
+      <PageLoading message="Carregando requisição..." />
     );
   }
 
   if (!request) {
     return (
-      <div className="p-8">
-        <div className="text-destructive">Requisição não encontrada</div>
-      </div>
+      <EmptyState
+        icon={AlertCircle}
+        title="Requisição não encontrada"
+        description="A requisição solicitada não existe"
+        action={{
+          label: "Voltar para aprovações",
+          onClick: () => navigate("/approvals"),
+        }}
+      />
     );
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"

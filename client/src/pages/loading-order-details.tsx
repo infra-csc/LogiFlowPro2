@@ -16,6 +16,9 @@ import {
   userCanApproveLoadingOrder,
   userCanMarkLoadingOrderReady,
 } from "@/lib/authz";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 type LoadingOrderItem = {
   id: string;
@@ -189,54 +192,31 @@ export default function LoadingOrderDetails() {
 
   if (orderLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-muted-foreground">Carregando...</div>
-      </div>
+      <PageLoading message="Carregando ordem..." />
     );
   }
 
   if (!order) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="text-muted-foreground">Ordem de carregamento não encontrada</div>
-        <Button onClick={() => navigate("/loading-orders")} data-testid="button-back">
-          Voltar para ordens
-        </Button>
-      </div>
+      <EmptyState
+        icon={Package}
+        title="Ordem não encontrada"
+        description="A ordem de carregamento solicitada não existe"
+        action={{
+          label: "Voltar para ordens",
+          onClick: () => navigate("/loading-orders"),
+        }}
+      />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/loading-orders")}
-          data-testid="button-back"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-order-number">
-            {order.orderNumber}
-          </h1>
-          <p className="text-muted-foreground">
-            {order.event?.name || "Evento não encontrado"}
-          </p>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <StatusBadge status={order.status} />
-          {order.status === "draft" && canMarkReady && (
-            <Button
-              onClick={() => markAsReadyMutation.mutate()}
-              disabled={markAsReadyMutation.isPending}
-              data-testid="button-mark-ready"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Marcar como Pronta
-            </Button>
-          )}
+    <div className="space-y-6">
+      <PageHeader
+        title={order.orderNumber}
+        description={order.event?.name || "Evento não encontrado"}
+      >
+        <div className="flex items-center gap-2">
           {order.status === "ready" && canApprove && (
             <Button
               onClick={() => approveMutation.mutate()}
@@ -259,7 +239,7 @@ export default function LoadingOrderDetails() {
             </Button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>

@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, TrendingDown, TrendingUp, Warehouse } from "lucide-react";
 import type { Product } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
 
 export default function Inventory() {
   const { data: products, isLoading } = useQuery<Product[]>({
@@ -11,12 +13,7 @@ export default function Inventory() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando estoque...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando estoque..." />
     );
   }
 
@@ -48,11 +45,11 @@ export default function Inventory() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Gestão de Estoque</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monitore níveis de estoque e disponibilidade</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Gestão de Estoque"
+        description="Monitore níveis de estoque e disponibilidade"
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (

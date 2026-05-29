@@ -14,6 +14,7 @@ Preferred communication style: Simple, everyday language.
 - **Fonte única de `isAdmin`**: `shared/roles.ts:isAdminRoleName` (case-insensitive, reconhece `Adm`/`admin`), re-exportada por `server/ownership.ts` e consumida pelo front via `client/src/lib/authz.ts`.
 - **Front-end**: UX defensiva — botões de escrita escondidos por papel, leitura mantida para qualquer logado. Back-end continua a fonte da verdade.
 - **Qualidade**: `npm run check` zerado, `npm run build` passando, CI em `.github/workflows/ci.yml` rodando `npm ci` → `check` → `build` em push/PR.
+- **Design System**: PageHeader, PageLoading, EmptyState aplicados em ~40 páginas; padding global no App.tsx elimina duplo padding.
 
 ## Histórico de Fases
 

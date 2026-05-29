@@ -136,7 +136,9 @@ function AppLayout() {
             </header>
           )}
           <main className="flex-1 overflow-y-auto bg-background">
-            <Router />
+            <div className="container mx-auto px-6 py-6 max-w-7xl">
+              <Router />
+            </div>
           </main>
         </div>
       </div>

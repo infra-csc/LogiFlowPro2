@@ -7,6 +7,9 @@ import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import type { Event } from "@shared/schema";
 import { EventDialog } from "@/components/event-dialog";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 export default function Events() {
   const [showDialog, setShowDialog] = useState(false);
@@ -28,27 +31,21 @@ export default function Events() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando eventos...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando eventos..." />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Eventos</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie cronogramas e logística de eventos</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Eventos"
+        description="Gerencie cronogramas e logística de eventos"
+      >
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-event">
           <Plus className="h-4 w-4 mr-2" />
           Criar Evento
         </Button>
-      </div>
+      </PageHeader>
 
       {!events || events.length === 0 ? (
         <Card>

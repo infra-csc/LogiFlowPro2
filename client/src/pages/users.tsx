@@ -28,6 +28,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Search, UserPlus, Shield, CheckCircle, XCircle, Clock } from "lucide-react";
@@ -263,12 +266,11 @@ export default function UsersPage() {
   const pendingCount = users.filter((u) => (u.approvalStatus || "approved") === "pending").length;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Usuários</h1>
-          <p className="text-muted-foreground">Gerencie os usuários do sistema</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Usuários"
+        description="Gerencie os usuários do sistema"
+      >
         <div className="flex gap-2 items-center">
           {pendingCount > 0 && (
             <Badge 
@@ -285,7 +287,7 @@ export default function UsersPage() {
             Novo Usuário
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader>
@@ -360,7 +362,7 @@ export default function UsersPage() {
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
-                    Carregando...
+                    <PageLoading message="Carregando usuários..." />
                   </TableCell>
                 </TableRow>
               ) : filteredUsers.length === 0 ? (

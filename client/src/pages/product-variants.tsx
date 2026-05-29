@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import {
   Table,
   TableBody,
@@ -44,18 +47,13 @@ export default function ProductVariantsPage() {
     });
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
+      <PageHeader
+        title="Variantes de Produtos"
+        description="Consulta de variantes de produtos (locados, terceiros) vinculadas aos produtos principais"
+      />
+
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-3xl font-bold">Variantes de Produtos</CardTitle>
-              <p className="text-sm text-muted-foreground mt-2">
-                Consulta de variantes de produtos (locados, terceiros) vinculadas aos produtos principais
-              </p>
-            </div>
-          </div>
-        </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <Input
@@ -66,7 +64,7 @@ export default function ProductVariantsPage() {
             />
 
             {isLoading ? (
-              <p>Carregando...</p>
+              <PageLoading message="Carregando variantes..." />
             ) : (
               <div className="space-y-6">
                 {variantsByPrincipal.length === 0 ? (

@@ -23,6 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import { StatusBadge as SharedStatusBadge } from "@/components/status-badge";
 import type { Event } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 type RequestItem = {
   id: string;
@@ -280,58 +283,47 @@ export default function RequestDetails() {
   const notesChanged = notes !== (request.notes || "");
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/requests")}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">{request.area}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{request.event?.name}</p>
-          </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={request.area}
+        description={request.event?.name || ""}
+      >
+        <div className="flex items-center gap-2">
           <SharedStatusBadge status={request.status} />
-        </div>
-
-        <div className="flex gap-2">
-          {items.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowDuplicateDialog(true)}
-              data-testid="button-duplicate-request"
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              Duplicar
-            </Button>
-          )}
-          {canEdit && (
-            <>
+          <div className="flex gap-2">
+            {items.length > 0 && (
               <Button
                 variant="outline"
-                onClick={() => setShowDeleteDialog(true)}
-                data-testid="button-delete-request"
+                onClick={() => setShowDuplicateDialog(true)}
+                data-testid="button-duplicate-request"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
+                <Copy className="h-4 w-4 mr-2" />
+                Duplicar
               </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={items.length === 0}
-                data-testid="button-submit-approval"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Enviar
-              </Button>
-            </>
-          )}
+            )}
+            {canEdit && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteDialog(true)}
+                  data-testid="button-delete-request"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={items.length === 0}
+                  data-testid="button-submit-approval"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Enviar
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Requisition Window Alert - Only show for draft requests outside the window */}
       {canEdit && requestWindowInfo && !requestWindowInfo.isWithinWindow && (

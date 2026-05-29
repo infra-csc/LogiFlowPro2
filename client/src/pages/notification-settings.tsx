@@ -3,6 +3,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
 import { Label } from "@/components/ui/label";
 import { Bell, Mail, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -61,23 +63,16 @@ export default function NotificationSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando configurações..." />
     );
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-3xl space-y-6" data-testid="page-notification-settings">
-      <div>
-        <h1 className="text-2xl font-semibold">Configurações de Notificação</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Gerencie como você deseja receber notificações
-        </p>
-      </div>
+    <div className="space-y-6 max-w-3xl" data-testid="page-notification-settings">
+      <PageHeader
+        title="Configurações de Notificação"
+        description="Gerencie como você deseja receber notificações"
+      />
 
       <Card>
         <CardHeader>

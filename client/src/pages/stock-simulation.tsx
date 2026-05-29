@@ -23,8 +23,11 @@ import {
   ChevronRight,
   FileSpreadsheet,
   Play,
-  Filter
+  Filter,
 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -295,18 +298,11 @@ export default function StockSimulation() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <BarChart3 className="w-8 h-8" />
-            Simulação de Estoque
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Confronte requisições de eventos com inventário disponível
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Simulação de Estoque"
+        description="Confronte requisições de eventos com inventário disponível"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Filters Panel */}

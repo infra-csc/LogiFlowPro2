@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,9 @@ import { insertSupplierSchema, type Supplier } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Pencil, Trash2, UserCircle, Phone, Mail } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import {
   Form,
   FormControl,
@@ -65,6 +68,12 @@ export default function SuppliersPage() {
   const { data: suppliers = [], isLoading } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
+
+  if (isLoading) {
+    return (
+      <PageLoading message="Carregando fornecedores..." />
+    );
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -164,26 +173,26 @@ export default function SuppliersPage() {
   );
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-3xl font-bold">Fornecedores</CardTitle>
-            <Dialog open={dialogOpen} onOpenChange={(open) => {
-              setDialogOpen(open);
-              if (!open) {
-                setEditingSupplier(null);
-                form.reset();
-              }
-            }}>
-              {canWrite && (
-                <DialogTrigger asChild>
-                  <Button data-testid="button-add-supplier">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Fornecedor
-                  </Button>
-                </DialogTrigger>
-              )}
+    <div className="space-y-6">
+      <PageHeader
+        title="Fornecedores"
+        description="Gerencie os fornecedores do sistema"
+      >
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setEditingSupplier(null);
+            form.reset();
+          }
+        }}>
+          {canWrite && (
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-supplier">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Fornecedor
+              </Button>
+            </DialogTrigger>
+          )}
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>
@@ -312,7 +321,14 @@ export default function SuppliersPage() {
                 </Form>
               </DialogContent>
             </Dialog>
-          </div>
+      </PageHeader>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Fornecedores</CardTitle>
+          <CardDescription>
+            Todos os fornecedores cadastrados
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -323,8 +339,12 @@ export default function SuppliersPage() {
               data-testid="input-search"
             />
 
-            {isLoading ? (
-              <p>Carregando...</p>
+            {filteredSuppliers.length === 0 ? (
+              <EmptyState
+                icon={UserCircle}
+                title="Nenhum fornecedor"
+                description="Cadastre fornecedores para usá-los em movimentações"
+              />
             ) : (
               <Table>
                 <TableHeader>

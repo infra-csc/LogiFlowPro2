@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingOrderDialog } from "@/components/loading-order-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 interface LoadingOrderWithRelations extends LoadingOrder {
   event?: Event;
@@ -39,29 +42,23 @@ export default function LoadingOrders() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando ordens...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando ordens..." />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Ordens de Carregamento</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie listas consolidadas para picking e carregamento</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Ordens de Carregamento"
+        description="Gerencie listas consolidadas para picking e carregamento"
+      >
         {canWrite && (
           <Button onClick={() => setShowDialog(true)} data-testid="button-create-loading-order">
             <Plus className="h-4 w-4 mr-2" />
             Nova Ordem
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       {!orders || orders.length === 0 ? (
         <Card>

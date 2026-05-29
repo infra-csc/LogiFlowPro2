@@ -29,6 +29,9 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 interface TripWithRelations extends Trip {
   event?: Event;
@@ -223,29 +226,23 @@ export default function Trips() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Carregando viagens...</p>
-        </div>
-      </div>
+      <PageLoading message="Carregando viagens..." />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Planejamento de Transporte</h1>
-          <p className="text-sm text-muted-foreground mt-1">Agende e gerencie a logística de veículos e rotas</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Planejamento de Transporte"
+        description="Agende e gerencie a logística de veículos e rotas"
+      >
         {canWrite && (
           <Button onClick={() => setShowDialog(true)} data-testid="button-create-trip">
             <Plus className="h-4 w-4 mr-2" />
             Planejar Viagem
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       {/* View Controls */}
       <Card>

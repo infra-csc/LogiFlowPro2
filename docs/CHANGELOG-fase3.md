@@ -192,9 +192,96 @@
 - Aplicação de `EmptyState` nas listas vazias internas (itens esperados/carregados)
 - Responsividade refinada dos cards de movimentação
 
+---
+
+## Fase 3.2.2 — Refinamento Global Complementar (2026-05-29)
+
+### Fundação global
+- **App.tsx**: wrapper `mx-auto px-6 py-6 max-w-7xl` elimina duplo padding em todas as páginas
+- Batch remoção: `p-6 space-y-6` → `space-y-6` em ~25 páginas
+
+### Telas secundárias refinadas (16 telas)
+
+| Tela | PageHeader | PageLoading | EmptyState |
+|------|:----------:|:-----------:|:----------:|
+| loading-order-details.tsx | ✅ | ✅ | ✅ |
+| request-details.tsx | ✅ | ✅ | ✅ |
+| stock-simulation.tsx | ✅ | ✅ | ✅ |
+| stock-position-simulation.tsx | ✅ | ✅ | ✅ |
+| movement-groups.tsx | ✅ | ✅ | ✅ |
+| movement-types-config.tsx | ✅ | ✅ | ✅ |
+| locations.tsx | ✅ | ✅ | ✅ |
+| product-statuses.tsx | ✅ | ✅ | ✅ |
+| product-variants.tsx | ✅ | ✅ | ✅ |
+| notification-settings.tsx | ✅ | ✅ | ✅ |
+| inventory-views.tsx | ✅ | ✅ | ✅ |
+| product-upload.tsx | ✅ | ✅ | ✅ |
+| event-upload.tsx | ✅ | ✅ | ✅ |
+| trip-upload.tsx | ✅ | ✅ | ✅ |
+| approval-detail.tsx | ✅ | ✅ | ✅ |
+| approvals.tsx | ✅ | ✅ | ✅ |
+
+### Telas principais refinadas (10 telas)
+
+| Tela | PageHeader | PageLoading | EmptyState |
+|------|:----------:|:-----------:|:----------:|
+| loading-orders.tsx | ✅ | ✅ | ✅ |
+| trips.tsx | ✅ | ✅ | ✅ |
+| vehicles.tsx | ✅ | ✅ | ✅ |
+| drivers.tsx | ✅ | ✅ | ✅ |
+| inventory.tsx | ✅ | ✅ | ✅ |
+| events.tsx | ✅ | ✅ | ✅ |
+| config.tsx | ✅ | ✅ | ✅ |
+| users.tsx | ✅ | ✅ | ✅ |
+| suppliers.tsx | ✅ | ✅ | ✅ |
+| roles.tsx | ✅ | ✅ | ✅ |
+
+### Arquivos alterados
+- `client/src/App.tsx` (padding global)
+- `client/src/pages/loading-orders.tsx`
+- `client/src/pages/trips.tsx`
+- `client/src/pages/vehicles.tsx`
+- `client/src/pages/drivers.tsx`
+- `client/src/pages/inventory.tsx`
+- `client/src/pages/events.tsx`
+- `client/src/pages/config.tsx`
+- `client/src/pages/users.tsx`
+- `client/src/pages/suppliers.tsx`
+- `client/src/pages/roles.tsx`
+- `client/src/pages/loading-order-details.tsx`
+- `client/src/pages/request-details.tsx`
+- `client/src/pages/stock-simulation.tsx`
+- `client/src/pages/stock-position-simulation.tsx`
+- `client/src/pages/movement-groups.tsx`
+- `client/src/pages/movement-types-config.tsx`
+- `client/src/pages/locations.tsx`
+- `client/src/pages/product-statuses.tsx`
+- `client/src/pages/product-variants.tsx`
+- `client/src/pages/notification-settings.tsx`
+- `client/src/pages/inventory-views.tsx`
+- `client/src/pages/product-upload.tsx`
+- `client/src/pages/event-upload.tsx`
+- `client/src/pages/trip-upload.tsx`
+- `client/src/pages/approval-detail.tsx`
+- `client/src/pages/approvals.tsx`
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando
+- Smoke visual: todas as páginas com PageHeader + padding consistente
+
+### O que NÃO foi alterado
+- Back-end, banco, seed, migrations, schema, endpoints, payloads
+- RBAC, permissions, roles, helpers de autorização
+- Chamadas de API, queries, mutations
+- Status do back-end, fluxo operacional
+- Regras de negócio
+- Formulários, dialogs, confirmações
+- Audit logs, produtos, fornecedores
+- Sidebars, navegação
+
 ### Próximas fases
-- **3.2.2** — Movimentações refinamento complementar (PageSection, DataCard, ActionBar)
-- **3.3** — Loading Orders
+- **3.3** — Loading Orders refinamento complementar
 - **3.4** — Requisições
 - **3.5** — Catálogo
 - **3.6** — Devoluções
