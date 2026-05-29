@@ -72,6 +72,19 @@ export default function Requests() {
     });
   }, [requests, statusFilter, eventFilter, user]);
 
+  // Contar filtros ativos
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter !== "all") count++;
+    if (eventFilter !== "all") count++;
+    return count;
+  }, [statusFilter, eventFilter]);
+
+  const clearFilters = () => {
+    setStatusFilter("all");
+    setEventFilter("all");
+  };
+
   if (isLoading) {
     return (
       <PageLoading message="Carregando requisições..." />
@@ -92,7 +105,7 @@ export default function Requests() {
 
       {/* Filtros */}
       {requests && requests.length > 0 && (
-        <FilterBar>
+        <FilterBar badgeCount={activeFiltersCount} onClear={activeFiltersCount > 0 ? clearFilters : undefined}>
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">Status</label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>

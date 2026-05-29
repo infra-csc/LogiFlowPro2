@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save, ClipboardList } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
@@ -248,17 +248,17 @@ export default function RequestDetails() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-muted-foreground">Carregando...</div>
-      </div>
+      <PageLoading message="Carregando requisição..." />
     );
   }
 
   if (!request) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-muted-foreground">Requisição não encontrada</div>
-      </div>
+      <EmptyState
+        icon={ClipboardList}
+        title="Requisição não encontrada"
+        description="A requisição solicitada não existe"
+      />
     );
   }
 

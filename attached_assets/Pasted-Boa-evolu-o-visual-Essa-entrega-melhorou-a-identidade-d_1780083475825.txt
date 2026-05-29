@@ -1,0 +1,176 @@
+Boa evolução visual. Essa entrega melhorou a identidade do app, principalmente em telas públicas, sidebar, dashboard, cards e componentes globais.
+
+A Fase foi aceita como primeiro Visual Polish Pass.
+
+Porém, ainda falta o principal: aplicar o conceito visual nas telas operacionais críticas do sistema.
+
+Até agora, as melhorias ficaram concentradas em:
+
+* gradientes;
+* shadows;
+* ícones em containers;
+* headers;
+* dashboard;
+* telas públicas;
+* estados vazios/loading.
+
+Isso é positivo, mas o app precisa evoluir principalmente nas telas de operação real.
+
+Próxima etapa:
+Fase 3.2.4 — Operational UX Pass nas telas críticas
+
+Objetivo:
+Refinar profundamente a UX/design das telas que o usuário realmente usa no dia a dia operacional, mantendo o conceito “Operational Command Center UI”.
+
+Prioridade máxima:
+
+1. Movimentações
+2. Loading Orders
+3. Requisições
+4. Aprovações
+5. Produtos/Kits/Fornecedores
+6. Logística
+
+Foco da próxima etapa:
+
+1. Movimentações
+   Refinar de verdade:
+
+* cards da lista;
+* hierarquia entre título, código, evento e status;
+* agrupamento dos botões;
+* uso de StatusBadge;
+* densidade visual;
+* filtros;
+* responsividade;
+* ações disponíveis por perfil;
+* empty/loading/error states.
+
+A tela deve responder rapidamente:
+
+* o que é essa movimentação?
+* qual o status?
+* qual evento/origem está relacionado?
+* qual é a próxima ação possível?
+* quem pode executar a ação?
+
+2. Loading Orders
+   Refinar:
+
+* lista de ordens;
+* status;
+* ações;
+* cards/tabelas;
+* leitura rápida de progresso;
+* organização de itens;
+* ações de logística/almoxarifado/supervisor.
+
+3. Requisições e Aprovações
+   Refinar:
+
+* fila de aprovação;
+* destaque visual de pendências;
+* status;
+* ações aprovar/rejeitar;
+* agrupamento de informações;
+* leitura de prioridade;
+* responsividade.
+
+4. Tabelas e listas
+   Criar um padrão visual melhor para:
+
+* cabeçalhos;
+* linhas;
+* hover;
+* ações;
+* badges;
+* colunas;
+* empty states;
+* mobile/tablet.
+
+5. Filtros
+   Melhorar visualmente os filtros das telas operacionais:
+
+* não parecerem uma linha vazia;
+* ter campos bem organizados;
+* botões alinhados;
+* boa responsividade;
+* aparência de ferramenta operacional real.
+
+6. Botões e ações
+   Padronizar:
+
+* ação principal;
+* ações secundárias;
+* ações destrutivas;
+* ações agrupadas;
+* botões em desktop e mobile.
+
+Evitar botões soltos, desalinhados ou repetitivos.
+
+7. Critério de aceite visual
+   Não considerar concluído apenas porque aplicou ícones, shadows ou PageHeader.
+
+A entrega será considerada concluída se as telas críticas ficarem claramente:
+
+* mais profissionais;
+* mais organizadas;
+* mais fáceis de ler;
+* mais densas sem ficarem poluídas;
+* mais consistentes;
+* mais úteis para operação real.
+
+Importante:
+Não exagerar em gradientes nas telas internas. O app deve continuar com aparência operacional/profissional, não marketing.
+
+Restrições absolutas:
+Não alterar:
+
+* back-end;
+* RBAC;
+* helpers de autorização;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* scanner;
+* regras de negócio;
+* status/transições;
+* banco;
+* schema;
+* migrations;
+* seed;
+* permissions;
+* role_permissions.
+
+Pode alterar apenas:
+
+* layout;
+* classes;
+* composição visual;
+* espaçamento;
+* cards;
+* tabelas;
+* listas;
+* filtros;
+* botões;
+* status/badges;
+* responsividade;
+* componentes visuais.
+
+Antes de implementar:
+Liste os problemas visuais encontrados nas telas críticas.
+
+Depois implemente.
+
+Entrega final esperada:
+
+* telas críticas refinadas;
+* problemas encontrados;
+* melhorias visuais aplicadas;
+* padrões operacionais criados;
+* arquivos alterados;
+* resultado do npm run check;
+* resultado do npm run build;
+* confirmação de zero alteração funcional;
+* confirmação de que RBAC, back-end, endpoints, payloads e regras de negócio ficaram intactos.

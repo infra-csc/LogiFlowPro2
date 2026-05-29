@@ -89,7 +89,13 @@ export default function Approvals() {
     });
   }, [requests, statusFilter, eventFilter, requesterFilter]);
 
-  const hasActiveFilters = statusFilter !== "all" || eventFilter !== "all" || requesterFilter !== "all";
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter !== "all") count++;
+    if (eventFilter !== "all") count++;
+    if (requesterFilter !== "all") count++;
+    return count;
+  }, [statusFilter, eventFilter, requesterFilter]);
 
   const clearFilters = () => {
     setStatusFilter("all");
@@ -121,7 +127,7 @@ export default function Approvals() {
       />
 
       {/* Filters */}
-      <FilterBar badgeCount={hasActiveFilters ? 1 : 0} onClear={hasActiveFilters ? clearFilters : undefined}>
+      <FilterBar badgeCount={activeFiltersCount} onClear={activeFiltersCount > 0 ? clearFilters : undefined}>
         <div className="space-y-1.5">
           <label className="text-xs text-muted-foreground">Status</label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>

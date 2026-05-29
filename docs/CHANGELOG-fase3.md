@@ -350,6 +350,43 @@ Padrão aplicado: `<h3 className="font-semibold text-base text-foreground">` em 
 - Status do back-end, fluxo operacional
 - Regras de negócio
 
+---
+
+## Fase 3.2.4 — Refinamento de Telas Operacionais (2026-05-29)
+
+### Resumo
+Passo operacional de refinamento visual em telas críticas de movimentações, requisições e aprovações. Sem alteração de back-end, RBAC, endpoints ou regras de negócio.
+
+### request-details.tsx
+- **Loading state**: `PageLoading` (substituiu `flex items-center justify-center h-full` com texto simples)
+- **Empty state**: `EmptyState` com ícone `ClipboardList` (substituiu texto simples)
+- **Import**: `ClipboardList` adicionado ao `lucide-react`
+
+### requests.tsx
+- **FilterBar**: `badgeCount` + `onClear` corretamente calculados via `activeFiltersCount` (conta filtros ativos individualmente — status + evento)
+- **Lógica de filtros**: `useMemo` para `activeFiltersCount` + `clearFilters` (zera ambos os filtros para `"all"`)
+
+### approvals.tsx
+- **FilterBar**: `badgeCount` corrigido de `hasActiveFilters ? 1 : 0` (boolean) para `activeFiltersCount` (contador real de 0–3)
+- **Lógica de filtros**: `activeFiltersCount` via `useMemo` contando status + evento + requester
+
+### Arquivos alterados
+- `client/src/pages/request-details.tsx`
+- `client/src/pages/requests.tsx`
+- `client/src/pages/approvals.tsx`
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (272.4kb)
+- Zero alteração de back-end, RBAC, endpoints, queries, mutations
+
+### O que NÃO foi alterado
+- Back-end, banco, seed, migrations, schema, endpoints, payloads
+- RBAC, permissions, roles, helpers de autorização
+- Chamadas de API, queries, mutations
+- Status do back-end, fluxo operacional
+- Regras de negócio
+
 ### Próximas fases
 - **3.3** — Loading Orders refinamento complementar
 - **3.4** — Requisições
