@@ -117,7 +117,7 @@ function AppLayout() {
   const [location] = useLocation();
   const publicRoute = isPublicRoute(location);
   const style = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   };
 
@@ -135,8 +135,8 @@ function AppLayout() {
               <NotificationBell />
             </header>
           )}
-          <main className="flex-1 overflow-y-auto bg-background">
-            <div className="container mx-auto px-6 py-6 max-w-7xl">
+          <main className="flex-1 overflow-y-auto bg-[#051424]">
+            <div className="p-8">
               <Router />
             </div>
           </main>

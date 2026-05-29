@@ -14,38 +14,52 @@ Criar um sidebar de navegação lateral esquerda para um sistema de gestão log�
 - **Alta densidade** — informação compacta para operações de logística
 - **Contraste controlado** — fundo escuro, texto claro, primário Azure brilhante
 
-### Cores do Sidebar
+### Cores do Sidebar (Tokens Material Design)
 | Token | Valor | Uso |
 |-------|-------|-----|
-| Fundo | `#050f1f` (hsl 210 71% 5%) | Cor de fundo do painel lateral |
-| Texto | `#d5e4fa` (hsl 213 67% 91%) | Texto de itens de menu |
-| Borda | `#1e293b` (hsl 210 20% 18%) | Divisores entre grupos e header/footer |
-| Primário | `#00a3ff` (hsl 206 100% 50%) | Ícone ativo, logo, hover ring |
-| Acento | `#1d2b3c` (hsl 210 30% 18%) | Fundo de item selecionado/ativo |
-| Texto secundário | `#88919d` (hsl 210 10% 55%) | Labels de grupo, footer muted |
-| Primário 20% | `#00a3ff` com 20% opacidade | Fundo do ícone da logo |
+| Fundo | `#0e1c2d` (surface-container-low) | Cor de fundo do painel lateral |
+| Texto | `#d5e4fa` (on-surface) | Texto de itens de menu |
+| Texto secundário | `#bec7d4` (on-surface-variant) | Labels de grupo, itens inativos |
+| Borda | `#1e293b` (surface-border) | Divisores entre grupos e header/footer |
+| Primário | `#00a3ff` (primary-container) | Fundo do ícone da logo, hover ring |
+| On Primário | `#00375a` (on-primary-container) | Cor do ícone dentro do logo |
+| Container Secundário | `#314863` (secondary-container) | Fundo de item ativo/selecionado |
+| On Container Secundário | `#9fb7d6` (on-secondary-container) | Texto de item ativo |
+| Surface Variant | `#283647` (surface-variant) | Hover de itens inativos |
+| Outline | `#88919d` (outline) | Labels de grupo, footer muted |
+| Fundo Footer | `#010f1f` (surface-container-lowest) com 50% opacidade | Fundo do footer |
+| Erro | `#ef4444` (status-error) | Hover do botão logout |
 
 ### Tipografia
 - **Fonte**: Inter, sans-serif
-- **Logo título**: 14px, font-weight 600 (semibold)
-- **Logo subtítulo**: 11px, font-weight 400, opacidade 60%
-- **Label de grupo**: 11px, font-weight 500, uppercase, letter-spacing 0.05em, opacidade 60%
-- **Item de menu**: 14px, font-weight 400
-- **Item ativo**: 14px, font-weight 500
-- **Footer nome**: 14px, font-weight 500
-- **Footer email**: 12px, font-weight 400, opacidade 60%
+- **Logo título**: 20px, font-weight 600 (semibold), cor `#98cbff` (primary)
+- **Logo subtítulo**: 12px, font-weight 500, cor `#bec7d4` (on-surface-variant)
+- **Label de grupo**: 12px, font-weight 500, uppercase, letter-spacing 0.05em, cor `#88919d` (outline)
+- **Item de menu**: 14px, font-weight 400, cor `#d5e4fa` (on-surface)
+- **Item inativo**: 14px, font-weight 400, cor `#bec7d4` (on-surface-variant)
+- **Item ativo**: 14px, font-weight 600 (semibold), cor `#9fb7d6` (on-secondary-container)
+- **Footer nome**: 14px, font-weight 600, cor `#d5e4fa` (on-surface)
+- **Footer email**: 12px, font-weight 500, cor `#88919d` (outline)
 
 ### Dimensões
-- **Largura expandido**: 256px (16rem)
+- **Largura expandido**: 288px (18rem / w-72)
 - **Largura colapsado (rail)**: 48px (3rem)
 - **Padding lateral**: 16px (1rem)
-- **Padding vertical entre grupos**: 16px
-- **Gap entre itens**: 2px (mínimo, itens quase encostados)
-- **Altura do header**: ~72px (com logo, título, subtítulo)
-- **Altura do item de menu**: 36px (h-9)
-- **Altura do subitem**: 32px (h-8)
+- **Padding vertical do header**: 24px (py-6)
+- **Padding vertical do footer**: 16px (p-4)
+- **Gap entre grupos**: 24px (space-y-6)
+- **Gap entre itens**: 4px (space-y-1)
+- **Altura do item de menu**: ~40px (py-2.5)
+- **Padding interno do item**: px-3 py-2.5
+- **Gap entre ícone e texto**: 12px (gap-3)
 - **Raio de borda dos itens**: 8px (rounded-lg)
 - **Raio de borda da logo**: 8px (rounded-lg)
+- **Raio de borda do avatar**: 8px (rounded-lg)
+- **Indentação de submenu**: 36px (pl-9)
+
+### Sombras
+- **Logo**: `shadow-lg shadow-primary-container/20` (glow sutil Azure)
+- **Footer**: `bg-surface-container-lowest/50` (transparência para sobreposição)
 
 ---
 
@@ -58,58 +72,57 @@ Criar um sidebar de navegação lateral esquerda para um sistema de gestão log�
   Logo (ícone) + "EventFlow" + "Logistics Manager"
   ────────────────────────────────────
 
-[ GRUPO: OPERAÇÕES ]
-  Dashboard
-  Requisição de Materiais
-  Ordens de Carregamento
-  Movimentações
-  Devoluções
-  ▼ Estoque
-      ├── Posição de Estoque
-      └── Visões de Estoque
-  ▼ Aprovações
-      ├── Requisições
-      └── Movimentações*  ← oculto para não-admin
-  ▼ Viagens
-      ├── Listagem
-      └── Upload em Lote
+[ NAV - área scrollável ]
 
-[ GRUPO: CATÁLOGO ]
-  ▼ Eventos
-      ├── Listagem
-      └── Upload em Lote
-  Kits & BOM
-  ▼ Produtos
-      ├── Listagem
-      ├── Variantes
-      ├── Fornecedores
-      └── Upload em Lote*  ← admin-only
+  [ GRUPO: OPERAÇÕES ]
+    Dashboard
+    Requisição de Materiais
+    Ordens de Carregamento
+    Movimentações
+    Devoluções
+    ▼ Estoque
+        ├── Posição de Estoque
+        └── Visões de Estoque
+    ▼ Aprovações
+        ├── Requisições
+        └── Movimentações*  ← oculto para não-admin
+    ▼ Viagens
+        ├── Listagem
+        └── Upload em Lote
 
-[ GRUPO: RELATÓRIOS ]
-  Simulação de Estoque
-  Posição de Estoque por Período
+  [ GRUPO: CATÁLOGO ]
+    ▼ Eventos
+        ├── Listagem
+        └── Upload em Lote
+    Kits & BOM
+    ▼ Produtos
+        ├── Listagem
+        ├── Variantes
+        ├── Fornecedores
+        └── Upload em Lote*  ← admin-only
 
-[ GRUPO: CONFIGURAÇÃO ]
-  ▼ Configuração
-      ├── Notificações
-      ├── Usuários*         ← admin-only
-      ├── Papéis e Permissões* ← admin-only
-      ├── Tipos de Veículos* ← admin-only
-      ├── Veículos
-      ├── Motoristas
-      ├── Docas
-      ├── Status de Produtos* ← admin-only
-      └── Localizações*     ← admin-only
-  ▼ Tipos de Movimentação*  ← admin-only (grupo inteiro)
-      ├── Grupos de Movimentação
-      └── Tipos de Movimentação
+  [ GRUPO: RELATÓRIOS ]
+    Simulação de Estoque
+    Posição de Estoque por Período
 
-  ────────────────────────────────────
+  [ GRUPO: CONFIGURAÇÃO ]
+    ▼ Configuração
+        ├── Notificações
+        ├── Usuários*         ← admin-only
+        ├── Papéis e Permissões* ← admin-only
+        ├── Tipos de Veículos* ← admin-only
+        ├── Veículos
+        ├── Motoristas
+        ├── Docas
+        ├── Status de Produtos* ← admin-only
+        └── Localizações*     ← admin-only
+    ▼ Tipos de Movimentação*  ← admin-only (grupo inteiro)
+        ├── Grupos de Movimentação
+        └── Tipos de Movimentação
 
 [ FOOTER ]
-  Nome do Usuário
-  email@usuario.com
-  [ ◀ Sair ]
+  ────────────────────────────────────
+  [ Avatar + Nome + Email + Ícone Logout ]
 ```
 
 ---
@@ -118,133 +131,182 @@ Criar um sidebar de navegação lateral esquerda para um sistema de gestão log�
 
 ### 3.1 Header
 ```
-<Container com px-4 py-5 border-b border-sidebar-border>
-  <Flex row gap-3>
-    <div h-9 w-9 rounded-lg bg-sidebar-primary/20 
-         flex items-center justify-center>
-      <Package h-5 w-5 text-sidebar-primary />
-    </div>
-    <div>
-      <h1 text-sm font-semibold text-sidebar-foreground leading-tight>
-        EventFlow
-      </h1>
-      <p text-[11px] text-sidebar-foreground/60 leading-tight>
-        Logistics Manager
-      </p>
-    </div>
-  </Flex>
+<Container com px-6 py-6 flex items-center gap-3 shrink-0>
+  <div 
+    h-10 w-10 
+    rounded-lg 
+    bg-primary-container 
+    flex items-center justify-center
+    shadow-lg shadow-primary-container/20
+  >
+    <Package h-5 w-5 text-on-primary-container />
+  </div>
+  <div overflow-hidden whitespace-nowrap>
+    <h1 
+      font-headline-md 
+      text-headline-md 
+      text-primary 
+      leading-none
+    >
+      EventFlow
+    </h1>
+    <p 
+      font-label-sm 
+      text-label-sm 
+      text-on-surface-variant 
+      mt-1
+    >
+      Logistics Manager
+    </p>
+  </div>
 </Container>
 ```
 
 ### 3.2 Grupo de Menu
 ```
-<SidebarGroup>
-  <SidebarGroupLabel>
-    "OPERAÇÕES"  ← uppercase, 11px, font-medium, opacity 60%
-  </SidebarGroupLabel>
-  <SidebarGroupContent>
-    <SidebarMenu>
-      {/* itens aqui */}
-    </SidebarMenu>
-  </SidebarGroupContent>
-</SidebarGroup>
+<Container com space-y-1>
+  <Label 
+    px-2 pb-2 
+    font-label-sm 
+    text-label-sm 
+    text-outline 
+    uppercase 
+    tracking-wider
+  >
+    "OPERAÇÕES"
+  </Label>
+  {/* itens aqui */}
+</Container>
 ```
 
 ### 3.3 Item Simples (não-colapsável)
+
+**Inativo**:
 ```
-<SidebarMenuItem>
-  <SidebarMenuButton
-    asChild
-    isActive={rotaAtual === url}
-    data-testid="link-{slug}"
+<Link href={url}>
+  <div 
+    flex items-center gap-3 
+    px-3 py-2.5 
+    rounded-lg 
+    text-on-surface-variant 
+    hover:bg-surface-variant/30 
+    transition-all
   >
-    <Link href={url}>
-      <Icon h-4 w-4 />
-      <span>{título}</span>
-    </Link>
-  </SidebarMenuButton>
-</SidebarMenuItem>
+    <Icon className="h-4 w-4" />
+    <span className="font-body-sm text-body-sm">{título}</span>
+  </div>
+</Link>
 ```
 
-**Visual quando ativo**: fundo `sidebar-accent` (#1d2b3c), texto `sidebar-foreground` claro, sem ícone de bolinha — o destaque é sutil.
-
-**Visual quando inativo**: fundo transparente, texto `sidebar-foreground`.
-
-**Hover**: elevação sutil de brilho (não mudar cor de fundo explicitamente — o componente já lida com isso).
+**Ativo**:
+```
+<Link href={url}>
+  <div 
+    flex items-center gap-3 
+    px-3 py-2.5 
+    rounded-lg 
+    bg-secondary-container 
+    text-on-secondary-container 
+    font-semibold 
+    scale-[0.98]
+    transition-all
+  >
+    <Icon className="h-4 w-4" />
+    <span className="font-body-sm text-body-sm">{título}</span>
+  </div>
+</Link>
+```
 
 ### 3.4 Submenu Colapsável
+
+**Botão Pai**:
 ```
-<Collapsible defaultOpen className="group/collapsible">
-  <SidebarMenuItem>
-    <CollapsibleTrigger asChild>
-      <SidebarMenuButton data-testid="button-{slug}-menu">
-        <Icon h-4 w-4 />
-        <span>{título}</span>
-        <ChevronDown
-          ml-auto
-          h-4 w-4
-          transition-transform
-          group-data-[state=open]/collapsible:rotate-180
-        />
-      </SidebarMenuButton>
-    </CollapsibleTrigger>
-    <CollapsibleContent>
-      <SidebarMenuSub>
-        <SidebarMenuSubItem>
-          <SidebarMenuSubButton
-            asChild
-            isActive={rotaAtual === url}
-            data-testid="link-{slug}"
-          >
-            <Link href={url}>
-              <Icon h-4 w-4 />
-              <span>{título}</span>
-            </Link>
-          </SidebarMenuSubButton>
-        </SidebarMenuSubItem>
-      </SidebarMenuSub>
-    </CollapsibleContent>
-  </SidebarMenuItem>
-</Collapsible>
+<button 
+  w-full 
+  flex items-center justify-between gap-3 
+  px-3 py-2.5 
+  rounded-lg 
+  text-on-surface-variant 
+  hover:bg-surface-variant/30 
+  transition-all
+  onclick={toggleSubmenu}
+>
+  <div flex items-center gap-3>
+    <Icon className="h-4 w-4" />
+    <span className="font-body-sm text-body-sm">{título}</span>
+  </div>
+  <ChevronDown 
+    className="h-4 w-4 transition-transform duration-200"
+    data-state={isOpen ? "open" : "closed"}
+    style={isOpen ? { transform: "rotate(180deg)" } : {}}
+  />
+</button>
 ```
 
-**Comportamento**: 
-- Clique no botão pai (com ícone + título + seta) expande/colapsa
-- Seta gira 180° ao abrir
-- Padrão: aberto (`defaultOpen={true}`)
-- Subitens têm indentação visual (padding-left maior, ícone menor)
+**Subitems**:
+```
+<div 
+  className={isOpen ? "max-h-[500px]" : "max-h-0"}
+  style={{ 
+    overflow: "hidden", 
+    transition: "max-height 0.3s ease-out" 
+  }}
+>
+  <div className="pl-9 space-y-1">
+    <Link href={url}>
+      <div className="block py-2 text-on-surface-variant hover:text-primary transition-colors font-body-sm text-body-sm">
+        {título}
+      </div>
+    </Link>
+  </div>
+</div>
+```
 
 ### 3.5 Footer
 ```
-<SidebarFooter>
-  <Container p-4 border-t border-sidebar-border space-y-2>
-    <div text-sm>
-      <p font-medium text-sidebar-foreground>
-        {user.name}
-      </p>
-      <p text-xs text-muted-foreground>
-        {user.email}
-      </p>
+<Container 
+  p-4 
+  border-t border-surface-border 
+  bg-surface-container-lowest/50 
+  shrink-0
+>
+  <div 
+    flex items-center justify-between gap-3 
+    p-2 
+    rounded-xl 
+    hover:bg-surface-variant/30 
+    transition-colors 
+    cursor-pointer
+  >
+    <div flex items-center gap-3 overflow-hidden>
+      <Avatar 
+        h-9 w-9 
+        rounded-lg 
+        object-cover 
+        ring-2 ring-surface-border 
+      />
+      <div overflow-hidden>
+        <p className="font-label-md text-label-md text-on-surface truncate">
+          {user.name}
+        </p>
+        <p className="font-label-sm text-label-sm text-outline truncate">
+          {user.email}
+        </p>
+      </div>
     </div>
-    <Button
-      variant="outline"
-      size="sm"
-      className="w-full justify-start"
+    <LogOut 
+      className="text-outline hover:text-status-error transition-colors"
       onClick={logout}
-      data-testid="button-logout"
-    >
-      <LogOut className="mr-2 h-4 w-4" />
-      Sair
-    </Button>
-  </Container>
-</SidebarFooter>
+    />
+  </div>
+</Container>
 ```
 
 ---
 
 ## 4. Ícones (Lucide React)
 
-Cada item/subitem tem um ícone à esquerda. Não usar emojis. Ícones devem ser `h-4 w-4` (16px) para itens principais e `h-4 w-4` para subitens.
+Não usar emojis. Ícones devem ser `h-4 w-4` (16px) para itens principais e subitens.
 
 | Item | Ícone |
 |------|-------|
@@ -320,24 +382,31 @@ const visibleConfigItems = configItems.filter(
 
 ### 6.2 Estado Ativo
 - Item ativo: `isActive={location === item.url}`
-- Destaque visual: fundo `sidebar-accent` (#1d2b3c), texto claro
+- Destaque visual: fundo `bg-secondary-container` (#314863), texto `text-on-secondary-container` (#9fb7d6), font-semibold, scale-[0.98]
 - Subitens também marcam `isActive` individualmente
 - Se um subitem estiver ativo, o pai não precisa estar ativo (apenas o subitem)
+- Item inativo: texto `text-on-surface-variant` (#bec7d4), hover `hover:bg-surface-variant/30`
 
 ### 6.3 Colapso/Expansão
 - **Submenus**: colapsáveis individualmente via clique no botão pai
-- **Sidebar inteiro**: colapsa para **rail** (apenas ícones) em telas pequenas
-- **Trigger**: `SidebarTrigger` no header da página principal (botão hamburguer)
+- **Seta**: gira 180° ao abrir (transition-transform duration-200)
 - **Padrão**: todos os submenus começam **abertos** (`defaultOpen={true}`)
+- **Animação**: max-height 0 → 500px com transition 0.3s ease-out
 
 ### 6.4 Scroll
 - Sidebar deve scrollar verticalmente se o conteúdo exceder a altura da viewport
 - Header fica fixo no topo
 - Footer fica fixo no bottom
 - Conteúdo do meio scrolla entre header e footer
+- **Scrollbar customizada**:
+  - Largura: 4px
+  - Track: transparente
+  - Thumb: `#1e293b` (surface-border) com border-radius 10px
 
 ### 6.5 Hover
-- Itens de menu têm hover sutil (elevação de brilho) via sistema interno do Shadcn
+- Itens inativos: `hover:bg-surface-variant/30` (sutil)
+- Footer: `hover:bg-surface-variant/30` no container do usuário
+- Botão logout: `hover:text-status-error` (vermelho)
 - **NÃO** aplicar `hover:bg-*` ou `hover-elevate` manualmente em `SidebarMenuButton`
 
 ---
@@ -346,7 +415,7 @@ const visibleConfigItems = configItems.filter(
 
 | Breakpoint | Comportamento |
 |------------|---------------|
-| Desktop (>1024px) | Sidebar expandido (256px), ícones + texto visíveis |
+| Desktop (>1024px) | Sidebar expandido (288px), ícones + texto visíveis |
 | Tablet (<1024px) | Sidebar colapsa para **rail** (48px), apenas ícones visíveis |
 | Mobile (<768px) | Sidebar oculto, abre via `SidebarTrigger` (overlay/sheet) |
 
@@ -354,8 +423,8 @@ const visibleConfigItems = configItems.filter(
 ```tsx
 <SidebarProvider
   style={{
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "3rem",
+    "--sidebar-width": "18rem",     // 288px
+    "--sidebar-width-icon": "3rem",   // 48px
   } as React.CSSProperties}
 >
 ```
@@ -383,43 +452,49 @@ export function AppSidebar() {
   );
 
   return (
-    <Sidebar>
-      <SidebarContent>
-        {/* Header */}
-        <div className="px-4 py-5 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-sidebar-primary/20 flex items-center justify-center">
-              <Package className="h-5 w-5 text-sidebar-primary" />
-            </div>
-            <div>
-              <h1 className="text-sm font-semibold text-sidebar-foreground leading-tight">
-                EventFlow
-              </h1>
-              <p className="text-[11px] text-sidebar-foreground/60 leading-tight">
-                Logistics Manager
-              </p>
-            </div>
-          </div>
+    <aside 
+      className="bg-surface-container-low border-r border-surface-border w-72 flex flex-col shrink-0 transition-all duration-300 z-50"
+    >
+      {/* Header */}
+      <div className="px-6 py-6 flex items-center gap-3 shrink-0">
+        <div className="h-10 w-10 bg-primary-container rounded-lg flex items-center justify-center shadow-lg shadow-primary-container/20">
+          <Package className="h-5 w-5 text-on-primary-container" />
         </div>
+        <div className="overflow-hidden whitespace-nowrap">
+          <h1 className="font-headline-md text-headline-md text-primary leading-none">
+            EventFlow
+          </h1>
+          <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">
+            Logistics Manager
+          </p>
+        </div>
+      </div>
 
+      {/* Navigation - scrollable */}
+      <nav className="flex-1 overflow-y-auto sidebar-scroll px-4 space-y-6 pb-6">
         {/* Grupos */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Operações</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {/* Itens simples + submenus colapsáveis */}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      </nav>
 
-        {/* ...mais grupos... */}
-      </SidebarContent>
-
-      <SidebarFooter>
-        {/* Footer com usuário e botão Sair */}
-      </SidebarFooter>
-    </Sidebar>
+      {/* Footer */}
+      <div className="p-4 border-t border-surface-border bg-surface-container-lowest/50 shrink-0">
+        {/* Usuário + logout */}
+      </div>
+    </aside>
   );
+}
+```
+
+### CSS da Scrollbar
+```css
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 10px;
 }
 ```
 
@@ -427,19 +502,26 @@ export function AppSidebar() {
 ```tsx
 <SidebarProvider
   style={{
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   } as React.CSSProperties}
 >
   <div className="flex h-screen w-full">
     <AppSidebar />
     <div className="flex flex-col flex-1">
-      <header className="flex items-center justify-between p-2 border-b">
-        <SidebarTrigger data-testid="button-sidebar-toggle" />
-        <NotificationBell />
+      <header className="h-16 flex items-center justify-between px-8 border-b border-surface-border bg-surface-container shadow-sm shrink-0">
+        <div className="flex items-center gap-6">
+          <SidebarTrigger 
+            className="p-2 -ml-2 rounded-lg hover:bg-surface-variant/50 transition-colors text-on-surface-variant active:scale-95"
+          />
+          <h2 className="font-headline-md text-headline-md text-primary">
+            Dashboard Overview
+          </h2>
+        </div>
+        {/* resto do header */}
       </header>
-      <main className="flex-1 overflow-hidden">
-        <Router />
+      <main className="flex-1 overflow-y-auto p-8 space-y-8 bg-background">
+        {/* conteúdo */}
       </main>
     </div>
   </div>
@@ -460,6 +542,8 @@ export function AppSidebar() {
 8. **NUNCA** aninhe um `<Button>` dentro de outro `<Button>`
 9. **SEMPRE** use `w-full` no filho imediato de `SidebarProvider`
 10. **NUNCA** use `text-primary` para texto (apenas para branding especial)
+11. **SEMPRE** use `shrink-0` no header e footer para evitar compressão
+12. **SEMPRE** use `overflow-hidden` no container de texto do logo para ellipsis
 
 ---
 
@@ -467,13 +551,18 @@ export function AppSidebar() {
 
 - [ ] 4 grupos com labels corretos (Operações, Catálogo, Relatórios, Configuração)
 - [ ] Header com logo (Package) + "EventFlow" + "Logistics Manager"
-- [ ] Footer com nome + email + botão Sair
-- [ ] 5 submenus colapsáveis (Estoque, Aprovações, Viagens, Eventos, Produtos, Configuração, Tipos de Movimentação)
-- [ ] Seta ChevronDown gira 180° ao abrir
+- [ ] Fundo do header: transparente (mesmo que sidebar)
+- [ ] Footer com avatar + nome + email + ícone Logout
+- [ ] Fundo do footer: `bg-surface-container-lowest/50`
+- [ ] 7 submenus colapsáveis (Estoque, Aprovações, Viagens, Eventos, Produtos, Configuração, Tipos de Movimentação)
+- [ ] Seta ChevronDown gira 180° ao abrir com transition 200ms
+- [ ] Animação de submenu: max-height 0 → 500px, 0.3s ease-out
 - [ ] Itens admin-only filtrados
 - [ ] "Movimentações" em Aprovações oculto para não-Admin/Supervisor
 - [ ] "Tipos de Movimentação" visível apenas para Admin
-- [ ] Item ativo com destaque visual (fundo sidebar-accent)
+- [ ] Item ativo com destaque visual (bg-secondary-container, text-on-secondary-container, font-semibold, scale-[0.98])
+- [ ] Item inativo com hover (hover:bg-surface-variant/30)
+- [ ] Scrollbar customizada (4px, thumb #1e293b)
 - [ ] data-testid em todos os links interativos
 - [ ] npm run check passando
 - [ ] npm run build passando

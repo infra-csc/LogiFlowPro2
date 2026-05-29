@@ -1,10 +1,10 @@
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Package, 
-  Boxes, 
-  ClipboardList, 
-  Truck, 
+import {
+  LayoutDashboard,
+  Calendar,
+  Package,
+  Boxes,
+  ClipboardList,
+  Truck,
   FileStack,
   RotateCcw,
   Settings,
@@ -20,7 +20,8 @@ import {
   Upload,
   Bell,
   BarChart3,
-  Link2 as LinkIcon
+  Link2 as LinkIcon,
+  User,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -44,7 +45,6 @@ import {
 } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/use-auth";
 import { userIsAdmin, userCanViewMovementApprovalQueue } from "@/lib/authz";
-import { Button } from "@/components/ui/button";
 
 const approvalItems = [
   {
@@ -251,338 +251,268 @@ const configItems: ConfigItem[] = [
   },
 ];
 
+function MenuItem({
+  item,
+  location,
+  dataTestId,
+}: {
+  item: { title: string; url: string; icon: typeof Package };
+  location: string;
+  dataTestId?: string;
+}) {
+  const isActive = location === item.url;
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={isActive} data-testid={dataTestId}>
+        <Link href={item.url}>
+          <item.icon className="h-4 w-4" />
+          <span>{item.title}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function CollapsibleMenu({
+  title,
+  icon: Icon,
+  items,
+  location,
+  dataTestId,
+  filterFn,
+}: {
+  title: string;
+  icon: typeof Package;
+  items: { title: string; url: string; icon: typeof Package }[];
+  location: string;
+  dataTestId?: string;
+  filterFn?: (item: { title: string }) => boolean;
+}) {
+  const filteredItems = filterFn ? items.filter(filterFn) : items;
+
+  return (
+    <Collapsible defaultOpen className="group/collapsible">
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton data-testid={dataTestId}>
+            <Icon className="h-4 w-4" />
+            <span>{title}</span>
+            <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub>
+            {filteredItems.map((item) => (
+              <SidebarMenuSubItem key={item.title}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={location === item.url}
+                  data-testid={`link-${item.title.toLowerCase().replace(/\s/g, "-")}`}
+                >
+                  <Link href={item.url}>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
+
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const isAdmin = userIsAdmin(user);
-  const visibleConfigItems = configItems.filter((item) => !item.adminOnly || isAdmin);
+  const visibleConfigItems = configItems.filter(
+    (item) => !item.adminOnly || isAdmin,
+  );
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
   return (
-    <Sidebar>
-      <SidebarContent>
-        <div className="px-4 py-5 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-sidebar-primary/20 flex items-center justify-center">
-              <Package className="h-5 w-5 text-sidebar-primary" />
-            </div>
-            <div>
-              <h1 className="text-sm font-semibold text-sidebar-foreground leading-tight">EventFlow</h1>
-              <p className="text-[11px] text-sidebar-foreground/60 leading-tight">Logistics Manager</p>
-            </div>
+    <Sidebar className="border-r border-[#1e293b] bg-[#0e1c2d]">
+      <SidebarContent className="sidebar-scroll">
+        {/* Header */}
+        <div className="px-6 py-6 flex items-center gap-3 shrink-0">
+          <div className="h-10 w-10 rounded-lg bg-[#00a3ff] flex items-center justify-center shadow-lg shadow-[#00a3ff]/20">
+            <Package className="h-5 w-5 text-[#00375a]" />
+          </div>
+          <div className="overflow-hidden whitespace-nowrap">
+            <h1 className="text-[20px] font-semibold text-[#98cbff] leading-none">
+              EventFlow
+            </h1>
+            <p className="text-[12px] font-medium text-[#bec7d4] mt-1">
+              Logistics Manager
+            </p>
           </div>
         </div>
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>Operações</SidebarGroupLabel>
-          <SidebarGroupContent>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-4 space-y-6 pb-6">
+          {/* Operações */}
+          <div className="space-y-1">
+            <p className="px-2 pb-2 text-[12px] font-medium text-[#88919d] uppercase tracking-[0.05em]">
+              Operações
+            </p>
             <SidebarMenu>
               {mainMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <MenuItem
+                  key={item.title}
+                  item={item}
+                  location={location}
+                  dataTestId={`link-${item.title.toLowerCase().replace(/\s/g, "-")}`}
+                />
               ))}
-              
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton data-testid="button-inventory-menu">
-                      <Warehouse className="h-4 w-4" />
-                      <span>Estoque</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {inventoryItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={location === item.url}
-                            data-testid={`link-inventory-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <Link href={item.url}>
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-              
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton data-testid="button-approvals-menu">
-                      <CheckSquare className="h-4 w-4" />
-                      <span>Aprovações</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {approvalItems.map((item) => {
-                        // Gate "Movimentações" link in approvals menu to Admin/Supervisor
-                        if (item.title === "Movimentações" && !userCanViewMovementApprovalQueue(user)) {
-                          return null;
-                        }
-                        return (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={location === item.url}
-                              data-testid={`link-approvals-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                            >
-                              <Link href={item.url}>
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        );
-                      })}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-              
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton data-testid="button-trips-menu">
-                      <Truck className="h-4 w-4" />
-                      <span>Viagens</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {tripItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={location === item.url}
-                            data-testid={`link-trips-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <Link href={item.url}>
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Catálogo</SidebarGroupLabel>
-          <SidebarGroupContent>
+              <CollapsibleMenu
+                title="Estoque"
+                icon={Warehouse}
+                items={inventoryItems}
+                location={location}
+                dataTestId="button-inventory-menu"
+              />
+
+              <CollapsibleMenu
+                title="Aprovações"
+                icon={CheckSquare}
+                items={approvalItems}
+                location={location}
+                dataTestId="button-approvals-menu"
+                filterFn={(item) =>
+                  item.title !== "Movimentações" ||
+                  userCanViewMovementApprovalQueue(user)
+                }
+              />
+
+              <CollapsibleMenu
+                title="Viagens"
+                icon={Truck}
+                items={tripItems}
+                location={location}
+                dataTestId="button-trips-menu"
+              />
+            </SidebarMenu>
+          </div>
+
+          {/* Catálogo */}
+          <div className="space-y-1">
+            <p className="px-2 pb-2 text-[12px] font-medium text-[#88919d] uppercase tracking-[0.05em]">
+              Catálogo
+            </p>
             <SidebarMenu>
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton data-testid="button-events-menu">
-                      <Calendar className="h-4 w-4" />
-                      <span>Eventos</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {eventItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={location === item.url}
-                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <Link href={item.url}>
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-              
-              {catalogItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton data-testid="button-products-menu">
-                      <Package className="h-4 w-4" />
-                      <span>Produtos</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {productItems.filter((item) => !item.adminOnly || isAdmin).map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton 
-                            href={item.url}
-                            isActive={location === item.url}
-                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <item.icon className="h-4 w-4" />
-                            <span>{item.title}</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              <CollapsibleMenu
+                title="Eventos"
+                icon={Calendar}
+                items={eventItems}
+                location={location}
+                dataTestId="button-events-menu"
+              />
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Relatórios</SidebarGroupLabel>
-          <SidebarGroupContent>
+              {catalogItems.map((item) => (
+                <MenuItem
+                  key={item.title}
+                  item={item}
+                  location={location}
+                  dataTestId={`link-${item.title.toLowerCase().replace(/\s/g, "-")}`}
+                />
+              ))}
+
+              <CollapsibleMenu
+                title="Produtos"
+                icon={Package}
+                items={productItems.filter(
+                  (item) => !item.adminOnly || isAdmin,
+                )}
+                location={location}
+                dataTestId="button-products-menu"
+              />
+            </SidebarMenu>
+          </div>
+
+          {/* Relatórios */}
+          <div className="space-y-1">
+            <p className="px-2 pb-2 text-[12px] font-medium text-[#88919d] uppercase tracking-[0.05em]">
+              Relatórios
+            </p>
             <SidebarMenu>
               {reportItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <MenuItem
+                  key={item.title}
+                  item={item}
+                  location={location}
+                  dataTestId={`link-${item.title.toLowerCase().replace(/\s/g, "-")}`}
+                />
               ))}
             </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+          </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Configuração</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton data-testid="button-config-menu">
-                      <Settings className="h-4 w-4" />
-                      <span>Configuração</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {visibleConfigItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={location === item.url}
-                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <Link href={item.url}>
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-              
+          {/* Configuração */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between px-2 pb-2">
+              <p className="text-[12px] font-medium text-[#88919d] uppercase tracking-[0.05em]">
+                Configuração
+              </p>
               {isAdmin && (
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton data-testid="button-movement-types-menu">
-                      <FileStack className="h-4 w-4" />
-                      <span>Tipos de Movimentação</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {movementTypeItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={location === item.url}
-                            data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <Link href={item.url}>
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#00a3ff]/10 text-[#00a3ff] border border-[#00a3ff]/20">
+                  ADMIN
+                </span>
+              )}
+            </div>
+            <SidebarMenu>
+              <CollapsibleMenu
+                title="Configuração"
+                icon={Settings}
+                items={visibleConfigItems}
+                location={location}
+                dataTestId="button-config-menu"
+              />
+
+              {isAdmin && (
+                <CollapsibleMenu
+                  title="Tipos de Movimentação"
+                  icon={FileStack}
+                  items={movementTypeItems}
+                  location={location}
+                  dataTestId="button-movement-types-menu"
+                />
               )}
             </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+          </div>
+        </nav>
       </SidebarContent>
 
+      {/* Footer */}
       <SidebarFooter>
         {user && (
-          <div className="p-4 border-t border-sidebar-border space-y-2">
-            <div className="text-sm">
-              <p className="font-medium text-sidebar-foreground">{user.name}</p>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
+          <div className="p-4 border-t border-[#1e293b] bg-[#010f1f]/50 shrink-0">
+            <div className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-[#283647]/30 transition-colors group cursor-pointer">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="h-9 w-9 rounded-lg bg-[#1d2b3c] flex items-center justify-center ring-2 ring-[#1e293b]">
+                  <User className="h-4 w-4 text-[#88919d]" />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-[14px] font-semibold text-[#d5e4fa] truncate">
+                    {user.name}
+                  </p>
+                  <p className="text-[12px] font-medium text-[#88919d] truncate">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="text-[#88919d] hover:text-[#ef4444] transition-colors"
+                data-testid="button-logout"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-start"
-              onClick={handleLogout}
-              data-testid="button-logout"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
           </div>
         )}
       </SidebarFooter>

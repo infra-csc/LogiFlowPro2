@@ -1,0 +1,188 @@
+---
+name: Precision Logistics Light
+colors:
+  surface: '#f7f9fb'
+  surface-dim: '#d8dadc'
+  surface-bright: '#f7f9fb'
+  surface-container-lowest: '#ffffff'
+  surface-container-low: '#f2f4f6'
+  surface-container: '#eceef0'
+  surface-container-high: '#e6e8ea'
+  surface-container-highest: '#e0e3e5'
+  on-surface: '#191c1e'
+  on-surface-variant: '#3f4852'
+  inverse-surface: '#2d3133'
+  inverse-on-surface: '#eff1f3'
+  outline: '#6f7883'
+  outline-variant: '#bec7d4'
+  surface-tint: '#00629d'
+  primary: '#00629d'
+  on-primary: '#ffffff'
+  primary-container: '#00a3ff'
+  on-primary-container: '#00375a'
+  inverse-primary: '#98cbff'
+  secondary: '#565e74'
+  on-secondary: '#ffffff'
+  secondary-container: '#dae2fd'
+  on-secondary-container: '#5c647a'
+  tertiary: '#505f76'
+  on-tertiary: '#ffffff'
+  tertiary-container: '#8e9eb6'
+  on-tertiary-container: '#253549'
+  error: '#ba1a1a'
+  on-error: '#ffffff'
+  error-container: '#ffdad6'
+  on-error-container: '#93000a'
+  primary-fixed: '#cfe5ff'
+  primary-fixed-dim: '#98cbff'
+  on-primary-fixed: '#001d33'
+  on-primary-fixed-variant: '#004a77'
+  secondary-fixed: '#dae2fd'
+  secondary-fixed-dim: '#bec6e0'
+  on-secondary-fixed: '#131b2e'
+  on-secondary-fixed-variant: '#3f465c'
+  tertiary-fixed: '#d3e4fe'
+  tertiary-fixed-dim: '#b7c8e1'
+  on-tertiary-fixed: '#0b1c30'
+  on-tertiary-fixed-variant: '#38485d'
+  background: '#f7f9fb'
+  on-background: '#191c1e'
+  surface-variant: '#e0e3e5'
+typography:
+  headline-xl:
+    fontFamily: Inter
+    fontSize: 36px
+    fontWeight: '700'
+    lineHeight: 44px
+    letterSpacing: -0.02em
+  headline-lg:
+    fontFamily: Inter
+    fontSize: 28px
+    fontWeight: '600'
+    lineHeight: 36px
+    letterSpacing: -0.01em
+  headline-md:
+    fontFamily: Inter
+    fontSize: 20px
+    fontWeight: '600'
+    lineHeight: 28px
+  body-lg:
+    fontFamily: Inter
+    fontSize: 18px
+    fontWeight: '400'
+    lineHeight: 28px
+  body-md:
+    fontFamily: Inter
+    fontSize: 16px
+    fontWeight: '400'
+    lineHeight: 24px
+  body-sm:
+    fontFamily: Inter
+    fontSize: 14px
+    fontWeight: '400'
+    lineHeight: 20px
+  label-md:
+    fontFamily: Inter
+    fontSize: 12px
+    fontWeight: '600'
+    lineHeight: 16px
+    letterSpacing: 0.05em
+  label-sm:
+    fontFamily: Inter
+    fontSize: 11px
+    fontWeight: '500'
+    lineHeight: 14px
+  headline-xl-mobile:
+    fontFamily: Inter
+    fontSize: 30px
+    fontWeight: '700'
+    lineHeight: 38px
+rounded:
+  sm: 0.25rem
+  DEFAULT: 0.5rem
+  md: 0.75rem
+  lg: 1rem
+  xl: 1.5rem
+  full: 9999px
+spacing:
+  unit: 8px
+  container-max: 1440px
+  gutter: 24px
+  margin-mobile: 16px
+  margin-desktop: 32px
+  stack-sm: 8px
+  stack-md: 16px
+  stack-lg: 32px
+---
+
+## Brand & Style
+
+The design system is engineered for operational excellence, clarity, and rapid decision-making. It adopts a **Corporate/Modern** aesthetic with a lean toward **Minimalism**, stripping away unnecessary ornamentation to prioritize data density and legibility.
+
+The brand personality is professional, reliable, and precise. It targets logistics managers, fleet operators, and data analysts who require a high-performance environment that remains comfortable during extended use. The UI should evoke a sense of organized efficiency—moving from the heavy density of traditional logistics software to a breathable, high-contrast digital workspace.
+
+## Colors
+
+The color palette centers on a "clean-room" philosophy. The primary surface utilizes a crisp white or ultra-light slate to maximize contrast. 
+
+- **Primary (Azure):** Reserved strictly for interactive actions, progress indicators, and primary call-to-actions.
+- **Secondary (Slate Navy):** Used for primary headings and critical interface text to ensure maximum readability.
+- **Tertiary (Muted Slate):** Applied to secondary information, icons, and metadata.
+- **Neutral (Ghost Slate):** Provides the background layer for the application, creating a soft distinction from white card elements.
+- **Border:** A subtle, low-contrast stroke used to define structural boundaries without cluttering the visual field.
+
+## Typography
+
+The design system exclusively utilizes **Inter** for its systematic, utilitarian nature. The typeface is chosen for its exceptional legibility in data-heavy tables and small-scale labels. 
+
+The scale is designed to be hierarchical and functional. Headlines use tighter letter spacing and heavier weights to anchor sections, while body text maintains a generous line height for long-form reading. Labels utilize semi-bold weights and slight tracking increases to remain legible even at the smallest sizes (11px-12px) often found in logistics dashboards.
+
+## Layout & Spacing
+
+This design system follows a rigorous **8px grid** to ensure consistency across all components. The layout uses a **Fluid Grid** model with a maximum container width of 1440px for desktop screens to prevent line lengths from becoming unreadable.
+
+- **Desktop:** 12-column grid with 24px gutters and 32px side margins.
+- **Tablet:** 8-column grid with 20px gutters and 24px side margins.
+- **Mobile:** 4-column grid with 16px gutters and 16px side margins.
+
+Vertical rhythm is maintained through standardized "stack" variables, ensuring that the distance between a header and a card is always twice the distance between internal card elements.
+
+## Elevation & Depth
+
+To maintain a clean, professional appearance, the design system utilizes **low-contrast outlines** and **ambient shadows** rather than heavy skeuomorphism.
+
+1.  **Level 0 (Flat):** Used for the main background (#F8FAFC). No shadows.
+2.  **Level 1 (Raised):** Used for primary cards and content containers. These use a 1px border (#E2E8F0) and a very soft, diffused shadow (0px 2px 4px rgba(0, 0, 0, 0.05)).
+3.  **Level 2 (Overlay):** Used for dropdowns, tooltips, and popovers. These feature a more pronounced shadow (0px 10px 15px -3px rgba(0, 0, 0, 0.1)) to lift them clearly above the content.
+
+Depth is used sparingly to direct attention; the primary content should feel integrated into the page, not floating unnecessarily.
+
+## Shapes
+
+The shape language is defined by a **Rounded (8px)** corner radius, balancing professional rigidity with modern approachability. 
+
+- **Small Components (Buttons, Inputs, Tags):** 0.5rem (8px) radius.
+- **Medium Components (Cards, Modals):** 1rem (16px) radius.
+- **Large Components (Sections):** 1.5rem (24px) radius.
+
+This consistency reinforces the "precision" aspect of the brand, avoiding the playfulness of fully circular pill shapes while moving away from the harshness of sharp corners.
+
+## Components
+
+### Buttons
+Primary buttons use the Azure background with white text. Secondary buttons use a Slate Navy outline or ghost style. Buttons have a fixed height of 40px for standard actions and 32px for compact toolbar actions.
+
+### Input Fields
+Inputs feature a white background with a 1px #E2E8F0 border. On focus, the border transitions to Azure with a subtle 2px glow. Labels are always positioned above the input for clarity.
+
+### Cards
+Cards are the primary container for data. They use a white background to pop against the #F8FAFC neutral surface. They include a subtle border and Level 1 elevation.
+
+### Chips & Status Indicators
+Status indicators use a semi-transparent version of the semantic color (e.g., 10% opacity Green for "Delivered") with bold centered text. They use the same 8px corner radius as buttons.
+
+### Lists & Data Tables
+Tables are designed for high density. Rows have a 48px height with a 1px bottom border. Header rows use a light gray tint (#F1F5F9) to distinguish from the data.
+
+### Progress Bars
+Utilize the Azure primary color for active states, with a light gray #E2E8F0 track. Used for tracking shipment progress and fleet capacity.
