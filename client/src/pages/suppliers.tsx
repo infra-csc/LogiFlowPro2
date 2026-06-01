@@ -61,12 +61,6 @@ export default function SuppliersPage() {
     queryKey: ["/api/suppliers"],
   });
 
-  if (isLoading) {
-    return (
-      <PageLoading message="Carregando fornecedores..." />
-    );
-  }
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -130,6 +124,10 @@ export default function SuppliersPage() {
       toast({ title: "Erro ao excluir fornecedor", variant: "destructive" });
     },
   });
+
+  if (isLoading) {
+    return <PageLoading message="Carregando fornecedores..." />;
+  }
 
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
     if (editingSupplier) {
