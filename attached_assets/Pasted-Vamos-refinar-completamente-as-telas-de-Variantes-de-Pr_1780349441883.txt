@@ -1,0 +1,707 @@
+Vamos refinar completamente as telas de Variantes de Produtos e Kits/BOM para nível 10/10, incluindo front-end, UX/design e revisão segura de back-end/validações.
+
+Telas foco:
+
+1. Variantes de Produtos
+
+* client/src/pages/product-variants.tsx
+* componentes relacionados a variantes, se existirem
+* endpoints relacionados a variantes de produtos
+
+2. Kits & BOM
+
+* client/src/pages/kits.tsx ou página equivalente
+* client/src/components/kit-dialog.tsx ou equivalente
+* componentes de parâmetros do kit
+* componentes de itens do kit/BOM
+* upload de imagem do kit
+* endpoints relacionados a kits/BOM
+
+Objetivo:
+Transformar Variantes de Produtos e Kits/BOM em telas profissionais, claras, operacionais e consistentes com o Design System atual do EventFlow.
+
+Essas telas são importantes porque produtos principais, variantes locadas/terceiros e kits impactam diretamente:
+
+* Requisições de materiais;
+* Estoque;
+* Movimentações;
+* Loading Orders;
+* Consolidação de itens;
+* Controle de produtos próprios, locados e terceiros.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — AUDITORIA INICIAL
+===========================
+
+Antes de implementar, audite as telas atuais e liste:
+
+1. Problemas visuais:
+
+* cards grandes demais;
+* pouca hierarquia;
+* listas chapadas;
+* imagem/placeholder ocupando espaço demais;
+* modal longo demais;
+* upload em inglês;
+* scrollbars brancos/padrão;
+* falta de seções claras;
+* responsividade.
+
+2. Problemas de UX:
+
+* dificuldade de entender produto principal x variante;
+* pouca clareza sobre titularidade;
+* pouca clareza sobre vínculo de variante;
+* pouca clareza sobre estrutura do kit;
+* parâmetros e itens do BOM pouco destacados;
+* ausência de resumo antes de salvar.
+
+3. Pontos técnicos/back-end:
+
+* validação de vínculo entre produto principal e variante;
+* duplicidade de SKU;
+* duplicidade de código de barras;
+* validação de kit sem itens;
+* validação de parâmetros obrigatórios;
+* upload de imagem;
+* RBAC;
+* mensagens de erro.
+
+Não implementar mudanças destrutivas sem identificar risco.
+
+==================================================
+PARTE 2 — VARIANTES DE PRODUTOS
+===============================
+
+Refinar a tela de Variantes de Produtos.
+
+Arquivo foco:
+
+* client/src/pages/product-variants.tsx
+
+Objetivo:
+A tela deve explicar visualmente a relação:
+
+Produto principal → variantes locadas/terceiros vinculadas.
+
+Hoje a lista está muito grande, chapada e com pouca informação operacional.
+
+1. Header
+
+Aplicar PageHeader:
+
+* Título: “Variantes de Produtos”
+* Descrição: “Gerencie produtos locados, terceiros e variações vinculadas aos produtos principais”
+* Ação principal, se existir: “Nova Variante” ou “Vincular Variante”
+* Botão visível apenas se o usuário já tiver permissão atualmente.
+
+Não alterar RBAC.
+
+2. Busca e filtros
+
+Melhorar busca:
+
+* Buscar por produto principal;
+* Buscar por SKU;
+* Buscar por variante;
+* Buscar por titularidade.
+
+Adicionar FilterBar, se fizer sentido:
+
+* Titularidade: Próprio, Locado, Terceiros;
+* Com variantes / Sem variantes;
+* Produto principal;
+* Status, se existir.
+
+Aplicar:
+
+* badgeCount de filtros ativos;
+* onClear;
+* grid responsivo;
+* labels text-xs text-muted-foreground;
+* busca sempre visível.
+
+3. Cards/lista de produtos principais
+
+A tela atual mostra linhas grandes para produtos principais com “0 variantes”.
+
+Melhorar para um layout mais informativo.
+
+Cada card de produto principal deve mostrar:
+
+* nome do produto principal;
+* SKU principal;
+* badge “Principal”;
+* quantidade de variantes;
+* titularidades das variantes, se houver;
+* ação para expandir/ver variantes;
+* ação para vincular variante, se permitido.
+
+Design:
+
+* Card compacto com p-4;
+* ícone em container;
+* título text-base font-semibold;
+* SKU font-mono text-xs text-muted-foreground;
+* contador de variantes como badge discreto;
+* evitar blocos enormes de uma única cor;
+* hover sutil;
+* borda discreta.
+
+4. Expansão de variantes
+
+Se já existir lógica para exibir variantes, melhorar visual.
+
+Se não existir, avaliar implementar apenas no front se os dados já estiverem disponíveis.
+
+Ao expandir um produto principal, mostrar variantes vinculadas:
+
+Cada variante deve mostrar:
+
+* nome;
+* SKU;
+* titularidade: Locado/Terceiros;
+* fornecedor, se existir;
+* estoque ou disponibilidade, se existir;
+* status ativo/inativo, se existir;
+* ações editar/remover vínculo, se permitido.
+
+Visual:
+
+* subcards compactos;
+* indentação leve;
+* linha vertical sutil ou grupo interno;
+* sem parecer árvore pesada.
+
+5. Estado “0 variantes”
+
+Quando o produto não tiver variantes:
+
+* não mostrar apenas “0 variantes” perdido.
+* mostrar microcopy útil:
+  “Nenhuma variante vinculada”
+* se permitido, exibir ação:
+  “Vincular variante”
+
+6. Empty states
+
+Criar EmptyState para:
+
+* nenhuma variante cadastrada;
+* busca/filtros sem resultado.
+
+7. Responsividade
+
+Desktop:
+
+* lista compacta ou cards em uma coluna rica.
+
+Tablet/mobile:
+
+* cards em coluna;
+* ações quebram abaixo;
+* sem overflow horizontal.
+
+==================================================
+PARTE 3 — KITS & BOM — LISTA
+============================
+
+Refinar a tela de Kits & BOM.
+
+Arquivo foco:
+
+* client/src/pages/kits.tsx ou equivalente
+
+Problemas atuais:
+
+* cards grandes demais;
+* placeholder de imagem ocupa muito espaço;
+* pouca informação sobre BOM;
+* botão de configuração solto;
+* falta de filtros/busca;
+* cards parecem catálogo visual, mas sem profundidade operacional.
+
+1. Header
+
+PageHeader:
+
+* Título: “Kits & BOM”
+* Descrição: “Gerencie kits paramétricos, parâmetros e listas de materiais”
+* Botão: “Criar Kit”
+* Botão visível apenas para quem já tem permissão.
+
+2. Busca e filtros
+
+Adicionar busca/filtros:
+
+* Buscar por nome do kit;
+* Buscar por item do BOM, se os dados estiverem disponíveis;
+* Filtrar por kits com/sem parâmetros;
+* Filtrar por kits com/sem itens;
+* Filtrar por status, se existir.
+
+3. Cards de kit
+
+Reduzir tamanho dos cards.
+
+Imagem/placeholder:
+
+* Se houver imagem, mostrar com object-cover.
+* Se não houver imagem, placeholder menor e mais elegante.
+* Não ocupar metade do card com ícone vazio.
+
+Conteúdo do card:
+
+* nome do kit;
+* quantidade de itens do BOM;
+* quantidade de parâmetros;
+* chips com principais parâmetros;
+* status, se existir;
+* ação configurar/editar;
+* ação detalhes, se existir.
+
+Design:
+
+* Card com hover-elevate border-border/60;
+* CardContent p-4;
+* título text-base font-semibold;
+* badges discretos;
+* ações agrupadas no rodapé ou topo direito;
+* evitar cards gigantes.
+
+4. Informação operacional
+
+Cada card precisa responder rapidamente:
+
+* Que kit é esse?
+* Quantos itens compõem o kit?
+* Ele tem parâmetros?
+* Está pronto para uso?
+* Qual ação posso executar?
+
+5. Empty state
+
+Se não houver kits:
+
+* ícone Boxes ou Package;
+* título “Nenhum kit cadastrado”;
+* descrição clara;
+* ação “Criar Kit”, se permitido.
+
+==================================================
+PARTE 4 — MODAL NOVO/EDITAR KIT
+===============================
+
+Refinar completamente o modal de kit.
+
+Arquivo foco:
+
+* client/src/components/kit-dialog.tsx ou equivalente
+
+Problemas atuais:
+
+* modal longo;
+* scrollbar branco/padrão;
+* upload com textos em inglês;
+* “x” solto;
+* parâmetros aparecem perdidos;
+* itens do BOM aparecem perdidos;
+* footer parece separado de forma bruta;
+* falta organização por seções.
+
+1. Estrutura do modal
+
+Organizar em seções claras:
+
+A. Identificação do Kit
+
+* Nome do Kit *
+* Descrição
+* Imagem do Kit
+
+B. Parâmetros
+
+* Lista de parâmetros
+* Botão “Adicionar Parâmetro”
+
+C. Itens do Kit / BOM
+
+* Lista de itens
+* Botão “Adicionar Item”
+
+D. Resumo
+
+* total de parâmetros
+* total de itens
+* status de completude
+
+Não precisa criar wizard agora, para acelerar.
+Mas a tela precisa parecer guiada.
+
+2. Header
+
+* Título: “Novo Kit” ou “Editar Kit”
+* Descrição:
+  “Defina um kit paramétrico com parâmetros e lista de materiais.”
+
+Corrigir microcopy:
+
+* “Kit description...” → “Descrição do kit...”
+* remover textos em inglês do upload.
+
+3. Upload de imagem do kit
+
+Refinar totalmente.
+
+Novo padrão:
+
+* Título: “Imagem do kit”
+* Subtexto: “PNG, JPG ou WebP — máximo 10 MB”
+* Área drag-and-drop limpa;
+* Botão “Selecionar imagem”;
+* Texto: “Arraste uma imagem aqui ou clique para selecionar”
+* Preview da imagem após seleção;
+* Botão “Remover imagem”;
+* Erros:
+
+  * formato inválido;
+  * arquivo maior que 10 MB;
+  * falha no upload.
+
+Remover:
+
+* “Drop your files here”
+* “Drop files here or browse files”
+* “x” solto
+
+4. Parâmetros
+
+A seção de parâmetros precisa ficar muito mais clara.
+
+Cada parâmetro deve ter:
+
+* nome do parâmetro;
+* tipo, se existir;
+* valor padrão, se existir;
+* obrigatório/opcional;
+* ação editar/remover.
+
+Exemplos:
+
+* peso
+* largura
+* altura
+* quantidade
+* tamanho
+
+Melhorias:
+
+* se não houver parâmetro, mostrar EmptyState pequeno:
+  “Nenhum parâmetro definido”
+* botão “Adicionar Parâmetro” bem posicionado;
+* explicar:
+  “Parâmetros permitem calcular quantidades do BOM automaticamente.”
+
+Não alterar regra de cálculo sem necessidade.
+
+5. Itens do Kit / BOM
+
+Essa é a parte mais importante.
+
+Cada item do BOM deve mostrar:
+
+* produto;
+* SKU;
+* quantidade base;
+* fórmula ou parâmetro usado, se existir;
+* unidade;
+* obrigatório/opcional, se existir;
+* ação editar/remover.
+
+Se não houver itens:
+
+* EmptyState pequeno:
+  “Nenhum item no BOM”
+* ação “Adicionar Item”
+
+Visual:
+
+* tabela compacta ou cards compactos;
+* SKU em font-mono text-xs;
+* quantidade em destaque;
+* produtos em combobox pesquisável, se já houver muitos produtos;
+* evitar que itens fiquem escondidos no final do modal.
+
+6. Resumo do kit
+
+Adicionar um bloco de resumo discreto:
+
+* Nome do kit;
+* parâmetros: X;
+* itens do BOM: Y;
+* imagem: sim/não;
+* pronto para salvar: sim/não.
+
+O botão salvar deve deixar claro se falta parâmetro ou item obrigatório.
+
+7. Footer
+
+* Footer fixo;
+* separador sutil;
+* “Cancelar” como outline;
+* “Salvar Kit” como primary/default;
+* loading visual no salvar;
+* desabilitar se nome obrigatório estiver vazio;
+* se houver regra de precisar pelo menos 1 item, validar visualmente e no backend.
+
+8. Scroll
+
+Obrigatório:
+
+* header fixo;
+* footer fixo;
+* conteúdo central rolável;
+* scrollbar customizado dark;
+* sem scrollbar branco/cinza padrão;
+* max-height adequado;
+* sem overflow horizontal.
+
+==================================================
+PARTE 5 — BACK-END / VALIDAÇÕES
+===============================
+
+Revisar com segurança endpoints de variantes e kits/BOM.
+
+Não alterar schema/migrations automaticamente sem necessidade.
+
+1. Variantes de produto
+
+Validar:
+
+* produto principal existe;
+* variante existe;
+* uma variante não pode estar vinculada de forma inconsistente;
+* SKU único continua respeitado;
+* código de barras único, se existir;
+* titularidade faz sentido;
+* não permitir auto-vínculo se isso for inválido;
+* mensagens de erro claras.
+
+2. Kits
+
+Validar:
+
+* nome do kit obrigatório;
+* nome único, se essa regra já existir ou fizer sentido no projeto;
+* imagem válida;
+* parâmetros com nomes válidos;
+* itens do BOM com produto existente;
+* quantidade > 0;
+* não permitir item duplicado no BOM sem necessidade;
+* fórmulas/parâmetros válidos, se houver cálculo paramétrico;
+* não permitir salvar kit inválido se isso quebrar uso em requisições/loading orders.
+
+3. Upload de imagem
+
+Aplicar o mesmo padrão de Produtos:
+
+* PNG/JPG/JPEG/WebP;
+* máximo 10 MB;
+* nome de arquivo sanitizado;
+* erro claro;
+* sem path traversal;
+* preview correto no front;
+* fallback se imagem falhar.
+
+4. RBAC
+
+Preservar regra atual:
+
+* criação/edição/exclusão de produtos/kits/fornecedores deve continuar respeitando permissões existentes.
+* não confiar no front-end.
+* back-end continua fonte da verdade.
+
+Não alterar role_permissions sem necessidade.
+
+5. Erros
+
+Padronizar mensagens para o front:
+
+* 400 payload inválido;
+* 401 não autenticado;
+* 403 sem permissão;
+* 404 não encontrado;
+* 409 duplicidade/conflito;
+* 413 arquivo grande;
+* 415 formato inválido.
+
+==================================================
+PARTE 6 — RESPONSIVIDADE
+========================
+
+Validar:
+
+Desktop:
+
+* cards organizados e compactos;
+* modal confortável.
+
+Tablet:
+
+* cards em 2 colunas ou lista;
+* modal sem overflow ruim.
+
+Mobile:
+
+* cards em 1 coluna;
+* botões full width quando necessário;
+* modal quase full screen;
+* footer acessível;
+* sem overflow horizontal.
+
+==================================================
+PARTE 7 — ACESSIBILIDADE
+========================
+
+Garantir:
+
+* labels associados;
+* foco visível;
+* botão fechar acessível;
+* navegação por teclado;
+* aria-invalid quando aplicável;
+* alt em imagens;
+* botões com texto ou aria-label.
+
+==================================================
+PARTE 8 — RESTRIÇÕES
+====================
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* cards;
+* filtros;
+* busca;
+* modal;
+* upload;
+* microcopy PT-BR;
+* validações visuais;
+* validações back-end específicas de variantes/kits;
+* mensagens de erro;
+* documentação.
+
+Não alterar sem necessidade:
+
+* schema;
+* migrations;
+* seed;
+* RBAC global;
+* role_permissions;
+* contratos usados por requisições, estoque, movimentações e loading orders;
+* endpoints de outros módulos;
+* lógica de cálculo paramétrico se já existir;
+* payloads usados por outras telas.
+
+Se alguma melhoria exigir schema/migration:
+
+* não implementar automaticamente;
+* registrar a necessidade e explicar impacto;
+* só implementar se for indispensável e seguro.
+
+==================================================
+PARTE 9 — VALIDAÇÕES TÉCNICAS
+=============================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test — Variantes:
+
+* abrir tela;
+* buscar por produto principal;
+* buscar por variante;
+* limpar filtros;
+* expandir produto principal, se aplicável;
+* visualizar produto sem variantes;
+* vincular variante, se existir ação;
+* editar/remover vínculo, se existir ação;
+* validar permissões por perfil.
+
+Smoke test — Kits:
+
+* abrir lista de kits;
+* buscar kit;
+* abrir novo kit;
+* tentar salvar sem nome;
+* preencher nome;
+* adicionar parâmetro;
+* remover parâmetro;
+* adicionar item ao BOM;
+* remover item do BOM;
+* anexar imagem válida;
+* testar imagem inválida;
+* salvar kit;
+* editar kit;
+* validar responsividade;
+* validar permissões por perfil.
+
+Perfis:
+
+* Admin;
+* Logística;
+* Almoxarifado;
+* Supervisor;
+* Usuário comum.
+
+==================================================
+PARTE 10 — ENTREGA FINAL
+========================
+
+Entregar:
+
+* problemas encontrados;
+* melhorias aplicadas em Variantes;
+* melhorias aplicadas em Kits/BOM;
+* melhorias aplicadas no modal de Kit;
+* melhorias de back-end/validação aplicadas;
+* arquivos alterados;
+* endpoints revisados;
+* componentes do Design System usados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências ou riscos restantes.
+
+Critério de aceite:
+
+Variantes só estará 10/10 se:
+
+* a relação produto principal → variantes ficar clara;
+* cards/listas ficarem compactos;
+* busca/filtros ajudarem;
+* produtos sem variantes tiverem estado claro;
+* ações ficarem previsíveis.
+
+Kits/BOM só estará 10/10 se:
+
+* cards de kit não parecerem vazios;
+* modal estiver organizado por seções;
+* upload estiver limpo e em PT-BR;
+* parâmetros estiverem claros;
+* itens do BOM estiverem claros;
+* validações impedirem kit inválido;
+* RBAC estiver preservado;
+* nenhuma integração com produtos, requisições, estoque, movimentações ou loading orders for quebrada.

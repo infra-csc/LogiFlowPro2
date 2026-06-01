@@ -1,0 +1,581 @@
+Vamos refinar a tela de Requisições/Aprovações para nível 10/10.
+
+Telas foco:
+
+* client/src/pages/approvals.tsx
+* client/src/pages/approval-detail.tsx
+* client/src/pages/requests.tsx, se compartilhar componentes visuais com aprovações
+* client/src/pages/request-details.tsx, se necessário apenas para consistência visual
+* componentes relacionados a cards/listas de requisição e aprovação
+
+Objetivo:
+Transformar a experiência de Aprovação de Requisições em uma tela operacional profissional, clara, rápida e segura para decisão.
+
+Essa tela é crítica porque requisições aprovadas alimentam Ordens de Carregamento e Estoque. A experiência precisa deixar claro:
+
+* o que está pendente;
+* quem solicitou;
+* para qual evento;
+* qual área;
+* quais itens serão aprovados;
+* se a aprovação é total, parcial ou rejeição;
+* quais ações o aprovador pode executar.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — LISTA DE APROVAÇÕES
+=============================
+
+Arquivo foco:
+
+* client/src/pages/approvals.tsx
+
+Problemas atuais observados:
+
+* Os cards são largos e com bastante espaço vazio.
+* A separação Pendentes/Processadas está boa, mas pode ficar mais operacional.
+* Os filtros fechados parecem uma barra grande e pouco útil.
+* As estatísticas funcionam, mas podem virar filtros rápidos.
+* Cards processados poderiam ser mais compactos.
+* Cards pendentes precisam destacar melhor urgência e contexto.
+
+1. Header
+
+Manter PageHeader com:
+
+* Título: “Aprovação de Requisições”
+* Descrição: “Gerencie aprovações de requisições de materiais”
+
+Melhorar:
+
+* alinhamento;
+* espaçamento;
+* subtítulo mais objetivo;
+* evitar espaço vazio excessivo.
+
+2. Stats / chips de status
+
+Os chips atuais:
+
+* Total
+* Pendentes
+* Aprovados
+* Rejeitados
+
+Melhorar:
+
+* Tornar visualmente mais consistentes;
+* Se for seguro, permitir clique para filtrar por status;
+* Estado ativo claro quando um filtro estiver aplicado;
+* Não criar nova regra de negócio, apenas filtrar visualmente os dados já carregados.
+
+3. FilterBar
+
+Melhorar o filtro:
+
+* Estado fechado não pode parecer uma barra vazia.
+* Mostrar badgeCount de filtros ativos.
+* Mostrar resumo/chips quando houver filtros:
+
+  * Status: Pendente
+  * Evento: Night Run
+  * Cliente: Tatica Mkt
+* Ao abrir, usar grid responsivo.
+* Campos sugeridos:
+
+  * Status
+  * Evento
+  * Cliente
+  * Solicitante
+  * Período de envio
+* Botão limpar filtros claro.
+
+Não implementar filtro que exija mudança complexa de backend sem necessidade. Se algum filtro não tiver dados disponíveis, registrar como melhoria futura.
+
+4. Seção Pendentes
+
+A seção Pendentes precisa ser a mais importante visualmente.
+
+Cada card pendente deve responder rapidamente:
+
+* Qual evento?
+* Qual área?
+* Quem solicitou?
+* Quando foi enviado?
+* Quantos itens tem?
+* Há prazo ou data do evento próxima?
+* O que o aprovador deve fazer?
+
+Estrutura sugerida do card:
+
+Topo:
+
+* StatusBadge “Pendente Aprovação”
+* ID curto com font-mono text-xs text-muted-foreground
+* seta/ação para abrir detalhe
+
+Meio:
+
+* Evento como título principal
+* Área como subtítulo
+* Cliente e solicitante em metadados
+* Data de envio
+* Data do evento
+
+Rodapé:
+
+* quantidade de itens, se disponível
+* ação “Analisar” ou card clicável claramente
+
+Design:
+
+* Card com hover-elevate border-border/60
+* CardContent p-4
+* Título text-base font-semibold
+* Metadados com border-t border-border/40
+* Evitar cards altos demais
+* Priorizar leitura rápida
+
+5. Seção Processadas
+
+Cards processados devem ser mais compactos do que pendentes.
+
+Cada card processado deve mostrar:
+
+* StatusBadge: Aprovado ou Rejeitado
+* Evento
+* Área
+* Cliente
+* Aprovador/Rejeitador
+* Data de processamento
+* ID curto
+* Link para detalhes
+
+Design:
+
+* menos destaque que Pendentes;
+* cards compactos;
+* boa leitura;
+* evitar repetir informação com muito espaço vazio.
+
+6. Empty states
+
+Criar EmptyState contextual:
+
+* Sem pendências:
+  “Nenhuma requisição pendente”
+  “Quando novas requisições forem enviadas, elas aparecerão aqui.”
+
+* Sem processadas:
+  “Nenhuma requisição processada”
+
+* Filtros sem resultado:
+  “Nenhuma aprovação encontrada com os filtros atuais”
+  botão “Limpar filtros”
+
+==================================================
+PARTE 2 — DETALHE DA APROVAÇÃO
+==============================
+
+Arquivo foco:
+
+* client/src/pages/approval-detail.tsx
+
+Problemas atuais observados:
+
+* A tela está funcional, mas ainda parece espaçosa demais.
+* Os itens selecionados ficam muito grandes.
+* Falta resumo operacional no topo.
+* A área de comentários está grande demais.
+* As ações finais ficam no final da página e dependem de scroll.
+* Aprovação parcial pode ficar mais clara.
+
+1. Header
+
+Melhorar PageHeader:
+
+* Título: “Aprovação de Requisição”
+* Descrição: evento + área
+* StatusBadge visível no topo
+* Ação “Voltar” no slot de ações ou acima de forma consistente
+
+Evitar deixar o botão Voltar solto demais.
+
+2. Resumo operacional
+
+Adicionar uma faixa de resumo logo abaixo do header.
+
+Mostrar:
+
+* Status da requisição
+* Evento
+* Cliente
+* Área
+* Solicitante
+* Data de envio
+* Total de itens
+* Itens selecionados
+* Itens aprovados
+* Itens rejeitados
+
+Design:
+
+* cards compactos ou grid de metadados;
+* StatusBadge;
+* sem cards gigantes.
+
+3. Detalhes da requisição
+
+A seção “Detalhes da Requisição” pode ser mais compacta.
+
+Melhorar:
+
+* reduzir altura;
+* organizar metadados em grid;
+* manter labels secundárias;
+* valores importantes com font-medium;
+* ID curto se houver.
+
+4. Itens da Requisição
+
+Essa é a parte mais importante da tela.
+
+Cada item deve mostrar:
+
+* nome do produto/kit;
+* SKU, se existir;
+* quantidade solicitada;
+* quantidade aprovada;
+* status da decisão;
+* motivo de rejeição, se houver;
+* checkbox/seleção;
+* ações Aprovar/Rejeitar.
+
+Melhorar visual:
+
+* Cards mais compactos.
+* Item selecionado com destaque sutil.
+* Ações do item agrupadas.
+* Quantidade aprovada perto da quantidade solicitada.
+* Não deixar cada item excessivamente alto.
+* Usar StatusBadge quando houver status.
+* SKU com font-mono text-xs text-muted-foreground.
+
+5. Aprovação parcial
+
+Melhorar a UX de quantidade aprovada:
+
+* Campo “Quantidade aprovada” deve ficar claro.
+* Mostrar “de X” de forma discreta.
+* Impedir visualmente valor menor que 0 ou maior que solicitado, se já houver validação.
+* Se quantidade aprovada for menor que solicitada, mostrar indicação:
+  “Aprovação parcial”
+* Se rejeitar, exibir campo/mensagem de motivo quando aplicável.
+
+Não alterar regra de negócio sem necessidade.
+
+6. Selecionar todos
+
+O botão “Selecionar Todos” está útil, mas pode melhorar:
+
+* Mostrar contador:
+  “Selecionar todos (2)”
+* Alternar para “Limpar seleção” quando todos estiverem selecionados, se for simples e seguro.
+* Não quebrar lógica existente.
+
+7. Comentários
+
+A área de comentários está grande demais.
+
+Melhorar:
+
+* Reduzir altura inicial.
+* Placeholder:
+  “Adicione um comentário para justificar a decisão (opcional)...”
+* Se rejeição exigir comentário, destacar visualmente quando necessário.
+* Não alterar regra funcional sem necessidade.
+
+8. Barra de ações final
+
+Melhorar muito esta parte.
+
+Os botões:
+
+* Rejeitar Tudo
+* Processar Selecionados
+* Aprovar Tudo
+
+Devem ficar em uma barra de ações fixa/sticky no rodapé da página ou do container, se possível e seguro.
+
+Design:
+
+* fundo com blur/superfície do dark mode;
+* border-t sutil;
+* botões alinhados à direita no desktop;
+* em mobile, botões empilhados ou full width;
+* mostrar resumo:
+  “2 itens selecionados”
+  “Total: 2 itens”
+
+Botões:
+
+* Rejeitar Tudo: destructive
+* Processar Selecionados: outline/default conforme importância
+* Aprovar Tudo: primary/default
+
+9. Estados de confirmação
+
+Antes de ações críticas, garantir diálogo de confirmação se já existir.
+
+Se não existir e for simples:
+
+* confirmar “Rejeitar Tudo”
+* confirmar “Aprovar Tudo”
+
+Não alterar lógica de backend sem necessidade.
+
+10. Histórico/resultado
+
+Se a aprovação já estiver processada:
+
+* deixar tela em modo leitura;
+* mostrar status final;
+* esconder/desabilitar ações;
+* mostrar aprovador/rejeitador;
+* mostrar data;
+* mostrar comentários.
+
+==================================================
+PARTE 3 — BACK-END / SEGURANÇA / REGRAS
+=======================================
+
+Revisar com cuidado, sem alterar contratos desnecessariamente.
+
+1. RBAC
+
+Preservar regras atuais:
+
+* Admin/Supervisor podem aprovar/rejeitar.
+* Usuário comum não pode aprovar/rejeitar.
+* Front-end apenas melhora UX.
+* Back-end continua fonte da verdade.
+
+Confirmar que endpoints de aprovação estão protegidos.
+
+2. Endpoints de aprovação
+
+Auditar rotas relacionadas:
+
+* listar aprovações pendentes;
+* buscar detalhe;
+* aprovar tudo;
+* aprovar parcial;
+* rejeitar tudo;
+* processar selecionados, se existir.
+
+Verificar:
+
+* requireAuth;
+* requireRole/requireAnyRole adequado;
+* ownership, se aplicável;
+* validação de status;
+* não permitir aprovar requisição já processada;
+* não permitir quantidade aprovada inválida;
+* não permitir item inexistente;
+* mensagens de erro claras.
+
+3. Validações importantes
+
+Garantir no back-end:
+
+* quantidade aprovada >= 0;
+* quantidade aprovada <= quantidade solicitada;
+* rejeição com motivo, se essa for regra do negócio;
+* não aprovar/rejeitar item de outra requisição;
+* não processar requisição já aprovada/rejeitada;
+* status final consistente;
+* approvedBy/approvedAt preenchidos corretamente.
+
+Não alterar schema/migration sem necessidade.
+
+4. Erros
+
+Retornar mensagens claras para o front:
+
+* 400 payload inválido;
+* 401 não autenticado;
+* 403 sem permissão;
+* 404 requisição/item não encontrado;
+* 409 requisição já processada;
+* 422 quantidade inválida.
+
+==================================================
+PARTE 4 — RESPONSIVIDADE
+========================
+
+Validar:
+
+Desktop:
+
+* lista de aprovações confortável;
+* detalhe com ações sticky.
+
+Tablet:
+
+* cards compactos;
+* ações quebrando corretamente.
+
+Mobile:
+
+* cards em coluna;
+* metadados empilhados;
+* ações finais full width;
+* sem overflow horizontal;
+* comentários e inputs utilizáveis.
+
+==================================================
+PARTE 5 — ACESSIBILIDADE
+========================
+
+Garantir:
+
+* checkboxes/radios acessíveis;
+* labels associados;
+* foco visível;
+* botões com texto claro;
+* aria-invalid em inputs inválidos, se houver padrão;
+* status não depender apenas de cor;
+* navegação por teclado.
+
+==================================================
+PARTE 6 — RESTRIÇÕES
+====================
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* cards;
+* filtros;
+* botões;
+* microcopy PT-BR;
+* validações visuais;
+* barra de ações sticky;
+* empty/loading/error states;
+* responsividade;
+* validações back-end específicas de aprovação, se necessário e seguro;
+* mensagens de erro.
+
+Não alterar sem necessidade:
+
+* schema;
+* migrations;
+* seed;
+* RBAC global;
+* role_permissions;
+* contratos usados por requisições, loading orders, estoque e movimentações;
+* payloads existentes;
+* regras de negócio de aprovação;
+* status/transições.
+
+Se alguma melhoria exigir alteração de schema/migration:
+
+* não implementar automaticamente;
+* registrar a necessidade e explicar impacto.
+
+==================================================
+PARTE 7 — VALIDAÇÕES TÉCNICAS
+=============================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Se houver testes:
+
+* rodar testes relacionados a requisições/aprovações.
+
+Smoke test obrigatório:
+
+Lista:
+
+* abrir aprovações;
+* visualizar pendentes;
+* visualizar processadas;
+* filtrar por status;
+* limpar filtros;
+* abrir detalhe;
+* validar contadores.
+
+Detalhe:
+
+* abrir requisição pendente;
+* selecionar item;
+* selecionar todos;
+* aprovar item;
+* rejeitar item;
+* alterar quantidade aprovada;
+* processar selecionados;
+* aprovar tudo;
+* rejeitar tudo;
+* inserir comentário;
+* abrir requisição já aprovada;
+* abrir requisição rejeitada.
+
+Perfis:
+
+* Admin;
+* Supervisor;
+* Almoxarifado;
+* Logística;
+* Usuário comum.
+
+Confirmar:
+
+* apenas Admin/Supervisor aprovam/rejeitam;
+* ações somem ou ficam bloqueadas para quem não tem permissão;
+* backend retorna 403 quando usuário sem permissão tenta agir;
+* nenhuma integração com Loading Orders/Estoque foi quebrada.
+
+==================================================
+PARTE 8 — ENTREGA FINAL
+=======================
+
+Entregar:
+
+* problemas encontrados;
+* melhorias aplicadas na lista de aprovações;
+* melhorias aplicadas no detalhe da aprovação;
+* melhorias de UX aplicadas;
+* melhorias de back-end/validação aplicadas, se houver;
+* arquivos alterados;
+* endpoints revisados;
+* componentes do Design System usados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências ou riscos restantes.
+
+Critério de aceite:
+
+A tela só será considerada 10/10 se:
+
+* Pendentes ficarem claramente priorizados;
+* Processadas ficarem compactas e fáceis de consultar;
+* O detalhe mostrar resumo operacional no topo;
+* Itens forem fáceis de aprovar/rejeitar;
+* Aprovação parcial ficar clara;
+* Comentários não dominarem a tela;
+* A barra de ações final for previsível e acessível;
+* RBAC estiver preservado;
+* Backend não permitir ações indevidas;
+* Nenhuma integração com requisições, Loading Orders ou Estoque for quebrada.
