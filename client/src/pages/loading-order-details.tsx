@@ -226,7 +226,7 @@ export default function LoadingOrderDetails() {
   const statusBorder = statusBarColors[order.status] || "border-l-muted-foreground";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
         title={order.orderNumber}
@@ -299,7 +299,7 @@ export default function LoadingOrderDetails() {
       )}
 
       {/* Resumo compacto */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
         <Card className={`border-border/60 overflow-hidden ${statusBorder} border-l-4`}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -332,13 +332,13 @@ export default function LoadingOrderDetails() {
       {/* Informações da Ordem */}
       <Card className="border-border/60 overflow-hidden">
         <CardContent className="p-4">
-          <div className="font-semibold text-base flex items-center gap-2 mb-3">
+          <div className="font-semibold text-base flex items-center gap-2 mb-5">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
               <ClipboardList className="h-3.5 w-3.5" />
             </div>
             Informações da Ordem
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-sm">
             <div className="flex items-center justify-between sm:block">
               <span className="text-xs text-muted-foreground">Início</span>
               <span className="font-medium" data-testid="text-planned-start">
