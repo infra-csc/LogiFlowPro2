@@ -1,0 +1,214 @@
+Vamos refinar o design e a UX do modal “Nova Requisição”.
+
+Arquivo foco:
+
+* client/src/components/request-dialog.tsx
+
+Objetivo:
+Transformar o modal de criação de requisição em uma experiência 10/10: mais clara, profissional, guiada e operacional, seguindo o Design System atual do EventFlow.
+
+Contexto:
+Esse modal cria uma nova Requisição de Materiais. A requisição começa como rascunho e só pode ser enviada para aprovação dentro do período permitido pelo evento.
+
+Problemas visuais atuais:
+
+* O select de eventos abre uma lista grande e pesada.
+* A lista de eventos não tem busca.
+* O dropdown cobre muito o modal.
+* Falta mostrar informações úteis do evento selecionado.
+* O modal parece um formulário simples, não uma criação guiada.
+* Textos estão sem acento: “Requisicao”, “aprovacao”, “Observacoes”.
+* O botão “Criar” poderia ter validação visual melhor.
+* Em mobile, o dropdown pode estourar a tela.
+
+Melhorias desejadas:
+
+1. Microcopy PT-BR
+   Corrigir textos:
+
+* “Nova Requisicao” → “Nova Requisição”
+* “Crie uma requisicao...” → “Crie uma requisição...”
+* “aprovacao” → “aprovação”
+* “Nome da Requisicao” → avaliar se o campo representa nome, área ou setor.
+* “Observacoes” → “Observações”
+
+Se o campo tecnicamente representa `area`, usar uma label mais clara:
+
+* “Área / Nome da requisição *”
+  ou
+* “Área solicitante *”
+
+Não alterar o payload nem o nome interno do campo sem necessidade.
+
+2. Estrutura visual do modal
+   Manter dark mode profissional, mas melhorar a composição:
+
+* Header com título forte e descrição curta.
+* Separador sutil entre header, conteúdo e footer.
+* Conteúdo com espaçamento consistente.
+* Footer estável com ações alinhadas à direita no desktop.
+* Em mobile, botões podem ocupar largura total.
+
+Sugestão de estrutura:
+
+* Bloco 1: Evento
+* Bloco 2: Identificação
+* Bloco 3: Observações
+
+3. Campo Evento
+   Substituir o Select simples por um Combobox pesquisável, usando componentes já existentes do projeto/shadcn, sem alterar contrato funcional.
+
+O combobox deve permitir:
+
+* buscar por nome do evento;
+* lista com altura máxima;
+* scrollbar discreto;
+* estado vazio: “Nenhum evento encontrado”;
+* destaque visual do evento selecionado;
+* navegação por teclado, se possível.
+
+Cada opção do evento deve mostrar:
+
+* nome do evento como linha principal;
+* informação secundária se disponível, como cidade/data/período;
+* badge discreto se o evento estiver com janela de requisição aberta, encerrada ou futura, se esses dados já estiverem disponíveis no front.
+
+Não criar nova regra de negócio. Apenas apresentar informações já existentes.
+
+4. Resumo do evento selecionado
+   Após selecionar o evento, mostrar um pequeno card/resumo discreto abaixo do campo:
+
+* Nome do evento;
+* período de requisição, se existir;
+* indicação visual:
+
+  * “Requisições abertas”
+  * “Período ainda não iniciado”
+  * “Período encerrado”
+
+Se não houver dados de janela, não inventar informação.
+
+Esse resumo deve ajudar o usuário a entender se poderá enviar a requisição depois.
+
+5. Campo Área/Nome da Requisição
+   Melhorar label e placeholder.
+
+Sugestão:
+
+* Label: “Área / Nome da requisição *”
+* Placeholder: “Ex: Cenografia — Palco Principal”
+
+Visual:
+
+* input consistente com dark mode;
+* foco claro;
+* mensagem de validação se estiver vazio;
+* texto auxiliar pequeno, se fizer sentido:
+  “Use um nome que ajude a identificar o setor ou uso dos materiais.”
+
+6. Campo Observações
+   Melhorar:
+
+* label com acento: “Observações”
+* placeholder: “Observações sobre a requisição (opcional)”
+* altura confortável, sem exagero;
+* borda e foco consistentes;
+* não deixar o textarea visualmente pesado.
+
+7. Botões
+   Padronizar:
+
+* “Cancelar” como outline;
+* “Criar” como primary/default;
+* “Criar” desabilitado enquanto evento ou nome/área forem inválidos;
+* loading visual no botão durante envio;
+* botões com gap-2;
+* em mobile, botões podem ficar full width.
+
+8. Estados
+   Adicionar ou melhorar estados visuais:
+
+* carregando eventos;
+* nenhum evento disponível;
+* erro ao carregar eventos, se esse estado existir;
+* evento selecionado;
+* validação de campos obrigatórios.
+
+9. Responsividade
+   Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* modal não estoura a altura da tela;
+* conteúdo interno pode rolar se necessário;
+* footer continua acessível;
+* combobox/dropdown não sai da tela;
+* sem overflow horizontal.
+
+10. Acessibilidade
+    Garantir:
+
+* labels associados;
+* foco visível;
+* botão fechar acessível;
+* navegação por teclado no combobox, se possível;
+* aria adequado se usar combobox/popover.
+
+Restrições absolutas:
+Não alterar:
+
+* backend;
+* endpoints;
+* payloads;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* regras de negócio;
+* fluxo de criação da requisição;
+* validação de janela no backend;
+* status/transições.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* Select para Combobox pesquisável;
+* microcopy PT-BR;
+* estados visuais;
+* validação visual;
+* responsividade;
+* organização dos campos.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir modal;
+* buscar evento;
+* selecionar evento;
+* preencher área/nome;
+* preencher observações;
+* criar requisição;
+* cancelar;
+* testar campo obrigatório vazio;
+* testar lista sem resultado;
+* testar em mobile básico.
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* confirmação de que payload e lógica funcional não foram alterados;
+* resultado do npm run check;
+* resultado do npm run build.

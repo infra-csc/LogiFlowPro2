@@ -180,7 +180,7 @@ export function AddItemDialog({
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                     <Command>
                       <CommandInput placeholder="Buscar produto por nome ou SKU..." />
-                      <CommandList className="dark-scrollbar max-h-[280px] overflow-y-auto overflow-x-hidden">
+                      <CommandList className="max-h-[280px]">
                         {productsLoading ? (
                           <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -284,7 +284,7 @@ export function AddItemDialog({
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                     <Command>
                       <CommandInput placeholder="Buscar kit por nome..." />
-                      <CommandList className="dark-scrollbar max-h-[280px] overflow-y-auto overflow-x-hidden">
+                      <CommandList className="max-h-[280px]">
                         {kitsLoading ? (
                           <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
