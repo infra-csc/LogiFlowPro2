@@ -1,0 +1,696 @@
+Vamos refinar completamente a tela de Viagens / Planejamento de Transporte para nível 10/10, incluindo front-end, UX/design e revisão segura de back-end/validações.
+
+Telas foco:
+
+* client/src/pages/trips.tsx
+* componente/modal de Nova Viagem / Editar Viagem
+* componentes de calendário/lista de viagens
+* componentes de destinos
+* endpoints relacionados a viagens, veículos, motoristas e docas
+
+Objetivo:
+Transformar Planejamento de Transporte em uma central operacional profissional, clara e rápida para planejar viagens, veículos, motoristas, docas, carregamento, descarregamento e destinos.
+
+A tela precisa responder rapidamente:
+
+* Quais viagens estão planejadas?
+* Qual evento está relacionado?
+* Qual veículo será usado?
+* Quem é o motorista?
+* Qual o local de carregamento?
+* Qual o local de descarregamento?
+* Quando carrega?
+* Quando descarrega?
+* Qual o status?
+* Qual a próxima ação?
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — AUDITORIA INICIAL
+===========================
+
+Antes de implementar, audite a tela atual e liste:
+
+1. Problemas visuais:
+
+* stats cards grandes ou pouco úteis;
+* filtros fechados parecendo vazios;
+* lista e calendário sem hierarquia operacional suficiente;
+* modal muito longo;
+* scrollbars brancos/padrão;
+* destinos pouco destacados;
+* campos de data/hora visualmente crus;
+* ausência de timeline clara da viagem;
+* responsividade.
+
+2. Problemas de UX:
+
+* difícil entender rapidamente a rota da viagem;
+* difícil entender carregamento x descarregamento;
+* modal longo demais para preencher;
+* campos obrigatórios e opcionais têm peso visual parecido;
+* ausência de resumo antes de salvar;
+* destinos ficam escondidos no meio do formulário;
+* calendário poderia mostrar melhor volume de viagens por dia.
+
+3. Pontos técnicos/back-end:
+
+* validação de evento obrigatório;
+* validação de tipo de veículo;
+* validação de datas;
+* validação de destino;
+* validação de carregamento/descarregamento;
+* vínculo com veículo, motorista e doca;
+* RBAC;
+* mensagens de erro.
+
+Não implementar mudanças destrutivas sem identificar risco.
+
+==================================================
+PARTE 2 — LISTA DE VIAGENS
+==========================
+
+Arquivo foco:
+
+* client/src/pages/trips.tsx
+
+1. Header
+
+Aplicar PageHeader:
+
+* Título: “Planejamento de Transporte”
+* Descrição: “Agende e gerencie viagens, veículos, rotas e carregamentos”
+* Botão principal: “Planejar Viagem”
+* Botão visível apenas para quem já tem permissão atualmente.
+
+Não alterar RBAC.
+
+2. Stats cards
+
+Os stats atuais mostram:
+
+* Total
+* Agendadas
+* Em andamento
+* Concluídas
+
+Melhorar:
+
+* cards mais compactos;
+* ícone em container;
+* número em destaque;
+* label secundária;
+* estado clicável como filtro rápido, se for simples e seguro;
+* estado ativo quando o filtro estiver aplicado;
+* evitar que os stats tomem mais atenção que a lista.
+
+3. Alternância Lista / Calendário
+
+A área de alternância está boa, mas pode ficar mais operacional.
+
+Melhorar:
+
+* “Lista” e “Calendário” como segmented control consistente;
+* ícones alinhados;
+* estado ativo claro;
+* ordenação mais compacta;
+* período do calendário bem posicionado;
+* em mobile, controles devem quebrar sem overflow.
+
+4. FilterBar
+
+O filtro fechado não pode parecer uma barra vazia.
+
+Melhorar:
+
+* badgeCount de filtros ativos;
+* chips/resumo de filtros ativos;
+* campos em grid responsivo quando aberto;
+* filtros sugeridos:
+
+  * status;
+  * evento;
+  * veículo;
+  * motorista;
+  * data de carregamento;
+  * data de descarregamento;
+  * doca;
+* botão limpar filtros;
+* labels text-xs text-muted-foreground.
+
+Não implementar filtro que exija mudança complexa de backend sem necessidade. Registrar como melhoria futura se necessário.
+
+5. Cards da lista
+
+Os cards devem ser compactos e operacionais.
+
+Cada card precisa mostrar:
+
+* StatusBadge;
+* nome/descrição da viagem;
+* evento;
+* rota: origem → destino;
+* veículo;
+* motorista;
+* doca, se houver;
+* carregamento: data/hora;
+* descarregamento: data/hora;
+* próxima ação;
+* ações: detalhes/editar, se permitido.
+
+Design:
+
+* Card com hover-elevate border-border/60;
+* CardContent p-4;
+* título text-base font-semibold;
+* metadados com border-t border-border/40;
+* ícones discretos;
+* botões size="sm";
+* ações agrupadas;
+* sem cards altos demais.
+
+6. Visual de rota
+
+Adicionar uma apresentação clara da rota:
+
+Exemplo:
+“Armazém Central → Local do Evento”
+
+Se houver múltiplos destinos:
+
+* mostrar destino principal;
+* badge “+2 destinos”.
+
+Não inventar dados. Usar apenas dados existentes.
+
+7. Calendário
+
+Melhorar visão de calendário:
+
+* cards de dia mais compactos;
+* destacar dia atual;
+* mostrar quantidade de viagens no dia;
+* quando houver viagem, mostrar mini card com status/evento/veículo;
+* dias sem viagens devem ser discretos;
+* navegação Anterior/Próximo clara;
+* período atual bem destacado;
+* responsivo em mobile.
+
+==================================================
+PARTE 3 — MODAL NOVA/EDITAR VIAGEM
+==================================
+
+Arquivo foco:
+
+* componente de modal de viagem
+
+Problemas atuais:
+
+* modal muito longo;
+* scroll branco/padrão;
+* campos soltos;
+* descrição no topo ocupa muito espaço;
+* destinos ficam escondidos;
+* carregamento/descarregamento parecem blocos comuns;
+* falta timeline;
+* falta resumo final;
+* footer depende de scroll.
+
+1. Estrutura do modal
+
+Organizar em seções claras:
+
+A. Identificação
+
+* Descrição
+* Evento
+
+B. Transporte
+
+* Tipo de Veículo
+* Motorista
+* Doca
+
+C. Destinos
+
+* Lista de destinos
+* Botão Incluir Destino
+
+D. Carregamento
+
+* Local de carregamento
+* Início do carregamento
+* Fim do carregamento
+* Data/Hora de saída
+
+E. Descarregamento
+
+* Local de descarregamento
+* Início do descarregamento
+* Fim do descarregamento
+
+F. Status e Observações
+
+* Status
+* Observações
+
+G. Resumo
+
+* resumo da viagem antes de salvar
+
+Não precisa criar wizard agora. Manter em tela única, mas com seções bem separadas e visual guiado.
+
+2. Header do modal
+
+Título:
+
+* “Nova Viagem”
+* “Editar Viagem”
+
+Descrição:
+
+* “Planeje veículo, rota, carregamento e descarregamento da operação.”
+
+3. Scroll e estrutura
+
+Obrigatório:
+
+* Header fixo no topo, se possível;
+* Footer fixo no rodapé;
+* apenas conteúdo central rola;
+* scrollbar customizado dark;
+* sem scrollbar branco/cinza padrão;
+* max-height adequado;
+* sem overflow horizontal.
+
+4. Descrição
+
+Melhorar campo:
+
+* Label: “Descrição”
+* Placeholder: “Ex: Carreta 1 — Night Run Belo Horizonte”
+* Texto auxiliar:
+  “Use uma descrição curta para identificar a viagem na operação.”
+
+Não deixar textarea grande demais no topo. Pode ser input ou textarea menor, se não alterar lógica.
+
+5. Evento
+
+Campo Evento deve ser mais forte:
+
+* obrigatório;
+* usar combobox pesquisável, se possível e seguro;
+* busca por nome do evento;
+* mostrar data/local se disponível;
+* placeholder: “Selecione um evento”;
+* após selecionar, mostrar resumo discreto do evento.
+
+Não alterar payload.
+
+6. Transporte
+
+Seção “Veículo e Motorista” precisa ficar mais operacional.
+
+Tipo de veículo:
+
+* obrigatório;
+* labels amigáveis;
+* combobox/select claro.
+
+Motorista:
+
+* combobox pesquisável se houver muitos motoristas;
+* mostrar telefone ou identificação se existir;
+* permitir vazio se for opcional.
+
+Doca:
+
+* label: “Doca”
+* placeholder: “Selecione uma doca”
+* se não houver doca, mostrar “Nenhuma doca”
+* não deixar campo parecer obrigatório se for opcional.
+
+7. Destinos
+
+A seção Destinos precisa ganhar destaque.
+
+Melhorar:
+
+* título: “Destinos”
+* descrição curta:
+  “Adicione um ou mais destinos para a rota.”
+* EmptyState pequeno:
+  “Nenhum destino adicionado”
+* botão “Incluir Destino” bem posicionado;
+* destino adicionado deve aparecer como card compacto.
+
+Cada destino deve mostrar:
+
+* nome/local;
+* ordem do destino;
+* observações, se houver;
+* ação editar/remover.
+
+Se múltiplos destinos forem importantes para o cálculo da rota, preservar a lógica existente.
+
+8. Carregamento
+
+Organizar como seção clara:
+
+* Local de Carregamento
+* Início do Carregamento
+* Fim do Carregamento
+* Data/Hora de Saída
+
+Melhorar:
+
+* layout em grid responsivo;
+* validação visual:
+
+  * início não pode ser depois do fim;
+  * saída não deve ser antes do fim do carregamento, se essa regra fizer sentido;
+* mensagem de erro amigável;
+* inputs de data/hora com aparência consistente.
+
+Não alterar regra de negócio sem necessidade.
+
+9. Descarregamento
+
+Organizar como seção clara:
+
+* Local de Descarregamento
+* Início do Descarregamento
+* Fim do Descarregamento
+
+Validação visual:
+
+* início não pode ser depois do fim;
+* descarregamento não deve iniciar antes da saída/carregamento, se essa regra já fizer sentido no fluxo.
+
+Não alterar regra funcional sem revisar.
+
+10. Timeline visual
+
+Adicionar uma timeline/resumo visual simples no modal, se possível:
+
+Carregamento → Saída → Descarregamento
+
+Mostrar datas preenchidas quando disponíveis.
+
+Isso ajuda o usuário a entender a ordem da operação.
+
+11. Status
+
+Melhorar select de status:
+
+* Planejada
+* Em andamento
+* Concluída
+* Cancelada
+
+Se os valores internos forem técnicos, mapear apenas visualmente.
+Não alterar payload.
+
+12. Observações
+
+Melhorar:
+
+* placeholder: “Notas sobre a viagem...”
+* altura confortável;
+* não ocupar espaço excessivo.
+
+13. Resumo antes de salvar
+
+Adicionar bloco discreto antes do footer:
+
+* Evento;
+* Veículo;
+* Motorista;
+* Rota;
+* Carregamento;
+* Descarregamento;
+* Status.
+
+Esse resumo ajuda a evitar erro operacional.
+
+14. Footer
+
+Melhorar:
+
+* Footer fixo;
+* separador sutil;
+* “Cancelar” como outline;
+* “Planejar Viagem” ou “Salvar Viagem” como primary/default;
+* loading visual ao salvar;
+* botão desabilitado enquanto campos obrigatórios estiverem inválidos;
+* em mobile, botões podem ficar full width.
+
+==================================================
+PARTE 4 — BACK-END / VALIDAÇÕES
+===============================
+
+Revisar endpoints de viagens com segurança.
+
+Não alterar schema/migrations automaticamente sem necessidade.
+
+1. RBAC
+
+Preservar regra atual:
+
+* criar/editar viagem deve continuar respeitando permissões existentes;
+* back-end continua fonte da verdade;
+* front-end apenas melhora UX.
+
+2. Endpoints
+
+Auditar:
+
+* GET /api/trips
+* GET /api/trips/:id, se existir
+* POST /api/trips
+* PATCH /api/trips/:id
+* DELETE /api/trips/:id, se existir
+* endpoints de destinos da viagem, se existirem
+
+Verificar:
+
+* requireAuth;
+* autorização correta;
+* validação de payload;
+* tratamento de erro;
+* retorno consistente.
+
+3. Validações obrigatórias
+
+Garantir, se ainda não existir:
+
+* evento obrigatório;
+* tipo de veículo obrigatório;
+* datas válidas;
+* início do carregamento <= fim do carregamento;
+* início do descarregamento <= fim do descarregamento;
+* descarregamento não deve acontecer antes do carregamento, se a regra de negócio exigir;
+* destino válido, se destinos forem obrigatórios;
+* motorista existente, se informado;
+* doca existente, se informada;
+* strings com trim.
+
+4. Conflitos
+
+Se houver dados suficientes, auditar possibilidade de conflito:
+
+* mesmo veículo em duas viagens no mesmo período;
+* mesmo motorista em duas viagens no mesmo período;
+* mesma doca em conflitos de horário.
+
+Não implementar bloqueio complexo se isso exigir mudança grande.
+Registrar como melhoria futura P1, se ainda não existir.
+
+5. Erros
+
+Padronizar mensagens:
+
+* 400 payload inválido;
+* 401 não autenticado;
+* 403 sem permissão;
+* 404 viagem/evento/veículo/motorista não encontrado;
+* 409 conflito de agenda, se aplicável;
+* 422 datas inválidas.
+
+==================================================
+PARTE 5 — RESPONSIVIDADE
+========================
+
+Validar:
+
+Desktop:
+
+* lista e calendário confortáveis;
+* modal com grid de campos.
+
+Tablet:
+
+* cards em coluna ou 2 colunas;
+* calendário legível.
+
+Mobile:
+
+* cards em 1 coluna;
+* calendário empilhado ou horizontal controlado;
+* modal quase full screen;
+* footer acessível;
+* sem overflow horizontal.
+
+==================================================
+PARTE 6 — ACESSIBILIDADE
+========================
+
+Garantir:
+
+* labels associados;
+* foco visível;
+* botão fechar acessível;
+* navegação por teclado;
+* aria-invalid em campos inválidos;
+* status não depender apenas de cor;
+* controles Lista/Calendário acessíveis;
+* inputs de data acessíveis.
+
+==================================================
+PARTE 7 — RESTRIÇÕES
+====================
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* cards;
+* filtros;
+* calendário;
+* modal;
+* microcopy PT-BR;
+* validações visuais;
+* validações back-end específicas de viagens;
+* mensagens de erro;
+* documentação.
+
+Não alterar sem necessidade:
+
+* schema;
+* migrations;
+* seed;
+* RBAC global;
+* role_permissions;
+* contratos usados por loading orders, movimentações e eventos;
+* endpoints de outros módulos;
+* lógica operacional de viagens;
+* payloads usados por outras telas.
+
+Se alguma melhoria exigir schema/migration:
+
+* não implementar automaticamente;
+* registrar a necessidade e explicar impacto.
+
+==================================================
+PARTE 8 — VALIDAÇÕES TÉCNICAS
+=============================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test obrigatório:
+
+Lista:
+
+* abrir Planejamento de Transporte;
+* alternar Lista/Calendário;
+* ordenar por data;
+* abrir filtros;
+* filtrar por status/evento/veículo, se existir;
+* limpar filtros;
+* abrir nova viagem;
+* editar viagem;
+* validar responsividade.
+
+Calendário:
+
+* alternar semana/mês, se existir;
+* navegar anterior/próximo;
+* validar dias sem viagens;
+* validar dias com viagens.
+
+Modal:
+
+* tentar salvar sem evento;
+* tentar salvar sem tipo de veículo;
+* selecionar evento;
+* selecionar tipo de veículo;
+* selecionar motorista;
+* selecionar doca;
+* incluir destino;
+* remover destino;
+* preencher carregamento;
+* preencher descarregamento;
+* tentar datas inválidas;
+* salvar viagem válida;
+* editar viagem existente.
+
+Perfis:
+
+* Admin;
+* Logística;
+* Almoxarifado;
+* Supervisor;
+* Usuário comum.
+
+Confirmar:
+
+* apenas perfis permitidos criam/editam;
+* usuários sem permissão não executam ações indevidas;
+* backend retorna 403 quando usuário sem permissão tenta agir;
+* nenhuma integração com Loading Orders, Movimentações ou Eventos foi quebrada.
+
+==================================================
+PARTE 9 — ENTREGA FINAL
+=======================
+
+Entregar:
+
+* problemas encontrados;
+* melhorias aplicadas na lista;
+* melhorias aplicadas no calendário;
+* melhorias aplicadas no modal de viagem;
+* melhorias de UX aplicadas;
+* melhorias de back-end/validação aplicadas, se houver;
+* arquivos alterados;
+* endpoints revisados;
+* componentes do Design System usados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências ou riscos restantes.
+
+Critério de aceite:
+
+A tela de Viagens só será considerada 10/10 se:
+
+* lista e calendário forem claros;
+* filtros forem úteis;
+* cards mostrarem evento, rota, veículo, motorista e datas;
+* modal estiver organizado por seções;
+* destinos estiverem claros;
+* carregamento e descarregamento parecerem uma linha do tempo;
+* scroll do modal estiver refinado;
+* datas inválidas forem tratadas visualmente e no back-end;
+* RBAC estiver preservado;
+* nenhuma integração com Loading Orders, Movimentações ou Eventos for quebrada.

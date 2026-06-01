@@ -146,15 +146,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/events", requireAuth, async (req, res) => {
+  app.post("/api/events", requireAuth, requireAdmin({ message: "Apenas administradores podem criar eventos" }), async (req, res) => {
     try {
-      console.log("Received event data:", JSON.stringify(req.body, null, 2));
       const data = insertEventSchema.parse(req.body);
+      // Date order validation
+      if (data.setupDate && data.eventDate && data.setupDate > data.eventDate) {
+        return res.status(422).json({ error: "Data de montagem deve ser anterior à data do evento" });
+      }
+      if (data.eventDate && data.teardownDate && data.eventDate > data.teardownDate) {
+        return res.status(422).json({ error: "Data do evento deve ser anterior à data de desmontagem" });
+      }
+      if (data.requestWindowStart && data.requestWindowEnd && data.requestWindowStart > data.requestWindowEnd) {
+        return res.status(422).json({ error: "Início da janela de requisição deve ser anterior ao fim" });
+      }
       const event = await storage.createEvent(data);
       res.status(201).json(event);
     } catch (error) {
-      console.error("Event validation error:", error);
-      res.status(400).json({ error: "Invalid event data", details: error instanceof Error ? error.message : "Unknown error" });
+      res.status(400).json({ error: "Dados de evento inválidos", details: error instanceof Error ? error.message : "Erro desconhecido" });
     }
   });
 
@@ -222,13 +230,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/events/:id", requireAuth, async (req, res) => {
+  app.patch("/api/events/:id", requireAuth, requireAdmin({ message: "Apenas administradores podem editar eventos" }), async (req, res) => {
     try {
       const data = insertEventSchema.partial().parse(req.body);
+      // Date order validation (only when both sides present)
+      if (data.setupDate && data.eventDate && data.setupDate > data.eventDate) {
+        return res.status(422).json({ error: "Data de montagem deve ser anterior à data do evento" });
+      }
+      if (data.eventDate && data.teardownDate && data.eventDate > data.teardownDate) {
+        return res.status(422).json({ error: "Data do evento deve ser anterior à data de desmontagem" });
+      }
+      if (data.requestWindowStart && data.requestWindowEnd && data.requestWindowStart > data.requestWindowEnd) {
+        return res.status(422).json({ error: "Início da janela de requisição deve ser anterior ao fim" });
+      }
       const event = await storage.updateEvent(req.params.id, data);
       res.json(event);
     } catch (error) {
-      res.status(400).json({ error: "Invalid event data" });
+      res.status(400).json({ error: "Dados de evento inválidos" });
     }
   });
 
