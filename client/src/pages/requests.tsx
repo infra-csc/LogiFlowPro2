@@ -163,10 +163,10 @@ export default function Requests() {
       {/* Filtros */}
       {requests && requests.length > 0 && (
         <FilterBar badgeCount={activeFiltersCount} onClear={activeFiltersCount > 0 ? clearFilters : undefined} defaultOpen>
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Status</label>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Status</label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger data-testid="select-status-filter" className="h-8 text-sm">
+              <SelectTrigger data-testid="select-status-filter" className="h-10 bg-card border-border/60 rounded-lg text-sm">
                 <SelectValue placeholder="Todos os status" />
               </SelectTrigger>
               <SelectContent>
@@ -179,10 +179,10 @@ export default function Requests() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Evento</label>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Evento</label>
             <Select value={eventFilter} onValueChange={setEventFilter}>
-              <SelectTrigger data-testid="select-event-filter" className="h-8 text-sm">
+              <SelectTrigger data-testid="select-event-filter" className="h-10 bg-card border-border/60 rounded-lg text-sm">
                 <SelectValue placeholder="Todos os eventos" />
               </SelectTrigger>
               <SelectContent>

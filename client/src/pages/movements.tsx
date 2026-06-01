@@ -289,10 +289,10 @@ export default function Movements() {
 
       {/* Filtros */}
       <FilterBar badgeCount={activeFiltersCount} onClear={clearAllFilters}>
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-event" className="text-xs text-muted-foreground">Evento</Label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="filter-event" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Evento</label>
           <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
-            <SelectTrigger id="filter-event" data-testid="select-filter-event" className="h-8 text-sm">
+            <SelectTrigger id="filter-event" data-testid="select-filter-event" className="h-10 bg-card border-border/60 rounded-lg text-sm">
               <SelectValue placeholder="Todos os eventos" />
             </SelectTrigger>
             <SelectContent>
@@ -305,10 +305,10 @@ export default function Movements() {
           </Select>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-status" className="text-xs text-muted-foreground">Status</Label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="filter-status" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Status</label>
           <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
-            <SelectTrigger id="filter-status" data-testid="select-filter-status" className="h-8 text-sm">
+            <SelectTrigger id="filter-status" data-testid="select-filter-status" className="h-10 bg-card border-border/60 rounded-lg text-sm">
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
@@ -321,10 +321,10 @@ export default function Movements() {
           </Select>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-type" className="text-xs text-muted-foreground">Tipo</Label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="filter-type" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Tipo</label>
           <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
-            <SelectTrigger id="filter-type" data-testid="select-filter-type" className="h-8 text-sm">
+            <SelectTrigger id="filter-type" data-testid="select-filter-type" className="h-10 bg-card border-border/60 rounded-lg text-sm">
               <SelectValue placeholder="Todos os tipos" />
             </SelectTrigger>
             <SelectContent>
@@ -337,10 +337,10 @@ export default function Movements() {
           </Select>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-dock" className="text-xs text-muted-foreground">Doca</Label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="filter-dock" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Doca</label>
           <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
-            <SelectTrigger id="filter-dock" data-testid="select-filter-dock" className="h-8 text-sm">
+            <SelectTrigger id="filter-dock" data-testid="select-filter-dock" className="h-10 bg-card border-border/60 rounded-lg text-sm">
               <SelectValue placeholder="Todas as docas" />
             </SelectTrigger>
             <SelectContent>
@@ -353,39 +353,39 @@ export default function Movements() {
           </Select>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-vehicle" className="text-xs text-muted-foreground">Placa</Label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="filter-vehicle" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Placa</label>
           <Input
             id="filter-vehicle"
             placeholder="Digite a placa..."
             value={filterVehiclePlate}
             onChange={(e) => setFilterVehiclePlate(e.target.value)}
             data-testid="input-filter-vehicle"
-            className="h-8 text-sm"
+            className="h-10 bg-card border-border/60 rounded-lg text-sm"
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-start-date" className="text-xs text-muted-foreground">Data Início</Label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="filter-start-date" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Data Início</label>
           <Input
             id="filter-start-date"
             type="date"
             value={filterStartDate}
             onChange={(e) => setFilterStartDate(e.target.value)}
             data-testid="input-filter-start-date"
-            className="h-8 text-sm"
+            className="h-10 bg-card border-border/60 rounded-lg text-sm"
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-end-date" className="text-xs text-muted-foreground">Data Fim</Label>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="filter-end-date" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Data Fim</label>
           <Input
             id="filter-end-date"
             type="date"
             value={filterEndDate}
             onChange={(e) => setFilterEndDate(e.target.value)}
             data-testid="input-filter-end-date"
-            className="h-8 text-sm"
+            className="h-10 bg-card border-border/60 rounded-lg text-sm"
           />
         </div>
       </FilterBar>
