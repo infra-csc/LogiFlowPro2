@@ -128,6 +128,11 @@ export default function RequestDetails() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [showDeleteItemDialog, setShowDeleteItemDialog] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [showDeleteBatchDialog, setShowDeleteBatchDialog] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState("");
 
   const { data: request, isLoading } = useQuery<MaterialRequest>({
@@ -277,6 +282,59 @@ export default function RequestDetails() {
   const handleDelete = () => {
     deleteMutation.mutate();
     setShowDeleteDialog(false);
+  };
+
+  const handleDeleteItem = () => {
+    if (itemToDelete) {
+      deleteItemMutation.mutate(itemToDelete);
+    }
+    setShowDeleteItemDialog(false);
+    setItemToDelete(null);
+  };
+
+  const handleDeleteBatch = () => {
+    const ids = Array.from(selectedItems);
+    let completed = 0;
+    let failed = 0;
+    const deleteNext = (index: number) => {
+      if (index >= ids.length) {
+        if (failed === 0) {
+          toast({ title: "Itens excluidos", description: `${completed} item(s) removido(s) com sucesso` });
+        } else {
+          toast({ variant: "destructive", title: "Erro parcial", description: `${completed} removido(s), ${failed} falha(s)` });
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/requests", id, "items"] });
+        setShowDeleteBatchDialog(false);
+        setSelectedItems(new Set());
+        setSelectMode(false);
+        return;
+      }
+      apiRequest("DELETE", `/api/request-items/${ids[index]}`).then(() => {
+        completed++;
+        deleteNext(index + 1);
+      }).catch(() => {
+        failed++;
+        deleteNext(index + 1);
+      });
+    };
+    deleteNext(0);
+  };
+
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedItems.size === items.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(items.map(i => i.id)));
+    }
   };
 
   const handleSubmit = () => {
@@ -471,10 +529,36 @@ export default function RequestDetails() {
               )}
             </div>
             {canEdit && (
-              <Button size="sm" onClick={() => setShowAddItem(true)} data-testid="button-add-item">
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar
-              </Button>
+              <div className="flex items-center gap-2">
+                {items.length > 1 && (
+                  <Button
+                    variant={selectMode ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setSelectMode(!selectMode);
+                      setSelectedItems(new Set());
+                    }}
+                    data-testid="button-select-mode"
+                  >
+                    {selectMode ? "Cancelar" : "Selecionar"}
+                  </Button>
+                )}
+                {selectMode && selectedItems.size > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteBatchDialog(true)}
+                    data-testid="button-delete-batch"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir {selectedItems.size}
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => setShowAddItem(true)} data-testid="button-add-item">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
             )}
           </div>
           <div className="mt-3 pt-3 border-t border-border/40">
@@ -501,12 +585,23 @@ export default function RequestDetails() {
                   return (
                     <div
                       key={item.id}
-                      className={`group border rounded-lg p-4 transition-all hover-elevate ${statusBg}`}
+                      className={`group border rounded-lg p-4 transition-all hover-elevate ${statusBg} ${selectMode && selectedItems.has(item.id) ? "ring-1 ring-primary bg-primary/5" : ""}`}
                       data-testid={`item-${item.id}`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         {/* Left: icon + name + SKU */}
                         <div className="flex items-start gap-4 flex-1 min-w-0">
+                          {selectMode && (
+                            <div className="flex items-center pt-1">
+                              <button
+                                onClick={() => toggleItemSelection(item.id)}
+                                className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedItems.has(item.id) ? "bg-primary border-primary" : "border-border hover:border-primary"}`}
+                                data-testid={`checkbox-item-${item.id}`}
+                              >
+                                {selectedItems.has(item.id) && <Check className="h-3 w-3 text-primary-foreground" />}
+                              </button>
+                            </div>
+                          )}
                           <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-primary shrink-0">
                             <Package className="h-5 w-5" />
                           </div>
@@ -531,29 +626,19 @@ export default function RequestDetails() {
                         <div className="flex items-center gap-4 sm:text-right">
                           {editingItemId === item.id ? (
                             <div className="flex items-center gap-3 flex-wrap">
-                              <div>
-                                <label className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold">Quantidade</label>
+                              <div className="flex items-center gap-2">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Quantidade</label>
                                 <input
                                   type="number"
                                   min="1"
                                   value={editQuantity}
                                   onChange={(e) => setEditQuantity(e.target.value)}
-                                  className="w-20 mt-1 h-8 px-2 rounded-md bg-background border border-border text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  className="w-20 h-9 px-2 rounded-md bg-background border border-border text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                   data-testid={`input-edit-quantity-${item.id}`}
                                 />
+                                <span className="text-xs text-muted-foreground">{item.product?.unit || "unid"}</span>
                               </div>
-                              <div>
-                                <label className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold">Observacoes</label>
-                                <input
-                                  type="text"
-                                  value={editNotes}
-                                  onChange={(e) => setEditNotes(e.target.value)}
-                                  placeholder="Obs. (opcional)"
-                                  className="w-32 mt-1 h-8 px-2 rounded-md bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                                  data-testid={`input-edit-notes-${item.id}`}
-                                />
-                              </div>
-                              <div className="flex items-center gap-1 mt-4">
+                              <div className="flex items-center gap-1">
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -620,7 +705,8 @@ export default function RequestDetails() {
                                     size="icon"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      deleteItemMutation.mutate(item.id);
+                                      setItemToDelete(item.id);
+                                      setShowDeleteItemDialog(true);
                                     }}
                                     data-testid={`button-remove-item-${item.id}`}
                                   >
@@ -692,6 +778,42 @@ export default function RequestDetails() {
 
       {/* Duplicate */}
       <DuplicateRequestDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog} requestId={id!} currentArea={request.area} itemCount={items.length} />
+
+      {/* Delete Item Confirmation */}
+      <AlertDialog open={showDeleteItemDialog} onOpenChange={setShowDeleteItemDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover este item da requisicao? Esta acao nao pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-item">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteItem} data-testid="button-confirm-delete-item">
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Batch Confirmation */}
+      <AlertDialog open={showDeleteBatchDialog} onOpenChange={setShowDeleteBatchDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Itens</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover {selectedItems.size} item(s) da requisicao? Esta acao nao pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-batch">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteBatch} data-testid="button-confirm-delete-batch">
+              Remover {selectedItems.size}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
