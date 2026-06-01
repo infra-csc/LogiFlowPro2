@@ -246,7 +246,7 @@ export default function Trips() {
 
       {/* View Controls */}
       <Card className="border-border/60">
-        <CardContent className="pt-6">
+        <CardContent className="p-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
               <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as ViewMode)}>
@@ -521,7 +521,7 @@ export default function Trips() {
         <div className="space-y-4">
           {/* Calendar Navigation */}
           <Card className="border-border/60">
-            <CardContent className="pt-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <Button
                   variant="outline"

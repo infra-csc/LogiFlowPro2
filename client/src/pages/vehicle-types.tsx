@@ -108,7 +108,7 @@ export default function VehicleTypes() {
               Novo Tipo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-border/60">
             <DialogHeader>
               <DialogTitle>
                 {editingType ? "Editar Tipo de Veículo" : "Criar Novo Tipo de Veículo"}
@@ -430,14 +430,11 @@ export default function VehicleTypes() {
           ))}
         </div>
       ) : (
-        <Card className="border-border/60">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
-              Nenhum tipo de veículo cadastrado. Crie o primeiro tipo clicando no botão acima.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Truck}
+          title="Nenhum tipo de veículo"
+          description="Crie o primeiro tipo de veículo clicando no botão acima."
+        />
       )}
     </div>
   );

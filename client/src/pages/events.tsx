@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Calendar, MapPin, Clock } from "lucide-react";
+import { Plus, Calendar, MapPin, Clock, Building2 } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
@@ -72,7 +72,7 @@ export default function Events() {
                     <h3 className="font-semibold text-base text-foreground">{event.name}</h3>
                     <div className="mt-2 pt-2 border-t border-border/40 space-y-1 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                        <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
                         <span>{event.client}</span>
                       </div>
                       <div className="flex items-center gap-2">

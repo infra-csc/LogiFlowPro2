@@ -215,7 +215,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-border/60">
         <DialogHeader>
           <DialogTitle>{trip ? "Editar Viagem" : "Planejar Nova Viagem"}</DialogTitle>
           <DialogDescription>
@@ -347,7 +347,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
             ) : (
               <div className="space-y-3">
                 {destinations.map((destination, index) => (
-                  <Card key={destination.id} data-testid={`card-destination-${index}`}>
+                  <Card key={destination.id} className="border-border/60" data-testid={`card-destination-${index}`}>
                     <CardContent className="pt-4">
                       <div className="flex items-start gap-4">
                         <div className="flex-1 space-y-3">
@@ -538,7 +538,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
               disabled={createMutation.isPending || updateMutation.isPending}
               data-testid="button-submit-trip"
             >
-              {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (trip ? "Atualizar" : "Criar")}
+              {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (trip ? "Salvar Viagem" : "Planejar Viagem")}
             </Button>
           </DialogFooter>
         </form>

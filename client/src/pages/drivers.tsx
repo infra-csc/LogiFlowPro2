@@ -7,14 +7,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -44,7 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, UserCog, Upload, Download } from "lucide-react";
+import { Plus, UserCog, Upload, Download, Trash2, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -228,6 +220,10 @@ export default function DriversPage() {
     }
   };
 
+  if (isLoading) {
+    return <PageLoading message="Carregando motoristas..." />;
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -245,100 +241,95 @@ export default function DriversPage() {
             data-testid="button-create-driver"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Novo Motorista
+            Adicionar Motorista
           </Button>
         )}
       </PageHeader>
 
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="font-semibold text-base mb-1">Lista de Motoristas</div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Total de {drivers.length} motorista{drivers.length !== 1 ? "s" : ""} cadastrado{drivers.length !== 1 ? "s" : ""}
-          </p>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>CPF</TableHead>
-                <TableHead>CNH</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Disponível</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center">
-                    Carregando...
-                  </TableCell>
-                </TableRow>
-              ) : drivers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    Nenhum motorista cadastrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                drivers.map((driver) => (
-                  <TableRow key={driver.id}>
-                    <TableCell className="font-medium">{driver.name}</TableCell>
-                    <TableCell>{driver.cpf}</TableCell>
-                    <TableCell>{driver.license}</TableCell>
-                    <TableCell>{driver.phone}</TableCell>
-                    <TableCell>
-                      <Badge variant={driver.available ? "secondary" : "outline"} className={!driver.available ? "text-muted-foreground" : ""}>
-                        {driver.available ? "Disponível" : "Indisponível"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {driver.cnhImageUrl && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(driver.cnhImageUrl!, "_blank")}
-                            data-testid={`button-view-cnh-${driver.id}`}
-                          >
-                            <Download className="mr-2 h-3 w-3" />
-                            Ver CNH
-                          </Button>
-                        )}
-                        {canWrite && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(driver)}
-                            data-testid={`button-edit-driver-${driver.id}`}
-                          >
-                            <UserCog className="mr-2 h-3 w-3" />
-                            Editar
-                          </Button>
-                        )}
-                        {isAdmin && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete(driver)}
-                            data-testid={`button-delete-driver-${driver.id}`}
-                          >
-                            Excluir
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {drivers.length === 0 ? (
+        <EmptyState
+          icon={UserCog}
+          title="Nenhum motorista cadastrado"
+          description="Adicione motoristas para vinculá-los às viagens"
+          action={canWrite ? { label: "Adicionar Motorista", onClick: () => setIsDialogOpen(true) } : undefined}
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {drivers.map((driver) => (
+            <Card key={driver.id} className="border-border/60" data-testid={`card-driver-${driver.id}`}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <UserCog className="h-5 w-5 text-primary/70 flex-shrink-0" />
+                    <h3 className="font-semibold text-base truncate">{driver.name}</h3>
+                  </div>
+                  <Badge
+                    variant={driver.available ? "secondary" : "outline"}
+                    className={!driver.available ? "text-muted-foreground flex-shrink-0" : "flex-shrink-0"}
+                  >
+                    {driver.available ? "Disponível" : "Indisponível"}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-1 pt-2 border-t border-border/40 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <span>CPF:</span>
+                    <span className="font-mono">{driver.cpf}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span>CNH:</span>
+                    <span className="font-mono">{driver.license}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>{driver.phone}</span>
+                  </div>
+                </div>
+                {(driver.cnhImageUrl || canWrite || isAdmin) && (
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-border/40">
+                    {driver.cnhImageUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(driver.cnhImageUrl!, "_blank")}
+                        data-testid={`button-view-cnh-${driver.id}`}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Ver CNH
+                      </Button>
+                    )}
+                    {canWrite && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleEdit(driver)}
+                        data-testid={`button-edit-driver-${driver.id}`}
+                      >
+                        <UserCog className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDelete(driver)}
+                        data-testid={`button-delete-driver-${driver.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Create/Edit Driver Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl border-border/60">
           <DialogHeader>
             <DialogTitle>{selectedDriver ? "Editar Motorista" : "Novo Motorista"}</DialogTitle>
             <DialogDescription>
@@ -500,8 +491,8 @@ export default function DriversPage() {
                   {createMutation.isPending || updateMutation.isPending
                     ? "Salvando..."
                     : selectedDriver
-                    ? "Atualizar"
-                    : "Criar Motorista"}
+                    ? "Salvar Motorista"
+                    : "Adicionar Motorista"}
                 </Button>
               </DialogFooter>
             </form>

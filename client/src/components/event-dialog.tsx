@@ -137,7 +137,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-border/60">
         <DialogHeader>
           <DialogTitle>{event ? "Editar Evento" : "Criar Evento"}</DialogTitle>
           <DialogDescription>
@@ -427,7 +427,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                 disabled={createMutation.isPending || updateMutation.isPending}
                 data-testid="button-submit-event"
               >
-                {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (event ? "Atualizar" : "Criar")}
+                {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (event ? "Salvar Evento" : "Criar Evento")}
               </Button>
             </DialogFooter>
           </form>

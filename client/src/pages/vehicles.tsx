@@ -163,7 +163,7 @@ export default function Vehicles() {
               Novo Veículo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-border/60">
             <DialogHeader>
               <DialogTitle>
                 {editingVehicle ? "Editar Veículo" : "Criar Novo Veículo"}
@@ -450,7 +450,7 @@ export default function Vehicles() {
                     disabled={createMutation.isPending}
                     data-testid="button-submit"
                   >
-                    {createMutation.isPending ? "Salvando..." : (editingVehicle ? "Atualizar" : "Criar")}
+                    {createMutation.isPending ? "Salvando..." : (editingVehicle ? "Salvar Veículo" : "Criar Veículo")}
                   </Button>
                 </div>
               </form>
