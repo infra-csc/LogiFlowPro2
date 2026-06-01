@@ -121,8 +121,8 @@ export default function Dashboard() {
   const greeting = getGreeting();
   const firstName = user?.name?.split(" ")[0] || user?.username || "";
   const todayLabel = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
-  // Capitalize first letter
   const todayFormatted = todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1);
+  const greetingLine = firstName ? `${greeting}, ${firstName}! · ${todayFormatted}` : `${greeting}! · ${todayFormatted}`;
 
   const conflicts = stats?.conflictsCount || 0;
 
@@ -176,8 +176,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`${greeting}${firstName ? `, ${firstName}` : ""}!`}
-        description={todayFormatted}
+        title="Dashboard"
+        description={greetingLine}
       />
 
       {/* StatsBar */}
@@ -230,13 +230,22 @@ export default function Dashboard() {
 
             {/* Event list */}
             {!recentEvents || recentEvents.length === 0 ? (
-              <EmptyState
-                icon={Calendar}
-                title="Nenhum evento recente"
-                description="Crie um evento para começar a gerenciar operações."
-                compact
-                action={{ label: "Criar Evento", onClick: () => setLocation("/events") }}
-              />
+              <div className="flex flex-col items-center justify-center text-center py-8">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                  <Calendar className="h-5 w-5 text-primary/60" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Nenhum evento recente</p>
+                <p className="text-xs text-muted-foreground mt-1">Crie um evento para começar a gerenciar operações.</p>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  data-testid="button-create-event"
+                >
+                  <Link href="/events">Criar Evento</Link>
+                </Button>
+              </div>
             ) : (
               <div className="space-y-2">
                 {recentEvents.map((event) => (
