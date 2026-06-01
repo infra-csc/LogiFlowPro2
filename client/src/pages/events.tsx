@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Calendar, MapPin, Clock, Building2 } from "lucide-react";
+import { Plus, Calendar, MapPin, Clock, Building2, Edit } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
@@ -10,8 +10,12 @@ import { EventDialog } from "@/components/event-dialog";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { useAuth } from "@/hooks/use-auth";
+import { userIsAdmin } from "@/lib/authz";
 
 export default function Events() {
+  const { user } = useAuth();
+  const canWrite = userIsAdmin(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
 
@@ -41,10 +45,12 @@ export default function Events() {
         title="Eventos"
         description="Gerencie cronogramas e logística de eventos"
       >
-        <Button onClick={() => setShowDialog(true)} data-testid="button-create-event">
-          <Plus className="h-4 w-4 mr-2" />
-          Criar Evento
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setShowDialog(true)} data-testid="button-create-event">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Evento
+          </Button>
+        )}
       </PageHeader>
 
       {!events || events.length === 0 ? (
@@ -52,40 +58,49 @@ export default function Events() {
           icon={Calendar}
           title="Nenhum evento ainda"
           description="Comece criando seu primeiro evento"
-          action={{ label: "Criar Evento", onClick: () => setShowDialog(true) }}
+          action={canWrite ? { label: "Novo Evento", onClick: () => setShowDialog(true) } : undefined}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {events.map((event) => (
             <Card
               key={event.id}
-              className="hover-elevate border-border/60 cursor-pointer"
-              onClick={() => handleEdit(event)}
+              className="border-border/60"
               data-testid={`card-event-${event.id}`}
             >
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <StatusBadge status={event.status} />
-                    </div>
-                    <h3 className="font-semibold text-base text-foreground">{event.name}</h3>
-                    <div className="mt-2 pt-2 border-t border-border/40 space-y-1 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span>{event.client}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span>{event.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span>{format(new Date(event.eventDate), "dd/MM/yyyy")}</span>
-                      </div>
-                    </div>
+                <div className="flex items-center gap-2 mb-1">
+                  <StatusBadge status={event.status} />
+                </div>
+                <h3 className="font-semibold text-base text-foreground">{event.name}</h3>
+                <div className="mt-2 pt-2 border-t border-border/40 space-y-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>{event.client}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>{event.location}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>{format(new Date(event.eventDate), "dd/MM/yyyy")}</span>
                   </div>
                 </div>
+                {canWrite && (
+                  <div className="mt-3 pt-3 border-t border-border/40">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleEdit(event)}
+                      data-testid={`button-edit-event-${event.id}`}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

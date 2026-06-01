@@ -105,7 +105,7 @@ export default function VehicleTypes() {
           <DialogTrigger asChild>
             <Button data-testid="button-create-vehicle-type">
               <Plus className="h-4 w-4 mr-2" />
-              Novo Tipo
+              Adicionar Tipo
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-border/60">

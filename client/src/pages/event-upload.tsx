@@ -209,14 +209,18 @@ export default function EventUpload() {
             A planilha deve conter as colunas: Nome do Evento, Cliente, Local, Data de Montagem, Data do evento, Data da desmontagem (opcionais: SKU, Janela de Início, Janela de Fim, Status, Observações)
           </CardDescription>
           <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileChange}
-              disabled={uploadMutation.isPending}
-              data-testid="input-file-upload"
-            />
+            <div className="border-2 border-dashed border-border/60 rounded-md p-6 text-center">
+              <FileSpreadsheet className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">Selecione um arquivo Excel (.xlsx)</p>
+              <Input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileChange}
+                disabled={uploadMutation.isPending}
+                data-testid="input-file-upload"
+                className="max-w-xs mx-auto"
+              />
+            </div>
             {file && (
               <div className="flex gap-2">
                 <Button
@@ -248,7 +252,6 @@ export default function EventUpload() {
               </AlertDescription>
             </Alert>
           )}
-          </div>
         </CardContent>
       </Card>
 

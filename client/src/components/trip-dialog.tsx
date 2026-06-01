@@ -217,7 +217,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-border/60">
         <DialogHeader>
-          <DialogTitle>{trip ? "Editar Viagem" : "Planejar Nova Viagem"}</DialogTitle>
+          <DialogTitle>{trip ? "Editar Viagem" : "Nova Viagem"}</DialogTitle>
           <DialogDescription>
             {trip ? "Atualize os detalhes do planejamento de transporte" : "Crie um novo planejamento de transporte"}
           </DialogDescription>

@@ -139,7 +139,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-border/60">
         <DialogHeader>
-          <DialogTitle>{event ? "Editar Evento" : "Criar Evento"}</DialogTitle>
+          <DialogTitle>{event ? "Editar Evento" : "Novo Evento"}</DialogTitle>
           <DialogDescription>
             {event ? "Atualize os detalhes e logística do evento" : "Configure um novo evento com datas e logística"}
           </DialogDescription>

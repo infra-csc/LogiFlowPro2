@@ -283,6 +283,14 @@ export default function DriversPage() {
                     <Phone className="h-3.5 w-3.5 flex-shrink-0" />
                     <span>{driver.phone}</span>
                   </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Badge
+                      variant={driver.cnhImageUrl ? "secondary" : "outline"}
+                      className={!driver.cnhImageUrl ? "text-muted-foreground" : ""}
+                    >
+                      {driver.cnhImageUrl ? "CNH Anexada" : "Sem CNH"}
+                    </Badge>
+                  </div>
                 </div>
                 {(driver.cnhImageUrl || canWrite || isAdmin) && (
                   <div className="flex gap-2 mt-3 pt-3 border-t border-border/40">

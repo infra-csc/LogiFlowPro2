@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, Calendar, MapPin, Filter, X, List, CalendarDays, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Truck, Calendar, MapPin, Filter, X, List, CalendarDays, ArrowUp, ArrowDown, ArrowRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
@@ -44,6 +44,7 @@ interface TripFilters {
   eventDate?: string;
   eventId?: string;
   movementDate?: string;
+  statusGroup?: 'planned' | 'in_progress' | 'completed';
 }
 
 interface CalendarTripEntry {
@@ -81,6 +82,7 @@ export default function Trips() {
     if (filters.eventDate) count++;
     if (filters.eventId) count++;
     if (filters.movementDate) count++;
+    if (filters.statusGroup) count++;
     return count;
   }, [filters]);
 
@@ -126,6 +128,14 @@ export default function Trips() {
         }
         
         if (!matchesMovementDate) return false;
+      }
+
+      // Filter by status group
+      if (filters.statusGroup) {
+        const inProgress = ['loading', 'loaded', 'in_transit', 'at_destination', 'unloading'];
+        if (filters.statusGroup === 'planned' && trip.status !== 'planned') return false;
+        if (filters.statusGroup === 'in_progress' && !inProgress.includes(trip.status)) return false;
+        if (filters.statusGroup === 'completed' && trip.status !== 'completed') return false;
       }
 
       return true;
@@ -243,6 +253,30 @@ export default function Trips() {
           </Button>
         )}
       </PageHeader>
+
+      {/* Stats Bar */}
+      {trips && trips.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {([
+            { label: "Total", count: trips.length, key: undefined },
+            { label: "Agendadas", count: trips.filter(t => t.status === 'planned').length, key: 'planned' as const },
+            { label: "Em Andamento", count: trips.filter(t => ['loading','loaded','in_transit','at_destination','unloading'].includes(t.status)).length, key: 'in_progress' as const },
+            { label: "Concluídas", count: trips.filter(t => t.status === 'completed').length, key: 'completed' as const },
+          ] as const).map(({ label, count, key }) => (
+            <Card
+              key={label}
+              className={`border-border/60 hover-elevate cursor-pointer${filters.statusGroup === key && key !== undefined ? ' ring-1 ring-primary' : ''}`}
+              onClick={() => setFilters(prev => ({ ...prev, statusGroup: prev.statusGroup === key ? undefined : key }))}
+              data-testid={`stat-card-${label.toLowerCase().replace(/ /g, '-')}`}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold tabular-nums">{count}</div>
+                <div className="text-sm text-muted-foreground">{label}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* View Controls */}
       <Card className="border-border/60">
@@ -449,12 +483,18 @@ export default function Trips() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <StatusBadge status={trip.status} />
-                          <span className="text-xs text-muted-foreground font-mono">{trip.vehicle?.plate || "—"}</span>
                         </div>
                         <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
-                          <Truck className="h-4 w-4 text-muted-foreground" />
+                          <Truck className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           {trip.event?.name || "Viagem"}
                         </h3>
+                        {(trip.loadingLocation || trip.unloadingLocation) && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                            <span className="truncate">{trip.loadingLocation || "—"}</span>
+                            <ArrowRight className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span className="truncate">{trip.unloadingLocation || "—"}</span>
+                          </div>
+                        )}
                         {trip.description && (
                           <p className="text-sm text-muted-foreground mt-0.5">{trip.description}</p>
                         )}
@@ -462,10 +502,17 @@ export default function Trips() {
                     </div>
 
                     {/* Metadados */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/40">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3 pt-3 border-t border-border/40">
                       <div>
-                        <p className="text-xs text-muted-foreground">Tipo de Veículo</p>
+                        <p className="text-xs text-muted-foreground">Veículo</p>
                         <p className="text-sm font-medium">{trip.vehicleType?.name || "—"}</p>
+                        {trip.vehicle?.plate && (
+                          <p className="text-xs text-muted-foreground font-mono">{trip.vehicle.plate}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Motorista</p>
+                        <p className="text-sm font-medium">{trip.driver?.name || "—"}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Carregamento</p>

@@ -209,13 +209,27 @@ export default function TripUpload() {
             Final do descarregamento, status, Observações
           </CardDescription>
           <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileChange}
-              data-testid="input-file"
-            />
+            <div className="border-2 border-dashed border-border/60 rounded-md p-6 text-center">
+              <FileSpreadsheet className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">Selecione um arquivo Excel (.xlsx)</p>
+              <Input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileChange}
+                data-testid="input-file"
+                className="max-w-xs mx-auto"
+              />
+            </div>
+
+            {file && (
+              <Alert>
+                <FileSpreadsheet className="h-4 w-4" />
+                <AlertDescription>
+                  Arquivo selecionado: {file.name} ({parsedData.length} viagens)
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Button
               onClick={handleUpload}
               disabled={parsedData.length === 0 || uploadMutation.isPending || !canWrite}
@@ -230,16 +244,6 @@ export default function TripUpload() {
                 </>
               )}
             </Button>
-          </div>
-
-          {file && (
-            <Alert>
-              <FileSpreadsheet className="h-4 w-4" />
-              <AlertDescription>
-                Arquivo selecionado: {file.name} ({parsedData.length} viagens)
-              </AlertDescription>
-            </Alert>
-          )}
           </div>
         </CardContent>
       </Card>

@@ -160,7 +160,7 @@ export default function Vehicles() {
           <DialogTrigger asChild>
             <Button data-testid="button-create-vehicle">
               <Plus className="h-4 w-4 mr-2" />
-              Novo Veículo
+              Adicionar Veículo
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-border/60">
