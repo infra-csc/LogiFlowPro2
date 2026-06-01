@@ -1,0 +1,199 @@
+Vamos refinar a tela de Lista de Ordens de Carregamento para ficar 10/10.
+
+Arquivo foco:
+
+* client/src/pages/loading-orders.tsx
+
+Objetivo:
+Melhorar a tela de lista de Ordens de Carregamento para parecer uma central operacional profissional, compacta, clara e rápida de usar.
+
+A tela já melhorou visualmente, mas ainda está com cards grandes, stats altos, filtros pouco úteis visualmente e ações mal agrupadas.
+
+Contexto:
+Ordens de Carregamento consolidam requisições aprovadas, itens, viagens e progresso de carregamento. A lista precisa permitir leitura rápida do status, evento, período, responsável, progresso e próxima ação.
+
+Usar o Design System atual do EventFlow como fonte única de verdade.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+Problemas atuais observados:
+
+1. Stats cards grandes demais
+
+* Os cards de estatística ocupam muito espaço vertical.
+* Reduzir altura.
+* Manter número em destaque, mas com layout mais compacto.
+* Ícone, label e valor devem ficar melhor agrupados.
+* O foco visual principal deve continuar sendo a lista de ordens.
+
+2. FilterBar pouco útil quando fechado
+
+* A barra de filtros está visualmente grande e vazia.
+* Melhorar o estado fechado.
+* Mostrar badgeCount de filtros ativos.
+* Se houver filtros ativos, mostrar chips/resumo como “Status: Aprovado”, “Evento: Night Run”.
+* Ao abrir, os campos devem ficar em grid responsivo, com labels claras.
+
+3. Cards da lista muito altos
+
+* Reduzir espaço vazio dentro dos cards.
+* Aplicar CardContent com p-4.
+* Melhorar densidade sem deixar poluído.
+* Título do card com text-base font-semibold.
+* Evitar cards com altura excessiva para poucas informações.
+
+4. Hierarquia do card
+   Cada card precisa responder rapidamente:
+
+* Qual é a ordem?
+* Qual é o evento?
+* Qual é o status?
+* Qual é o período planejado?
+* Quantos itens existem?
+* Quantos já foram carregados?
+* Qual é a próxima ação possível?
+
+Estrutura sugerida do card:
+
+Topo:
+
+* número/nome da ordem à esquerda;
+* StatusBadge à direita.
+
+Meio:
+
+* evento;
+* período planejado;
+* responsável.
+
+Progresso:
+
+* “Carregados: 0 / 120”
+* percentual;
+* barra de progresso.
+
+Rodapé:
+
+* ações agrupadas.
+
+5. Ações do card
+   Hoje o ícone de editar fica solto no canto inferior esquerdo e “Detalhes” fica no canto inferior direito.
+
+Melhorar:
+
+* Agrupar ações em uma ActionBar no rodapé do card ou no topo direito.
+* “Detalhes” deve ser a ação principal visual do card.
+* “Editar” deve aparecer apenas se permitido.
+* Botões devem usar size="sm".
+* Evitar ações espalhadas.
+* Se o card inteiro for clicável, deixar isso visualmente claro e manter botões secundários bem posicionados.
+
+6. Status
+
+* Usar apenas StatusBadge.
+* Não criar Badge manual com cores hardcoded.
+* O status deve aparecer no header do card.
+* A borda lateral colorida pode continuar, mas deve ser sutil e consistente.
+* Evitar bordas muito agressivas.
+
+7. Progresso
+   Melhorar a leitura do progresso:
+
+* Mostrar “0 / 120 carregados” em vez de apenas “Carregados: 0”.
+* Percentual alinhado, mas não isolado demais.
+* Barra de progresso um pouco mais visível.
+* Se progresso for 0%, mostrar barra discreta.
+* Se progresso for 100%, destacar como completo.
+* Se exceder, usar estado visual de alerta.
+
+8. Próxima ação
+   Se possível sem alterar regra de negócio, mostrar uma pequena indicação operacional:
+
+* draft: “Preparar ordem”
+* ready: “Aguardando aprovação”
+* approved: “Pronta para operação”
+* in_progress: “Carregamento em andamento”
+* completed: “Finalizada”
+* cancelled: “Cancelada”
+
+Isso deve ser apenas microcopy visual, sem alterar status ou lógica.
+
+9. Layout geral
+
+* Reduzir espaçamento vertical entre stats, filtros e lista.
+* Melhorar equilíbrio entre topo e conteúdo.
+* Grid responsivo:
+
+  * desktop: 3 colunas se couber bem;
+  * tablet: 2 colunas;
+  * mobile: 1 coluna.
+* Evitar cards cortados ou desalinhados.
+* Garantir que a tela não pareça vazia mesmo com poucos dados.
+
+10. Possível melhoria futura
+    Se fizer sentido, registrar como melhoria futura:
+
+* adicionar alternância entre “Cards” e “Tabela compacta”.
+  Não implementar agora se isso aumentar risco.
+
+Restrições absolutas:
+Não alterar:
+
+* backend;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* helpers de autorização;
+* regras de negócio;
+* status/transições;
+* lógica de criação/edição;
+* lógica de aprovação;
+* lógica de progresso.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição visual;
+* cards;
+* filtros;
+* stats cards;
+* botões;
+* microcopy PT-BR;
+* responsividade;
+* empty/loading/error states.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir lista;
+* validar stats;
+* abrir/fechar filtros;
+* filtrar por status;
+* filtrar por evento;
+* limpar filtros;
+* abrir detalhes;
+* validar botão Nova Ordem por perfil;
+* validar botão Editar por perfil;
+* validar responsividade desktop/tablet/mobile.
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* confirmação de que RBAC e regras foram preservados;
+* resultado do npm run check;
+* resultado do npm run build.

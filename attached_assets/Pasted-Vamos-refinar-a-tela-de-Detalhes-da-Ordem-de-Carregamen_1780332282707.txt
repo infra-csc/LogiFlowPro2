@@ -1,0 +1,231 @@
+Vamos refinar a tela de Detalhes da Ordem de Carregamento para nível 10/10.
+
+Arquivo foco:
+
+* client/src/pages/loading-order-details.tsx
+
+Objetivo:
+Transformar a tela de detalhes da Ordem de Carregamento em uma central operacional clara, compacta e profissional para acompanhar requisições, itens consolidados, progresso de carga e movimentações.
+
+Contexto:
+A Ordem de Carregamento consolida requisições aprovadas, itens, viagens e movimentações. Essa tela precisa permitir leitura rápida da operação e das próximas ações disponíveis.
+
+Problemas observados na tela atual:
+
+1. Header
+
+* O subtítulo está mostrando “Evento não encontrado”.
+* Isso não deve aparecer como texto normal.
+* Se o evento existir, mostrar o nome corretamente.
+* Se o evento não for encontrado, mostrar alerta discreto e contextual.
+* Header precisa mostrar melhor status, número da ordem, evento e progresso geral.
+
+2. Cards muito grandes
+
+* A tela está visualmente boa, mas muito espaçosa.
+* Reduzir altura dos cards.
+* Melhorar densidade.
+* Evitar scroll excessivo.
+* Usar p-4 em cards operacionais.
+
+3. Requisições incluídas
+
+* Hoje aparecem principalmente IDs curtos, o que não ajuda na operação.
+* Mostrar área da requisição como informação principal.
+* Mostrar ID curto como secundário font-mono text-xs.
+* Mostrar StatusBadge.
+* Se possível, mostrar quantidade de itens ou contexto.
+* Link para detalhes precisa ser mais claro.
+* Evitar linhas vazias ou informações sem utilidade.
+
+4. Itens consolidados
+
+* Melhorar layout dos itens.
+* Manter nome e SKU, mas organizar melhor:
+
+  * quantidade consolidada;
+  * separado/picked;
+  * carregado/loaded;
+  * progresso;
+  * origens.
+* Origens devem usar badges discretos.
+* Quantidade principal deve continuar visível, mas sem deixar o card gigante.
+* Evitar duplicação visual desnecessária entre “Itens Consolidados” e “Progresso de Carregamento”.
+
+5. Progresso de carregamento
+
+* Essa seção está no caminho certo.
+* Adicionar um resumo no topo:
+
+  * total esperado;
+  * total carregado;
+  * percentual geral;
+  * quantidade de itens excedidos, se houver.
+* Destacar itens excedidos de forma clara, mas sem exagero visual.
+* Barras de progresso devem manter boa legibilidade em dark mode.
+* Se loadedQuantity > expectedQuantity, manter alerta “Excedido em X unidades”.
+
+6. Movimentações
+
+* Traduzir tipos técnicos:
+
+  * outbound_event → Saída para evento
+  * inbound_return → Retorno/Devolução
+  * outros tipos devem ter labels amigáveis.
+* Evitar exibir nomes técnicos crus.
+* Cards da timeline devem ser mais compactos.
+* Manter item count à direita, mas melhorar hierarquia.
+* Mostrar veículo, data e status de forma organizada.
+* Preview dos produtos em badges compactos.
+* Link para detalhe da movimentação se existir.
+
+7. Ações
+
+* ActionBar no header com:
+
+  * Voltar
+  * Editar
+  * Aprovar para carga, se aplicável
+  * Desaprovar, se aplicável
+  * Marcar como pronta, se aplicável
+* Botões devem respeitar RBAC e status.
+* Não alterar permissões.
+* Não criar ações novas.
+
+8. Layout sugerido
+   Organizar a tela assim:
+
+Topo:
+
+* PageHeader com número/título da ordem
+* StatusBadge
+* evento
+* ActionBar
+
+Abaixo:
+
+* Cards compactos de resumo:
+
+  * Status
+  * Período planejado
+  * Requisições
+  * Itens consolidados
+  * Progresso geral
+
+Depois:
+
+* Informações da Ordem
+* Requisições Incluídas
+* Itens Consolidados
+* Progresso de Carregamento
+* Movimentações
+* Observações, se houver
+
+9. Design System
+   Usar o Design System atual como fonte única:
+
+* PageHeader
+* PageSection
+* DataCard
+* ActionBar
+* StatusBadge
+* EmptyState
+* PageLoading
+* ErrorState
+
+Regras:
+
+* Status sempre com StatusBadge.
+* Não criar Badge manual com cor hardcoded.
+* Cards operacionais com p-4.
+* Título de card com text-base font-semibold.
+* IDs com font-mono text-xs text-muted-foreground.
+* Metadados com border-t border-border/40 quando fizer sentido.
+* Botões dentro de cards com size="sm".
+
+10. Scrollbar
+    Se houver scrollbar customizado global ou local, garantir que:
+
+* não apareça scrollbar branco padrão;
+* seja fino;
+* track transparente;
+* thumb discreto;
+* combine com dark mode.
+
+11. Responsividade
+    Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* sem overflow horizontal;
+* cards quebram corretamente;
+* ações descem para baixo no mobile;
+* progresso continua legível;
+* timeline continua utilizável.
+
+Restrições absolutas:
+Não alterar:
+
+* backend;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* helpers de autorização;
+* regras de negócio;
+* status/transições;
+* lógica de vínculo com requisições;
+* lógica de itens consolidados;
+* lógica de viagens;
+* lógica de movimentações.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição visual;
+* microcopy PT-BR;
+* labels amigáveis para status/tipos;
+* organização dos cards;
+* organização das seções;
+* responsividade;
+* empty/loading/error states.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir ordem draft;
+* abrir ordem ready;
+* abrir ordem approved;
+* abrir ordem in_progress;
+* abrir ordem completed;
+* validar ações por status e perfil;
+* validar requisições incluídas;
+* validar itens consolidados;
+* validar progresso normal;
+* validar progresso excedido;
+* validar movimentações;
+* validar mobile básico.
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* problemas corrigidos;
+* confirmação de que RBAC e regras foram preservados;
+* resultado do npm run check;
+* resultado do npm run build.

@@ -1,0 +1,271 @@
+Vamos refinar o modal de Criar/Editar Ordem de Carregamento para nível 10/10.
+
+Arquivo foco:
+
+* client/src/components/loading-order-dialog.tsx
+
+Objetivo:
+Transformar o modal de criação/edição de Ordem de Carregamento em uma experiência profissional, guiada, clara e operacional.
+
+Contexto:
+A Ordem de Carregamento consolida requisições aprovadas, itens, viagens e serve como base para picking/carregamento. Portanto, esse modal não pode parecer apenas um formulário longo com scroll. Ele precisa guiar o usuário com clareza.
+
+Problemas atuais observados:
+
+* O modal está muito longo e depende de um scroll grande.
+* O scrollbar padrão branco/cinza quebra o dark mode.
+* Header e footer não ficam suficientemente integrados ao fluxo.
+* Evento usa select simples, sem busca.
+* Inputs de data/hora ainda parecem nativos/crus.
+* A seleção de requisições aprovadas poderia ser mais clara.
+* A seleção de viagens poderia ser mais compacta e visual.
+* Falta um resumo antes de criar a ordem.
+* O usuário precisa entender melhor o que está selecionando antes de confirmar.
+
+Objetivo visual:
+O modal deve parecer um fluxo operacional guiado, não um formulário bruto.
+
+Direção recomendada:
+Transformar o modal em uma experiência em etapas, se for seguro sem alterar payload ou lógica funcional.
+
+Etapas sugeridas:
+
+1. Dados da Ordem
+
+* Evento
+* Número da Ordem
+* Início Planejado
+* Fim Planejado
+* Criado por
+* Observações
+
+2. Requisições Aprovadas
+
+* Lista de requisições disponíveis para consolidar
+* Seleção clara
+* Contador de selecionadas
+
+3. Viagens
+
+* Lista de viagens associadas
+* Seleção opcional
+* Contador de selecionadas
+
+4. Revisão
+
+* Resumo antes de criar:
+
+  * Evento
+  * Número da ordem
+  * Período planejado
+  * Requisições selecionadas
+  * Viagens selecionadas
+  * Observações, se houver
+
+Se implementar etapas for arriscado agora, manter em uma tela única, mas organizar visualmente em PageSections internas/blocos bem separados.
+
+Melhorias obrigatórias:
+
+1. Modal
+
+* Manter dark mode profissional.
+* Largura adequada para desktop.
+* max-height controlado.
+* Header fixo no topo.
+* Footer fixo no rodapé.
+* Apenas o conteúdo central deve rolar.
+* Scrollbar customizado, fino e discreto.
+* Sem scrollbar branco padrão do navegador.
+* Separadores sutis entre header, conteúdo e footer.
+
+2. Header
+
+* Título claro:
+
+  * “Nova Ordem de Carregamento” ou “Editar Ordem de Carregamento”
+* Descrição curta:
+
+  * “Consolide requisições aprovadas e associe viagens para o carregamento.”
+* Botão fechar acessível.
+* Evitar header gigante.
+
+3. Evento
+
+* Trocar Select por Combobox pesquisável, se possível e seguro.
+* Permitir busca por nome do evento.
+* Mostrar lista com altura máxima.
+* Empty state: “Nenhum evento encontrado”.
+* Scrollbar discreto.
+* Após selecionar, exibir pequeno resumo do evento selecionado.
+
+Não alterar payload.
+
+4. Número da Ordem
+
+* Manter campo se ele já for exigido.
+* Label clara: “Número da Ordem *”.
+* Placeholder: “Ex: LO-2026-001”.
+* Validação visual se estiver vazio.
+* Código com aparência operacional, se fizer sentido.
+
+5. Datas planejadas
+
+* Melhorar layout dos campos de data/hora.
+* Labels com ícones discretos.
+* Inputs com foco consistente no dark mode.
+* Mensagem visual se início/fim estiverem inválidos.
+* Se possível, validar visualmente se fim planejado é anterior ao início, sem alterar regra de negócio do backend.
+
+6. Criado por
+
+* Se for apenas informativo, deixar visualmente como campo readonly.
+* Evitar parecer que o usuário precisa editar.
+* Pode ser exibido como metadado em vez de input, se não alterar lógica.
+
+7. Observações
+
+* Textarea mais refinado.
+* Placeholder: “Observações adicionais sobre a ordem...”
+* Altura confortável, sem exagero.
+* Label com ícone discreto.
+
+8. Requisições Aprovadas
+   Melhorar a seção:
+
+* Título: “Requisições Aprovadas”
+* Subtexto: “Selecione as requisições para consolidar nesta ordem”
+* Contador: “0 de 3 selecionadas”
+* Lista/tabela compacta e clara
+* Linha selecionada com destaque visual
+* Checkbox/radio mais visível
+* Área como informação principal
+* ID como informação secundária font-mono text-xs
+* Status usando StatusBadge
+* Sem badge manual com cor hardcoded
+
+Se houver muitas requisições:
+
+* adicionar busca por área/ID, se simples e seguro;
+* ou deixar registrado como melhoria futura.
+
+9. Viagens
+   Melhorar a seção:
+
+* Título: “Viagens”
+* Subtexto: “Selecione as viagens associadas a esta ordem”
+* Indicar claramente que é opcional
+* Contador de selecionadas
+* Cards mais compactos
+* Linha selecionada destacada
+* Mostrar:
+
+  * nome da viagem;
+  * origem/destino ou local;
+  * horário, se existir;
+  * ID curto;
+  * veículo/motorista, se existir.
+
+Evitar cards muito altos.
+
+10. Resumo final
+    Adicionar um bloco de resumo antes do footer ou na última etapa:
+
+* Evento selecionado
+* Número da ordem
+* Período planejado
+* Quantidade de requisições selecionadas
+* Quantidade de viagens selecionadas
+
+Esse resumo ajuda o usuário a confirmar antes de criar.
+
+11. Footer
+
+* Footer fixo.
+* Botão “Cancelar” como outline.
+* Botão “Criar Ordem” como primary/default.
+* Botão “Criar Ordem” desabilitado se campos obrigatórios estiverem inválidos.
+* Loading visual no botão ao salvar.
+* Em mobile, botões podem ficar full width.
+
+12. Responsividade
+    Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* modal não estoura a tela;
+* conteúdo central rola corretamente;
+* footer continua acessível;
+* sem overflow horizontal;
+* listas continuam legíveis.
+
+13. Acessibilidade
+    Garantir:
+
+* labels associados;
+* foco visível;
+* navegação por teclado;
+* botão fechar acessível;
+* estado selecionado claro.
+
+Restrições absolutas:
+Não alterar:
+
+* backend;
+* endpoints;
+* payloads;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* helpers de autorização;
+* regras de negócio;
+* status/transições;
+* lógica de criação/edição;
+* lógica de vínculo com requisições;
+* lógica de vínculo com viagens.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* Select para Combobox, se seguro;
+* microcopy PT-BR;
+* estados visuais;
+* validação visual;
+* organização em etapas;
+* responsividade.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir modal;
+* selecionar evento;
+* preencher número da ordem;
+* preencher datas;
+* selecionar requisições aprovadas;
+* selecionar viagens;
+* criar ordem;
+* cancelar;
+* validar campos obrigatórios;
+* testar sem viagens;
+* testar mobile básico.
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* se virou fluxo em etapas ou se manteve tela única;
+* confirmação de que payload e lógica funcional não foram alterados;
+* resultado do npm run check;
+* resultado do npm run build.

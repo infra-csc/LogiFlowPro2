@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,9 +92,14 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   ) || [];
 
   const userName = user?.name || "";
+  const initializedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (open && order) {
+      const key = order.id;
+      if (initializedRef.current === key) return;
+      initializedRef.current = key;
+
       setFormData({
         eventId: order.eventId || "",
         orderNumber: order.orderNumber || "",
@@ -110,6 +115,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
         setSelectedTripIds(linkedTrips.map((lt: any) => lt.tripId));
       }
     } else if (!open) {
+      initializedRef.current = null;
       setFormData({
         eventId: "",
         orderNumber: "",
