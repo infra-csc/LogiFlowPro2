@@ -12,14 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -189,7 +181,7 @@ export default function SuppliersPage() {
             <DialogTrigger asChild>
               <Button data-testid="button-add-supplier">
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Fornecedor
+                Adicionar Fornecedor
               </Button>
             </DialogTrigger>
           )}
@@ -323,117 +315,92 @@ export default function SuppliersPage() {
             </Dialog>
       </PageHeader>
 
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="font-semibold text-base mb-1">Lista de Fornecedores</div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Todos os fornecedores cadastrados
-          </p>
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar fornecedor por nome, contato ou e-mail..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-                data-testid="input-search"
-              />
-            </div>
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar fornecedor por nome, contato ou e-mail..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-search"
+          />
+        </div>
 
-            {filteredSuppliers.length === 0 ? (
-              <EmptyState
-                icon={UserCircle}
-                title="Nenhum fornecedor"
-                description="Cadastre fornecedores para usá-los em movimentações"
-              />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Contato</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>E-mail</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSuppliers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        Nenhum fornecedor encontrado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredSuppliers.map((supplier) => (
-                      <TableRow key={supplier.id} data-testid={`row-supplier-${supplier.id}`}>
-                        <TableCell className="font-medium">{supplier.name}</TableCell>
-                        <TableCell>
-                          {supplier.contactPerson && (
-                            <div className="flex items-center gap-2">
-                              <UserCircle className="h-4 w-4 text-muted-foreground" />
-                              {supplier.contactPerson}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {supplier.phone && (
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4 text-muted-foreground" />
-                              {supplier.phone}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {supplier.email && (
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
-                              {supplier.email}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {supplier.active ? (
-                            <Badge variant="secondary">Ativo</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {canWrite && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => handleEdit(supplier)}
-                                  data-testid={`button-edit-${supplier.id}`}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => handleDelete(supplier)}
-                                  data-testid={`button-delete-${supplier.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+        {filteredSuppliers.length === 0 ? (
+          <EmptyState
+            icon={UserCircle}
+            title={searchQuery ? "Nenhum fornecedor encontrado" : "Nenhum fornecedor"}
+            description={searchQuery ? "Tente ajustar sua busca" : "Cadastre fornecedores para usá-los em movimentações"}
+            action={!searchQuery && canWrite ? { label: "Adicionar Fornecedor", onClick: () => setDialogOpen(true) } : undefined}
+          />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredSuppliers.map((supplier) => (
+              <Card key={supplier.id} className="border-border/60" data-testid={`card-supplier-${supplier.id}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <UserCircle className="h-5 w-5 text-primary/70 flex-shrink-0" />
+                      <h3 className="font-semibold text-base truncate">{supplier.name}</h3>
+                    </div>
+                    {supplier.active ? (
+                      <Badge variant="secondary" className="flex-shrink-0">Ativo</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground flex-shrink-0">Inativo</Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1 pt-2 border-t border-border/40 text-sm text-muted-foreground">
+                    {supplier.contactPerson && (
+                      <div className="flex items-center gap-1.5">
+                        <UserCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{supplier.contactPerson}</span>
+                      </div>
+                    )}
+                    {supplier.phone && (
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{supplier.phone}</span>
+                      </div>
+                    )}
+                    {supplier.email && (
+                      <div className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{supplier.email}</span>
+                      </div>
+                    )}
+                    {!supplier.contactPerson && !supplier.phone && !supplier.email && (
+                      <span className="text-muted-foreground/60 italic text-xs">Sem informações de contato</span>
+                    )}
+                  </div>
+                  {canWrite && (
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-border/40">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleEdit(supplier)}
+                        data-testid={`button-edit-${supplier.id}`}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDelete(supplier)}
+                        data-testid={`button-delete-${supplier.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

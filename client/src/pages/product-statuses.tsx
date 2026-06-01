@@ -15,14 +15,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -148,6 +140,28 @@ export default function ProductStatusesPage() {
       });
     },
   });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/product-statuses/${id}`, { active });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Erro ao atualizar status");
+      }
+      return res.json();
+    },
+    onSuccess: (_: unknown, { active }: { id: string; active: boolean }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/product-statuses"] });
+      toast({ title: active ? "Status ativado" : "Status desativado" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleToggleActive = (status: ProductStatus) => {
+    toggleActiveMutation.mutate({ id: status.id, active: !status.active });
+  };
 
   const handleEdit = (status: ProductStatus) => {
     setEditingStatus(status);
@@ -390,73 +404,70 @@ export default function ProductStatusesPage() {
                 description={searchQuery ? "Tente ajustar sua busca" : "Crie o primeiro status de produto"}
               />
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Cor</TableHead>
-                    <TableHead>Movimentação</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStatuses.map((status) => {
-                    const Icon = IconComponent(status.icon);
-                    return (
-                      <TableRow key={status.id}>
-                        <TableCell className="font-mono">{status.code}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" style={{ color: status.color }} />
-                            {status.name}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{typeLabels[status.type]}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredStatuses.map((status) => {
+                  const Icon = IconComponent(status.icon);
+                  return (
+                    <Card key={status.id} className="border-border/60" data-testid={`card-status-${status.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
                             <div
-                              className="w-6 h-6 rounded border"
-                              style={{ backgroundColor: status.color }}
-                            />
-                            <span className="text-xs text-muted-foreground">{status.color}</span>
+                              className="flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center"
+                              style={{ backgroundColor: status.color + "20" }}
+                            >
+                              <Icon className="h-4 w-4" style={{ color: status.color }} />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-base truncate">{status.name}</h3>
+                              <p className="font-mono text-xs text-muted-foreground">{status.code}</p>
+                            </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {status.allowsMovement ? (
-                            <Badge variant="secondary">Sim</Badge>
-                          ) : (
-                            <Badge variant="secondary">Não</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
                           {status.active ? (
-                            <Badge variant="default">Ativo</Badge>
+                            <Badge variant="default" className="flex-shrink-0">Ativo</Badge>
                           ) : (
-                            <Badge variant="secondary">Inativo</Badge>
+                            <Badge variant="secondary" className="flex-shrink-0">Inativo</Badge>
                           )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {canWrite && (
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-border/40">
+                          <Badge variant="outline">{typeLabels[status.type]}</Badge>
+                          <Badge variant="outline">
+                            {status.allowsMovement ? "Permite movimentação" : "Bloqueia movimentação"}
+                          </Badge>
+                        </div>
+                        {canWrite && (
+                          <div className="flex gap-2 mt-3 pt-3 border-t border-border/40">
                             <Button
                               variant="outline"
-                              size="icon"
+                              size="sm"
+                              className="flex-1"
                               onClick={() => handleEdit(status)}
                               data-testid={`button-edit-${status.id}`}
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-4 w-4 mr-1" />
+                              Editar
                             </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleToggleActive(status)}
+                              disabled={toggleActiveMutation.isPending}
+                              title={status.active ? "Desativar" : "Ativar"}
+                              data-testid={`button-toggle-${status.id}`}
+                            >
+                              {status.active ? (
+                                <Lock className="h-4 w-4 text-destructive" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             )}
           </div>
         </CardContent>
