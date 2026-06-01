@@ -12,3 +12,9 @@ id = "HQzOuwPAC5QragAGKKRXY"
 uri = "file://docs/prompt-layout-requisicoes.md"
 type = "text"
 title = "Prompt de Layout — Requisição de Materiais (3 Telas + 3 Modais)"
+
+[[outputs]]
+id = "hDMKdCHAudkC4IRorbSSM"
+uri = "file://docs/layout-loading-orders.md"
+type = "text"
+title = "Especificação de Layout — Ordens de Carregamento"
