@@ -507,20 +507,40 @@ export default function LoadingOrderDetails() {
                     </div>
 
                     {/* Progress bar */}
-                    <div className="mb-2">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Progresso</span>
-                        <span className="font-medium">
-                          {item.loadedQuantity || 0} / {item.consolidatedQuantity}
-                        </span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-1.5">
-                        <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${Math.min(((item.loadedQuantity || 0) / item.consolidatedQuantity) * 100, 100)}%` }}
-                        />
-                      </div>
-                    </div>
+                    {(() => {
+                      const loaded = item.loadedQuantity || 0;
+                      const expected = item.consolidatedQuantity;
+                      const pct = expected > 0 ? (loaded / expected) * 100 : 0;
+                      const isExceeded = loaded > expected;
+                      const isComplete = loaded === expected && expected > 0;
+                      const barColor = isComplete
+                        ? "bg-chart-4"
+                        : pct >= 50
+                        ? "bg-amber-500"
+                        : pct > 0
+                        ? "bg-destructive"
+                        : "bg-muted-foreground/30";
+                      return (
+                        <div className="mb-2">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-muted-foreground">Progresso</span>
+                            <span className={`font-medium ${isExceeded ? "text-destructive" : isComplete ? "text-chart-4" : ""}`}>
+                              {loaded} / {expected}
+                            </span>
+                          </div>
+                          {isExceeded ? (
+                            <div className="w-full bg-muted rounded-full h-1.5 flex overflow-hidden">
+                              <div className="h-full bg-chart-4" style={{ width: `${(expected / loaded) * 100}%` }} />
+                              <div className="h-full bg-destructive" style={{ width: `${((loaded - expected) / loaded) * 100}%` }} />
+                            </div>
+                          ) : (
+                            <div className="w-full bg-muted rounded-full h-1.5">
+                              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Quantidades operacionais */}
                     <div className="flex flex-wrap gap-2 text-xs mb-2">
@@ -630,16 +650,27 @@ export default function LoadingOrderDetails() {
                         <div className="text-xs text-muted-foreground">{percentage}%</div>
                       </div>
                     </div>
-                    <Progress
-                      value={Math.min(percentage, 100)}
-                      className={`h-1.5 ${
-                        isExceeded
-                          ? "[&>div]:bg-destructive"
-                          : isComplete
-                          ? "[&>div]:bg-chart-4"
-                          : "[&>div]:bg-primary"
-                      }`}
-                    />
+                    {isExceeded ? (
+                      <div className="w-full bg-muted rounded-full h-1.5 flex overflow-hidden">
+                        <div className="h-full bg-chart-4" style={{ width: `${(progress.expectedQuantity / progress.loadedQuantity) * 100}%` }} />
+                        <div className="h-full bg-destructive" style={{ width: `${((progress.loadedQuantity - progress.expectedQuantity) / progress.loadedQuantity) * 100}%` }} />
+                      </div>
+                    ) : (
+                      <div className="w-full bg-muted rounded-full h-1.5">
+                        <div
+                          className={`h-full rounded-full ${
+                            isComplete
+                              ? "bg-chart-4"
+                              : percentage >= 50
+                              ? "bg-amber-500"
+                              : percentage > 0
+                              ? "bg-destructive"
+                              : "bg-muted-foreground/30"
+                          }`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    )}
                     {isExceeded && (
                       <div className="flex items-center gap-1.5 text-xs text-destructive">
                         <AlertCircle className="h-3.5 w-3.5" />
