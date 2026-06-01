@@ -335,18 +335,19 @@ export default function SuppliersPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSuppliers.map((supplier) => (
-              <Card key={supplier.id} className="border-border/60" data-testid={`row-supplier-${supplier.id}`}>
+              <Card key={supplier.id} className="hover-elevate border-border/60" data-testid={`row-supplier-${supplier.id}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <UserCircle className="h-5 w-5 text-primary/70 flex-shrink-0" />
                       <h3 className="font-semibold text-base truncate">{supplier.name}</h3>
                     </div>
-                    {supplier.active ? (
-                      <Badge variant="secondary" className="flex-shrink-0">Ativo</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground flex-shrink-0">Inativo</Badge>
-                    )}
+                    <Badge
+                      className={`flex-shrink-0 no-default-hover-elevate ${supplier.active ? "bg-chart-4/15 text-chart-4 border-chart-4/30" : "bg-muted text-muted-foreground border-border/60"}`}
+                      variant="outline"
+                    >
+                      {supplier.active ? "Ativo" : "Inativo"}
+                    </Badge>
                   </div>
                   <div className="flex flex-col gap-1 pt-2 border-t border-border/40 text-sm text-muted-foreground">
                     {supplier.contactPerson && (

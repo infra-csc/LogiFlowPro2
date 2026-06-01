@@ -18,6 +18,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
+import { FilterBar } from "@/components/filter-bar";
 import { EmptyState } from "@/components/empty-state";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -207,66 +208,60 @@ export default function MovementTypesConfigPage() {
       </PageHeader>
 
       {/* Filters */}
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou código..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="input-search"
-              />
+      {(() => {
+        const activeCount = (searchTerm ? 1 : 0) + (selectedNature !== "all" ? 1 : 0) + (selectedGroupId !== "all" ? 1 : 0);
+        const clearAll = () => { setSearchTerm(""); setSelectedNature("all"); setSelectedGroupId("all"); };
+        return (
+          <FilterBar badgeCount={activeCount} onClear={activeCount > 0 ? clearAll : undefined} defaultOpen>
+            <div className="flex flex-col gap-2 flex-1 min-w-[180px]">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Busca</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou código..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-9 bg-card border-border/60 text-sm"
+                  data-testid="input-search"
+                />
+              </div>
             </div>
-            <Select value={selectedNature} onValueChange={setSelectedNature}>
-              <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-filter-nature">
-                <SelectValue placeholder="Natureza" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as naturezas</SelectItem>
-                <SelectItem value="inbound">Entrada</SelectItem>
-                <SelectItem value="outbound">Saída</SelectItem>
-                <SelectItem value="transfer">Transferência</SelectItem>
-                <SelectItem value="adjustment">Ajuste</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Group tabs */}
-          {groups.length > 0 && (
-            <div className="flex gap-2 flex-wrap mt-3" data-testid="select-filter-group">
-              <Button
-                variant={selectedGroupId === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedGroupId("all")}
-                data-testid="tab-group-all"
-              >
-                Todos
-              </Button>
-              {groups.map((group) => {
-                const count = types.filter((t) => t.groupId === group.id).length;
-                return (
-                  <Button
-                    key={group.id}
-                    variant={selectedGroupId === group.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedGroupId(group.id)}
-                    data-testid={`tab-group-${group.id}`}
-                  >
-                    <span className="mr-1">{group.icon}</span>
-                    {group.name}
-                    <Badge variant="secondary" className="ml-1.5 text-[10px]">
-                      {count}
-                    </Badge>
-                  </Button>
-                );
-              })}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Natureza</label>
+              <Select value={selectedNature} onValueChange={setSelectedNature}>
+                <SelectTrigger className="h-9 bg-card border-border/60 rounded-md text-sm w-[180px]" data-testid="select-filter-nature">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as naturezas</SelectItem>
+                  <SelectItem value="inbound">Entrada</SelectItem>
+                  <SelectItem value="outbound">Saída</SelectItem>
+                  <SelectItem value="transfer">Transferência</SelectItem>
+                  <SelectItem value="adjustment">Ajuste</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            {groups.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Grupo</label>
+                <Select value={selectedGroupId} onValueChange={setSelectedGroupId} data-testid="select-filter-group">
+                  <SelectTrigger className="h-9 bg-card border-border/60 rounded-md text-sm w-[180px]">
+                    <SelectValue placeholder="Todos os grupos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os grupos</SelectItem>
+                    {groups.map((group) => (
+                      <SelectItem key={group.id} value={group.id} data-testid={`tab-group-${group.id}`}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </FilterBar>
+        );
+      })()}
 
       {/* Types list */}
       {isLoading ? (

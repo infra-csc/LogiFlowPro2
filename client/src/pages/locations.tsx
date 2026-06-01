@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { FilterBar } from "@/components/filter-bar";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -344,12 +345,18 @@ export default function LocationsPage() {
       </PageHeader>
 
       <div className="space-y-4">
+        <FilterBar badgeCount={searchQuery ? 1 : 0} onClear={searchQuery ? () => setSearchQuery("") : undefined} defaultOpen>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Busca</label>
             <Input
               placeholder="Buscar por código ou nome..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 bg-card border-border/60 text-sm"
               data-testid="input-search"
             />
+          </div>
+        </FilterBar>
 
             {isLoading ? (
               <PageLoading message="Carregando localizações..." />

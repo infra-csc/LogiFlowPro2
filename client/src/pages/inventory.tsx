@@ -70,7 +70,7 @@ export default function Inventory() {
         ))}
       </div>
 
-      <Card className="border-border/60">
+      <Card className="border-border/60 hover-elevate">
         <CardContent className="p-4">
           {!products || products.length === 0 ? (
             <EmptyState

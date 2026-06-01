@@ -24,6 +24,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { StatusBadge } from "@/components/status-badge";
+import { FilterBar } from "@/components/filter-bar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { UserPlus, Shield, CheckCircle, XCircle, Clock, Users } from "lucide-react";
@@ -210,31 +212,6 @@ export default function UsersPage() {
     rejectMutation.mutate({ userId: selectedUser.id, reason: trimmedReason });
   };
 
-  const getApprovalBadge = (user: Omit<User, "password">) => {
-    const status = user.approvalStatus || "approved";
-    if (status === "pending")
-      return (
-        <Badge variant="outline" className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" data-testid={`badge-approval-pending-${user.id}`}>
-          <Clock className="mr-1 h-3 w-3" />
-          Pendente
-        </Badge>
-      );
-    if (status === "approved")
-      return (
-        <Badge variant="outline" className="bg-green-500/15 text-green-700 dark:text-green-400" data-testid={`badge-approval-approved-${user.id}`}>
-          <CheckCircle className="mr-1 h-3 w-3" />
-          Aprovado
-        </Badge>
-      );
-    if (status === "rejected")
-      return (
-        <Badge variant="outline" className="bg-red-500/15 text-red-700 dark:text-red-400" data-testid={`badge-approval-rejected-${user.id}`}>
-          <XCircle className="mr-1 h-3 w-3" />
-          Rejeitado
-        </Badge>
-      );
-    return null;
-  };
 
   const statsItems = [
     { label: "Total", count: totalCount, filter: "all", testId: "stat-total" },
@@ -277,54 +254,55 @@ export default function UsersPage() {
       </div>
 
       {/* Filters */}
-      <Card className="border-border/60">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, usuário ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-users"
-              />
+      {(() => {
+        const activeCount = (searchTerm ? 1 : 0) + (roleFilter !== "all" ? 1 : 0) + (approvalFilter !== "all" ? 1 : 0);
+        const clearAll = () => { setSearchTerm(""); setRoleFilter("all"); setApprovalFilter("all"); };
+        return (
+          <FilterBar badgeCount={activeCount} onClear={activeCount > 0 ? clearAll : undefined} defaultOpen>
+            <div className="flex flex-col gap-2 flex-1 min-w-[180px]">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Busca</label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, usuário ou email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-9 bg-card border-border/60 text-sm"
+                  data-testid="input-search-users"
+                />
+              </div>
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter} data-testid="select-filter-role">
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filtrar por papel" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os papéis</SelectItem>
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    {role.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {[
-              { value: "all", label: "Todos", testId: "filter-approval-all" },
-              { value: "pending", label: "Pendentes", icon: Clock, testId: "filter-approval-pending" },
-              { value: "approved", label: "Aprovados", icon: CheckCircle, testId: "filter-approval-approved" },
-              { value: "rejected", label: "Rejeitados", icon: XCircle, testId: "filter-approval-rejected" },
-            ].map(({ value, label, icon: Icon, testId }) => (
-              <Button
-                key={value}
-                variant={approvalFilter === value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setApprovalFilter(value)}
-                data-testid={testId}
-              >
-                {Icon && <Icon className="mr-1 h-3 w-3" />}
-                {label}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Papel</label>
+              <Select value={roleFilter} onValueChange={setRoleFilter} data-testid="select-filter-role">
+                <SelectTrigger className="h-9 bg-card border-border/60 rounded-md text-sm w-[180px]">
+                  <SelectValue placeholder="Todos os papéis" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os papéis</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Aprovação</label>
+              <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+                <SelectTrigger className="h-9 bg-card border-border/60 rounded-md text-sm w-[180px]" data-testid="select-filter-approval">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="pending">Pendentes</SelectItem>
+                  <SelectItem value="approved">Aprovados</SelectItem>
+                  <SelectItem value="rejected">Rejeitados</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </FilterBar>
+        );
+      })()}
 
       {/* User list */}
       {isLoading ? (
@@ -381,7 +359,7 @@ export default function UsersPage() {
 
                   {/* Status badges */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    {getApprovalBadge(user)}
+                    <StatusBadge status={user.approvalStatus || "approved"} data-testid={`badge-approval-${approvalStatus}-${user.id}`} />
                     <Badge variant={user.active ? "default" : "secondary"} data-testid={`badge-status-${user.id}`}>
                       {user.active ? "Ativo" : "Inativo"}
                     </Badge>

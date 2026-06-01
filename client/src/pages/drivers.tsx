@@ -256,7 +256,7 @@ export default function DriversPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {drivers.map((driver) => (
-            <Card key={driver.id} className="border-border/60" data-testid={`card-driver-${driver.id}`}>
+            <Card key={driver.id} className="hover-elevate border-border/60" data-testid={`card-driver-${driver.id}`}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -264,8 +264,8 @@ export default function DriversPage() {
                     <h3 className="font-semibold text-base truncate">{driver.name}</h3>
                   </div>
                   <Badge
-                    variant={driver.available ? "secondary" : "outline"}
-                    className={!driver.available ? "text-muted-foreground flex-shrink-0" : "flex-shrink-0"}
+                    variant="outline"
+                    className={`no-default-hover-elevate flex-shrink-0 ${driver.available ? "bg-chart-4/15 text-chart-4 border-chart-4/30" : "bg-muted text-muted-foreground border-border/60"}`}
                   >
                     {driver.available ? "Disponível" : "Indisponível"}
                   </Badge>
@@ -285,8 +285,8 @@ export default function DriversPage() {
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     <Badge
-                      variant={driver.cnhImageUrl ? "secondary" : "outline"}
-                      className={!driver.cnhImageUrl ? "text-muted-foreground" : ""}
+                      variant="outline"
+                      className={`no-default-hover-elevate ${driver.cnhImageUrl ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground border-border/60"}`}
                     >
                       {driver.cnhImageUrl ? "CNH Anexada" : "Sem CNH"}
                     </Badge>

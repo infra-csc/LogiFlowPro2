@@ -1476,15 +1476,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
     try {
       const { destinations, ...tripData } = req.body;
-      const data = insertTripSchema.parse(tripData);
-      
-      // Set createdBy to current user
-      const tripDataWithOwner = {
-        ...data,
-        createdBy: req.user!.id
-      };
-      
-      const trip = await storage.createTrip(tripDataWithOwner);
+      const data = insertTripSchema.parse({ ...tripData, createdBy: req.user!.id });
+      const trip = await storage.createTrip(data);
       
       // Save destinations if provided
       if (destinations && Array.isArray(destinations) && destinations.length > 0) {

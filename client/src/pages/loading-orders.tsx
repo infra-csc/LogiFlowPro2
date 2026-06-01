@@ -306,14 +306,27 @@ export default function LoadingOrders() {
                         )}
                       </span>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-1.5">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          isExceeded ? "bg-destructive" : isComplete ? "bg-chart-4" : progressPercent > 0 ? "bg-primary" : "bg-muted-foreground/30"
-                        }`}
-                        style={{ width: `${Math.min(progressPercent, 100)}%` }}
-                      />
-                    </div>
+                    {isExceeded ? (
+                      <div className="w-full bg-muted rounded-full h-1.5 flex overflow-hidden">
+                        <div className="h-full bg-chart-4" style={{ width: `${(totalItems / loadedItems) * 100}%` }} />
+                        <div className="h-full bg-destructive" style={{ width: `${((loadedItems - totalItems) / loadedItems) * 100}%` }} />
+                      </div>
+                    ) : (
+                      <div className="w-full bg-muted rounded-full h-1.5">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            isComplete
+                              ? "bg-chart-4"
+                              : progressPercent >= 50
+                              ? "bg-amber-500"
+                              : progressPercent > 0
+                              ? "bg-destructive"
+                              : ""
+                          }`}
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Footer actions */}

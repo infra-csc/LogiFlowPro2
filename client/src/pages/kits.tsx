@@ -12,6 +12,7 @@ import { userIsAdmin } from "@/lib/authz";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { FilterBar } from "@/components/filter-bar";
 
 export default function Kits() {
   const { user } = useAuth();
@@ -69,27 +70,22 @@ export default function Kits() {
         )}
       </PageHeader>
 
-      {/* Search */}
       {kits && kits.length > 0 && (
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome, descrição ou parâmetro..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-10"
-            data-testid="input-search-kits"
-          />
-          {search && (
-            <button
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              onClick={() => setSearch("")}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+        <FilterBar badgeCount={search ? 1 : 0} onClear={search ? () => setSearch("") : undefined} defaultOpen>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Busca</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, descrição ou parâmetro..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 bg-card border-border/60 rounded-md text-sm"
+                data-testid="input-search-kits"
+              />
+            </div>
+          </div>
+        </FilterBar>
       )}
 
       {!filteredKits || filteredKits.length === 0 ? (
