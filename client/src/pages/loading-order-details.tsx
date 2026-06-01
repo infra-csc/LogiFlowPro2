@@ -82,10 +82,13 @@ export default function LoadingOrderDetails() {
   const canWrite = userCanWriteLogistics(user);
   const [showDialog, setShowDialog] = useState(false);
 
-  const { data: order, isLoading: orderLoading } = useQuery<LoadingOrderWithRelations>({
-    queryKey: [`/api/loading-orders/${id}`],
+  // Buscar da lista de orders para obter nome do usuário e evento já resolvidos
+  const { data: allOrders = [], isLoading: orderLoading } = useQuery<LoadingOrderWithRelations[]>({
+    queryKey: ["/api/loading-orders"],
     enabled: !!id,
   });
+
+  const order = useMemo(() => allOrders.find((o) => o.id === id), [allOrders, id]);
 
   const { data: items = [], isLoading: itemsLoading } = useQuery<LoadingOrderItem[]>({
     queryKey: [`/api/loading-orders/${id}/items`],
@@ -296,7 +299,7 @@ export default function LoadingOrderDetails() {
       )}
 
       {/* Resumo compacto */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3">
         <Card className={`border-border/60 overflow-hidden ${statusBorder} border-l-4`}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -304,18 +307,6 @@ export default function LoadingOrderDetails() {
               <span className="text-xs font-medium uppercase tracking-wider">Status</span>
             </div>
             <StatusBadge status={order.status} />
-          </CardContent>
-        </Card>
-        <Card className="border-border/60 overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium uppercase tracking-wider">Período</span>
-            </div>
-            <div className="text-sm font-medium">
-              {format(new Date(order.plannedStartTime), "dd MMM HH:mm", { locale: ptBR })} -
-              {format(new Date(order.plannedEndTime), "dd MMM HH:mm", { locale: ptBR })}
-            </div>
           </CardContent>
         </Card>
         <Card className="border-border/60 overflow-hidden">
@@ -378,7 +369,7 @@ export default function LoadingOrderDetails() {
             )}
             <div className="flex items-center justify-between sm:block">
               <span className="text-xs text-muted-foreground">Responsável</span>
-              <span className="font-medium" data-testid="text-created-by">{order.createdBy}</span>
+              <span className="font-medium" data-testid="text-created-by">{order.createdBy || "Não informado"}</span>
             </div>
             {order.event && (
               <div className="flex items-center justify-between sm:block">
@@ -472,13 +463,7 @@ export default function LoadingOrderDetails() {
                 compact
               />
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {/* scrollbar style */}
-                <style>{`
-                  .max-h-400::-webkit-scrollbar { width: 5px; }
-                  .max-h-400::-webkit-scrollbar-track { background: transparent; }
-                  .max-h-400::-webkit-scrollbar-thumb { background: hsl(var(--border) / 0.5); border-radius: 3px; }
-                `}</style>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                 {items.map((item) => (
                   <div
                     key={item.id}
