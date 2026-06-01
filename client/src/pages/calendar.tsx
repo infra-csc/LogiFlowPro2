@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -31,8 +32,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -536,74 +535,69 @@ export default function OperationalCalendar() {
         badgeCount={activeFilterCount}
         onClear={clearFilters}
       >
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {/* Type toggles */}
-          {(
-            [
-              { key: "showEvents", label: "Eventos" },
-              { key: "showTrips", label: "Viagens" },
-              { key: "showLoadingOrders", label: "Ordens" },
-              { key: "showMovements", label: "Movimentações" },
-              { key: "showWindows", label: "Janelas" },
-            ] as Array<{ key: keyof CalendarFilters; label: string }>
-          ).map(({ key, label }) => (
-            <div key={key} className="flex items-center gap-2">
-              <Checkbox
-                id={`filter-${key}`}
-                checked={filters[key] as boolean}
-                onCheckedChange={(v) =>
-                  setFilters((p) => ({ ...p, [key]: Boolean(v) }))
-                }
-                data-testid={`checkbox-${key}`}
-              />
-              <Label
-                htmlFor={`filter-${key}`}
-                className="text-sm cursor-pointer"
-              >
-                {label}
-              </Label>
-            </div>
-          ))}
-
-          {/* Event filter */}
-          <div className="col-span-2 md:col-span-1">
-            <Select
-              value={filters.eventId || "all"}
-              onValueChange={(v) =>
-                setFilters((p) => ({ ...p, eventId: v === "all" ? "" : v }))
-              }
-            >
-              <SelectTrigger className="h-8 text-sm" data-testid="select-event-filter">
-                <SelectValue placeholder="Todos os eventos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os eventos</SelectItem>
-                {(eventsData ?? []).map((ev) => (
-                  <SelectItem key={ev.id} value={ev.id}>
-                    {ev.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Category toggles — pills that act as both filter and legend */}
+        <div className="lg:col-span-3 space-y-2">
+          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
+            Mostrar no calendário
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { key: "showEvents" as const,       label: "Eventos",        dot: "bg-primary",    chipOn: "bg-primary/10 border-primary/30 text-primary" },
+                { key: "showTrips" as const,        label: "Viagens",        dot: "bg-amber-400",  chipOn: "bg-amber-500/10 border-amber-500/20 text-amber-400" },
+                { key: "showLoadingOrders" as const, label: "Ordens de Carga", dot: "bg-emerald-400", chipOn: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" },
+                { key: "showMovements" as const,    label: "Movimentações",  dot: "bg-purple-400", chipOn: "bg-purple-500/10 border-purple-500/20 text-purple-400" },
+                { key: "showWindows" as const,      label: "Janelas",        dot: "bg-orange-400", chipOn: "bg-orange-500/10 border-orange-500/20 text-orange-400" },
+              ]
+            ).map(({ key, label, dot, chipOn }) => {
+              const active = filters[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilters((p) => ({ ...p, [key]: !p[key] }))}
+                  data-testid={`toggle-${key}`}
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all select-none cursor-pointer",
+                    active
+                      ? chipOn
+                      : "bg-muted/40 border-border/40 text-muted-foreground opacity-50"
+                  )}
+                >
+                  <span className={cn(
+                    "w-2 h-2 rounded-full flex-shrink-0 transition-colors",
+                    active ? dot : "bg-muted-foreground/40"
+                  )} />
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Type legend */}
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-border/40">
-          {Object.entries(TYPE_CONFIG)
-            .filter(
-              ([type]) =>
-                !["event_setup", "event_teardown", "trip_unloading", "request_window_end"].includes(type)
-            )
-            .map(([type, cfg]) => (
-              <div
-                key={type}
-                className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${cfg.chip}`}
-              >
-                <cfg.icon className="h-2.5 w-2.5" />
-                {cfg.label}
-              </div>
-            ))}
+        {/* Event filter */}
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
+            Evento
+          </p>
+          <Select
+            value={filters.eventId || "all"}
+            onValueChange={(v) =>
+              setFilters((p) => ({ ...p, eventId: v === "all" ? "" : v }))
+            }
+          >
+            <SelectTrigger className="h-9 text-sm bg-card border-border/60" data-testid="select-event-filter">
+              <SelectValue placeholder="Todos os eventos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os eventos</SelectItem>
+              {(eventsData ?? []).map((ev) => (
+                <SelectItem key={ev.id} value={ev.id}>
+                  {ev.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </FilterBar>
 
