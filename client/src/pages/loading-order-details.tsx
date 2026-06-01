@@ -184,7 +184,7 @@ export default function LoadingOrderDetails() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loading-orders/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/loading-orders"] });
       toast({ title: "Ordem aprovada", description: "A ordem de carregamento foi aprovada para carga." });
     },
     onError: () => {
@@ -198,7 +198,7 @@ export default function LoadingOrderDetails() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loading-orders/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/loading-orders"] });
       toast({ title: "Ordem desaprovada", description: "A ordem voltou para rascunho." });
     },
     onError: () => {
@@ -212,7 +212,7 @@ export default function LoadingOrderDetails() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/loading-orders/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/loading-orders"] });
       toast({ title: "Ordem marcada como pronta", description: "A ordem agora pode ser aprovada para carga." });
     },
     onError: () => {
