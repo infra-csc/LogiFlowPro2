@@ -513,8 +513,84 @@ Aplicação profunda do Design System nas telas operacionais críticas. Transfor
 - Status do back-end, fluxo operacional
 - Regras de negócio
 
+## Fase 3.2.2 — Loading Order Dialog (modal refinado)
+
+### loading-order-dialog.tsx
+
+**Header fixo** — `DialogHeader` com `flex-shrink-0` e borda separadora. Título claro: "Nova Ordem de Carregamento" ou "Editar Ordem de Carregamento". Descrição curta explicando o propósito.
+
+**Footer fixo** — `DialogFooter` com `flex-shrink-0` e borda separadora. Botões Cancelar (outline) e Criar/Atualizar (primary). Estado de loading com spinner.
+
+**Conteúdo scrollável** — `max-h-[60vh]` com scrollbar customizado (6px, thumb discreto, track transparente). Sem scrollbar branco padrão.
+
+**Etapas visuais** — Números circulares (1, 2, 3, ✓) para guiar o usuário:
+1. Dados da Ordem (evento, número, datas, criado por, observações)
+2. Requisições Aprovadas (contador de selecionadas)
+3. Viagens (contador de selecionadas, indicador opcional)
+4. Resumo Final (consolidação antes de confirmar)
+
+**Evento com Combobox** — `Popover` + `Command` com busca por nome. Empty state: "Nenhum evento encontrado". Após seleção, exibe resumo do evento.
+
+**Datas com validação visual** — Border vermelha se inválida. Mensagem se fim < início. Sem alterar regra de backend.
+
+**Criado por como readonly** — Visual de metadado (não input editável). Ícone User + nome.
+
+**Requisições** — Tabela compacta com header: [checkbox, ID, Área, Status]. Seleção por linha inteira (clicável). Destaque `bg-primary/5` para selecionadas. StatusBadge oficial.
+
+**Viagens** — Cards compactos (p-3). Checkbox + descrição + local + horário. Seleção visual com `border-primary/40`.
+
+**Resumo** — Card com evento, número, período (formato ptBR), criado por, contadores de requisições/viagens, observações.
+
+**Validação de formulário** — Botão desabilitado se campos obrigatórios inválidos. `isCreateValid` considera éditar vs criar.
+
+**Acessibilidade** — `aria-label`, `role="button"`, `tabIndex`, `onKeyDown` (Enter/Space) para seleção de requisições e viagens.
+
+### Arquivos alterados
+- `client/src/components/loading-order-dialog.tsx` (refinamento completo)
+- `docs/CHANGELOG-fase3.md` (esta seção)
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (276.5kb)
+- Zero alteração de back-end, RBAC, endpoints, queries, mutations, payloads, schema
+
+## Fase 3.3.0 — Loading Order Details (tela refinada)
+
+### loading-order-details.tsx
+
+**Header** — `PageHeader` com número da ordem. `description` só exibido se evento existir (não mostra "Evento não encontrado" como texto). Alerta discreto (borda âmbar) se evento não encontrado.
+
+**ActionBar** — Voltar, Editar, Marcar como Pronta, Aprovar, Desaprovar. Todos respeitando RBAC e status.
+
+**Cards de resumo** — Grid 4 colunas (Status, Período, Requisições, Itens). Cada card com ícone + label + valor. Status com border-left colorido.
+
+**Informações da Ordem** — Card compacto (p-4) com grid 3 colunas: Início, Fim, Carregamento, Descarregamento, Responsável, Evento. Observações com `border-t` se houver.
+
+**Requisições Incluídas** — Card à esquerda (LG grid). Cards de requisição com área como principal, ID curto (`font-mono text-xs`) como secundário, StatusBadge. Navegável por clique.
+
+**Itens Consolidados** — Card à direita (LG grid). Cards compactos (p-3). Nome + SKU + quantidade. Progress bar (h-1.5). Badges de Separado/Carregado. Origens em badges outline.
+
+**Progresso de Carregamento** — Resumo superior com: Total esperado, Total carregado, Percentual, Excedidos. Progress bar geral. Cards por produto com Progress (h-1.5). Alerta "Excedido em X" em vermelho. "Completo" em verde.
+
+**Movimentações** — Timeline com ícones e conector. Cards compactos (p-3). Tipo traduzido (outbound_event → Saída para evento, inbound_return → Retorno/Devolução). Veículo, data, status. Preview de produtos em badges.
+
+**Compactação** — Redução de padding de p-5 para p-4. Ícones menores (h-3.5). Títulos text-base. Altura de cards reduzida. Cards sem header separado.
+
+**Scrollbars** — Customizados (5px) para listas de itens.
+
+**Acessibilidade** — `role="button"`, `tabIndex`, `onKeyDown` para navegáveis.
+
+### Arquivos alterados
+- `client/src/pages/loading-order-details.tsx` (refinamento completo)
+- `docs/CHANGELOG-fase3.md` (esta seção)
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (276.5kb)
+- Zero alteração de back-end, RBAC, endpoints, queries, mutations, payloads, schema
+
 ### Próximas fases
-- **3.3** — Detail pages (movement-details, loading-order-details, request-details, approval-detail)
+- **3.3.1** — Movement details (refinamento)
 - **3.4** — Requisições
 - **3.5** — Catálogo
 - **3.6** — Devoluções

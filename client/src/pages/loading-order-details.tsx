@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +57,20 @@ const statusBarColors: Record<string, string> = {
   completed: "border-l-chart-4",
   cancelled: "border-l-destructive",
 };
+
+function movementTypeLabel(type: string | null): string {
+  const labels: Record<string, string> = {
+    outbound_event: "Saída para evento",
+    inbound_return: "Retorno / Devolução",
+    inbound_event: "Entrada de evento",
+    outbound_return: "Saída para retorno",
+    transfer: "Transferência",
+    adjustment: "Ajuste",
+    inventory: "Inventário",
+    other: "Outro",
+  };
+  return labels[type || ""] || type || "Movimentação";
+}
 
 export default function LoadingOrderDetails() {
   const { id } = useParams();
@@ -139,6 +154,15 @@ export default function LoadingOrderDetails() {
     return Array.from(progressMap.values());
   }, [items, movementItemsQueries]);
 
+  // Progress summary
+  const progressSummary = useMemo(() => {
+    const totalExpected = productProgress.reduce((sum, p) => sum + p.expectedQuantity, 0);
+    const totalLoaded = productProgress.reduce((sum, p) => sum + p.loadedQuantity, 0);
+    const overallPercentage = totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0;
+    const exceededCount = productProgress.filter(p => p.loadedQuantity > p.expectedQuantity).length;
+    return { totalExpected, totalLoaded, overallPercentage, exceededCount };
+  }, [productProgress]);
+
   const approveMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/loading-orders/${id}/approve`, {});
@@ -199,13 +223,13 @@ export default function LoadingOrderDetails() {
   const statusBorder = statusBarColors[order.status] || "border-l-muted-foreground";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Page Header */}
       <PageHeader
         title={order.orderNumber}
-        description={order.event?.name || "Evento não encontrado"}
+        description={order.event?.name || undefined}
       >
-        <ActionBar className="flex-wrap justify-end">
+        <ActionBar>
           <Button
             variant="outline"
             size="sm"
@@ -263,91 +287,125 @@ export default function LoadingOrderDetails() {
         </ActionBar>
       </PageHeader>
 
-      {/* Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Informações da Ordem */}
+      {/* Alerta se evento não encontrado */}
+      {!order.event && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-400 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          Evento não encontrado — dados de referência podem estar incompletos
+        </div>
+      )}
+
+      {/* Resumo compacto */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className={`border-border/60 overflow-hidden ${statusBorder} border-l-4`}>
-          <CardContent className="p-5">
-            <div className="font-semibold text-base flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <ClipboardList className="h-4 w-4" />
-              </div>
-              Informações da Ordem
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <CircleDot className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium uppercase tracking-wider">Status</span>
             </div>
-            <div className="space-y-2.5 text-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <CircleDot className="h-4 w-4" />
-                  <span>Status</span>
-                </div>
-                <StatusBadge status={order.status} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>Início</span>
-                </div>
-                <span className="font-medium" data-testid="text-planned-start">
-                  {format(new Date(order.plannedStartTime), "dd MMM, HH:mm")}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>Fim</span>
-                </div>
-                <span className="font-medium" data-testid="text-planned-end">
-                  {format(new Date(order.plannedEndTime), "dd MMM, HH:mm")}
-                </span>
-              </div>
-              {order.loadingDate && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Truck className="h-4 w-4" />
-                    <span>Carregamento</span>
-                  </div>
-                  <span className="font-medium">
-                    {format(new Date(order.loadingDate), "dd MMM, HH:mm")}
-                  </span>
-                </div>
-              )}
-              {order.unloadingDate && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span>Descarregamento</span>
-                  </div>
-                  <span className="font-medium">
-                    {format(new Date(order.unloadingDate), "dd MMM, HH:mm")}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span>Responsável</span>
-                </div>
-                <span className="font-medium" data-testid="text-created-by">{order.createdBy}</span>
-              </div>
-              {order.notes && (
-                <div className="pt-2 border-t border-border/40">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Info className="h-4 w-4" />
-                    <span>Observações</span>
-                  </div>
-                  <p className="text-sm text-foreground" data-testid="text-notes">{order.notes}</p>
-                </div>
-              )}
+            <StatusBadge status={order.status} />
+          </CardContent>
+        </Card>
+        <Card className="border-border/60 overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium uppercase tracking-wider">Período</span>
+            </div>
+            <div className="text-sm font-medium">
+              {format(new Date(order.plannedStartTime), "dd MMM HH:mm", { locale: ptBR })} -
+              {format(new Date(order.plannedEndTime), "dd MMM HH:mm", { locale: ptBR })}
             </div>
           </CardContent>
         </Card>
+        <Card className="border-border/60 overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <FileText className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium uppercase tracking-wider">Requisições</span>
+            </div>
+            <div className="text-sm font-medium">{requests.length} incluída{requests.length !== 1 ? 's' : ''}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/60 overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Layers className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium uppercase tracking-wider">Itens</span>
+            </div>
+            <div className="text-sm font-medium">{items.length} consolidado{items.length !== 1 ? 's' : ''}</div>
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* Informações da Ordem */}
+      <Card className="border-border/60 overflow-hidden">
+        <CardContent className="p-4">
+          <div className="font-semibold text-base flex items-center gap-2 mb-3">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <ClipboardList className="h-3.5 w-3.5" />
+            </div>
+            Informações da Ordem
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            <div className="flex items-center justify-between sm:block">
+              <span className="text-xs text-muted-foreground">Início</span>
+              <span className="font-medium" data-testid="text-planned-start">
+                {format(new Date(order.plannedStartTime), "dd MMM, HH:mm", { locale: ptBR })}
+              </span>
+            </div>
+            <div className="flex items-center justify-between sm:block">
+              <span className="text-xs text-muted-foreground">Fim</span>
+              <span className="font-medium" data-testid="text-planned-end">
+                {format(new Date(order.plannedEndTime), "dd MMM, HH:mm", { locale: ptBR })}
+              </span>
+            </div>
+            {order.loadingDate && (
+              <div className="flex items-center justify-between sm:block">
+                <span className="text-xs text-muted-foreground">Carregamento</span>
+                <span className="font-medium">
+                  {format(new Date(order.loadingDate), "dd MMM, HH:mm", { locale: ptBR })}
+                </span>
+              </div>
+            )}
+            {order.unloadingDate && (
+              <div className="flex items-center justify-between sm:block">
+                <span className="text-xs text-muted-foreground">Descarregamento</span>
+                <span className="font-medium">
+                  {format(new Date(order.unloadingDate), "dd MMM, HH:mm", { locale: ptBR })}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between sm:block">
+              <span className="text-xs text-muted-foreground">Responsável</span>
+              <span className="font-medium" data-testid="text-created-by">{order.createdBy}</span>
+            </div>
+            {order.event && (
+              <div className="flex items-center justify-between sm:block">
+                <span className="text-xs text-muted-foreground">Evento</span>
+                <span className="font-medium">{order.event.name}</span>
+              </div>
+            )}
+          </div>
+          {order.notes && (
+            <div className="mt-3 pt-3 border-t border-border/40">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Info className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">Observações</span>
+              </div>
+              <p className="text-sm text-foreground" data-testid="text-notes">{order.notes}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Requisições Incluídas */}
         <Card className="border-border/60 overflow-hidden">
-          <CardContent className="p-5">
-            <div className="font-semibold text-base flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-chart-4/10 text-chart-4">
-                <FileText className="h-4 w-4" />
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-chart-4/10 text-chart-4">
+                <FileText className="h-3.5 w-3.5" />
               </div>
               Requisições Incluídas ({requests.length})
             </div>
@@ -363,20 +421,28 @@ export default function LoadingOrderDetails() {
                 {requests.map((request) => (
                   <div
                     key={request.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg border border-border/60 hover-elevate cursor-pointer bg-card/50"
+                    className="flex items-center justify-between p-3 rounded-md border border-border/60 hover-elevate cursor-pointer bg-card/50"
                     onClick={() => navigate(`/requests/${request.id}`)}
                     data-testid={`request-${request.id}`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/requests/${request.id}`);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
-                        <FileText className="h-4 w-4" />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
+                        <FileText className="h-3.5 w-3.5" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{request.area}</p>
                         <p className="text-xs text-muted-foreground font-mono">#{request.id.slice(0, 8)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <StatusBadge status={request.status} />
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -386,18 +452,16 @@ export default function LoadingOrderDetails() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Itens Consolidados */}
-      <Card className="border-border/60 overflow-hidden">
-        <CardContent className="p-5">
-          <div className="font-semibold text-base flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-chart-5/10 text-chart-5">
-              <Layers className="h-4 w-4" />
+        {/* Itens Consolidados */}
+        <Card className="border-border/60 overflow-hidden">
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-chart-5/10 text-chart-5">
+                <Layers className="h-3.5 w-3.5" />
+              </div>
+              Itens Consolidados ({items.length})
             </div>
-            Itens Consolidados ({items.length})
-          </div>
-          <div className="mt-3 pt-3 border-t border-border/40">
             {itemsLoading ? (
               <PageLoading message="Carregando itens..." compact />
             ) : items.length === 0 ? (
@@ -408,30 +472,35 @@ export default function LoadingOrderDetails() {
                 compact
               />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {/* scrollbar style */}
+                <style>{`
+                  .max-h-400::-webkit-scrollbar { width: 5px; }
+                  .max-h-400::-webkit-scrollbar-track { background: transparent; }
+                  .max-h-400::-webkit-scrollbar-thumb { background: hsl(var(--border) / 0.5); border-radius: 3px; }
+                `}</style>
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="border rounded-lg p-4 hover-elevate bg-card/50"
+                    className="border rounded-md p-3 hover-elevate bg-card/50"
                     data-testid={`item-${item.id}`}
                   >
-                    {/* Item header */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <Package className="h-4 w-4" />
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+                          <Package className="h-3.5 w-3.5" />
                         </div>
                         <div className="min-w-0">
-                          <div className="font-semibold text-base" data-testid={`item-name-${item.id}`}>
+                          <div className="font-medium text-sm truncate" data-testid={`item-name-${item.id}`}>
                             {item.product?.name || "Produto não encontrado"}
                           </div>
-                          <div className="text-sm text-muted-foreground font-mono">
+                          <div className="text-xs text-muted-foreground font-mono">
                             SKU: {item.product?.sku || "N/A"}
                           </div>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <div className="text-xl font-bold" data-testid={`item-quantity-${item.id}`}>
+                        <div className="text-lg font-semibold" data-testid={`item-quantity-${item.id}`}>
                           {item.consolidatedQuantity}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -441,14 +510,14 @@ export default function LoadingOrderDetails() {
                     </div>
 
                     {/* Progress bar */}
-                    <div className="mb-3">
+                    <div className="mb-2">
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-muted-foreground">Progresso</span>
                         <span className="font-medium">
                           {item.loadedQuantity || 0} / {item.consolidatedQuantity}
                         </span>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2">
+                      <div className="w-full bg-muted rounded-full h-1.5">
                         <div
                           className="h-full rounded-full bg-primary"
                           style={{ width: `${Math.min(((item.loadedQuantity || 0) / item.consolidatedQuantity) * 100, 100)}%` }}
@@ -457,34 +526,31 @@ export default function LoadingOrderDetails() {
                     </div>
 
                     {/* Quantidades operacionais */}
-                    <div className="flex flex-wrap gap-3 text-sm mb-2">
-                      {item.pickedQuantity !== undefined && (
-                        <div className="flex items-center gap-1.5 bg-muted/50 rounded-md px-2 py-1">
-                          <span className="text-muted-foreground">Separado:</span>
-                          <span className="font-medium">{item.pickedQuantity}</span>
-                        </div>
+                    <div className="flex flex-wrap gap-2 text-xs mb-2">
+                      {item.pickedQuantity !== undefined && item.pickedQuantity > 0 && (
+                        <Badge variant="secondary" className="text-xs font-normal">
+                          Separado: {item.pickedQuantity}
+                        </Badge>
                       )}
-                      {item.loadedQuantity !== undefined && (
-                        <div className="flex items-center gap-1.5 bg-muted/50 rounded-md px-2 py-1">
-                          <span className="text-muted-foreground">Carregado:</span>
-                          <span className="font-medium">{item.loadedQuantity}</span>
-                        </div>
+                      {item.loadedQuantity !== undefined && item.loadedQuantity > 0 && (
+                        <Badge variant="secondary" className="text-xs font-normal">
+                          Carregado: {item.loadedQuantity}
+                        </Badge>
                       )}
                     </div>
 
                     {/* Origens */}
                     {item.sourceRequests && item.sourceRequests.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-border/40">
-                        <div className="text-xs text-muted-foreground mb-1.5 font-medium">Origens:</div>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1">
                           {item.sourceRequests.map((source, idx) => (
                             <Badge
                               key={idx}
-                              variant="secondary"
+                              variant="outline"
                               className="text-xs font-normal"
                               data-testid={`source-${item.id}-${idx}`}
                             >
-                              {source.area}: {source.quantity} {item.product?.unit || "un"}
+                              {source.area}: {source.quantity}
                             </Badge>
                           ))}
                         </div>
@@ -494,21 +560,49 @@ export default function LoadingOrderDetails() {
                 ))}
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Progresso de Carregamento */}
       {productProgress.length > 0 && (
         <Card className="border-border/60 overflow-hidden">
-          <CardContent className="p-5">
-            <div className="font-semibold text-base flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-chart-4/10 text-chart-4">
-                <Truck className="h-4 w-4" />
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-chart-4/10 text-chart-4">
+                <Truck className="h-3.5 w-3.5" />
               </div>
               Progresso de Carregamento
             </div>
-            <div className="space-y-4">
+
+            {/* Resumo do progresso */}
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-3 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <span className="text-xs text-muted-foreground block">Total esperado</span>
+                  <span className="font-semibold">{progressSummary.totalExpected}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Total carregado</span>
+                  <span className="font-semibold">{progressSummary.totalLoaded}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Percentual</span>
+                  <span className="font-semibold">{progressSummary.overallPercentage}%</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Excedidos</span>
+                  <span className={`font-semibold ${progressSummary.exceededCount > 0 ? 'text-destructive' : ''}`}>
+                    {progressSummary.exceededCount > 0 ? `${progressSummary.exceededCount} itens` : 'Nenhum'}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2">
+                <Progress value={Math.min(progressSummary.overallPercentage, 100)} className="h-2" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
               {productProgress.map((progress) => {
                 const percentage = progress.expectedQuantity > 0
                   ? Math.round((progress.loadedQuantity / progress.expectedQuantity) * 100)
@@ -519,21 +613,21 @@ export default function LoadingOrderDetails() {
                 return (
                   <div
                     key={progress.productId}
-                    className="border rounded-lg p-4 space-y-3 bg-card/50"
+                    className="border rounded-md p-3 space-y-2 bg-card/50"
                     data-testid={`product-progress-${progress.productId}`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-                          <Package className="h-4 w-4" />
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+                          <Package className="h-3.5 w-3.5" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-sm">{progress.productName}</p>
+                          <p className="font-medium text-sm truncate">{progress.productName}</p>
                           <p className="text-xs text-muted-foreground font-mono">SKU: {progress.productSku}</p>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <div className="text-lg font-bold">
+                        <div className="text-base font-semibold">
                           {progress.loadedQuantity} / {progress.expectedQuantity}
                         </div>
                         <div className="text-xs text-muted-foreground">{percentage}%</div>
@@ -541,7 +635,7 @@ export default function LoadingOrderDetails() {
                     </div>
                     <Progress
                       value={Math.min(percentage, 100)}
-                      className={`h-2 ${
+                      className={`h-1.5 ${
                         isExceeded
                           ? "[&>div]:bg-destructive"
                           : isComplete
@@ -550,14 +644,14 @@ export default function LoadingOrderDetails() {
                       }`}
                     />
                     {isExceeded && (
-                      <div className="flex items-center gap-1.5 text-sm text-destructive">
-                        <AlertCircle className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5 text-xs text-destructive">
+                        <AlertCircle className="h-3.5 w-3.5" />
                         <span>Excedido em {progress.loadedQuantity - progress.expectedQuantity} unidades</span>
                       </div>
                     )}
                     {isComplete && !isExceeded && (
-                      <div className="flex items-center gap-1.5 text-sm text-chart-4">
-                        <CheckCircle className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5 text-xs text-chart-4">
+                        <CheckCircle className="h-3.5 w-3.5" />
                         <span>Completo</span>
                       </div>
                     )}
@@ -572,10 +666,10 @@ export default function LoadingOrderDetails() {
       {/* Histórico de Movimentações - Timeline */}
       {movements.length > 0 && (
         <Card className="border-border/60 overflow-hidden">
-          <CardContent className="p-5">
-            <div className="font-semibold text-base flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-chart-5/10 text-chart-5">
-                <Truck className="h-4 w-4" />
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-chart-5/10 text-chart-5">
+                <Truck className="h-3.5 w-3.5" />
               </div>
               Movimentações ({movements.length})
             </div>
@@ -586,46 +680,54 @@ export default function LoadingOrderDetails() {
                 const isLast = idx === movements.length - 1;
 
                 return (
-                  <div key={movement.id} className="flex gap-4">
+                  <div key={movement.id} className="flex gap-3">
                     {/* Timeline connector */}
                     <div className="flex flex-col items-center">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Truck className="h-4 w-4" />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Truck className="h-3.5 w-3.5" />
                       </div>
                       {!isLast && (
                         <div className="w-px flex-1 bg-border/60 my-1" />
                       )}
                     </div>
                     {/* Content */}
-                    <div className="flex-1 pb-5">
+                    <div className="flex-1 pb-4">
                       <div
-                        className="border rounded-lg p-4 hover-elevate cursor-pointer bg-card/50"
+                        className="border rounded-md p-3 hover-elevate cursor-pointer bg-card/50"
                         onClick={() => navigate(`/movements/${movement.id}`)}
                         data-testid={`movement-${movement.id}`}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            navigate(`/movements/${movement.id}`);
+                          }
+                        }}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="font-medium text-sm">{movement.type || "Movimentação"}</span>
+                              <span className="font-medium text-sm">{movementTypeLabel(movement.type)}</span>
                               <StatusBadge status={movement.status} />
                             </div>
                             {movement.vehiclePlate && (
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-xs text-muted-foreground">
                                 Veículo: {movement.vehiclePlate}
                               </p>
                             )}
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                              <Clock className="h-3.5 w-3.5" />
-                              {format(new Date(movement.createdAt), "dd MMM, HH:mm")}
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(movement.createdAt), "dd MMM, HH:mm", { locale: ptBR })}
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className="text-lg font-bold">{totalItems}</div>
+                            <div className="text-base font-semibold">{totalItems}</div>
                             <div className="text-xs text-muted-foreground">itens</div>
                           </div>
                         </div>
                         {movementItems.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-border/40">
+                          <div className="mt-2 pt-2 border-t border-border/40">
                             <div className="flex flex-wrap gap-1">
                               {movementItems.slice(0, 3).map((item, itemIdx) => {
                                 const product = items.find(i => i.productId === item.productId)?.product;
