@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
@@ -202,12 +202,12 @@ export default function TripUpload() {
       <Card className="border-border/60">
         <CardContent className="p-4 space-y-4">
           <div className="font-semibold text-base">Upload de Arquivo</div>
-          <CardDescription>
+          <p className="text-sm text-muted-foreground">
             Selecione um arquivo Excel (.xlsx) com as colunas: Nome, Tipo de Veiculo, Evento,
             Local de Carregamento, Inicio do carregamento, Final do carregamento, Data/Hora de Saída,
             Destino/Endereço, Local de descarregamento, Inicio do descarregamento,
             Final do descarregamento, status, Observações
-          </CardDescription>
+          </p>
           <div className="space-y-4">
             <div className="border-2 border-dashed border-border/60 rounded-md p-6 text-center">
               <FileSpreadsheet className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
@@ -290,9 +290,9 @@ export default function TripUpload() {
         <Card className="border-border/60">
           <CardContent className="p-4">
             <div className="font-semibold text-base">Preview dos Dados</div>
-            <CardDescription className="mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Revise os dados antes de importar
-            </CardDescription>
+            </p>
             <div className="mt-4">
             <div className="rounded-md border overflow-auto">
               <Table>

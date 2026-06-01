@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
-  Plus, Truck, CalendarDays, MapPin, Filter, X, List,
+  Plus, Truck, CalendarDays, MapPin, X, List,
   ArrowRight, CheckCircle2, Loader2, Clock, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -22,9 +22,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { FilterBar } from "@/components/filter-bar";
 import {
   ToggleGroup, ToggleGroupItem,
 } from "@/components/ui/toggle-group";
@@ -88,7 +86,6 @@ export default function Trips() {
   const canWrite = userCanWriteLogistics(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | undefined>();
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<TripFilters>({});
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortBy>("loading");
@@ -286,224 +283,191 @@ export default function Trips() {
         </div>
       )}
 
-      {/* Controls + Filters (single card) */}
-      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <Card className="border-border/60">
-          <CardContent className="p-4 space-y-4">
-            {/* Top row: view toggle + sort + filter trigger */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3">
-                {/* View toggle */}
-                <ToggleGroup
-                  type="single"
-                  value={viewMode}
-                  onValueChange={(v) => v && setViewMode(v as ViewMode)}
-                  className="border border-border/60 rounded-md p-0.5"
-                >
-                  <ToggleGroupItem
-                    value="list"
-                    aria-label="Lista"
-                    className="px-3 py-1.5 text-sm rounded-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                    data-testid="toggle-view-list"
-                  >
-                    <List className="h-3.5 w-3.5 mr-1.5" />
-                    Lista
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="calendar"
-                    aria-label="Calendário"
-                    className="px-3 py-1.5 text-sm rounded-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                    data-testid="toggle-view-calendar"
-                  >
-                    <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
-                    Calendário
-                  </ToggleGroupItem>
-                </ToggleGroup>
+      {/* Controls bar */}
+      <Card className="border-border/60">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View toggle */}
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(v) => v && setViewMode(v as ViewMode)}
+              className="border border-border/60 rounded-md p-0.5"
+            >
+              <ToggleGroupItem
+                value="list"
+                aria-label="Lista"
+                className="px-3 py-1.5 text-sm rounded-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                data-testid="toggle-view-list"
+              >
+                <List className="h-3.5 w-3.5 mr-1.5" />
+                Lista
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="calendar"
+                aria-label="Calendário"
+                className="px-3 py-1.5 text-sm rounded-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                data-testid="toggle-view-calendar"
+              >
+                <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
+                Calendário
+              </ToggleGroupItem>
+            </ToggleGroup>
 
-                {/* Sort (only in list) */}
-                {viewMode === "list" && (
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="sort-by" className="text-xs text-muted-foreground whitespace-nowrap">
-                      Ordenar por
-                    </Label>
-                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-                      <SelectTrigger id="sort-by" className="w-[180px] h-8 text-sm" data-testid="select-sort-by">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="loading">Data de Carregamento</SelectItem>
-                        <SelectItem value="unloading">Data de Descarregamento</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Calendar period */}
-                {viewMode === "calendar" && (
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="calendar-period" className="text-xs text-muted-foreground whitespace-nowrap">
-                      Período
-                    </Label>
-                    <Select
-                      value={calendarPeriod}
-                      onValueChange={(v) => setCalendarPeriod(v as CalendarPeriod)}
-                    >
-                      <SelectTrigger
-                        id="calendar-period"
-                        className="w-[130px] h-8 text-sm"
-                        data-testid="select-calendar-period"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="week">Semana</SelectItem>
-                        <SelectItem value="biweekly">Quinzena</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              {/* Filter toggle */}
+            {/* Sort (only in list) */}
+            {viewMode === "list" && (
               <div className="flex items-center gap-2">
-                {activeFilterCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    data-testid="button-clear-filters"
-                  >
-                    <X className="h-3.5 w-3.5 mr-1" />
-                    Limpar
-                  </Button>
-                )}
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" size="sm" data-testid="button-toggle-filters">
-                    <Filter className="h-3.5 w-3.5 mr-1.5" />
-                    Filtros
-                    {activeFilterCount > 0 && (
-                      <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1.5" data-testid="badge-filter-count">
-                        {activeFilterCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
+                <Label htmlFor="sort-by" className="text-xs text-muted-foreground whitespace-nowrap">
+                  Ordenar por
+                </Label>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+                  <SelectTrigger id="sort-by" className="w-[180px] h-8 text-sm" data-testid="select-sort-by">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="loading">Data de Carregamento</SelectItem>
+                    <SelectItem value="unloading">Data de Descarregamento</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
+            )}
 
-            {/* Expanded filters */}
-            <CollapsibleContent>
-              <div className="pt-3 border-t border-border/40 grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Status */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="filter-status" className="text-xs text-muted-foreground">Status</Label>
-                  <Select
-                    value={filters.statusGroup || "all"}
-                    onValueChange={(v) =>
-                      setFilters((p) => ({
-                        ...p,
-                        statusGroup: v === "all" ? undefined : (v as TripFilters["statusGroup"]),
-                      }))
-                    }
+            {/* Calendar period */}
+            {viewMode === "calendar" && (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="calendar-period" className="text-xs text-muted-foreground whitespace-nowrap">
+                  Período
+                </Label>
+                <Select
+                  value={calendarPeriod}
+                  onValueChange={(v) => setCalendarPeriod(v as CalendarPeriod)}
+                >
+                  <SelectTrigger
+                    id="calendar-period"
+                    className="w-[130px] h-8 text-sm"
+                    data-testid="select-calendar-period"
                   >
-                    <SelectTrigger id="filter-status" className="h-8 text-sm" data-testid="select-filter-status">
-                      <SelectValue placeholder="Todos os status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os status</SelectItem>
-                      <SelectItem value="planned">Agendadas</SelectItem>
-                      <SelectItem value="in_progress">Em Andamento</SelectItem>
-                      <SelectItem value="completed">Concluídas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Evento */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="filter-event" className="text-xs text-muted-foreground">Evento</Label>
-                  <Select
-                    value={filters.eventId || "all"}
-                    onValueChange={(v) =>
-                      setFilters((p) => ({ ...p, eventId: v === "all" ? undefined : v }))
-                    }
-                  >
-                    <SelectTrigger id="filter-event" className="h-8 text-sm" data-testid="select-filter-event">
-                      <SelectValue placeholder="Todos os eventos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os eventos</SelectItem>
-                      {events?.map((ev) => (
-                        <SelectItem key={ev.id} value={String(ev.id)}>
-                          {ev.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Data do Evento */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="filter-event-date" className="text-xs text-muted-foreground">Data do Evento</Label>
-                  <div className="flex gap-1">
-                    <Input
-                      id="filter-event-date"
-                      type="date"
-                      value={filters.eventDate || ""}
-                      onChange={(e) =>
-                        setFilters((p) => ({ ...p, eventDate: e.target.value || undefined }))
-                      }
-                      className="h-8 text-sm flex-1"
-                      data-testid="input-filter-event-date"
-                    />
-                    {filters.eventDate && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setFilters((p) => ({ ...p, eventDate: undefined }))}
-                        data-testid="button-clear-event-date"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Data de Movimentação */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="filter-movement-date" className="text-xs text-muted-foreground">
-                    Movimentações do Dia
-                  </Label>
-                  <div className="flex gap-1">
-                    <Input
-                      id="filter-movement-date"
-                      type="date"
-                      value={filters.movementDate || ""}
-                      onChange={(e) =>
-                        setFilters((p) => ({ ...p, movementDate: e.target.value || undefined }))
-                      }
-                      className="h-8 text-sm flex-1"
-                      data-testid="input-filter-movement-date"
-                    />
-                    {filters.movementDate && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setFilters((p) => ({ ...p, movementDate: undefined }))}
-                        data-testid="button-clear-movement-date"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">Carregamento ou descarregamento</p>
-                </div>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Semana</SelectItem>
+                    <SelectItem value="biweekly">Quinzena</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CollapsibleContent>
-          </CardContent>
-        </Card>
-      </Collapsible>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Filters */}
+      <FilterBar badgeCount={activeFilterCount} onClear={clearFilters}>
+        {/* Status */}
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-status" className="text-xs text-muted-foreground">Status</Label>
+          <Select
+            value={filters.statusGroup || "all"}
+            onValueChange={(v) =>
+              setFilters((p) => ({
+                ...p,
+                statusGroup: v === "all" ? undefined : (v as TripFilters["statusGroup"]),
+              }))
+            }
+          >
+            <SelectTrigger id="filter-status" className="h-8 text-sm" data-testid="select-filter-status">
+              <SelectValue placeholder="Todos os status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="planned">Agendadas</SelectItem>
+              <SelectItem value="in_progress">Em Andamento</SelectItem>
+              <SelectItem value="completed">Concluídas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Evento */}
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-event" className="text-xs text-muted-foreground">Evento</Label>
+          <Select
+            value={filters.eventId || "all"}
+            onValueChange={(v) =>
+              setFilters((p) => ({ ...p, eventId: v === "all" ? undefined : v }))
+            }
+          >
+            <SelectTrigger id="filter-event" className="h-8 text-sm" data-testid="select-filter-event">
+              <SelectValue placeholder="Todos os eventos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os eventos</SelectItem>
+              {events?.map((ev) => (
+                <SelectItem key={ev.id} value={String(ev.id)}>
+                  {ev.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Data do Evento */}
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-event-date" className="text-xs text-muted-foreground">Data do Evento</Label>
+          <div className="flex gap-1">
+            <Input
+              id="filter-event-date"
+              type="date"
+              value={filters.eventDate || ""}
+              onChange={(e) =>
+                setFilters((p) => ({ ...p, eventDate: e.target.value || undefined }))
+              }
+              className="h-8 text-sm flex-1"
+              data-testid="input-filter-event-date"
+            />
+            {filters.eventDate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setFilters((p) => ({ ...p, eventDate: undefined }))}
+                data-testid="button-clear-event-date"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Data de Movimentação */}
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-movement-date" className="text-xs text-muted-foreground">
+            Movimentações do Dia
+          </Label>
+          <div className="flex gap-1">
+            <Input
+              id="filter-movement-date"
+              type="date"
+              value={filters.movementDate || ""}
+              onChange={(e) =>
+                setFilters((p) => ({ ...p, movementDate: e.target.value || undefined }))
+              }
+              className="h-8 text-sm flex-1"
+              data-testid="input-filter-movement-date"
+            />
+            {filters.movementDate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setFilters((p) => ({ ...p, movementDate: undefined }))}
+                data-testid="button-clear-movement-date"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+          <p className="text-[10px] text-muted-foreground">Carregamento ou descarregamento</p>
+        </div>
+      </FilterBar>
 
       {/* ── LISTA ── */}
       {viewMode === "list" && (
@@ -708,8 +672,8 @@ export default function Trips() {
                   className={`border-border/60 ${isToday ? "ring-1 ring-primary border-primary/40" : ""}`}
                   data-testid={`calendar-day-${dayKey}`}
                 >
-                  <CardHeader className="p-3 pb-2">
-                    <CardTitle className="text-xs font-normal flex items-center justify-between">
+                  <div className="p-3 pb-2">
+                    <div className="text-xs font-normal flex items-center justify-between">
                       <span className="capitalize text-muted-foreground">
                         {format(day, "EEE", { locale: ptBR })}
                       </span>
@@ -722,13 +686,13 @@ export default function Trips() {
                       >
                         {format(day, "dd")}
                       </span>
-                    </CardTitle>
+                    </div>
                     {dayTrips.length > 0 && (
                       <div className="text-[10px] text-muted-foreground mt-0.5">
                         {dayTrips.length} viagem{dayTrips.length !== 1 ? "ns" : ""}
                       </div>
                     )}
-                  </CardHeader>
+                  </div>
                   <CardContent
                     className="p-2 pt-0 space-y-1.5"
                     style={{ scrollbarWidth: "thin" }}

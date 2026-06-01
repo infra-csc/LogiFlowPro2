@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Calendar,
+  CalendarDays,
   Package,
   Boxes,
   ClipboardList,
@@ -50,6 +51,7 @@ const approvalItems = [
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Calendário Operacional", url: "/calendar", icon: CalendarDays },
   { title: "Requisição de Materiais", url: "/requests", icon: ClipboardList },
   { title: "Ordens de Carregamento", url: "/loading-orders", icon: FileStack },
   { title: "Movimentações", url: "/movements", icon: FileStack },

@@ -443,6 +443,242 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calendar
+  app.get("/api/calendar/operational", requireAuth, async (req, res) => {
+    try {
+      const { startDate, endDate, types, statuses, eventId } = req.query;
+
+      const now = new Date();
+      const start = startDate
+        ? new Date(startDate as string)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = endDate
+        ? new Date(endDate as string)
+        : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+      // Limit to 90-day range
+      const maxEnd = new Date(start.getTime() + 90 * 24 * 60 * 60 * 1000);
+      const effectiveEnd = end > maxEnd ? maxEnd : end;
+
+      const typeFilter = types ? (types as string).split(",").filter(Boolean) : [];
+      const statusFilter = statuses ? (statuses as string).split(",").filter(Boolean) : [];
+      const eventFilter = eventId as string | undefined;
+
+      const [allEvents, allTrips, allLoadingOrders, allMovements] = await Promise.all([
+        storage.getEvents(),
+        storage.getTrips(),
+        storage.getLoadingOrders(),
+        storage.getMovements(),
+      ]);
+
+      interface CalItem {
+        id: string;
+        type: string;
+        title: string;
+        subtitle?: string;
+        start: string;
+        end?: string;
+        status: string;
+        severity?: string;
+        entityId: string;
+        route: string;
+        metadata?: Record<string, unknown>;
+      }
+
+      const items: CalItem[] = [];
+
+      const inRange = (d: Date | null | undefined): boolean => {
+        if (!d) return false;
+        return d >= start && d <= effectiveEnd;
+      };
+      const wantType = (t: string): boolean =>
+        !typeFilter.length || typeFilter.includes(t);
+      const wantStatus = (s: string): boolean =>
+        !statusFilter.length || statusFilter.includes(s);
+
+      // ── Events ─────────────────────────────────────────
+      for (const ev of allEvents as any[]) {
+        if (eventFilter && ev.id !== eventFilter) continue;
+        const eventDate = ev.eventDate ? new Date(ev.eventDate) : null;
+        const setupDate = ev.setupDate ? new Date(ev.setupDate) : null;
+        const teardownDate = ev.teardownDate ? new Date(ev.teardownDate) : null;
+        const winStart = ev.requestWindowStart ? new Date(ev.requestWindowStart) : null;
+        const winEnd = ev.requestWindowEnd ? new Date(ev.requestWindowEnd) : null;
+
+        if (wantType("event") && wantStatus(ev.status) && inRange(eventDate)) {
+          items.push({
+            id: `event-${ev.id}`,
+            type: "event",
+            title: ev.name,
+            subtitle: `${ev.client}${ev.location ? " • " + ev.location : ""}`,
+            start: eventDate!.toISOString(),
+            status: ev.status,
+            entityId: ev.id,
+            route: `/events/${ev.id}`,
+            metadata: { client: ev.client, location: ev.location },
+          });
+        }
+        if (wantType("event_setup") && wantStatus(ev.status) && inRange(setupDate)) {
+          items.push({
+            id: `event_setup-${ev.id}`,
+            type: "event_setup",
+            title: `Montagem: ${ev.name}`,
+            subtitle: ev.client,
+            start: setupDate!.toISOString(),
+            status: ev.status,
+            entityId: ev.id,
+            route: `/events/${ev.id}`,
+            metadata: { location: ev.location },
+          });
+        }
+        if (wantType("event_teardown") && wantStatus(ev.status) && inRange(teardownDate)) {
+          items.push({
+            id: `event_teardown-${ev.id}`,
+            type: "event_teardown",
+            title: `Desmontagem: ${ev.name}`,
+            subtitle: ev.client,
+            start: teardownDate!.toISOString(),
+            status: ev.status,
+            entityId: ev.id,
+            route: `/events/${ev.id}`,
+            metadata: { location: ev.location },
+          });
+        }
+        if (wantType("request_window") && inRange(winStart)) {
+          items.push({
+            id: `req_win_start-${ev.id}`,
+            type: "request_window_start",
+            title: `Janela abre: ${ev.name}`,
+            subtitle: "Início da janela de requisição",
+            start: winStart!.toISOString(),
+            status: "opening",
+            entityId: ev.id,
+            route: `/events/${ev.id}`,
+            metadata: {},
+          });
+        }
+        if (wantType("request_window") && inRange(winEnd)) {
+          items.push({
+            id: `req_win_end-${ev.id}`,
+            type: "request_window_end",
+            title: `Janela fecha: ${ev.name}`,
+            subtitle: "Fim da janela de requisição",
+            start: winEnd!.toISOString(),
+            status: "closing",
+            severity: "warning",
+            entityId: ev.id,
+            route: `/events/${ev.id}`,
+            metadata: {},
+          });
+        }
+      }
+
+      // ── Trips ──────────────────────────────────────────
+      if (wantType("trip")) {
+        for (const trip of allTrips as any[]) {
+          if (eventFilter && trip.eventId !== eventFilter) continue;
+          if (!wantStatus(trip.status)) continue;
+          const loadDate = trip.loadingDate ? new Date(trip.loadingDate) : null;
+          const unloadDate = trip.unloadingDate ? new Date(trip.unloadingDate) : null;
+          const label = trip.description || trip.event?.name || "Viagem";
+          const route = [trip.loadingLocation, trip.unloadingLocation].filter(Boolean).join(" → ");
+          const meta = {
+            driver: trip.driver?.name,
+            vehicleType: trip.vehicleType?.name,
+            plate: trip.vehicle?.plate,
+          };
+          if (inRange(loadDate)) {
+            items.push({
+              id: `trip_loading-${trip.id}`,
+              type: "trip_loading",
+              title: `Carregamento: ${label}`,
+              subtitle: route || trip.vehicleType?.name,
+              start: loadDate!.toISOString(),
+              status: trip.status,
+              entityId: trip.id,
+              route: `/trips`,
+              metadata: meta,
+            });
+          }
+          if (inRange(unloadDate)) {
+            items.push({
+              id: `trip_unloading-${trip.id}`,
+              type: "trip_unloading",
+              title: `Descarregamento: ${label}`,
+              subtitle: route || trip.vehicleType?.name,
+              start: unloadDate!.toISOString(),
+              status: trip.status,
+              entityId: trip.id,
+              route: `/trips`,
+              metadata: meta,
+            });
+          }
+        }
+      }
+
+      // ── Loading Orders ──────────────────────────────────
+      if (wantType("loading_order")) {
+        for (const lo of allLoadingOrders as any[]) {
+          if (eventFilter && lo.eventId !== eventFilter) continue;
+          if (!wantStatus(lo.status)) continue;
+          const pStart = lo.plannedStartTime ? new Date(lo.plannedStartTime) : null;
+          const pEnd = lo.plannedEndTime ? new Date(lo.plannedEndTime) : null;
+          if (inRange(pStart)) {
+            items.push({
+              id: `loading_order-${lo.id}`,
+              type: "loading_order",
+              title: lo.name || `Ordem ${lo.code || lo.id.slice(-6)}`,
+              subtitle: lo.event?.name,
+              start: pStart!.toISOString(),
+              end: pEnd?.toISOString(),
+              status: lo.status,
+              entityId: lo.id,
+              route: `/loading-orders/${lo.id}`,
+              metadata: { code: lo.code },
+            });
+          }
+        }
+      }
+
+      // ── Movements ───────────────────────────────────────
+      if (wantType("movement")) {
+        for (const mov of allMovements as any[]) {
+          if (!wantStatus(mov.status)) continue;
+          const movEvents = Array.isArray(mov.events) ? mov.events : [];
+          if (eventFilter && !movEvents.some((e: any) => e?.id === eventFilter)) continue;
+          const movDate = mov.updatedAt
+            ? new Date(mov.updatedAt)
+            : mov.createdAt
+            ? new Date(mov.createdAt)
+            : null;
+          if (inRange(movDate)) {
+            items.push({
+              id: `movement-${mov.id}`,
+              type: "movement",
+              title: mov.movementType?.name || "Movimentação",
+              subtitle: mov.description,
+              start: movDate!.toISOString(),
+              status: mov.status,
+              severity: mov.status === "paused" ? "warning" : undefined,
+              entityId: mov.id,
+              route: `/movements/${mov.id}`,
+              metadata: { description: mov.description },
+            });
+          }
+        }
+      }
+
+      items.sort(
+        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+      );
+
+      res.json({ items });
+    } catch (error) {
+      console.error("[calendar/operational] error:", error);
+      res.status(500).json({ error: "Failed to fetch calendar data" });
+    }
+  });
+
   // Events
   app.get("/api/events", requireAuth, async (req, res) => {
     try {

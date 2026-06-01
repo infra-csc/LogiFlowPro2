@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
@@ -205,9 +205,9 @@ export default function EventUpload() {
             <FileSpreadsheet className="h-5 w-5" />
             Upload de Planilha
           </div>
-          <CardDescription>
+          <p className="text-sm text-muted-foreground">
             A planilha deve conter as colunas: Nome do Evento, Cliente, Local, Data de Montagem, Data do evento, Data da desmontagem (opcionais: SKU, Janela de Início, Janela de Fim, Status, Observações)
-          </CardDescription>
+          </p>
           <div className="space-y-4">
             <div className="border-2 border-dashed border-border/60 rounded-md p-6 text-center">
               <FileSpreadsheet className="h-8 w-8 text-muted-foreground mx-auto mb-3" />

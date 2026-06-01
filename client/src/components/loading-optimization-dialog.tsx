@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Package, TrendingUp, AlertTriangle, Lightbulb, Clock, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -77,11 +77,11 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
         <div className="space-y-6">
           {/* Request new optimization */}
           <Card className="border-border/60">
-            <CardHeader>
-              <CardTitle className="text-base">Solicitar Nova Otimização</CardTitle>
-              <CardDescription>Selecione o tipo de veículo para gerar uma sugestão otimizada</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-4 space-y-4">
+              <div>
+                <p className="font-semibold text-base">Solicitar Nova Otimização</p>
+                <p className="text-sm text-muted-foreground">Selecione o tipo de veículo para gerar uma sugestão otimizada</p>
+              </div>
               <div className="flex gap-4">
                 <div className="flex-1">
                   <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
@@ -130,22 +130,22 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
           
           {!loadingOptimizations && latestOptimization && (
             <Card className="border-primary/20">
-              <CardHeader>
-                <div className="flex items-center justify-between">
+              <CardContent className="p-4 pb-2">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div>
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <p className="font-semibold text-base flex items-center gap-2">
                       <Package className="w-5 h-5" />
                       Sugestão de Carregamento - {latestOptimization.vehicle_type_name}
-                    </CardTitle>
-                    <CardDescription className="mt-1">
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Gerado em {new Date(latestOptimization.run_created_at).toLocaleString("pt-BR")}
-                    </CardDescription>
+                    </p>
                   </div>
                   <Badge variant="default" className="text-sm">
                     {latestOptimization.confidence_score}% de confiança
                   </Badge>
                 </div>
-              </CardHeader>
+              </CardContent>
               <CardContent className="space-y-6">
                 {/* Key metrics */}
                 <div className="grid grid-cols-3 gap-4">

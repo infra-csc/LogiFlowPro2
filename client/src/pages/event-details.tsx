@@ -10,7 +10,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
@@ -169,12 +169,12 @@ function SectionHeader({
   linkHref: string;
 }) {
   return (
-    <CardHeader className="px-4 py-3 border-b border-border/40 flex flex-row items-center justify-between gap-2 flex-wrap">
-      <CardTitle className="text-sm font-semibold flex items-center gap-2">
+    <div className="px-4 py-3 border-b border-border/40 flex flex-row items-center justify-between gap-2 flex-wrap">
+      <div className="text-sm font-semibold flex items-center gap-2">
         <Icon className="h-4 w-4 text-muted-foreground" />
         {title}
         <span className="text-xs font-normal text-muted-foreground">({count})</span>
-      </CardTitle>
+      </div>
       <div className="flex items-center gap-1">
         {action && (
           <Button size="sm" variant="ghost" onClick={action.onClick} className="h-7 text-xs gap-1">
@@ -191,7 +191,7 @@ function SectionHeader({
           </Button>
         </Link>
       </div>
-    </CardHeader>
+    </div>
   );
 }
 
@@ -389,12 +389,12 @@ export default function EventDetails() {
       {/* ── Alerts ──────────────────────────────────────────────────── */}
       {alerts.length > 0 ? (
         <Card className="border-border/60">
-          <CardHeader className="px-4 py-3 border-b border-border/40">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <div className="px-4 py-3 border-b border-border/40">
+            <p className="text-sm font-semibold flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               Alertas do Evento
-            </CardTitle>
-          </CardHeader>
+            </p>
+          </div>
           <CardContent className="p-4 space-y-2">
             {alerts.map((alert, i) => (
               <AlertRow key={i} alert={alert} />
@@ -410,12 +410,12 @@ export default function EventDetails() {
 
       {/* ── Timeline ────────────────────────────────────────────────── */}
       <Card className="border-border/60">
-        <CardHeader className="px-4 py-3 border-b border-border/40">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+        <div className="px-4 py-3 border-b border-border/40">
+          <p className="text-sm font-semibold flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             Timeline
-          </CardTitle>
-        </CardHeader>
+          </p>
+        </div>
         <CardContent className="p-4">
           <TimelineStrip event={event} />
           {event.notes && (

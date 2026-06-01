@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -264,14 +264,14 @@ export default function StockPositionSimulation() {
         {/* ── Painel de filtros ── */}
         <div className="lg:sticky lg:top-4 space-y-4">
           <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Filter className="w-4 h-4" />
-                Filtros
-              </CardTitle>
-              <CardDescription>Configure o período e as ordens a simular</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className="p-4 space-y-5">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Filter className="w-4 h-4 text-primary/70" />
+                  <p className="font-semibold text-base">Filtros</p>
+                </div>
+                <p className="text-sm text-muted-foreground">Configure o período e as ordens a simular</p>
+              </div>
               {/* ── Datas ── */}
               <div className="space-y-3">
                 <div className="space-y-1.5">
@@ -462,18 +462,18 @@ export default function StockPositionSimulation() {
           {/* Erros acionáveis */}
           {simulationResult && simulationResult.errors.length > 0 && (
             <Card className="border-destructive/40">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive">
-                  <AlertTriangle className="w-4 h-4" />
-                  Algumas ordens não puderam ser simuladas
-                </CardTitle>
-                <CardDescription>
-                  {simulationResult.errors.length} ordem
-                  {simulationResult.errors.length !== 1 ? "ns" : ""} ignorada
-                  {simulationResult.errors.length !== 1 ? "s" : ""} por falta de dados
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="w-4 h-4 text-destructive" />
+                    <p className="font-semibold text-base text-destructive">Algumas ordens não puderam ser simuladas</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {simulationResult.errors.length} ordem
+                    {simulationResult.errors.length !== 1 ? "ns" : ""} ignorada
+                    {simulationResult.errors.length !== 1 ? "s" : ""} por falta de dados
+                  </p>
+                </div>
                 <div
                   className="space-y-2 max-h-48 overflow-y-auto"
                   style={{ scrollbarWidth: "thin" }}
@@ -498,13 +498,11 @@ export default function StockPositionSimulation() {
           {/* Avisos */}
           {simulationResult && simulationResult.warnings.length > 0 && (
             <Card className="border-chart-5/40">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold text-chart-5">
-                  <Info className="w-4 h-4" />
-                  Avisos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Info className="w-4 h-4 text-chart-5" />
+                  <p className="font-semibold text-base text-chart-5">Avisos</p>
+                </div>
                 <div
                   className="space-y-2 max-h-40 overflow-y-auto"
                   style={{ scrollbarWidth: "thin" }}
@@ -565,13 +563,13 @@ export default function StockPositionSimulation() {
           {/* Tabela de produtos */}
           {simulationResult && simulationResult.products.length > 0 && (
             <Card className="border-border/60">
-              <CardHeader className="pb-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <CardContent className="p-4 pb-2">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
                   <div>
-                    <CardTitle className="text-base font-semibold">Detalhamento por Produto</CardTitle>
-                    <CardDescription>
+                    <p className="font-semibold text-base">Detalhamento por Produto</p>
+                    <p className="text-sm text-muted-foreground">
                       Gerado em {new Date(simulationResult.generatedAt).toLocaleString("pt-BR")}
-                    </CardDescription>
+                    </p>
                   </div>
                   <Button
                     variant="outline"
@@ -583,7 +581,7 @@ export default function StockPositionSimulation() {
                     Exportar Excel
                   </Button>
                 </div>
-              </CardHeader>
+              </CardContent>
               <CardContent className="p-0">
                 <div
                   className="overflow-x-auto"

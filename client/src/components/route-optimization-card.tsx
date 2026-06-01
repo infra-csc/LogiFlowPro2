@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, MapPin, TrendingUp, AlertTriangle, Lightbulb, Fuel, Clock } from "lucide-react";
@@ -54,19 +54,19 @@ export function RouteOptimizationCard({ tripId }: RouteOptimizationCardProps) {
 
   return (
     <Card className={latestOptimization ? "border-primary/20" : ""}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardContent className="p-4 pb-2">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <p className="font-semibold text-base flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
               Otimização de Rota com IA
-            </CardTitle>
-            <CardDescription className="mt-1">
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
               {latestOptimization 
                 ? `Gerado em ${new Date(latestOptimization.run_created_at).toLocaleString("pt-BR")}`
                 : "Obtenha sugestões inteligentes de roteamento para economizar tempo e combustível"
               }
-            </CardDescription>
+            </p>
           </div>
           <Button
             data-testid="button-optimize-route"
@@ -77,7 +77,7 @@ export function RouteOptimizationCard({ tripId }: RouteOptimizationCardProps) {
             {runOptimization.isPending ? "Processando..." : "Otimizar Rota"}
           </Button>
         </div>
-      </CardHeader>
+      </CardContent>
 
       {latestOptimization && (
         <CardContent className="space-y-4">

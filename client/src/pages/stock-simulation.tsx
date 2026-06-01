@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -312,14 +312,14 @@ export default function StockSimulation() {
         {/* ── Painel de filtros ── */}
         <div className="lg:sticky lg:top-4 space-y-4">
           <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Filter className="w-4 h-4" />
-                Filtros
-              </CardTitle>
-              <CardDescription>Configure os parâmetros da simulação</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className="p-4 space-y-5">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Filter className="w-4 h-4 text-primary/70" />
+                  <p className="font-semibold text-base">Filtros</p>
+                </div>
+                <p className="text-sm text-muted-foreground">Configure os parâmetros da simulação</p>
+              </div>
               {/* ── Eventos ── */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -531,15 +531,15 @@ export default function StockSimulation() {
               {/* Requisições consideradas */}
               {simulation.consideredRequests?.length > 0 && (
                 <Card className="border-border/60">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold">Requisições Consideradas</CardTitle>
-                    <CardDescription>
-                      {simulation.consideredRequests.length} requisição
-                      {simulation.consideredRequests.length !== 1 ? "ões" : ""} incluída
-                      {simulation.consideredRequests.length !== 1 ? "s" : ""} nesta simulação
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4">
+                    <div className="mb-3">
+                      <p className="font-semibold text-base">Requisições Consideradas</p>
+                      <p className="text-sm text-muted-foreground">
+                        {simulation.consideredRequests.length} requisição
+                        {simulation.consideredRequests.length !== 1 ? "ões" : ""} incluída
+                        {simulation.consideredRequests.length !== 1 ? "s" : ""} nesta simulação
+                      </p>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {simulation.consideredRequests.map((req) => (
                         <div
@@ -560,14 +560,14 @@ export default function StockSimulation() {
 
               {/* Detalhamento por produto */}
               <Card className="border-border/60">
-                <CardHeader className="pb-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                <CardContent className="p-4 pb-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
-                      <CardTitle className="text-base font-semibold">Detalhamento por Produto</CardTitle>
-                      <CardDescription>
+                      <p className="font-semibold text-base">Detalhamento por Produto</p>
+                      <p className="text-sm text-muted-foreground">
                         Gerado em{" "}
                         {new Date(simulation.generatedAt).toLocaleString("pt-BR")}
-                      </CardDescription>
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <div className="flex rounded-md border border-border/60 overflow-hidden">
@@ -601,7 +601,7 @@ export default function StockSimulation() {
                       </Button>
                     </div>
                   </div>
-                </CardHeader>
+                </CardContent>
                 <CardContent className="space-y-4">
                   {/* Busca + filtro */}
                   <div className="flex flex-wrap gap-3 items-center">

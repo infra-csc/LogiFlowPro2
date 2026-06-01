@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Popover,
   PopoverContent,
@@ -91,23 +91,21 @@ export function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <Card className="border-0 shadow-none">
-          <CardHeader className="border-b">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Notificações</CardTitle>
-              {notifications.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => markAllAsReadMutation.mutate()}
-                  disabled={markAllAsReadMutation.isPending}
-                  data-testid="button-mark-all-read"
-                >
-                  <CheckCheck className="h-4 w-4 mr-1" />
-                  Marcar todas como lidas
-                </Button>
-              )}
-            </div>
-          </CardHeader>
+          <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-base font-semibold">Notificações</p>
+            {notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => markAllAsReadMutation.mutate()}
+                disabled={markAllAsReadMutation.isPending}
+                data-testid="button-mark-all-read"
+              >
+                <CheckCheck className="h-4 w-4 mr-1" />
+                Marcar todas como lidas
+              </Button>
+            )}
+          </div>
           <CardContent className="p-0">
             <ScrollArea className="h-96">
               {notifications.length === 0 ? (

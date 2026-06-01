@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { FilterBar } from "@/components/filter-bar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
@@ -29,8 +30,6 @@ interface InventoryFilters {
 
 export default function InventoryViews() {
   const [activeTab, setActiveTab] = useState<'physical' | 'ownership' | 'status'>('physical');
-  const [showFilters, setShowFilters] = useState(true);
-  
   const [filters, setFilters] = useState<InventoryFilters>({
     search: '',
     periodPreset: 'month',
@@ -72,6 +71,14 @@ export default function InventoryViews() {
     enabled: true
   });
 
+  const activeFilterCount =
+    (filters.search ? 1 : 0) +
+    (filters.periodPreset && filters.periodPreset !== 'month' ? 1 : 0) +
+    (filters.location ? 1 : 0) +
+    (filters.category ? 1 : 0) +
+    (filters.ownerType ? 1 : 0) +
+    (filters.status ? 1 : 0);
+
   const handleFilterChange = (key: keyof InventoryFilters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
@@ -98,98 +105,65 @@ export default function InventoryViews() {
       <div className="flex-1 overflow-auto">
         <div className="space-y-6">
           {/* Filter Bar */}
-          <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
-                  <CardTitle className="text-base font-semibold">Filtros Avançados</CardTitle>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetFilters}
-                    data-testid="button-reset-filters"
-                  >
-                    Limpar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    data-testid="button-toggle-filters"
-                  >
-                    {showFilters ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            
-            {showFilters && (
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Search */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-1">
-                      <Search className="h-3 w-3" />
-                      Busca
-                    </label>
-                    <Input
-                      placeholder="SKU, nome, código de barras..."
-                      value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
-                      data-testid="input-search"
-                    />
-                  </div>
+          <FilterBar badgeCount={activeFilterCount} onClear={resetFilters} defaultOpen>
+            {/* Search */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-1">
+                <Search className="h-3 w-3" />
+                Busca
+              </label>
+              <Input
+                placeholder="SKU, nome, código de barras..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                data-testid="input-search"
+              />
+            </div>
 
-                  {/* Period */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Período
-                    </label>
-                    <Select value={filters.periodPreset} onValueChange={(v) => handleFilterChange('periodPreset', v)}>
-                      <SelectTrigger data-testid="select-period">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="week">Última semana</SelectItem>
-                        <SelectItem value="month">Último mês</SelectItem>
-                        <SelectItem value="quarter">Último trimestre</SelectItem>
-                        <SelectItem value="year">Último ano</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+            {/* Period */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                Período
+              </label>
+              <Select value={filters.periodPreset} onValueChange={(v) => handleFilterChange('periodPreset', v)}>
+                <SelectTrigger data-testid="select-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">Última semana</SelectItem>
+                  <SelectItem value="month">Último mês</SelectItem>
+                  <SelectItem value="quarter">Último trimestre</SelectItem>
+                  <SelectItem value="year">Último ano</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                  {/* Category */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Categoria</label>
-                    <Input
-                      placeholder="Estrutura, Iluminação..."
-                      value={filters.category}
-                      onChange={(e) => handleFilterChange('category', e.target.value)}
-                      data-testid="input-category"
-                    />
-                  </div>
+            {/* Category */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Categoria</label>
+              <Input
+                placeholder="Estrutura, Iluminação..."
+                value={filters.category}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
+                data-testid="input-category"
+              />
+            </div>
 
-                  {/* Location */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      Localização
-                    </label>
-                    <Input
-                      placeholder="Galpão A, Em trânsito..."
-                      value={filters.location}
-                      onChange={(e) => handleFilterChange('location', e.target.value)}
-                      data-testid="input-location"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            )}
-          </Card>
+            {/* Location */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                Localização
+              </label>
+              <Input
+                placeholder="Galpão A, Em trânsito..."
+                value={filters.location}
+                onChange={(e) => handleFilterChange('location', e.target.value)}
+                data-testid="input-location"
+              />
+            </div>
+          </FilterBar>
 
           {/* Tabbed Views */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
@@ -250,9 +224,9 @@ function InventoryView({ data, isLoading, dimension }: InventoryViewProps) {
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="border-border/60">
-            <CardHeader>
+            <div className="p-4">
               <Skeleton className="h-6 w-48" />
-            </CardHeader>
+            </div>
             <CardContent>
               <Skeleton className="h-24 w-full" />
             </CardContent>
@@ -292,7 +266,7 @@ function InventoryGroupCard({ group, dimension }: InventoryGroupCardProps) {
   return (
     <Card className="border-border/60">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <CardHeader className="pb-3">
+        <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <CollapsibleTrigger asChild>
@@ -325,7 +299,7 @@ function InventoryGroupCard({ group, dimension }: InventoryGroupCardProps) {
               </div>
             </div>
           </div>
-        </CardHeader>
+        </div>
 
         <CollapsibleContent>
           <CardContent className="pt-0">
