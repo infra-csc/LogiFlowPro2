@@ -100,6 +100,18 @@ export default function LoadingOrderDetails() {
     enabled: !!id,
   });
 
+  const { data: allRequestsForMap = [] } = useQuery<MaterialRequest[]>({
+    queryKey: ["/api/requests"],
+    enabled: !!id,
+  });
+
+  const reqNumericIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const sorted = [...allRequestsForMap].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    sorted.forEach((req, idx) => map.set(req.id, String(idx + 1).padStart(3, "0")));
+    return map;
+  }, [allRequestsForMap]);
+
   const { data: movements = [] } = useQuery<Movement[]>({
     queryKey: [`/api/loading-orders/${id}/movements`],
     enabled: !!id,
@@ -430,7 +442,7 @@ export default function LoadingOrderDetails() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{request.area}</p>
-                        <p className="text-xs text-muted-foreground font-mono">#{request.id.slice(0, 8)}</p>
+                        <p className="text-xs text-muted-foreground font-mono">REQ-{reqNumericIdMap.get(request.id) || request.id.slice(0, 6).toUpperCase()}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
