@@ -27,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { StatusBadge } from "@/components/status-badge";
 import {
   AlertTriangle, Loader2, Calendar, Package, Truck, FileText,
   X, ChevronRight, MapPin, Clock, ArrowRight
@@ -441,7 +442,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                       <span className="text-right">Status</span>
                     </div>
                     <div className="max-h-60 overflow-y-auto">
-                      {approvedRequests.map((request) => (
+                      {approvedRequests.map((request, index) => (
                         <div
                           key={request.id}
                           className={`grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2.5 border-b border-border/20 items-center transition-colors cursor-pointer ${
@@ -459,10 +460,10 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                             data-testid={`checkbox-request-${request.id}`}
                             onClick={(e) => e.stopPropagation()}
                           />
-                          <span className="text-xs font-mono text-muted-foreground">#{request.id.slice(0, 8)}</span>
+                          <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
                           <span className="text-sm font-medium truncate">{request.area}</span>
                           <span className="text-xs text-muted-foreground text-right">
-                            {request.status}
+                            <StatusBadge status={request.status} />
                           </span>
                         </div>
                       ))}
@@ -486,7 +487,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 </div>
 
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {availableTrips.map((trip) => (
+                  {availableTrips.map((trip, index) => (
                     <Card
                       key={trip.id}
                       className={`cursor-pointer transition-colors border ${
@@ -510,7 +511,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2 mb-1">
                               <span className="font-medium text-sm">{trip.description || 'Sem descrição'}</span>
-                              <span className="text-xs font-mono text-muted-foreground">#{trip.id.slice(0, 8)}</span>
+                              <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
                             </div>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
