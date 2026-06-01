@@ -527,10 +527,10 @@ export default function RequestDetails() {
                           </div>
                         </div>
 
-                        {/* Right: requested + approved + icon */}
-                        <div className="flex items-center gap-6 sm:text-right">
+                        {/* Right: quantity + actions (compact) */}
+                        <div className="flex items-center gap-4 sm:text-right">
                           {editingItemId === item.id ? (
-                            <div className="space-y-2 min-w-[140px]">
+                            <div className="flex items-center gap-3 flex-wrap">
                               <div>
                                 <label className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold">Quantidade</label>
                                 <input
@@ -538,7 +538,7 @@ export default function RequestDetails() {
                                   min="1"
                                   value={editQuantity}
                                   onChange={(e) => setEditQuantity(e.target.value)}
-                                  className="w-full mt-1 h-8 px-2 rounded-md bg-background border border-border text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  className="w-20 mt-1 h-8 px-2 rounded-md bg-background border border-border text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                                   data-testid={`input-edit-quantity-${item.id}`}
                                 />
                               </div>
@@ -548,10 +548,35 @@ export default function RequestDetails() {
                                   type="text"
                                   value={editNotes}
                                   onChange={(e) => setEditNotes(e.target.value)}
-                                  placeholder="Observacoes (opcional)"
-                                  className="w-full mt-1 h-8 px-2 rounded-md bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  placeholder="Obs. (opcional)"
+                                  className="w-32 mt-1 h-8 px-2 rounded-md bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                                   data-testid={`input-edit-notes-${item.id}`}
                                 />
+                              </div>
+                              <div className="flex items-center gap-1 mt-4">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    const qty = parseInt(editQuantity);
+                                    if (isNaN(qty) || qty < 1) {
+                                      toast({ variant: "destructive", title: "Erro", description: "Quantidade deve ser maior que zero" });
+                                      return;
+                                    }
+                                    updateItemMutation.mutate({ itemId: item.id, quantity: qty, notes: editNotes || undefined });
+                                  }}
+                                  data-testid={`button-save-item-${item.id}`}
+                                >
+                                  <Check className="h-4 w-4 text-chart-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditingItemId(null)}
+                                  data-testid={`button-cancel-edit-item-${item.id}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
                               </div>
                             </div>
                           ) : (
@@ -562,14 +587,47 @@ export default function RequestDetails() {
                                   {item.quantity} <span className="text-sm font-normal">{item.product?.unit || "unid"}</span>
                                 </p>
                               </div>
-                              <div>
-                                <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Aprovado</p>
-                                <p className={`font-semibold text-base ${isApproved ? "text-chart-4" : isRejected ? "text-destructive" : "text-muted-foreground"}`}>
-                                  {isApproved ? item.approvedQuantity : isRejected ? "—" : "—"}
-                                  {isApproved && <span className="text-sm font-normal"> {item.product?.unit || "unid"}</span>}
-                                </p>
-                              </div>
-                              <StatusIcon className={`h-5 w-5 ${statusColor} shrink-0`} />
+                              {/* Aprovado only when not draft */}
+                              {request.status !== "draft" && (
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Aprovado</p>
+                                  <p className={`font-semibold text-base ${isApproved ? "text-chart-4" : isRejected ? "text-destructive" : "text-muted-foreground"}`}>
+                                    {isApproved ? item.approvedQuantity : isRejected ? "—" : "—"}
+                                    {isApproved && <span className="text-sm font-normal"> {item.product?.unit || "unid"}</span>}
+                                  </p>
+                                </div>
+                              )}
+                              {request.status !== "draft" && (
+                                <StatusIcon className={`h-5 w-5 ${statusColor} shrink-0`} />
+                              )}
+                              {/* Action buttons inline (draft only) */}
+                              {canEdit && (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setEditingItemId(item.id);
+                                      setEditQuantity(String(item.quantity));
+                                      setEditNotes(item.notes || "");
+                                    }}
+                                    data-testid={`button-edit-item-${item.id}`}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteItemMutation.mutate(item.id);
+                                    }}
+                                    data-testid={`button-remove-item-${item.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
                             </>
                           )}
                         </div>
@@ -594,64 +652,6 @@ export default function RequestDetails() {
                         </div>
                       )}
 
-                      {/* Edit / Delete buttons */}
-                      {canEdit && (
-                        <div className="flex justify-end mt-3 gap-1">
-                          {editingItemId === item.id ? (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  const qty = parseInt(editQuantity);
-                                  if (isNaN(qty) || qty < 1) {
-                                    toast({ variant: "destructive", title: "Erro", description: "Quantidade deve ser maior que zero" });
-                                    return;
-                                  }
-                                  updateItemMutation.mutate({ itemId: item.id, quantity: qty, notes: editNotes || undefined });
-                                }}
-                                data-testid={`button-save-item-${item.id}`}
-                              >
-                                <Check className="h-4 w-4 text-chart-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setEditingItemId(null)}
-                                data-testid={`button-cancel-edit-item-${item.id}`}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setEditingItemId(item.id);
-                                  setEditQuantity(String(item.quantity));
-                                  setEditNotes(item.notes || "");
-                                }}
-                                data-testid={`button-edit-item-${item.id}`}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteItemMutation.mutate(item.id);
-                                }}
-                                data-testid={`button-remove-item-${item.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
