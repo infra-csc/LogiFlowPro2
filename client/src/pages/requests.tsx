@@ -83,13 +83,15 @@ export default function Requests() {
   };
 
   // Backend agora filtra por usuario; o front filtra apenas por status/evento
+  // Ordenado por mais recente primeiro
   const filteredRequests = useMemo(() => {
     if (!requests) return [];
-    return requests.filter((request) => {
+    const filtered = requests.filter((request) => {
       const matchesStatus = statusFilter === "all" || request.status === statusFilter;
       const matchesEvent = eventFilter === "all" || request.eventId === eventFilter;
       return matchesStatus && matchesEvent;
     });
+    return [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [requests, statusFilter, eventFilter]);
 
   const activeFiltersCount = useMemo(() => {
@@ -160,7 +162,7 @@ export default function Requests() {
 
       {/* Filtros */}
       {requests && requests.length > 0 && (
-        <FilterBar badgeCount={activeFiltersCount} onClear={activeFiltersCount > 0 ? clearFilters : undefined}>
+        <FilterBar badgeCount={activeFiltersCount} onClear={activeFiltersCount > 0 ? clearFilters : undefined} defaultOpen>
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">Status</label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
