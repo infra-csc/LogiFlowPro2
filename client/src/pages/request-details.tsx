@@ -169,6 +169,7 @@ export default function RequestDetails() {
       return response;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/requests", id] });
       toast({ title: "Enviado para aprovação", description: "A requisição foi submetida para aprovação" });
     },
@@ -221,6 +222,7 @@ export default function RequestDetails() {
       return apiRequest("PATCH", `/api/requests/${id}`, { notes: notesValue || null });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/requests", id] });
       toast({ title: "Observações atualizadas", description: "As observações foram salvas com sucesso" });
     },
