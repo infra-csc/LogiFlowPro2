@@ -342,7 +342,7 @@ export default function RequestDetails() {
       )}
 
       {/* Summary Grid — Glass cards with status strips */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="relative overflow-hidden border-border/60">
           <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
           <CardContent className="p-4 pl-5">

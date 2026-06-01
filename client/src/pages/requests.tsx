@@ -134,6 +134,18 @@ export default function Requests() {
     return <PageLoading message="Carregando requisicoes..." />;
   }
 
+  // Generate numeric display IDs
+  const numericIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!requests) return map;
+    // Sort by creation date ascending for stable numbering
+    const sorted = [...requests].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    sorted.forEach((req, index) => {
+      map.set(req.id, String(index + 1).padStart(3, "0"));
+    });
+    return map;
+  }, [requests]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -227,7 +239,7 @@ export default function Requests() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs font-medium text-primary font-mono mb-1">
-                        {request.id.slice(0, 8).toUpperCase()}
+                        REQ-{numericIdMap.get(request.id) || request.id.slice(0, 8).toUpperCase()}
                       </span>
                       <h3 className="font-semibold text-base text-foreground truncate">
                         {request.area}
