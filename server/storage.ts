@@ -952,8 +952,24 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(events, eq(loadingOrders.eventId, events.id))
       .leftJoin(itemsAgg, eq(loadingOrders.id, itemsAgg.loadingOrderId))
       .orderBy(desc(loadingOrders.createdAt));
-    
-    return results;
+
+    // Resolve user names for createdBy
+    const userIds = Array.from(new Set(results.filter(r => r.createdBy).map(r => r.createdBy)));
+    const userNames: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const userRows = await db
+        .select({ id: users.id, name: users.name })
+        .from(users)
+        .where(sql`${users.id} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`);
+      for (const u of userRows) {
+        userNames[u.id] = u.name || u.id;
+      }
+    }
+
+    return results.map(r => ({
+      ...r,
+      createdBy: userNames[r.createdBy] || r.createdBy,
+    }));
   }
 
   async getLoadingOrder(id: string): Promise<LoadingOrder | undefined> {

@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { FilterBar } from "@/components/filter-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import type { LoadingOrder, Event } from "@shared/schema";
 import { LoadingOrderDialog } from "@/components/loading-order-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -205,10 +206,7 @@ export default function LoadingOrders() {
                 {/* Header: status + number */}
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-primary font-bold tracking-wider text-sm">{order.orderNumber}</span>
-                    </div>
-                    <h3 className="font-semibold text-base text-foreground mt-1">{order.orderNumber}</h3>
+                    <h3 className="font-semibold text-base text-foreground">{order.orderNumber}</h3>
                   </div>
                   <StatusBadge status={order.status} />
                 </div>
@@ -223,7 +221,7 @@ export default function LoadingOrders() {
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <CalendarIcon className="h-5 w-5" />
-                    <span className="text-sm">{format(new Date(order.plannedStartTime), "dd MMM - dd MMM, yyyy")}</span>
+                    <span className="text-sm">{format(new Date(order.plannedStartTime), "dd MMM - dd MMM, yyyy", { locale: ptBR })}</span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <UserIcon className="h-5 w-5" />
