@@ -450,15 +450,22 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                   </Button>
                 </div>
               ) : (
-                <ObjectUploader
-                  maxNumberOfFiles={1}
-                  maxFileSize={10485760}
-                  onComplete={handleUploadComplete}
-                  buttonVariant="outline"
-                >
-                  <ImageIcon className="h-4 w-4 mr-2" />
-                  Enviar Imagem
-                </ObjectUploader>
+                <div className="w-full border border-dashed border-border/60 rounded-md p-6 flex flex-col items-center gap-3 bg-muted/30 text-center">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Imagem do produto</p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG ou WebP — máx. 10 MB</p>
+                  </div>
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    onComplete={handleUploadComplete}
+                    buttonVariant="outline"
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Selecionar Imagem
+                  </ObjectUploader>
+                </div>
               )}
             </div>
           </div>

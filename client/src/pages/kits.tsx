@@ -120,9 +120,6 @@ export default function Kits() {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/40">
-                  <Badge variant="secondary" className="font-medium">
-                    {kit.parameters.length} {kit.parameters.length === 1 ? "parâmetro" : "parâmetros"}
-                  </Badge>
                   {kit.parameters.map((param, idx) => (
                     <Badge key={idx} variant="outline">
                       {param.name}

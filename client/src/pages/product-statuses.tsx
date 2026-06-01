@@ -45,6 +45,8 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/hooks/use-auth";
+import { userIsAdmin } from "@/lib/authz";
 
 const formSchema = z.object({
   code: z.string().min(1, "Código é obrigatório"),
@@ -95,6 +97,8 @@ const typeLabels = {
 
 export default function ProductStatusesPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canWrite = userIsAdmin(user);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStatus, setEditingStatus] = useState<ProductStatus | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -184,12 +188,14 @@ export default function ProductStatusesPage() {
             form.reset();
           }
         }}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-status">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Status
-            </Button>
-          </DialogTrigger>
+          {canWrite && (
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-status">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Status
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-2xl border-border/60">
             <DialogHeader>
                   <DialogTitle>{editingStatus ? "Editar Status" : "Novo Status"}</DialogTitle>
@@ -435,14 +441,16 @@ export default function ProductStatusesPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(status)}
-                            data-testid={`button-edit-${status.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {canWrite && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleEdit(status)}
+                              data-testid={`button-edit-${status.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
