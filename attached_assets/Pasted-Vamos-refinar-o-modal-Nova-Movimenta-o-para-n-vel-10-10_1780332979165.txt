@@ -1,0 +1,304 @@
+Vamos refinar o modal “Nova Movimentação” para nível 10/10.
+
+Arquivo foco:
+
+* componente/modal responsável por criar movimentação
+* provavelmente client/src/components/movement-dialog.tsx ou equivalente
+
+Objetivo:
+Transformar o modal de criação de movimentação em uma experiência mais profissional, guiada, compacta e operacional, seguindo o Design System atual do EventFlow.
+
+Contexto:
+Esse modal cria uma nova movimentação de carga/descarga. Ele precisa ser rápido de preencher, claro para o usuário operacional e visualmente consistente com o restante do app.
+
+Problemas atuais observados:
+
+* O modal parece um formulário longo genérico.
+* Todos os campos têm o mesmo peso visual.
+* “Tipo de Movimentação” deveria guiar o restante do formulário.
+* Campos opcionais ocupam muito espaço.
+* Selects grandes deveriam ser pesquisáveis.
+* Falta divisão visual por seções.
+* Falta resumo antes de criar.
+* Footer pode ser mais estável e profissional.
+* Responsividade mobile precisa ser garantida.
+
+Direção visual:
+Não criar novo Design System.
+Usar o Design System atual do EventFlow como fonte única de verdade.
+
+Melhorias obrigatórias:
+
+1. Estrutura geral do modal
+
+Organizar o conteúdo em blocos visuais:
+
+* Identificação
+
+  * Nome da Movimentação
+  * Tipo de Movimentação
+
+* Contexto
+
+  * Evento
+  * Viagem
+  * Ordem de Carregamento
+
+* Operação
+
+  * Placa do Veículo
+  * Doca
+
+* Revisão
+
+  * Resumo discreto do que será criado
+
+Se criar etapas/wizard for arriscado, manter em tela única, mas separar visualmente por seções com títulos pequenos e espaçamento consistente.
+
+2. Header
+
+Melhorar o header:
+
+* Título: “Nova Movimentação”
+* Descrição curta abaixo:
+  “Crie uma movimentação operacional vinculando evento, viagem, ordem de carregamento, veículo e doca.”
+
+Se for edição:
+
+* “Editar Movimentação”
+
+3. Nome da Movimentação
+
+Melhorar campo:
+
+* Label: “Nome da movimentação *”
+* Placeholder: “Ex: Carga Night Run — Carreta 1”
+* Campo obrigatório com validação visual.
+* Evitar placeholder genérico demais.
+
+4. Tipo de Movimentação
+
+Esse campo deve ser tratado como campo principal.
+
+Melhorias:
+
+* Usar select/combobox com opções amigáveis em PT-BR.
+* Não exibir valores técnicos crus.
+* Se os tipos forem técnicos, mapear apenas visualmente no front.
+
+Exemplos de labels amigáveis:
+
+* Saída para evento
+* Retorno de evento
+* Transferência interna
+* Carga
+* Descarga
+
+Não alterar o valor enviado no payload.
+
+Se possível, mostrar uma pequena descrição abaixo do tipo selecionado:
+
+* “Use para registrar saída de materiais do armazém para o evento.”
+* “Use para registrar retorno de materiais ao armazém.”
+
+5. Evento, Viagem e Ordem de Carregamento
+
+Trocar selects simples por combobox pesquisável, se possível e seguro.
+
+Cada combobox deve ter:
+
+* busca por nome/código;
+* lista com altura máxima;
+* scrollbar discreto;
+* empty state;
+* destaque do item selecionado.
+
+Evento:
+
+* buscar por nome do evento;
+* mostrar nome principal;
+* mostrar cidade/data se existir.
+
+Viagem:
+
+* buscar por nome/código;
+* mostrar veículo/motorista/origem se existir.
+
+Ordem de Carregamento:
+
+* buscar por número da ordem ou evento;
+* mostrar status com StatusBadge, se disponível;
+* mostrar evento relacionado, se existir.
+
+Não alterar payload nem backend.
+
+6. Relação entre campos
+
+Se uma seleção filtrar outra, manter a lógica atual.
+
+Se ainda não existir dependência funcional, não criar regra nova sem necessidade.
+
+Apenas melhorar visualmente:
+
+* se nenhum evento foi selecionado, o campo de viagem pode mostrar placeholder claro;
+* se não houver ordens disponíveis, mostrar mensagem amigável;
+* se uma ordem for selecionada, mostrar resumo discreto.
+
+7. Placa do Veículo
+
+Melhorar campo:
+
+* Label: “Placa do veículo”
+* Placeholder: “Ex: ABC-1234”
+* Se o sistema tiver cadastro de veículos, avaliar se esse campo deve ser combobox em fase futura.
+* Por enquanto, não alterar regra funcional.
+* Pode adicionar microcopy: “Informe a placa quando não houver viagem vinculada.”
+
+8. Doca
+
+Melhorar select de doca:
+
+* Label: “Doca”
+* Placeholder: “Selecione uma doca”
+* Se houver muitas docas, usar combobox pesquisável.
+* Se não houver docas disponíveis, mostrar empty state amigável.
+
+9. Resumo antes de criar
+
+Adicionar um pequeno resumo visual no final do conteúdo, antes do footer:
+
+“Resumo da movimentação”
+
+Mostrar apenas campos preenchidos:
+
+* Tipo
+* Evento
+* Viagem
+* Ordem
+* Veículo
+* Doca
+
+Esse resumo ajuda o usuário a confirmar antes de criar.
+
+10. Footer
+
+Melhorar footer:
+
+* Footer fixo ou estável no final do modal.
+* Separador sutil entre conteúdo e footer.
+* “Cancelar” como outline.
+* “Criar Movimentação” como primary/default.
+* Botão “Criar Movimentação” desabilitado enquanto campos obrigatórios estiverem inválidos.
+* Loading visual no botão durante envio.
+* Em mobile, botões podem ocupar largura total.
+
+11. Modal e scroll
+
+Garantir:
+
+* largura adequada;
+* max-height controlado;
+* conteúdo interno rolável se necessário;
+* footer sempre acessível;
+* scrollbar dark discreto;
+* sem scrollbar branco padrão;
+* sem overflow horizontal.
+
+12. Design System
+
+Aplicar padrões:
+
+* labels com text-sm ou text-xs conforme padrão atual;
+* campos com foco consistente;
+* gap-3 ou space-y-4;
+* botões com gap-2;
+* ícones discretos se ajudarem;
+* sem hover/bg manual em Button;
+* sem cores hardcoded fora dos tokens.
+
+13. Responsividade
+
+Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* modal não estoura a tela;
+* campos ficam em uma coluna no mobile;
+* selects/combobox não saem da viewport;
+* footer continua acessível;
+* botão principal continua fácil de tocar.
+
+14. Acessibilidade
+
+Garantir:
+
+* labels associados;
+* foco visível;
+* botão fechar acessível;
+* navegação por teclado;
+* aria adequado em combobox/select.
+
+Restrições absolutas:
+
+Não alterar:
+
+* backend;
+* endpoints;
+* payloads;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* helpers de autorização;
+* regras de negócio;
+* status/transições;
+* scanner;
+* fluxo de criação;
+* lógica operacional existente.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* select para combobox, se seguro;
+* microcopy PT-BR;
+* labels amigáveis;
+* estados visuais;
+* validação visual;
+* responsividade.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir modal;
+* preencher nome;
+* selecionar tipo;
+* selecionar evento;
+* selecionar viagem;
+* selecionar ordem de carregamento;
+* preencher placa;
+* selecionar doca;
+* criar movimentação;
+* cancelar;
+* validar campos obrigatórios;
+* testar mobile básico.
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* confirmação de que payload e lógica funcional não foram alterados;
+* confirmação de que RBAC e regras foram preservados;
+* resultado do npm run check;
+* resultado do npm run build.

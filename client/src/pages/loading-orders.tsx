@@ -221,7 +221,7 @@ export default function LoadingOrders() {
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <CalendarIcon className="h-5 w-5" />
-                    <span className="text-sm">{format(new Date(order.plannedStartTime), "dd MMM - dd MMM, yyyy", { locale: ptBR })}</span>
+                    <span className="text-sm">{format(new Date(order.plannedStartTime), "dd MMM HH:mm - dd MMM HH:mm, yyyy", { locale: ptBR })}</span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <UserIcon className="h-5 w-5" />

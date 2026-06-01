@@ -1,0 +1,247 @@
+Vamos refinar a tela de Carga e Descarga / Movimentações para ficar 10/10.
+
+Arquivo foco:
+
+* client/src/pages/movements.tsx
+
+Objetivo:
+Transformar a tela de Movimentações em uma lista operacional profissional, compacta, clara e rápida de usar.
+
+A tela já melhorou, mas ainda está com cards muito largos, bastante espaço vazio, filtros pouco úteis quando fechados e algumas informações operacionais pouco evidentes.
+
+Contexto:
+Movimentações são parte crítica da operação de carga/descarga. A tela precisa permitir leitura rápida de status, evento, veículo, código, tipo da movimentação e próxima ação possível.
+
+Usar o Design System atual do EventFlow como fonte única de verdade.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+Problemas atuais observados:
+
+1. Cards muito largos e com espaço vazio
+
+* Os cards ocupam quase toda a largura, mas muitas vezes mostram pouca informação.
+* Reduzir sensação de vazio.
+* Melhorar densidade visual.
+* Manter boa leitura sem poluir.
+
+2. Hierarquia operacional
+   Cada card precisa responder rapidamente:
+
+* Qual é a movimentação?
+* Qual é o status?
+* Qual é o código?
+* Qual é o evento?
+* Qual é o veículo?
+* Qual é o tipo da movimentação?
+* Qual é a próxima ação possível?
+
+3. Estrutura do card
+   Aplicar melhor o padrão do Design System:
+
+* Card com hover-elevate border-border/60
+* CardContent p-4
+* StatusBadge no topo
+* Código com font-mono text-xs text-muted-foreground
+* Título com text-base font-semibold
+* Metadados com mt-3 pt-3 border-t border-border/40
+* Grid de metadados com gap-x-4 gap-y-1
+* Botões size="sm" dentro do card
+* Ações agrupadas
+
+Estrutura sugerida:
+
+Topo:
+
+* StatusBadge
+* código da movimentação
+* título
+* ações principais à direita
+
+Meio:
+
+* evento
+* veículo
+* tipo da movimentação
+* data/hora, se existir
+
+Rodapé:
+
+* próxima ação ou ações disponíveis
+* botão Detalhes sempre claro
+* Editar/Iniciar/Pausar/Finalizar conforme permissão e status
+
+4. Informações ausentes
+   Quando evento, veículo ou outro dado estiver ausente, não deixar o card visualmente pobre.
+
+Usar fallback discreto:
+
+* “Evento não vinculado”
+* “Veículo não informado”
+* “Sem itens vinculados”
+
+Não inventar dados. Apenas melhorar apresentação.
+
+5. Tipo da movimentação
+   Traduzir labels técnicos para PT-BR amigável, apenas no front-end visual.
+
+Exemplos:
+
+* outbound_event → Saída para evento
+* inbound_return → Retorno de evento
+* internal_transfer → Transferência interna
+* loading → Carga
+* unloading → Descarga
+
+Não alterar valor real do status/tipo, payload ou backend.
+
+6. Ações
+   Melhorar agrupamento das ações:
+
+* Usar ActionBar ou grupo visual consistente.
+* Detalhes deve ser uma ação clara.
+* Editar deve aparecer apenas se permitido.
+* Iniciar, Pausar e Finalizar devem respeitar status e RBAC atuais.
+* Evitar ícones soltos sem contexto.
+* Em desktop, pode usar ícone + texto para ações principais.
+* Em mobile, ações podem quebrar para baixo.
+
+Não criar ação nova.
+Não remover ação existente.
+Não alterar regra de permissão.
+
+7. Stats
+   Os cards de stats estão bons, mas podem ficar mais úteis.
+
+Melhorias:
+
+* Manter compactos.
+* Se for simples e seguro, permitir clicar em cada stat para filtrar por status.
+* Mostrar estado ativo quando um filtro vier do stat.
+* Não implementar se isso aumentar risco funcional.
+
+8. FilterBar
+   Melhorar o estado fechado:
+
+* Mostrar badgeCount de filtros ativos.
+* Mostrar chips/resumo de filtros ativos, se houver.
+* Não parecer uma barra vazia.
+* Ao abrir, campos devem ficar em grid responsivo.
+* Botão limpar filtros deve ser claro.
+* Labels devem usar text-xs text-muted-foreground.
+
+9. Lista
+   Avaliar se o layout deve ser:
+
+Opção A — lista operacional compacta:
+
+* cards horizontais ocupando largura toda, mas mais densos e ricos.
+
+Opção B — grid responsivo:
+
+* desktop com 2 colunas;
+* tablet com 1 ou 2;
+* mobile com 1.
+
+Escolher a opção que melhor preserve leitura operacional.
+Não fazer redesign radical.
+
+10. Responsividade
+    Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* sem overflow horizontal;
+* ações quebram corretamente;
+* cards continuam legíveis;
+* filtros ficam em coluna no mobile;
+* botão Nova Movimentação não quebra layout.
+
+11. Scrollbar
+    Se houver scrollbar visível padrão do navegador:
+
+* aplicar scrollbar dark discreto;
+* fino;
+* track transparente;
+* thumb sutil;
+* sem scrollbar branco/cinza chamando atenção.
+
+12. Restrições absolutas
+    Não alterar:
+
+* backend;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* helpers de autorização;
+* regras de negócio;
+* status/transições;
+* scanner;
+* lógica de criação;
+* lógica de edição;
+* lógica de iniciar/pausar/finalizar;
+* lógica de aprovação.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição visual;
+* cards;
+* filtros;
+* stats;
+* botões;
+* microcopy PT-BR;
+* labels amigáveis;
+* responsividade;
+* empty/loading/error states.
+
+13. Validações obrigatórias
+    Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir lista;
+* abrir/fechar filtros;
+* filtrar por status;
+* limpar filtros;
+* abrir detalhes;
+* iniciar movimentação;
+* pausar movimentação;
+* finalizar movimentação;
+* validar botão Nova Movimentação por perfil;
+* validar botão Editar por perfil;
+* validar responsividade desktop/tablet/mobile.
+
+Perfis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* confirmação de que RBAC e regras foram preservados;
+* confirmação de que scanner e fluxo operacional não foram alterados;
+* resultado do npm run check;
+* resultado do npm run build.
