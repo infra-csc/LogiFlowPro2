@@ -168,7 +168,9 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
         <DialogHeader>
           <DialogTitle>{request ? "Editar Requisição" : "Nova Requisição"}</DialogTitle>
           <DialogDescription>
-            {request ? "Atualize os dados da requisição" : "Crie uma requisição de materiais"}
+            {request
+              ? "Atualize os dados da requisição."
+              : "Crie uma requisição de materiais. Ela começa como rascunho e só pode ser enviada para aprovação dentro do período permitido pelo evento."}
           </DialogDescription>
         </DialogHeader>
 

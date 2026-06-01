@@ -162,6 +162,7 @@ export interface IStorage {
 
   // Material Requests
   getMaterialRequests(): Promise<MaterialRequest[]>;
+  getMaterialRequestsByUser(userId: string): Promise<MaterialRequest[]>;
   getMaterialRequest(id: string): Promise<MaterialRequest | undefined>;
   createMaterialRequest(request: InsertMaterialRequest): Promise<MaterialRequest>;
   updateMaterialRequest(id: string, request: Partial<InsertMaterialRequest>): Promise<MaterialRequest>;
@@ -527,7 +528,37 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(events, eq(materialRequests.eventId, events.id))
       .leftJoin(users, eq(materialRequests.requestedBy, users.id))
       .orderBy(desc(materialRequests.createdAt));
-    
+
+    return requests as any;
+  }
+
+  async getMaterialRequestsByUser(userId: string): Promise<MaterialRequest[]> {
+    const requests = await db
+      .select({
+        id: materialRequests.id,
+        eventId: materialRequests.eventId,
+        area: materialRequests.area,
+        status: materialRequests.status,
+        requestedBy: materialRequests.requestedBy,
+        submittedAt: materialRequests.submittedAt,
+        approvedBy: materialRequests.approvedBy,
+        approvedAt: materialRequests.approvedAt,
+        cutoffTime: materialRequests.cutoffTime,
+        notes: materialRequests.notes,
+        createdAt: materialRequests.createdAt,
+        event: events,
+        requestedByUser: {
+          id: users.id,
+          name: users.name,
+          username: users.username
+        }
+      })
+      .from(materialRequests)
+      .leftJoin(events, eq(materialRequests.eventId, events.id))
+      .leftJoin(users, eq(materialRequests.requestedBy, users.id))
+      .where(eq(materialRequests.requestedBy, userId))
+      .orderBy(desc(materialRequests.createdAt));
+
     return requests as any;
   }
 

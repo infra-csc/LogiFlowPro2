@@ -123,7 +123,7 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
         <DialogHeader>
           <DialogTitle>Adicionar Material</DialogTitle>
           <DialogDescription>
-            Adicione produtos ou kits à requisição
+            Escolha entre adicionar um produto individual ou um kit completo. A quantidade deve ser maior que zero.
           </DialogDescription>
         </DialogHeader>
 

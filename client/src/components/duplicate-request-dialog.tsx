@@ -165,7 +165,7 @@ export function DuplicateRequestDialog({
             Duplicar Requisição
           </DialogTitle>
           <DialogDescription>
-            Todos os {itemCount} {itemCount === 1 ? 'item será copiado' : 'itens serão copiados'} para a nova requisição
+            Cria uma nova requisição como rascunho, copiando todos os {itemCount} {itemCount === 1 ? "item" : "itens"} desta requisição. Você pode alterar o evento e o nome antes de confirmar.
           </DialogDescription>
         </DialogHeader>
 

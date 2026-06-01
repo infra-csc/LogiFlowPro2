@@ -487,8 +487,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Material Requests
   app.get("/api/requests", requireAuth, async (req, res) => {
     try {
-      const requests = await storage.getMaterialRequests();
-      res.json(requests);
+      const isUserAdmin = await isAdmin(req.user);
+      if (isUserAdmin) {
+        const requests = await storage.getMaterialRequests();
+        res.json(requests);
+      } else {
+        const requests = await storage.getMaterialRequestsByUser(req.user!.id);
+        res.json(requests);
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch requests" });
     }

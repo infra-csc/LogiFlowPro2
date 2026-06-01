@@ -1,0 +1,314 @@
+Vamos acelerar o desenvolvimento refinando uma tela central do app: Requisição de Materiais.
+
+Tela foco:
+
+* client/src/pages/requests.tsx
+* client/src/pages/request-details.tsx
+* client/src/components/request-dialog.tsx
+* client/src/components/add-item-dialog.tsx
+* client/src/components/duplicate-request-dialog.tsx
+
+Objetivo:
+Transformar a experiência de Requisição de Materiais em uma tela 10/10, com foco em design, layout, UX operacional, clareza do fluxo e segurança visual/funcional.
+
+Contexto funcional:
+A Requisição de Materiais permite que o usuário crie uma requisição em rascunho, adicione produtos/kits, envie para aprovação e acompanhe aprovação/rejeição. Requisições aprovadas alimentam Loading Orders e Estoque.
+
+Direção visual:
+Usar o Design System atual do EventFlow como fonte única de verdade.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+Aplicar:
+
+* PageHeader
+* PageSection
+* FilterBar
+* EmptyState
+* PageLoading
+* ErrorState
+* StatusBadge
+* DataCard
+* ActionBar
+* PermissionHint, se fizer sentido
+
+Parte 1 — Lista de Requisições
+
+Refinar client/src/pages/requests.tsx.
+
+Melhorar:
+
+1. Layout geral
+
+* PageHeader com título “Requisição de Materiais”, descrição curta e botão “Nova Requisição”.
+* Espaçamento consistente entre header, filtros e lista.
+* Evitar conteúdo colado nas bordas.
+* Garantir boa leitura em desktop, tablet e mobile.
+
+2. Filtros
+
+* FilterBar visualmente útil, não apenas uma linha vazia.
+* Filtros mínimos:
+
+  * Status
+  * Evento
+  * Área, se já existir no dado
+* Usar badgeCount para filtros ativos.
+* Usar onClear para limpar filtros.
+* Campos em grid responsivo.
+* Labels com text-xs text-muted-foreground.
+* Botões alinhados.
+
+3. Cards de requisição
+   Aplicar padrão oficial do Design System:
+
+* Card com hover-elevate border-border/60
+* CardContent com p-4
+* Header com StatusBadge + código/data + título + ação
+* StatusBadge obrigatório
+* Área como título principal
+* Evento como contexto secundário destacado
+* Código/ID ou data com text-xs text-muted-foreground font-mono
+* Metadados separados com mt-3 pt-3 border-t border-border/40
+* Grid de metadados com grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1
+* Botões dentro do card com size="sm"
+* Card clicável ou botão “Detalhes” bem claro
+* Evitar cards grandes demais
+
+Cada card precisa responder rapidamente:
+
+* qual é a área?
+* qual é o evento?
+* qual é o status?
+* quem solicitou?
+* quando foi criada/enviada/aprovada?
+* qual ação está disponível?
+
+4. Estados vazios
+   Criar EmptyState diferente para:
+
+* nenhuma requisição criada;
+* filtros sem resultado.
+
+Se não houver requisições:
+
+* mostrar ícone apropriado;
+* texto claro;
+* botão “Nova Requisição”.
+
+Se filtros não retornarem nada:
+
+* mostrar mensagem “Nenhuma requisição encontrada com os filtros atuais”;
+* botão para limpar filtros.
+
+Parte 2 — Detalhes da Requisição
+
+Refinar client/src/pages/request-details.tsx.
+
+Melhorar:
+
+1. Header
+
+* PageHeader com área da requisição como título.
+* Descrição com nome do evento.
+* StatusBadge visível no topo.
+* ActionBar com ações:
+
+  * Voltar
+  * Duplicar
+  * Excluir, se permitido
+  * Enviar para aprovação, se permitido
+  * Salvar observações, se aplicável
+
+2. Resumo
+   Criar PageSection ou DataCards para:
+
+* Solicitante
+* Status
+* Data de criação
+* Data de submissão
+* Data de aprovação/rejeição
+* Evento
+* Área
+
+3. Alerta de janela de requisição
+   Melhorar visualmente o alerta de requestWindowStart/requestWindowEnd:
+
+* se ainda não abriu, mostrar alerta claro;
+* se encerrou, mostrar alerta claro;
+* não usar visual agressivo demais;
+* explicar o impacto: criação/envio bloqueado.
+
+4. Materiais requisitados
+   Refinar a lista de itens:
+
+Cada item deve mostrar:
+
+* Produto ou Kit
+* SKU, se existir
+* Quantidade solicitada
+* Quantidade aprovada, se houver
+* Status de aprovação com StatusBadge
+* Motivo de rejeição, se houver
+* Observações, se houver
+* Ação remover, apenas se permitido
+
+Visual:
+
+* usar cards compactos ou tabela refinada;
+* metadados organizados;
+* status fácil de identificar;
+* ações agrupadas;
+* EmptyState quando não houver itens.
+
+5. Observações
+   Melhorar o bloco de observações:
+
+* se editável, textarea bem posicionado;
+* botão salvar alinhado;
+* se somente leitura, mostrar como conteúdo;
+* mensagem clara quando não houver observações.
+
+6. Histórico/Timeline
+   Se já houver dados suficientes, criar uma timeline simples:
+
+* Criada
+* Enviada para aprovação
+* Aprovada/Rejeitada
+* Atualizada
+
+Se não houver dados suficientes, deixar registrado como melhoria futura.
+
+Parte 3 — Modais
+
+Refinar visualmente:
+
+1. RequestDialog
+
+* Modal mais claro para criar requisição.
+* Evento e área bem organizados.
+* Explicar que a requisição será criada como rascunho.
+* Loading e erro claros.
+* Botões alinhados.
+
+2. AddItemDialog
+
+* Separar visualmente Produto e Kit.
+* Campo quantidade claro.
+* Mostrar nome, SKU e tipo de item quando disponível.
+* Validar quantidade visualmente.
+* Botão adicionar como ação principal.
+* Cancelar como secundário.
+
+3. DuplicateRequestDialog
+
+* Explicar claramente que os itens serão copiados.
+* Evento destino e área bem organizados.
+* Ação principal clara.
+* Cancelar como secundário.
+
+Parte 4 — Segurança e RBAC
+
+Verificar um ponto importante:
+
+No fluxo atual, a lista aparentemente recebe todas as requisições do backend e filtra no front-end por requestedBy.
+
+Valide no código se isso realmente acontece.
+
+Se o backend retorna todas as requisições para usuário comum, isso deve ser registrado como risco de segurança, porque o front-end não deve ser a fonte da verdade de autorização.
+
+Se possível corrigir com segurança e sem quebrar fluxo:
+
+* usuário comum deve receber apenas próprias requisições;
+* admin/supervisor devem receber requisições conforme permissão;
+* o front pode manter filtro apenas como UX complementar.
+
+Se essa correção exigir mudança maior de RBAC/back-end, não implemente agora sem isolar. Apenas registre como P0/P1 para correção.
+
+Importante:
+Não alterar fluxo funcional sem necessidade.
+Não quebrar aprovação, duplicação, exclusão, envio ou adição de itens.
+
+Parte 5 — Restrições
+
+Não alterar:
+
+* regras de negócio;
+* status/transições;
+* payloads existentes sem necessidade;
+* contratos de API;
+* schema;
+* migrations;
+* seed;
+* permissions;
+* role_permissions;
+* lógica de aprovação;
+* lógica de estoque/loading orders.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* organização de cards;
+* organização de filtros;
+* organização de botões;
+* empty/loading/error states;
+* responsividade;
+* microcopy PT-BR;
+* validações visuais.
+
+Parte 6 — Validações
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test obrigatório:
+
+Usuário comum:
+
+* criar requisição;
+* adicionar item;
+* remover item em rascunho;
+* enviar para aprovação;
+* não editar após envio.
+
+Admin/Supervisor:
+
+* visualizar pendências;
+* aprovar;
+* rejeitar;
+* aprovar parcialmente, se fluxo existir.
+
+Validação visual:
+
+* desktop;
+* tablet;
+* mobile básico;
+* lista vazia;
+* lista com filtros;
+* detalhe com itens;
+* detalhe sem itens;
+* requisição fora da janela;
+* requisição rascunho;
+* requisição pendente;
+* requisição aprovada;
+* requisição rejeitada.
+
+Entrega final esperada:
+
+* problemas encontrados;
+* melhorias de design aplicadas;
+* melhorias de UX aplicadas;
+* arquivos alterados;
+* componentes do Design System usados;
+* confirmação de preservação funcional;
+* confirmação de RBAC/segurança;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências registradas para próxima fase.
