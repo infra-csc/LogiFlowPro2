@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save, ClipboardList, Package } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save, ClipboardList, Package, User, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
@@ -20,15 +20,57 @@ import { AddItemDialog } from "@/components/add-item-dialog";
 import { DuplicateRequestDialog } from "@/components/duplicate-request-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { StatusBadge as SharedStatusBadge } from "@/components/status-badge";
 import type { Event } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
-import { PageSection } from "@/components/page-section";
-import { DataCard } from "@/components/data-card";
 import { ActionBar } from "@/components/action-bar";
+
+// Status strip colors for detail cards
+const statusStripColor: Record<string, string> = {
+  draft: "bg-primary",
+  pending_approval: "bg-chart-5",
+  approved: "bg-chart-4",
+  rejected: "bg-destructive",
+  cutoff_locked: "bg-chart-3",
+};
+
+// Status dot for badge
+const statusDotColor: Record<string, string> = {
+  draft: "bg-primary",
+  pending_approval: "bg-chart-5",
+  approved: "bg-chart-4",
+  rejected: "bg-destructive",
+  cutoff_locked: "bg-chart-3",
+};
+
+const statusLabel: Record<string, string> = {
+  draft: "Rascunho",
+  pending_approval: "Pendente",
+  approved: "Aprovado",
+  rejected: "Rejeitado",
+  cutoff_locked: "Bloqueado",
+};
+
+// Item approval status mapping
+const itemStatusIcon: Record<string, typeof CheckCircle2> = {
+  approved: CheckCircle2,
+  rejected: XCircle,
+  pending: Clock,
+};
+
+const itemStatusColor: Record<string, string> = {
+  approved: "text-chart-4",
+  rejected: "text-destructive",
+  pending: "text-muted-foreground",
+};
+
+const itemStatusBg: Record<string, string> = {
+  approved: "bg-chart-4/10 border-chart-4/20",
+  rejected: "bg-destructive/10 border-destructive/20",
+  pending: "bg-muted/50 border-border",
+};
 
 type RequestItem = {
   id: string;
@@ -226,6 +268,10 @@ export default function RequestDetails() {
     return new Date(date).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
+  const sLabel = statusLabel[request.status] || request.status;
+  const dotColor = statusDotColor[request.status] || "bg-muted";
+  const stripColor = statusStripColor[request.status] || "bg-muted";
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -256,10 +302,18 @@ export default function RequestDetails() {
         </ActionBar>
       </PageHeader>
 
-      {/* Status badge abaixo do header */}
-      <div className="flex items-center gap-2">
-        <SharedStatusBadge status={request.status} />
-        <span className="text-xs text-muted-foreground font-mono">{request.id.slice(0, 8)}</span>
+      {/* Status badge row */}
+      <div className="flex items-center gap-4">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border"
+          style={{
+            backgroundColor: "hsl(var(--muted) / 0.5)",
+            borderColor: "hsl(var(--border) / 0.5)",
+          }}
+        >
+          <span className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`} />
+          {sLabel}
+        </span>
+        <span className="text-xs text-muted-foreground font-mono tracking-widest">ID: {request.id.slice(0, 8).toUpperCase()}</span>
       </div>
 
       {/* Alerta de janela */}
@@ -287,28 +341,65 @@ export default function RequestDetails() {
         </Alert>
       )}
 
-      {/* Resumo em DataCards */}
-      <PageSection>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <DataCard title="Solicitante" icon={Package} meta={[{ label: "Nome", value: request.requestedByUser?.name || "Usuario" }]} />
-          <DataCard title="Status" icon={Calendar} meta={[{ label: "Atual", value: "" }]}>
-            <SharedStatusBadge status={request.status} />
-          </DataCard>
-          <DataCard title="Criacao" icon={Calendar} meta={[{ label: "Data", value: formatDate(request.createdAt) }]} />
-          <DataCard title="Evento" icon={Package} meta={[{ label: "Nome", value: request.event?.name || "—" }]} />
-          {request.submittedAt && (
-            <DataCard title="Submissao" icon={Calendar} meta={[{ label: "Data", value: formatDate(request.submittedAt) }]} />
-          )}
-          {request.approvedAt && (
-            <DataCard title={request.status === "rejected" ? "Rejeicao" : "Aprovacao"} icon={Calendar} meta={[{ label: "Data", value: formatDate(request.approvedAt) }]} />
-          )}
-        </div>
-      </PageSection>
+      {/* Summary Grid — Glass cards with status strips */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="relative overflow-hidden border-border/60">
+          <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
+          <CardContent className="p-4 pl-5">
+            <p className="text-xs text-muted-foreground font-medium mb-1">Solicitante</p>
+            <p className="font-semibold text-base text-foreground">{request.requestedByUser?.name || "Usuario"}</p>
+          </CardContent>
+        </Card>
+        <Card className="relative overflow-hidden border-border/60">
+          <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
+          <CardContent className="p-4 pl-5">
+            <p className="text-xs text-muted-foreground font-medium mb-1">Status</p>
+            <p className={`font-semibold text-base ${request.status === "rejected" ? "text-destructive" : request.status === "approved" ? "text-chart-4" : "text-foreground"}`}>
+              {sLabel}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="relative overflow-hidden border-border/60">
+          <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
+          <CardContent className="p-4 pl-5">
+            <p className="text-xs text-muted-foreground font-medium mb-1">Criacao</p>
+            <p className="font-semibold text-base text-foreground">{formatDate(request.createdAt)}</p>
+          </CardContent>
+        </Card>
+        <Card className="relative overflow-hidden border-border/60">
+          <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
+          <CardContent className="p-4 pl-5">
+            <p className="text-xs text-muted-foreground font-medium mb-1">Evento</p>
+            <p className="font-semibold text-base text-foreground">{request.event?.name || "—"}</p>
+          </CardContent>
+        </Card>
+        {request.submittedAt && (
+          <Card className="relative overflow-hidden border-border/60">
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
+            <CardContent className="p-4 pl-5">
+              <p className="text-xs text-muted-foreground font-medium mb-1">Submissao</p>
+              <p className="font-semibold text-base text-foreground">{formatDate(request.submittedAt)}</p>
+            </CardContent>
+          </Card>
+        )}
+        {request.approvedAt && (
+          <Card className="relative overflow-hidden border-border/60">
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
+            <CardContent className="p-4 pl-5">
+              <p className="text-xs text-muted-foreground font-medium mb-1">{request.status === "rejected" ? "Rejeicao" : "Aprovacao"}</p>
+              <p className="font-semibold text-base text-foreground">{formatDate(request.approvedAt)}</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Observacoes */}
-      <Card>
+      <Card className="border-l-4 border-l-secondary border-border/60">
         <CardContent className="p-4 space-y-3">
-          <div className="font-semibold text-base">Observacoes</div>
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            <div className="font-semibold text-base">Observacoes</div>
+          </div>
           <div className="mt-3 pt-3 border-t border-border/40">
             {canEdit ? (
               <div className="space-y-3">
@@ -338,13 +429,18 @@ export default function RequestDetails() {
       </Card>
 
       {/* Materiais */}
-      <Card>
+      <Card className="border-t-4 border-t-primary border-border/60">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="font-semibold text-base">
-              Materiais Requisitados
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-primary" />
+              <div className="font-semibold text-base">
+                Materiais Requisitados
+              </div>
               {items.length > 0 && (
-                <span className="ml-2 text-sm text-muted-foreground">({items.length} item{items.length > 1 ? "s" : ""})</span>
+                <span className="text-sm font-medium px-3 py-1 bg-muted rounded-full text-foreground">
+                  {items.length} item{items.length > 1 ? "s" : ""}
+                </span>
               )}
             </div>
             {canEdit && (
@@ -368,65 +464,99 @@ export default function RequestDetails() {
               />
             ) : (
               <div className="space-y-3">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="border rounded-lg p-3 hover-elevate"
-                    data-testid={`item-${item.id}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm">
-                            {item.kit ? item.kit.name : item.product?.name}
-                          </span>
-                          {!canEdit && item.approvalStatus && (
-                            <SharedStatusBadge status={item.approvalStatus} />
-                          )}
+                {items.map((item) => {
+                  const StatusIcon = itemStatusIcon[item.approvalStatus] || Clock;
+                  const statusColor = itemStatusColor[item.approvalStatus] || "text-muted-foreground";
+                  const statusBg = itemStatusBg[item.approvalStatus] || "bg-muted/50 border-border";
+                  const isApproved = item.approvalStatus === "approved";
+                  const isRejected = item.approvalStatus === "rejected";
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`group border rounded-lg p-4 transition-all hover-elevate ${statusBg}`}
+                      data-testid={`item-${item.id}`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        {/* Left: icon + name + SKU */}
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-primary shrink-0">
+                            <Package className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm text-foreground">
+                              {item.kit ? item.kit.name : item.product?.name}
+                            </p>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                                {item.kit ? "Kit" : item.product?.sku}
+                              </span>
+                              {!canEdit && item.approvalStatus && (
+                                <span className={`text-xs ${statusColor}`}>
+                                  {item.approvalStatus === "approved" ? "Aprovado" : item.approvalStatus === "rejected" ? "Rejeitado" : "Pendente"}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {item.kit ? "Kit" : item.product?.sku} •
-                          {item.approvalStatus === "approved" ? (
-                            <span className="font-medium text-chart-4">
-                              {" "}Aprovado: {item.approvedQuantity} de {item.quantity} {item.product?.unit || "unid"}
-                            </span>
-                          ) : item.approvalStatus === "rejected" ? (
-                            <span className="font-medium text-destructive">
-                              {" "}Rejeitado: {item.quantity} {item.product?.unit || "unid"}
-                            </span>
-                          ) : (
-                            <span> Quantidade: {item.quantity} {item.product?.unit || "unid"}</span>
-                          )}
+
+                        {/* Right: requested + approved + icon */}
+                        <div className="flex items-center gap-6 sm:text-right">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Requisitado</p>
+                            <p className="font-semibold text-base text-primary">
+                              {item.quantity} <span className="text-sm font-normal">{item.product?.unit || "unid"}</span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Aprovado</p>
+                            <p className={`font-semibold text-base ${isApproved ? "text-chart-4" : isRejected ? "text-destructive" : "text-muted-foreground"}`}>
+                              {isApproved ? item.approvedQuantity : isRejected ? "—" : "—"}
+                              {isApproved && <span className="text-sm font-normal"> {item.product?.unit || "unid"}</span>}
+                            </p>
+                          </div>
+                          <StatusIcon className={`h-5 w-5 ${statusColor} shrink-0`} />
                         </div>
-                        {item.approvalStatus === "rejected" && item.rejectionReason && (
-                          <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-sm">
+                      </div>
+
+                      {/* Rejection reason */}
+                      {isRejected && item.rejectionReason && (
+                        <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                          <div className="text-sm">
                             <p className="font-medium text-destructive">Motivo da rejeicao:</p>
                             <p className="text-destructive/90 mt-1">{item.rejectionReason}</p>
                           </div>
-                        )}
-                        {item.notes && (
-                          <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
-                            <p className="font-medium text-muted-foreground">Observacoes:</p>
-                            <p className="mt-1" data-testid={`text-item-notes-${item.id}`}>{item.notes}</p>
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
+
+                      {/* Item notes */}
+                      {item.notes && (
+                        <div className="mt-3 p-3 bg-muted/50 rounded text-sm">
+                          <p className="font-medium text-muted-foreground">Observacoes:</p>
+                          <p className="mt-1" data-testid={`text-item-notes-${item.id}`}>{item.notes}</p>
+                        </div>
+                      )}
+
+                      {/* Delete button */}
                       {canEdit && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteItemMutation.mutate(item.id);
-                          }}
-                          data-testid={`button-remove-item-${item.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end mt-3">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteItemMutation.mutate(item.id);
+                            }}
+                            data-testid={`button-remove-item-${item.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

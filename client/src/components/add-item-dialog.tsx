@@ -55,7 +55,7 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
       queryClient.invalidateQueries({ queryKey: ["/api/requests", requestId, "items"] });
       toast({
         title: "Item adicionado",
-        description: "O item foi adicionado à requisição com sucesso",
+        description: "O item foi adicionado a requisicao com sucesso",
       });
       onOpenChange(false);
       resetForm();
@@ -64,7 +64,7 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
       toast({
         variant: "destructive",
         title: "Erro ao adicionar item",
-        description: "Não foi possível adicionar o item à requisição",
+        description: "Nao foi possivel adicionar o item a requisicao",
       });
     },
   });
@@ -119,22 +119,30 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Adicionar Material</DialogTitle>
-          <DialogDescription>
-            Escolha entre adicionar um produto individual ou um kit completo. A quantidade deve ser maior que zero.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-lg overflow-hidden p-0">
+        {/* Header with border */}
+        <div className="p-6 border-b border-border">
+          <DialogHeader>
+            <DialogTitle>Adicionar Material</DialogTitle>
+            <DialogDescription>
+              Escolha entre adicionar um produto individual ou um kit completo. A quantidade deve ser maior que zero.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Tabs */}
+        <div className="px-6 pt-4">
           <Tabs value={itemType} onValueChange={(v) => setItemType(v as "product" | "kit")}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="product" data-testid="tab-product">Produto</TabsTrigger>
               <TabsTrigger value="kit" data-testid="tab-kit">Kit</TabsTrigger>
             </TabsList>
+          </Tabs>
+        </div>
 
-            <TabsContent value="product" className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 p-6 pt-2">
+          {itemType === "product" && (
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="product">Produto *</Label>
                 <Select value={productId} onValueChange={setProductId}>
@@ -164,19 +172,21 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes">Observações</Label>
+                <Label htmlFor="notes">Observacoes</Label>
                 <Textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Observações sobre o item (opcional)"
+                  placeholder="Observacoes sobre o item (opcional)"
                   data-testid="input-notes"
                   rows={2}
                 />
               </div>
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="kit" className="space-y-4 mt-4">
+          {itemType === "kit" && (
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="kit">Kit *</Label>
                 <Select value={kitId} onValueChange={setKitId}>
@@ -206,40 +216,41 @@ export function AddItemDialog({ open, onOpenChange, requestId }: AddItemDialogPr
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="kit-notes">Observações</Label>
+                <Label htmlFor="kit-notes">Observacoes</Label>
                 <Textarea
                   id="kit-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Observações sobre o item (opcional)"
+                  placeholder="Observacoes sobre o item (opcional)"
                   data-testid="input-kit-notes"
                   rows={2}
                 />
               </div>
-            </TabsContent>
-          </Tabs>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                resetForm();
-              }}
-              data-testid="button-cancel-add-item"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending}
-              data-testid="button-submit-add-item"
-            >
-              {createMutation.isPending ? "Adicionando..." : "Adicionar"}
-            </Button>
-          </DialogFooter>
+            </div>
+          )}
         </form>
+
+        {/* Footer bar */}
+        <div className="bg-muted/50 p-4 flex justify-end gap-3 border-t border-border">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+              resetForm();
+            }}
+            data-testid="button-cancel-add-item"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={createMutation.isPending}
+            data-testid="button-submit-add-item"
+          >
+            {createMutation.isPending ? "Adicionando..." : "Adicionar"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, ClipboardList, Eye } from "lucide-react";
+import { Plus, Eye, User, CalendarDays, Layers, ClipboardList } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import type { MaterialRequest as BaseMaterialRequest, Event } from "@shared/schema";
 import { RequestDialog } from "@/components/request-dialog";
@@ -20,7 +19,33 @@ import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar } from "@/components/filter-bar";
-import { PageSection } from "@/components/page-section";
+
+// Status color mapping for left border strips
+const statusStripColor: Record<string, string> = {
+  draft: "bg-primary",
+  pending_approval: "bg-chart-5",
+  approved: "bg-chart-4",
+  rejected: "bg-destructive",
+  cutoff_locked: "bg-chart-3",
+};
+
+// Status dot color for badge
+const statusDotColor: Record<string, string> = {
+  draft: "bg-primary",
+  pending_approval: "bg-chart-5",
+  approved: "bg-chart-4",
+  rejected: "bg-destructive",
+  cutoff_locked: "bg-chart-3",
+};
+
+// Status label
+const statusLabel: Record<string, string> = {
+  draft: "Rascunho",
+  pending_approval: "Pendente",
+  approved: "Aprovado",
+  rejected: "Rejeitado",
+  cutoff_locked: "Bloqueado",
+};
 
 type MaterialRequest = BaseMaterialRequest & {
   event?: Event;
@@ -81,7 +106,7 @@ export default function Requests() {
 
   const formatDate = (date: string | Date | undefined | null) => {
     if (!date) return "—";
-    return format(new Date(date), "dd/MM/yyyy 'as' HH:mm");
+    return format(new Date(date), "dd MMM, yyyy '•' HH:mm");
   };
 
   const getDateLabel = (status: string) => {
@@ -182,80 +207,129 @@ export default function Requests() {
           action={{ label: "Limpar Filtros", onClick: clearFilters }}
         />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {filteredRequests.map((request) => (
-            <Card
-              key={request.id}
-              className="hover-elevate border-border/60"
-              data-testid={`card-request-${request.id}`}
-            >
-              <CardContent className="p-4">
-                {/* Header: status + id + data */}
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <StatusBadge status={request.status} />
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {request.id.slice(0, 8)}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {filteredRequests.map((request) => {
+            const stripColor = statusStripColor[request.status] || "bg-muted";
+            const dotColor = statusDotColor[request.status] || "bg-muted";
+            const sLabel = statusLabel[request.status] || request.status;
+
+            return (
+              <Card
+                key={request.id}
+                className="group border-border/60 overflow-hidden relative hover-elevate"
+                data-testid={`card-request-${request.id}`}
+              >
+                {/* Left status strip */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${stripColor}`} />
+
+                <CardContent className="p-5 pl-6">
+                  {/* Header: ID + Status */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-medium text-primary font-mono mb-1">
+                        {request.id.slice(0, 8).toUpperCase()}
+                      </span>
+                      <h3 className="font-semibold text-base text-foreground truncate">
+                        {request.area}
+                      </h3>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border shrink-0"
+                      style={{
+                        backgroundColor: "hsl(var(--muted) / 0.5)",
+                        borderColor: "hsl(var(--border) / 0.5)",
+                      }}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`} />
+                      {sLabel}
                     </span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(getDateValue(request))}
-                  </span>
-                </div>
 
-                {/* Titulo */}
-                <h3 className="font-semibold text-base text-foreground truncate">
-                  {request.area}
-                </h3>
+                  {/* Event subtitle */}
+                  <p className="text-sm text-muted-foreground truncate mb-4">
+                    {request.event?.name || "Evento nao vinculado"}
+                  </p>
 
-                {/* Evento */}
-                <p className="text-sm text-muted-foreground mt-1 truncate">
-                  {request.event?.name || "Evento nao vinculado"}
-                </p>
+                  {/* Metadata grid: 2x2 with icon containers */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
+                          Requisitante
+                        </p>
+                        <p className="text-sm text-foreground truncate">
+                          {request.requestedByUser?.name || "Usuario"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                        <CalendarDays className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
+                          {getDateLabel(request.status)}
+                        </p>
+                        <p className="text-sm text-foreground truncate">
+                          {formatDate(getDateValue(request))}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                        <Layers className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
+                          Evento
+                        </p>
+                        <p className="text-sm text-foreground truncate">
+                          {request.event?.name || "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                        <ClipboardList className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
+                          Status
+                        </p>
+                        <p className="text-sm text-foreground truncate">
+                          {sLabel}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-                {/* Metadados */}
-                <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-sm">
-                  <div>
-                    <span className="text-xs text-muted-foreground">Solicitante</span>
-                    <p className="font-medium text-foreground truncate">
-                      {request.requestedByUser?.name || "Usuario"}
-                    </p>
+                  {/* Divider + Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t border-border/40">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                        {request.requestedByUser?.name?.charAt(0) || "U"}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {request.requestedByUser?.name || "Usuario"}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(request)}
+                      data-testid={`button-view-request-${request.id}`}
+                      className="text-primary"
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1.5" />
+                      Detalhes
+                    </Button>
                   </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">Evento</span>
-                    <p className="font-medium text-foreground truncate">
-                      {request.event?.name || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">{getDateLabel(request.status)}</span>
-                    <p className="font-medium text-foreground">
-                      {formatDate(getDateValue(request))}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">Status</span>
-                    <p className="font-medium text-foreground">
-                      <StatusBadge status={request.status} />
-                    </p>
-                  </div>
-                </div>
-
-                {/* Acoes */}
-                <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-end gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(request)}
-                    data-testid={`button-view-request-${request.id}`}
-                  >
-                    <Eye className="h-3.5 w-3.5 mr-1.5" />
-                    Detalhes
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

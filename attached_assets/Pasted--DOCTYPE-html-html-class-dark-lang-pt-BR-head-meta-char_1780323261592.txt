@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EventFlow Logistics - Requisições</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #051424; /* surface */
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #010f1f;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1E293B;
+            border-radius: 10px;
+        }
+        .glass-card {
+            background: rgba(16, 42, 67, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(30, 41, 59, 0.5);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface-variant": "#bec7d4",
+                      "outline-variant": "#3f4852",
+                      "on-error-container": "#ffdad6",
+                      "tertiary": "#89ceff",
+                      "surface-container-highest": "#283647",
+                      "tertiary-container": "#12a6ea",
+                      "on-surface": "#d5e4fa",
+                      "inverse-primary": "#00629d",
+                      "text-primary": "#F8FAFC",
+                      "secondary-fixed": "#d1e4ff",
+                      "inverse-surface": "#d5e4fa",
+                      "on-secondary-fixed-variant": "#314863",
+                      "surface": "#051424",
+                      "text-secondary": "#94A3B8",
+                      "primary-fixed": "#cfe5ff",
+                      "primary-fixed-dim": "#98cbff",
+                      "on-error": "#690005",
+                      "surface-container-high": "#1d2b3c",
+                      "surface-tint": "#98cbff",
+                      "secondary-container": "#314863",
+                      "on-secondary-fixed": "#011d35",
+                      "surface-bright": "#2c3a4c",
+                      "outline": "#88919d",
+                      "on-secondary-container": "#9fb7d6",
+                      "status-warning": "#F59E0B",
+                      "error-container": "#93000a",
+                      "error": "#ffb4ab",
+                      "tertiary-fixed-dim": "#89ceff",
+                      "on-tertiary-container": "#003852",
+                      "background": "#051424",
+                      "primary-container": "#00a3ff",
+                      "surface-container-low": "#0e1c2d",
+                      "on-secondary": "#19324b",
+                      "on-primary-fixed-variant": "#004a77",
+                      "surface-dim": "#051424",
+                      "surface-container-lowest": "#010f1f",
+                      "surface-container": "#122031",
+                      "secondary": "#b0c9e8",
+                      "on-tertiary-fixed": "#001e2f",
+                      "on-tertiary": "#00344d",
+                      "on-primary-container": "#00375a",
+                      "secondary-fixed-dim": "#b0c9e8",
+                      "on-primary-fixed": "#001d33",
+                      "inverse-on-surface": "#233142",
+                      "tertiary-fixed": "#c9e6ff",
+                      "surface-variant": "#283647",
+                      "primary": "#98cbff",
+                      "on-tertiary-fixed-variant": "#004c6e",
+                      "on-background": "#d5e4fa",
+                      "surface-border": "#1E293B",
+                      "status-error": "#EF4444",
+                      "status-success": "#10B981",
+                      "on-primary": "#003354"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max-width": "1440px",
+                      "unit": "4px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "40px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-xl-mobile": ["Inter"],
+                      "headline-xl": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "label-md": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-xl-mobile": ["30px", {"lineHeight": "38px", "fontWeight": "600"}],
+                      "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface custom-scrollbar overflow-x-hidden">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low shadow-md flex flex-col h-full py-6 z-50">
+<div class="px-6 mb-10">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">EventFlow</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Logistics Manager</p>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary font-bold border-r-4 border-primary bg-primary-container/10 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-body-md text-body-md">Requisitions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">warehouse</span>
+<span class="font-body-md text-body-md">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-body-md text-body-md">Suppliers</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full flex items-center justify-center gap-2 bg-primary-container text-on-primary-container font-label-md text-label-md py-4 rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined">add</span>
+                New Requisition
+            </button>
+</div>
+</aside>
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-surface shadow-sm flex items-center justify-between px-10 z-40">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full pl-11 pr-4 py-2 text-body-sm text-on-surface focus:ring-2 focus:ring-primary-container" placeholder="Pesquisar requisições..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="relative p-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-status-error rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+<div class="h-8 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-3">
+<img alt="Manager Avatar" class="w-10 h-10 rounded-full border-2 border-primary/20 object-cover" data-alt="A professional headshot of a logistics manager in a modern office. He is a middle-aged man with a focused expression, wearing a crisp dark navy polo shirt. The background is a slightly blurred high-tech logistics control center with glowing blue screens. High-end professional photography with soft directional lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCutFb6Ege1llr3aQRB4DcfRJrR2GSjrx3eBzpJLrf1k0X_cNg_6EBOHxuksOutmWcV-EoWeLFEJ3QNE_tHH1epMsV25OcOlfT-ZvQqMniHaTka0u0opyWtuldsjgSNNIPUCr5oFH4iYx9w1iJoF66BcoMl8SeBz8ZDOTvcU6TgD5yEeK4X7d9FyfPqHNJeKkQlduWs-YjmibuNFGcMR4ydOCON1ka26p0joluNskpRLpiSdiZuEhO08o3cE3-3yd2ROTvn5gyVHE"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 mt-16 p-10 min-h-screen">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-text-primary mb-1">Requisição de Materiais</h2>
+<p class="font-body-md text-body-md text-text-secondary">Gerencie e acompanhe o fluxo de materiais para os eventos em andamento.</p>
+</div>
+<button class="flex items-center gap-2 bg-primary-container text-on-primary-container font-label-md text-label-md px-6 py-3 rounded-lg shadow-xl shadow-primary-container/10 hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined">post_add</span>
+                Nova Requisição
+            </button>
+</div>
+<!-- Filter Bar -->
+<section class="bg-surface-container-low rounded-xl p-4 mb-8 flex flex-wrap items-center gap-4 border border-surface-border">
+<div class="flex items-center gap-2 px-3 py-2 bg-surface-container border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">filter_list</span>
+<span class="font-label-md text-label-md text-on-surface">Filtrar por Status</span>
+<span class="material-symbols-outlined text-outline">expand_more</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-2 bg-surface-container border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">event</span>
+<span class="font-label-md text-label-md text-on-surface">Evento: Todos</span>
+<span class="material-symbols-outlined text-outline">expand_more</span>
+</div>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<div class="flex gap-2">
+<span class="bg-primary-container/10 text-primary border border-primary/20 px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1">
+                    Ativos <button class="material-symbols-outlined text-[16px]">close</button>
+</span>
+<span class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-label-sm text-label-sm hover:text-on-surface cursor-pointer">
+                    Limpar tudo
+                </span>
+</div>
+</section>
+<!-- Requisitions Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-gutter">
+<!-- Requisition Card 1 -->
+<div class="bg-[#102A43] border border-[#1E293B] rounded-xl overflow-hidden shadow-lg group hover:border-primary/50 transition-all duration-300 relative">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-status-warning"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary mb-1">REQ-2023-0482</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Som &amp; Iluminação - Palco Principal</h3>
+</div>
+<span class="bg-status-warning/10 text-status-warning border border-status-warning/20 px-3 py-1 rounded-full font-label-sm text-label-sm uppercase tracking-wider">Pendente</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Requisitante</p>
+<p class="font-body-sm text-body-sm text-on-surface">Ricardo Silva</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">festival</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Evento</p>
+<p class="font-body-sm text-body-sm text-on-surface">Rock In Rio 2024</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">calendar_today</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Data do Pedido</p>
+<p class="font-body-sm text-body-sm text-on-surface">12 Mai, 2024 • 14:30</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">layers</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Área</p>
+<p class="font-body-sm text-body-sm text-on-surface">Produção Técnica</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-outline-variant/30">
+<div class="flex -space-x-2">
+<img alt="Team 1" class="w-8 h-8 rounded-full border-2 border-[#102A43] object-cover" data-alt="Close up portrait of a professional female event coordinator with a confident smile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDr5fHPxbP1M3vcPYvayXXXZJow9QwGkuvtjWDyaJlO5piKXqxmc3cODvpf9qdIokPQOX0D7xZKh_9xPpYnmKOeGg5Cr4o0qNRALk0UgDp_mn8kXMVha90qpf5JGlyXrrQrLmpy6A_DOdLL73X7He0T36cOS67xPx_xdPiBiyAJeZz56Tb0EDNgNrCUa6hB1pKMhljkQkStwwb6RSXUw5BzbLhmVZBIHzVE8Dgsl7gfCxgOR0mSdt97zoDYy0Pa6pOT9QdfTB9CjSQ"/>
+<img alt="Team 2" class="w-8 h-8 rounded-full border-2 border-[#102A43] object-cover" data-alt="Portrait of a male sound engineer with headphones around his neck in a studio environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyrO08Wi7WsV-PqcHulAdUhm2kSrb3mBFSYNlErkLPHEav58rIBeCbVzuVJdpMIvDQh73tD8CsyC9QO3K98Y2NyD2WLoFJtj-T0dC1H_5ZfeWCMf1aPJrxHu1xiJTh1dGOcnghgi_60MqN8uJfpTUOKMBTyU7vTP5W1SRNf2fDMQVTkiiCFFTEleknmNF1TgucdZ0ZtSiZTR4HX9U8xLPzHn0eTecjK7WKzAScXtzAKud0sjRzhxZXjXStXinryyoMM00tsg-EyrM"/>
+<div class="w-8 h-8 rounded-full border-2 border-[#102A43] bg-surface-container flex items-center justify-center text-[10px] font-bold text-on-surface-variant">+3</div>
+</div>
+<button class="flex items-center gap-1 font-label-md text-label-md text-primary hover:underline transition-all">
+                            Detalhes
+                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Requisition Card 2 -->
+<div class="bg-[#102A43] border border-[#1E293B] rounded-xl overflow-hidden shadow-lg group hover:border-primary/50 transition-all duration-300 relative">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-status-success"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary mb-1">REQ-2023-0479</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Mobiliário VIP - Lounge Sul</h3>
+</div>
+<span class="bg-status-success/10 text-status-success border border-status-success/20 px-3 py-1 rounded-full font-label-sm text-label-sm uppercase tracking-wider">Aprovado</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Requisitante</p>
+<p class="font-body-sm text-body-sm text-on-surface">Ana Martins</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">festival</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Evento</p>
+<p class="font-body-sm text-body-sm text-on-surface">Summit Tech 2024</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">calendar_today</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Data do Pedido</p>
+<p class="font-body-sm text-body-sm text-on-surface">11 Mai, 2024 • 09:15</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">layers</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Área</p>
+<p class="font-body-sm text-body-sm text-on-surface">Hospitalidade</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-outline-variant/30">
+<div class="flex -space-x-2">
+<img alt="Team 3" class="w-8 h-8 rounded-full border-2 border-[#102A43] object-cover" data-alt="Modern professional portrait of a man in his late 20s with a creative and approachable appearance." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHR728zv6lrnaAiszWl9JBWGGdETYTkTQORXMngTyN5n3PUi-2HHJT2tZVtnirwP-1OVjK3J7B4k0MNei9eT3Qlt6rXhXr7-SJ9SfAPVHgZBSQHUwn2a0Nx57380RjLJl0JTY-fsGDC-ZvCCXX-Fb7Lhva-biknXt_aKLn0nzHAl2tBLVBumww2Kk4OToTHd0GQi20JsEo0I87g551XPKJvv2JApyMUOF3t6Mob8Tz9RzdUeclJS5uli8ZsEkjaKmTE2iZGSJ_8SI"/>
+<div class="w-8 h-8 rounded-full border-2 border-[#102A43] bg-surface-container flex items-center justify-center text-[10px] font-bold text-on-surface-variant">+1</div>
+</div>
+<button class="flex items-center gap-1 font-label-md text-label-md text-primary hover:underline transition-all">
+                            Detalhes
+                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Requisition Card 3 -->
+<div class="bg-[#102A43] border border-[#1E293B] rounded-xl overflow-hidden shadow-lg group hover:border-primary/50 transition-all duration-300 relative">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-container"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary mb-1">REQ-2023-0475</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">EPIs - Montagem Estrutural</h3>
+</div>
+<span class="bg-primary-container/10 text-primary-container border border-primary-container/20 px-3 py-1 rounded-full font-label-sm text-label-sm uppercase tracking-wider">Em Trânsito</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Requisitante</p>
+<p class="font-body-sm text-body-sm text-on-surface">Carlos Eduardo</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">festival</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Evento</p>
+<p class="font-body-sm text-body-sm text-on-surface">Carnaval Rio 2025</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">calendar_today</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Data do Pedido</p>
+<p class="font-body-sm text-body-sm text-on-surface">10 Mai, 2024 • 16:45</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">layers</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Área</p>
+<p class="font-body-sm text-body-sm text-on-surface">Segurança do Trabalho</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-outline-variant/30">
+<div class="flex -space-x-2">
+<img alt="Team 4" class="w-8 h-8 rounded-full border-2 border-[#102A43] object-cover" data-alt="Portrait of a middle-aged security supervisor with a professional look." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSc2L0Qxx2VJo-zQdIjzxPJiMXznNaVNpFYeCxHninB7EVoC-rhq-78dJzK-h_rp0g9vJmTaw-s66esIV-qXp_N758w9pgIXmHIC0SWcf0BbcLD6R9Pxfvthti-qhSx7GZZLfWVCX_-fxVcpbY0jbcTnK4L6T7fxwQVhsNSL-mlMMKTNzRgyM2DkxJ_OXDY3vwSjP8L5sEI3UKPlJIWPeVKzmw6CK_sLceXnWxvoYHRUxxEy8QLdhYkIcPNcuRqC2hdhGrF1xo-OA"/>
+<img alt="Team 5" class="w-8 h-8 rounded-full border-2 border-[#102A43] object-cover" data-alt="A portrait of a male safety officer in a high-visibility uniform against an industrial background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtcqNoUafBwy0d3eR_11MnKnXfpemUlmAYUmpyV0puBW74wk2moDDQ8l80PoRHv9nPCKsTnv57HYDEuNXQvhQZcscPmsVrBihvz971g61t4HHWQpHQLCQueGNa8stPhkATXuJQrD0W8txiYHU-ngjX0RIi3gWqookrXzuIFNGpQhIBPAWAxmYcnqd3LYS54hjI0JL4hE9bJUVixFF2vP7PQQsGVqUudSkS7vznnSoZs0aHbYXHKeB5OU0YTu-tkcOi3jpxaAA-h-8"/>
+<div class="w-8 h-8 rounded-full border-2 border-[#102A43] bg-surface-container flex items-center justify-center text-[10px] font-bold text-on-surface-variant">+8</div>
+</div>
+<button class="flex items-center gap-1 font-label-md text-label-md text-primary hover:underline transition-all">
+                            Detalhes
+                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Requisition Card 4 (Cancelled Example) -->
+<div class="bg-[#102A43] border border-[#1E293B] rounded-xl overflow-hidden shadow-lg group hover:border-primary/50 transition-all duration-300 relative">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-status-error"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary mb-1">REQ-2023-0460</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Catering Adicional - Staff</h3>
+</div>
+<span class="bg-status-error/10 text-status-error border border-status-error/20 px-3 py-1 rounded-full font-label-sm text-label-sm uppercase tracking-wider">Cancelado</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6 opacity-60">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Requisitante</p>
+<p class="font-body-sm text-body-sm text-on-surface">Juliana Costa</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">festival</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Evento</p>
+<p class="font-body-sm text-body-sm text-on-surface">Expo Agro 2024</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">calendar_today</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Data do Pedido</p>
+<p class="font-body-sm text-body-sm text-on-surface">08 Mai, 2024 • 11:20</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">layers</span>
+</div>
+<div>
+<p class="text-[10px] uppercase font-bold text-outline tracking-tighter">Área</p>
+<p class="font-body-sm text-body-sm text-on-surface">Alimentação</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-outline-variant/30">
+<p class="text-body-sm text-status-error italic">Motivo: Orçamento excedido para esta categoria.</p>
+<button class="flex items-center gap-1 font-label-md text-label-md text-primary hover:underline transition-all">
+                            Detalhes
+                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty State (Hidden by default, shown for demo purpose in commented code) -->
+<div class="hidden flex-col items-center justify-center py-20 text-center" id="empty-state">
+<div class="relative mb-8">
+<div class="w-48 h-48 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-8xl text-outline-variant">inventory_2</span>
+</div>
+<div class="absolute -bottom-2 -right-2 w-12 h-12 rounded-full bg-primary-container flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-on-primary-container">search_off</span>
+</div>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-text-primary mb-2">Nenhuma requisição encontrada</h3>
+<p class="font-body-lg text-body-lg text-text-secondary max-w-md mx-auto mb-8">Parece que não há registros correspondentes aos seus filtros no momento. Tente ajustar a busca ou crie uma nova requisição.</p>
+<button class="bg-surface-variant text-on-surface font-label-md text-label-md px-8 py-3 rounded-lg hover:bg-outline-variant transition-colors">
+                Limpar Filtros
+            </button>
+</div>
+<!-- Pagination -->
+<div class="mt-12 flex justify-between items-center bg-surface-container-low px-6 py-4 rounded-xl border border-surface-border">
+<p class="font-body-sm text-body-sm text-text-secondary">Mostrando <span class="text-on-surface font-bold">1 - 4</span> de <span class="text-on-surface font-bold">24</span> requisições</p>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-lg bg-surface-container text-outline hover:text-on-surface hover:bg-surface-variant transition-all disabled:opacity-50">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container font-bold flex items-center justify-center">1</button>
+<button class="w-10 h-10 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-variant flex items-center justify-center">2</button>
+<button class="w-10 h-10 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-variant flex items-center justify-center">3</button>
+<span class="text-outline mx-1">...</span>
+<button class="w-10 h-10 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-variant flex items-center justify-center">6</button>
+<button class="p-2 rounded-lg bg-surface-container text-outline hover:text-on-surface hover:bg-surface-variant transition-all">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</main>
+<script>
+        // Micro-interaction for hover effects on cards
+        const cards = document.querySelectorAll('.group');
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+                card.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 163, 255, 0.05)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.5)';
+            });
+        });
+
+        // Search bar interaction
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('ring-2', 'ring-primary-container');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('ring-2', 'ring-primary-container');
+        });
+    </script>
+</body></html>

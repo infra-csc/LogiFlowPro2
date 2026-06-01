@@ -226,7 +226,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="dark border-r border-sidebar-border bg-sidebar h-screen flex flex-col">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar h-screen flex flex-col">
       {/* Header — fixed */}
       <div className="px-6 pt-5 pb-4 flex items-center gap-3 shrink-0">
         <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">

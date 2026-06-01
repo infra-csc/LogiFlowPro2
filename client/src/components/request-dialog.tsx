@@ -91,23 +91,22 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      toast({ description: "Requisição criada com sucesso" });
+      toast({ description: "Requisicao criada com sucesso" });
       onOpenChange(false);
     },
     onError: (error: any) => {
-      let description = "Erro ao criar requisição";
+      let description = "Erro ao criar requisicao";
       
-      // Check if error contains window information
       if (error?.windowStart && error?.windowEnd) {
         const start = new Date(error.windowStart);
         const end = new Date(error.windowEnd);
-        description = `${error.error}\n\nPeríodo permitido: ${start.toLocaleString('pt-BR', { 
+        description = `${error.error}\n\nPeriodo permitido: ${start.toLocaleString('pt-BR', { 
           day: '2-digit', 
           month: '2-digit', 
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
-        })} até ${end.toLocaleString('pt-BR', { 
+        })} ate ${end.toLocaleString('pt-BR', { 
           day: '2-digit', 
           month: '2-digit', 
           year: 'numeric',
@@ -131,11 +130,11 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      toast({ description: "Requisição atualizada com sucesso" });
+      toast({ description: "Requisicao atualizada com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Erro ao atualizar requisição", variant: "destructive" });
+      toast({ description: "Erro ao atualizar requisicao", variant: "destructive" });
     },
   });
 
@@ -143,7 +142,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     e.preventDefault();
     
     if (!formData.eventId || !formData.area) {
-      toast({ description: "Preencha todos os campos obrigatórios", variant: "destructive" });
+      toast({ description: "Preencha todos os campos obrigatorios", variant: "destructive" });
       return;
     }
 
@@ -164,17 +163,20 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{request ? "Editar Requisição" : "Nova Requisição"}</DialogTitle>
-          <DialogDescription>
-            {request
-              ? "Atualize os dados da requisição."
-              : "Crie uma requisição de materiais. Ela começa como rascunho e só pode ser enviada para aprovação dentro do período permitido pelo evento."}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-md overflow-hidden p-0">
+        {/* Header with border */}
+        <div className="p-6 border-b border-border">
+          <DialogHeader>
+            <DialogTitle>{request ? "Editar Requisicao" : "Nova Requisicao"}</DialogTitle>
+            <DialogDescription>
+              {request
+                ? "Atualize os dados da requisicao."
+                : "Crie uma requisicao de materiais. Ela comeca como rascunho e so pode ser enviada para aprovacao dentro do periodo permitido pelo evento."}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 p-6">
           <div className="space-y-2">
             <Label htmlFor="eventId">Evento *</Label>
             <Select 
@@ -204,21 +206,21 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                   <AlertDescription className="text-sm">
                     {requestWindowInfo.isWithinWindow && (
                       <span>
-                        <strong>Período permitido:</strong> {requestWindowInfo.start} até {requestWindowInfo.end}
+                        <strong>Periodo permitido:</strong> {requestWindowInfo.start} ate {requestWindowInfo.end}
                       </span>
                     )}
                     {requestWindowInfo.isBeforeWindow && (
                       <span>
-                        <strong>Atenção:</strong> Requisições para este evento ainda não estão permitidas.
+                        <strong>Atencao:</strong> Requisicoes para este evento ainda nao estao permitidas.
                         <br />
-                        <span className="text-xs">Período: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
+                        <span className="text-xs">Periodo: {requestWindowInfo.start} ate {requestWindowInfo.end}</span>
                       </span>
                     )}
                     {requestWindowInfo.isAfterWindow && (
                       <span>
-                        <strong>Atenção:</strong> O período de requisição para este evento já foi encerrado.
+                        <strong>Atencao:</strong> O periodo de requisicao para este evento ja foi encerrado.
                         <br />
-                        <span className="text-xs">Período permitido era: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
+                        <span className="text-xs">Periodo permitido era: {requestWindowInfo.start} ate {requestWindowInfo.end}</span>
                       </span>
                     )}
                   </AlertDescription>
@@ -228,7 +230,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="area">Nome da Requisição *</Label>
+            <Label htmlFor="area">Nome da Requisicao *</Label>
             <Input
               id="area"
               value={formData.area}
@@ -239,30 +241,31 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
+            <Label htmlFor="notes">Observacoes</Label>
             <Textarea
               id="notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Observações sobre a requisição (opcional)"
+              placeholder="Observacoes sobre a requisicao (opcional)"
               data-testid="input-notes"
               rows={3}
             />
           </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-request">
-              Cancelar
-            </Button>
-            <Button 
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-              data-testid="button-submit-request"
-            >
-              {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (request ? "Atualizar" : "Criar")}
-            </Button>
-          </DialogFooter>
         </form>
+
+        {/* Footer bar */}
+        <div className="bg-muted/50 p-4 flex justify-end gap-3 border-t border-border">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-request">
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={createMutation.isPending || updateMutation.isPending}
+            data-testid="button-submit-request"
+          >
+            {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (request ? "Atualizar" : "Criar")}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
