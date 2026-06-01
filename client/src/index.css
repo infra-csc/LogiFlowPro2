@@ -325,6 +325,25 @@
   background: hsl(var(--sidebar-border) / 0.7);
 }
 
+/* Global dark scrollbar — matches the Precision Logistics design system */
+.dark-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--sidebar-border) / 0.4) transparent;
+}
+.dark-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.dark-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--sidebar-border) / 0.4);
+  border-radius: 999px;
+}
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--sidebar-border) / 0.7);
+}
+
 /* Sidebar menu overrides for active/hover states */
 [data-sidebar="menu-button"].active-item {
   position: relative;

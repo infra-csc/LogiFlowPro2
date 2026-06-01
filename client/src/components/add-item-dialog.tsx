@@ -180,7 +180,7 @@ export function AddItemDialog({
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                     <Command>
                       <CommandInput placeholder="Buscar produto por nome ou SKU..." />
-                      <CommandList>
+                      <CommandList className="dark-scrollbar max-h-[280px] overflow-y-auto overflow-x-hidden">
                         {productsLoading ? (
                           <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -195,7 +195,7 @@ export function AddItemDialog({
                           </CommandEmpty>
                         ) : (
                           <CommandGroup>
-                            {products.map((product) => (
+                            {[...products].sort((a, b) => a.name.localeCompare(b.name)).map((product) => (
                               <CommandItem
                                 key={product.id}
                                 value={`${product.name} ${product.sku}`}
@@ -284,7 +284,7 @@ export function AddItemDialog({
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                     <Command>
                       <CommandInput placeholder="Buscar kit por nome..." />
-                      <CommandList>
+                      <CommandList className="dark-scrollbar max-h-[280px] overflow-y-auto overflow-x-hidden">
                         {kitsLoading ? (
                           <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -299,7 +299,7 @@ export function AddItemDialog({
                           </CommandEmpty>
                         ) : (
                           <CommandGroup>
-                            {kits.map((kit) => (
+                            {[...kits].sort((a, b) => a.name.localeCompare(b.name)).map((kit) => (
                               <CommandItem
                                 key={kit.id}
                                 value={kit.name}
