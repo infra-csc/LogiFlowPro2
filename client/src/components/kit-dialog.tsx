@@ -224,7 +224,7 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
     e.preventDefault();
     
     if (!formData.name || parameters.length === 0) {
-      toast({ description: "Please provide a name and at least one parameter", variant: "destructive" });
+      toast({ description: "Preencha o nome e adicione ao menos um parâmetro", variant: "destructive" });
       return;
     }
 
@@ -243,11 +243,11 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col gap-0 p-0">
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col gap-0 p-0 border-border/60">
         <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle>{kit ? "Edit Kit" : "Create Kit"}</DialogTitle>
+          <DialogTitle>{kit ? "Editar Kit" : "Novo Kit"}</DialogTitle>
           <DialogDescription>
-            {kit ? "Update kit configuration and BOM formulas" : "Define a parametric kit with automatic BOM generation"}
+            {kit ? "Atualize a configuração e as fórmulas BOM do kit" : "Defina um kit paramétrico com geração automática de BOM"}
           </DialogDescription>
         </DialogHeader>
 
@@ -255,18 +255,18 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
           <form id="kit-form" onSubmit={handleSubmit} className="space-y-6 pb-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Kit Name *</Label>
+                <Label htmlFor="name">Nome do Kit *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Modular Stage 10x8"
+                  placeholder="Palco Modular 10x8"
                   data-testid="input-kit-name"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Descrição</Label>
                 <Textarea
                   id="description"
                   value={formData.description || ""}
@@ -312,19 +312,19 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Parameters *</Label>
+                <Label>Parâmetros *</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addParameter} data-testid="button-add-parameter">
                   <Plus className="h-4 w-4 mr-1" />
-                  Add Parameter
+                  Adicionar Parâmetro
                 </Button>
               </div>
 
               {parameters.map((param, index) => (
-                <Card key={index}>
+                <Card key={index} className="border-border/60">
                   <CardContent className="pt-4">
                     <div className="grid grid-cols-12 gap-3 items-end">
                       <div className="col-span-4">
-                        <Label>Name</Label>
+                        <Label>Nome</Label>
                         <Input
                           value={param.name}
                           onChange={(e) => updateParameter(index, "name", e.target.value)}
@@ -333,7 +333,7 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
                         />
                       </div>
                       <div className="col-span-3">
-                        <Label>Type</Label>
+                        <Label>Tipo</Label>
                         <Select
                           value={param.type}
                           onValueChange={(value) => updateParameter(index, "type", value)}
@@ -342,8 +342,8 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="number">Number</SelectItem>
-                            <SelectItem value="select">Select</SelectItem>
+                            <SelectItem value="number">Número</SelectItem>
+                            <SelectItem value="select">Seleção</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -381,25 +381,25 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>BOM Lines</Label>
+                <Label>Itens do Kit (BOM)</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addBomLine} data-testid="button-add-bom-line">
                   <Plus className="h-4 w-4 mr-1" />
-                  Add BOM Line
+                  Adicionar Item
                 </Button>
               </div>
 
               {bomLines.map((line, index) => (
-                <Card key={index}>
+                <Card key={index} className="border-border/60">
                   <CardContent className="pt-4">
                     <div className="grid grid-cols-12 gap-3 items-end">
                       <div className="col-span-5">
-                        <Label>Product</Label>
+                        <Label>Produto</Label>
                         <Select
                           value={line.productId}
                           onValueChange={(value) => updateBomLine(index, "productId", value)}
                         >
                           <SelectTrigger data-testid={`select-bom-product-${index}`}>
-                            <SelectValue placeholder="Select product" />
+                            <SelectValue placeholder="Selecionar produto" />
                           </SelectTrigger>
                           <SelectContent>
                             {products?.map((product) => (
@@ -411,7 +411,7 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
                         </Select>
                       </div>
                       <div className="col-span-5">
-                        <Label>Quantity Formula</Label>
+                        <Label>Fórmula de Quantidade</Label>
                         <Input
                           value={line.quantityFormula}
                           onChange={(e) => updateBomLine(index, "quantityFormula", e.target.value)}
@@ -438,9 +438,9 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
           </form>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t">
+        <DialogFooter className="px-6 py-4 border-t border-border/40">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            Cancelar
           </Button>
           <Button 
             type="submit"
@@ -448,7 +448,7 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-submit-kit"
           >
-            {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : (kit ? "Update" : "Create")}
+            {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : "Salvar Kit"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -49,12 +49,16 @@ export default function Products() {
     setShowDialog(false);
   };
 
-  const getOwnershipLabel = (ownership: string) => {
+  const getOwnershipBadge = (ownership: string): { label: string; className: string } => {
     switch(ownership) {
-      case "owned": return "Proprietário";
-      case "rented": return "Alugado";
-      case "third_party": return "Terceiro";
-      default: return ownership;
+      case "owned":
+        return { label: "Próprio", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" };
+      case "rented":
+        return { label: "Alugado", className: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30" };
+      case "third_party":
+        return { label: "Terceiro", className: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30" };
+      default:
+        return { label: ownership, className: "" };
     }
   };
 
@@ -97,7 +101,7 @@ export default function Products() {
           action={!search && canWrite ? { label: "Adicionar Produto", onClick: () => setShowDialog(true) } : undefined}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filteredProducts.map((product) => (
             <Card 
               key={product.id}
@@ -105,13 +109,17 @@ export default function Products() {
               onClick={canWrite ? () => handleEdit(product) : undefined}
               data-testid={`card-product-${product.id}`}
             >
-              {product.imageUrl && (
+              {product.imageUrl ? (
                 <div className="aspect-video w-full bg-muted relative">
                   <img 
                     src={product.imageUrl} 
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
+                </div>
+              ) : (
+                <div className="aspect-video w-full bg-muted flex items-center justify-center">
+                  <Package className="h-10 w-10 text-muted-foreground/30" />
                 </div>
               )}
               <CardContent className="p-4">
@@ -123,7 +131,7 @@ export default function Products() {
                       </div>
                       <h3 className="font-semibold text-base text-foreground truncate">{product.name}</h3>
                     </div>
-                    <p className="text-sm text-muted-foreground ml-10">SKU: {product.sku}</p>
+                    <p className="font-mono text-xs text-muted-foreground ml-10">SKU: {product.sku}</p>
                   </div>
                 </div>
                 
@@ -147,9 +155,10 @@ export default function Products() {
                   )}
 
                   <div className="pt-2">
-                    <Badge variant="secondary">
-                      {getOwnershipLabel(product.ownership)}
-                    </Badge>
+                    {(() => {
+                      const ob = getOwnershipBadge(product.ownership);
+                      return <Badge variant="outline" className={ob.className}>{ob.label}</Badge>;
+                    })()}
                   </div>
                 </div>
               </CardContent>

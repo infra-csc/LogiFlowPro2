@@ -70,7 +70,7 @@ export default function Kits() {
           action={canWrite ? { label: "Criar Kit", onClick: () => setShowDialog(true) } : undefined}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {kits.map((kit) => (
             <Card 
               key={kit.id}
@@ -78,13 +78,17 @@ export default function Kits() {
               onClick={canWrite ? () => handleEdit(kit) : undefined}
               data-testid={`card-kit-${kit.id}`}
             >
-              {kit.imageUrl && (
+              {kit.imageUrl ? (
                 <div className="aspect-video w-full bg-muted relative">
                   <img 
                     src={kit.imageUrl} 
                     alt={kit.name}
                     className="w-full h-full object-cover"
                   />
+                </div>
+              ) : (
+                <div className="aspect-video w-full bg-muted flex items-center justify-center">
+                  <Boxes className="h-10 w-10 text-muted-foreground/30" />
                 </div>
               )}
               <CardContent className="p-4">
@@ -116,6 +120,9 @@ export default function Kits() {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/40">
+                  <Badge variant="secondary" className="font-medium">
+                    {kit.parameters.length} {kit.parameters.length === 1 ? "parâmetro" : "parâmetros"}
+                  </Badge>
                   {kit.parameters.map((param, idx) => (
                     <Badge key={idx} variant="outline">
                       {param.name}

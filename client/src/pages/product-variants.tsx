@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type Product } from "@shared/schema";
-import { Link as LinkIcon, Package } from "lucide-react";
+import { Link as LinkIcon, Package, Search } from "lucide-react";
 
 export default function ProductVariantsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,23 +54,29 @@ export default function ProductVariantsPage() {
       />
 
       <Card className="border-border/60">
-        <CardContent>
+        <CardContent className="p-4">
           <div className="space-y-4">
-            <Input
-              placeholder="Buscar por produto principal ou variante..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              data-testid="input-search"
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por produto principal ou variante..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-search"
+              />
+            </div>
 
             {isLoading ? (
               <PageLoading message="Carregando variantes..." />
             ) : (
               <div className="space-y-6">
                 {variantsByPrincipal.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Nenhum produto encontrado
-                  </p>
+                  <EmptyState
+                    icon={Package}
+                    title="Nenhuma variante encontrada"
+                    description={searchQuery ? "Tente ajustar sua busca" : "Cadastre produtos variantes para visualizá-los aqui"}
+                  />
                 ) : (
                   variantsByPrincipal.map((group) => (
                     <Card key={group.principal.id} className="border-border/60">
@@ -80,9 +86,9 @@ export default function ProductVariantsPage() {
                             <Package className="h-6 w-6 text-primary" />
                             <div>
                               <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-semibold">{group.principal.name}</h3>
-                                <Badge variant="outline" className="bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500">
-                                  PRINCIPAL
+                                <h3 className="text-base font-semibold">{group.principal.name}</h3>
+                                <Badge variant="secondary">
+                                  Principal
                                 </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground">SKU: {group.principal.sku}</p>
@@ -117,12 +123,12 @@ export default function ProductVariantsPage() {
                                   <TableCell>{variant.name}</TableCell>
                                   <TableCell>
                                     {variant.ownership === "rented" ? (
-                                      <Badge variant="outline" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500">
-                                        🟡 LOCADO
+                                      <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                                        Alugado
                                       </Badge>
                                     ) : (
-                                      <Badge variant="outline" className="bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500">
-                                        🔵 TERCEIROS
+                                      <Badge variant="outline" className="bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30">
+                                        Terceiro
                                       </Badge>
                                     )}
                                   </TableCell>

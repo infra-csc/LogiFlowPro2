@@ -127,11 +127,11 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ description: "Product updated successfully" });
+      toast({ description: "Produto atualizado com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Failed to update product", variant: "destructive" });
+      toast({ description: "Erro ao atualizar produto", variant: "destructive" });
     },
   });
 
@@ -228,11 +228,11 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-border/60">
         <DialogHeader>
-          <DialogTitle>{product ? "Edit Product" : "Add Product"}</DialogTitle>
+          <DialogTitle>{product ? "Editar Produto" : "Novo Produto"}</DialogTitle>
           <DialogDescription>
-            {product ? "Update product details" : "Add a new product to the catalog"}
+            {product ? "Atualize os dados do produto" : "Adicione um novo produto ao catálogo"}
           </DialogDescription>
         </DialogHeader>
 
@@ -250,12 +250,12 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">Nome *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Product name"
+                placeholder="Nome do produto"
                 data-testid="input-name"
               />
             </div>
@@ -337,7 +337,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="ownership">Ownership</Label>
+              <Label htmlFor="ownership">Titularidade</Label>
               <Select 
                 value={formData.ownership as string}
                 onValueChange={(value) => setFormData({ ...formData, ownership: value as any })}
@@ -346,20 +346,20 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="owned">Owned</SelectItem>
-                  <SelectItem value="rented">Rented</SelectItem>
-                  <SelectItem value="third_party">Third Party</SelectItem>
+                  <SelectItem value="owned">Próprio</SelectItem>
+                  <SelectItem value="rented">Alugado</SelectItem>
+                  <SelectItem value="third_party">Terceiro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="unit">Unit</Label>
+              <Label htmlFor="unit">Unidade</Label>
               <Input
                 id="unit"
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                placeholder="unit, box, meter"
+                placeholder="unidade, caixa, metro"
                 data-testid="input-unit"
               />
             </div>
@@ -431,7 +431,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
             <div className="flex items-center gap-3">
               {imageUrl ? (
                 <div className="flex items-center gap-2 flex-1">
-                  <div className="relative h-20 w-20 border rounded-md overflow-hidden">
+                  <div className="relative h-20 w-20 border border-border/60 rounded-md overflow-hidden">
                     <img 
                       src={imageUrl} 
                       alt="Product preview" 
@@ -465,14 +465,14 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button 
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
               data-testid="button-submit-product"
             >
-              {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : (product ? "Update" : "Create")}
+              {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : "Salvar Produto"}
             </Button>
           </DialogFooter>
         </form>

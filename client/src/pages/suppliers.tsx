@@ -26,7 +26,7 @@ import { z } from "zod";
 import { insertSupplierSchema, type Supplier } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Pencil, Trash2, UserCircle, Phone, Mail } from "lucide-react";
+import { Plus, Pencil, Trash2, UserCircle, Phone, Mail, Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
@@ -193,7 +193,7 @@ export default function SuppliersPage() {
               </Button>
             </DialogTrigger>
           )}
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl border-border/60">
                 <DialogHeader>
                   <DialogTitle>
                     {editingSupplier ? "Editar Fornecedor" : "Novo Fornecedor"}
@@ -284,7 +284,7 @@ export default function SuppliersPage() {
                         control={form.control}
                         name="active"
                         render={({ field }) => (
-                          <FormItem className="flex items-center justify-between col-span-2 p-4 border rounded-lg">
+                          <FormItem className="flex items-center justify-between col-span-2 p-4 border border-border/60 rounded-lg">
                             <div>
                               <FormLabel>Fornecedor Ativo</FormLabel>
                               <p className="text-sm text-muted-foreground">Fornecedores inativos não aparecem em sugestões</p>
@@ -313,8 +313,8 @@ export default function SuppliersPage() {
                       >
                         Cancelar
                       </Button>
-                      <Button type="submit" data-testid="button-submit">
-                        {editingSupplier ? "Atualizar" : "Criar"}
+                      <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit">
+                        {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : "Salvar Fornecedor"}
                       </Button>
                     </div>
                   </form>
@@ -330,12 +330,16 @@ export default function SuppliersPage() {
             Todos os fornecedores cadastrados
           </p>
           <div className="space-y-4">
-            <Input
-              placeholder="Buscar fornecedor por nome, contato ou e-mail..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              data-testid="input-search"
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar fornecedor por nome, contato ou e-mail..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-search"
+              />
+            </div>
 
             {filteredSuppliers.length === 0 ? (
               <EmptyState

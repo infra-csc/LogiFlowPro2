@@ -34,7 +34,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Edit, Circle, CheckCircle, Clock, Calendar, Truck, Wrench, AlertTriangle, Lock, Trash2 } from "lucide-react";
+import { Plus, Edit, Circle, CheckCircle, Clock, Calendar, Truck, Wrench, AlertTriangle, Lock, Trash2, Search } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -190,7 +190,7 @@ export default function ProductStatusesPage() {
               Novo Status
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl border-border/60">
             <DialogHeader>
                   <DialogTitle>{editingStatus ? "Editar Status" : "Novo Status"}</DialogTitle>
                 </DialogHeader>
@@ -297,7 +297,7 @@ export default function ProductStatusesPage() {
                         control={form.control}
                         name="allowsMovement"
                         render={({ field }) => (
-                          <FormItem className="flex items-center justify-between p-4 border rounded-lg">
+                          <FormItem className="flex items-center justify-between p-4 border border-border/60 rounded-lg">
                             <div>
                               <FormLabel>Permite Movimentação</FormLabel>
                               <FormDescription className="text-xs">
@@ -319,7 +319,7 @@ export default function ProductStatusesPage() {
                         control={form.control}
                         name="active"
                         render={({ field }) => (
-                          <FormItem className="flex items-center justify-between p-4 border rounded-lg">
+                          <FormItem className="flex items-center justify-between p-4 border border-border/60 rounded-lg">
                             <div>
                               <FormLabel>Ativo</FormLabel>
                               <FormDescription className="text-xs">
@@ -361,16 +361,28 @@ export default function ProductStatusesPage() {
             </Dialog>
       </PageHeader>
 
-      <div className="space-y-4">
-            <Input
-              placeholder="Buscar por código ou nome..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              data-testid="input-search"
-            />
+      <Card className="border-border/60">
+        <CardContent className="p-4">
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por código ou nome..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-search"
+              />
+            </div>
 
             {isLoading ? (
               <PageLoading message="Carregando status..." />
+            ) : filteredStatuses.length === 0 ? (
+              <EmptyState
+                icon={Circle}
+                title="Nenhum status encontrado"
+                description={searchQuery ? "Tente ajustar sua busca" : "Crie o primeiro status de produto"}
+              />
             ) : (
               <Table>
                 <TableHeader>
@@ -439,6 +451,8 @@ export default function ProductStatusesPage() {
               </Table>
             )}
           </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
