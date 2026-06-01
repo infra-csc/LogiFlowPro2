@@ -550,7 +550,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   </CardContent>
                 </Card>
               ) : (
-                <div className="border rounded-lg overflow-hidden bg-card/50">
+                <div className="border border-border/60 rounded-lg overflow-hidden bg-card/50">
                   {/* Header */}
                   <div className="grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2 bg-muted/50 border-b border-border/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     <span></span>

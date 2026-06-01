@@ -266,19 +266,19 @@ export default function LoadingOrders() {
                   </div>
 
                   {/* Metadata */}
-                  <div className="space-y-1.5 mb-3">
-                    <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 pt-2 border-t border-border/40 mb-3">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-xs truncate">{order.event?.name || "—"}</span>
+                      <span className="text-xs truncate max-w-[120px]">{order.event?.name || "—"}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                       <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-xs truncate">
+                      <span className="text-xs">
                         {format(new Date(order.plannedStartTime), "dd MMM HH:mm", { locale: ptBR })} –{" "}
                         {format(new Date(order.plannedEndTime), "dd MMM HH:mm", { locale: ptBR })}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                       <User className="h-3.5 w-3.5 shrink-0" />
                       <span className="text-xs truncate">{order.createdBy}</span>
                     </div>
