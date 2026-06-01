@@ -1,0 +1,562 @@
+Vamos transformar o Dashboard do EventFlow em uma Central de Controle Operacional 10/10.
+
+Tela foco:
+
+* client/src/pages/dashboard.tsx
+* componentes relacionados ao dashboard
+* endpoints agregados do dashboard, se existirem
+* server/routes.ts, se for necessário criar/ajustar endpoint agregado com segurança
+
+Objetivo:
+O Dashboard não deve ser uma tela de gráficos genéricos.
+
+Ele deve funcionar como uma central de controle para Admin/Logística/Supervisor acompanharem o que está acontecendo agora, o que está próximo de acontecer e quais situações exigem ação.
+
+Conceito visual:
+Operational Control Tower
+
+O usuário deve abrir o dashboard e entender rapidamente:
+
+* eventos ativos;
+* eventos próximos;
+* viagens próximas;
+* loading orders que exigem ação;
+* movimentações em andamento/pausadas/com excesso;
+* requisições pendentes de aprovação;
+* produtos com estoque baixo;
+* alertas operacionais;
+* ações rápidas relevantes.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — AUDITORIA DO DASHBOARD ATUAL
+======================================
+
+Antes de implementar, audite o dashboard atual e liste:
+
+1. Problemas atuais:
+
+* cards genéricos demais;
+* poucos dados acionáveis;
+* ausência de visão “hoje”;
+* ausência de visão “próximos 7 dias”;
+* notificações vazias sem valor operacional;
+* ações rápidas muito básicas;
+* falta de alertas de estoque/logística;
+* falta de pendências de aprovação;
+* falta de loading orders/movimentações críticas;
+* falta de priorização visual.
+
+2. Objetivo de correção:
+   Trocar a lógica de “resumo estático” por “controle operacional”.
+
+==================================================
+PARTE 2 — NOVA ESTRUTURA DO DASHBOARD
+=====================================
+
+Organizar o dashboard nas seguintes seções:
+
+1. Header operacional
+2. KPIs de situação atual
+3. Alertas críticos
+4. Hoje e próximos 7 dias
+5. Pendências de aprovação
+6. Operações em andamento
+7. Estoque crítico
+8. Ações rápidas inteligentes
+
+==================================================
+PARTE 3 — HEADER OPERACIONAL
+============================
+
+Melhorar o topo do dashboard.
+
+Exibir:
+
+* Saudação: “Boa noite, Administrador”
+* Data atual
+* Subtítulo operacional:
+  “Veja pendências, operações em andamento e próximos eventos.”
+* Opcional: indicador de última atualização:
+  “Atualizado agora” ou “Atualizado há X min”, se houver suporte simples.
+
+Evitar ocupar muito espaço vertical.
+
+==================================================
+PARTE 4 — KPIs DE SITUAÇÃO ATUAL
+================================
+
+Substituir/expandir os cards atuais por KPIs mais úteis.
+
+Cards sugeridos:
+
+1. Eventos próximos
+
+* eventos nos próximos 7 ou 15 dias
+
+2. Requisições pendentes
+
+* pendentes de aprovação
+
+3. Ordens exigindo ação
+
+* loading orders em draft/ready/approved/in_progress conforme status crítico
+
+4. Movimentações ativas
+
+* em andamento ou pausadas
+
+5. Estoque crítico
+
+* produtos abaixo do mínimo ou zerados
+
+6. Viagens próximas
+
+* viagens nos próximos 7 dias
+
+Design:
+
+* cards compactos;
+* número em destaque;
+* label clara;
+* ícone em container;
+* estado visual por severidade;
+* cada card deve ser clicável ou ter link para a tela relacionada, se for seguro;
+* não usar gráficos complexos.
+
+Critério:
+Cada KPI deve ajudar o admin a decidir onde clicar.
+
+==================================================
+PARTE 5 — ALERTAS CRÍTICOS
+==========================
+
+Criar seção “Alertas Operacionais”.
+
+Mostrar apenas quando houver alertas.
+
+Alertas possíveis:
+
+* produtos com estoque abaixo do mínimo;
+* produtos zerados;
+* requisições pendentes há muito tempo;
+* loading orders prontas aguardando aprovação;
+* loading orders aprovadas sem viagem vinculada;
+* movimentações pausadas;
+* movimentações com itens excedidos;
+* viagens sem motorista;
+* viagens sem veículo;
+* eventos próximos sem requisições aprovadas;
+* eventos com janela de requisição encerrando em breve.
+
+Cada alerta deve mostrar:
+
+* tipo;
+* descrição clara;
+* severidade;
+* link/ação para resolver;
+* entidade relacionada.
+
+Exemplos:
+
+* “3 produtos estão abaixo do estoque mínimo”
+* “2 requisições aguardam aprovação”
+* “1 movimentação pausada precisa ser retomada”
+* “Night Run Belo Horizonte ocorre em 5 dias”
+
+Design:
+
+* lista compacta;
+* ícone por severidade;
+* cores discretas;
+* ação clara;
+* sem poluição.
+
+Se não houver alertas:
+
+* mostrar estado positivo:
+  “Nenhum alerta crítico no momento.”
+
+==================================================
+PARTE 6 — HOJE E PRÓXIMOS 7 DIAS
+================================
+
+Criar seção “Hoje e próximos 7 dias”.
+
+Objetivo:
+Mostrar o que está próximo de acontecer.
+
+Itens possíveis:
+
+* eventos com data próxima;
+* viagens agendadas;
+* carregamentos planejados;
+* descarregamentos planejados;
+* janelas de requisição abrindo/fechando;
+* loading orders planejadas.
+
+Visual sugerido:
+
+* timeline compacta;
+* lista por data;
+* chips de tipo:
+
+  * Evento
+  * Viagem
+  * Carregamento
+  * Descarregamento
+  * Requisição
+* StatusBadge quando aplicável.
+
+Cada item deve mostrar:
+
+* nome;
+* data/hora;
+* status;
+* link para detalhe.
+
+Evitar gráfico.
+O objetivo é agenda operacional.
+
+==================================================
+PARTE 7 — PENDÊNCIAS DE APROVAÇÃO
+=================================
+
+Criar seção “Pendências de Aprovação”.
+
+Mostrar:
+
+* requisições pendentes;
+* movimentações pendentes, se houver aprovação;
+* loading orders aguardando aprovação, se aplicável.
+
+Cada card/linha deve mostrar:
+
+* evento;
+* área;
+* solicitante;
+* data de envio;
+* quantidade de itens, se disponível;
+* botão “Analisar”.
+
+Design:
+
+* compacto;
+* priorizar pendências mais antigas ou mais urgentes;
+* limitar a 5 itens;
+* link “Ver todas”.
+
+Se não houver pendências:
+
+* estado positivo discreto.
+
+==================================================
+PARTE 8 — OPERAÇÕES EM ANDAMENTO
+================================
+
+Criar seção “Operações em Andamento”.
+
+Mostrar:
+
+1. Movimentações em andamento
+
+* nome;
+* evento;
+* veículo;
+* progresso;
+* status;
+* ação “Abrir”.
+
+2. Movimentações pausadas
+
+* destacar como alerta moderado.
+
+3. Loading orders em progresso
+
+* ordem;
+* evento;
+* progresso carregado;
+* status.
+
+4. Viagens em andamento ou próximas
+
+* viagem;
+* veículo;
+* motorista;
+* horário.
+
+Design:
+
+* lista operacional compacta;
+* progresso com barra discreta;
+* StatusBadge;
+* ações claras.
+
+==================================================
+PARTE 9 — ESTOQUE CRÍTICO
+=========================
+
+Criar seção “Estoque Crítico”.
+
+Mostrar produtos com:
+
+* estoque zerado;
+* estoque abaixo do mínimo;
+* alta demanda nos próximos eventos, se disponível;
+* itens locados/terceiros relevantes.
+
+Cada item deve mostrar:
+
+* nome do produto;
+* SKU;
+* estoque atual;
+* estoque mínimo;
+* unidade;
+* status:
+
+  * Zerado
+  * Baixo
+  * OK, se necessário.
+
+Design:
+
+* lista compacta;
+* alerta visual discreto;
+* botão “Ver estoque” ou “Abrir produto”.
+
+Se não houver estoque crítico:
+
+* estado positivo:
+  “Nenhum item abaixo do mínimo.”
+
+==================================================
+PARTE 10 — AÇÕES RÁPIDAS INTELIGENTES
+=====================================
+
+Manter Ações Rápidas, mas tornar mais operacionais.
+
+Ações sugeridas:
+
+* Criar evento
+* Nova requisição
+* Planejar viagem
+* Criar ordem de carregamento
+* Nova movimentação
+* Ver aprovações pendentes
+* Ver estoque crítico
+* Simular estoque
+
+As ações devem respeitar RBAC.
+
+Não mostrar ação que o usuário não pode executar.
+
+Design:
+
+* botões/cards compactos;
+* ícone;
+* label;
+* descrição curta opcional;
+* grid responsivo.
+
+==================================================
+PARTE 11 — BACK-END / DADOS AGREGADOS
+=====================================
+
+Avaliar se o dashboard hoje busca dados em várias queries no front.
+
+Se estiver pesado ou repetitivo, criar endpoint agregado seguro:
+
+GET /api/dashboard/summary
+
+Retornar, conforme permissão do usuário:
+
+* contadores principais;
+* alertas;
+* próximos eventos;
+* viagens próximas;
+* aprovações pendentes;
+* estoque crítico;
+* operações em andamento.
+
+Importante:
+
+* respeitar RBAC;
+* não vazar dados para usuários sem permissão;
+* não retornar dados sensíveis desnecessários;
+* usar limites, exemplo top 5/top 10 por seção;
+* evitar consultas pesadas.
+
+Se criar endpoint agregado for arriscado agora:
+
+* manter queries atuais;
+* melhorar front-end;
+* registrar melhoria futura.
+
+==================================================
+PARTE 12 — REGRAS DE PRIORIDADE
+===============================
+
+Priorizar dados nesta ordem:
+
+1. Alertas críticos
+2. Pendências que exigem ação
+3. Operações em andamento
+4. Próximos eventos/viagens
+5. Estoque crítico
+6. Resumos gerais
+
+O dashboard não deve ser apenas “bonito”.
+Ele deve orientar ação.
+
+==================================================
+PARTE 13 — RESPONSIVIDADE
+=========================
+
+Validar:
+
+Desktop:
+
+* layout em grid 12 colunas ou similar;
+* alertas e timeline com boa leitura.
+
+Tablet:
+
+* seções empilhadas em 1 ou 2 colunas.
+
+Mobile:
+
+* cards em coluna;
+* ações rápidas em grid 1 ou 2 colunas;
+* sem overflow horizontal;
+* seções compactas.
+
+==================================================
+PARTE 14 — ACESSIBILIDADE
+=========================
+
+Garantir:
+
+* status não depender apenas de cor;
+* botões com texto claro;
+* cards clicáveis com foco visível;
+* labels/aria quando necessário;
+* contraste adequado;
+* navegação por teclado.
+
+==================================================
+PARTE 15 — RESTRIÇÕES
+=====================
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* cards;
+* seções;
+* widgets do dashboard;
+* microcopy PT-BR;
+* queries de leitura;
+* endpoint agregado do dashboard, se seguro;
+* mensagens de estado vazio;
+* documentação.
+
+Não alterar sem necessidade:
+
+* schema;
+* migrations;
+* seed;
+* RBAC global;
+* role_permissions;
+* regras de negócio;
+* status/transições;
+* endpoints críticos de criação/edição;
+* payloads usados por outras telas.
+
+Se precisar criar endpoint novo:
+
+* manter isolado em dashboard;
+* apenas leitura;
+* respeitar requireAuth e permissões;
+* não quebrar endpoints existentes.
+
+==================================================
+PARTE 16 — VALIDAÇÕES TÉCNICAS
+==============================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test obrigatório:
+
+Dashboard:
+
+* abrir como Admin;
+* validar KPIs;
+* validar alertas;
+* validar próximos eventos;
+* validar pendências de aprovação;
+* validar operações em andamento;
+* validar estoque crítico;
+* clicar nos links/ações;
+* validar ações rápidas conforme permissão.
+
+Perfis:
+
+* Admin;
+* Logística;
+* Almoxarifado;
+* Supervisor;
+* Usuário comum.
+
+Confirmar:
+
+* cada perfil vê apenas o que pode ver;
+* ações rápidas respeitam RBAC;
+* nenhum dado indevido aparece para usuário comum;
+* links levam para telas corretas;
+* dashboard não quebra quando não há dados;
+* dashboard não quebra com muitos dados.
+
+==================================================
+PARTE 17 — ENTREGA FINAL
+========================
+
+Entregar:
+
+* problemas encontrados;
+* nova estrutura do dashboard;
+* seções criadas;
+* dados exibidos;
+* melhorias de UX aplicadas;
+* melhorias visuais aplicadas;
+* endpoint novo criado ou confirmação de que não foi necessário;
+* arquivos alterados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências ou riscos restantes.
+
+Critério de aceite:
+
+O Dashboard só será considerado 10/10 se:
+
+* parecer uma central de controle operacional;
+* mostrar o que está acontecendo agora;
+* mostrar o que está próximo de acontecer;
+* destacar pendências e alertas;
+* mostrar estoque crítico;
+* mostrar operações em andamento;
+* oferecer ações rápidas úteis;
+* respeitar RBAC;
+* não depender de gráficos genéricos;
+* ajudar o admin a decidir o próximo passo.

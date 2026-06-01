@@ -1,33 +1,32 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Truck, Calendar, MapPin, Filter, X, List, CalendarDays, ArrowUp, ArrowDown, ArrowRight } from "lucide-react";
+import {
+  Plus, Truck, CalendarDays, MapPin, Filter, X, List,
+  ArrowRight, CheckCircle2, Loader2, Clock, ChevronLeft, ChevronRight,
+} from "lucide-react";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
-import { format, startOfDay, endOfDay, parseISO, startOfWeek, endOfWeek, addWeeks, addDays, isSameDay, isWithinInterval } from "date-fns";
+import {
+  format, startOfDay, endOfDay, parseISO, startOfWeek, endOfWeek,
+  addWeeks, addDays, isSameDay,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Trip, Event, Vehicle, VehicleType, Driver } from "@shared/schema";
 import { TripDialog } from "@/components/trip-dialog";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  ToggleGroup,
-  ToggleGroupItem,
+  ToggleGroup, ToggleGroupItem,
 } from "@/components/ui/toggle-group";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
@@ -44,7 +43,7 @@ interface TripFilters {
   eventDate?: string;
   eventId?: string;
   movementDate?: string;
-  statusGroup?: 'planned' | 'in_progress' | 'completed';
+  statusGroup?: "planned" | "in_progress" | "completed";
 }
 
 interface CalendarTripEntry {
@@ -56,6 +55,34 @@ type ViewMode = "list" | "calendar";
 type SortBy = "loading" | "unloading";
 type CalendarPeriod = "week" | "biweekly";
 
+const STATS = [
+  {
+    label: "Total",
+    icon: Truck,
+    key: undefined as undefined,
+    filter: (_: TripWithRelations) => true,
+  },
+  {
+    label: "Agendadas",
+    icon: Clock,
+    key: "planned" as const,
+    filter: (t: TripWithRelations) => t.status === "planned",
+  },
+  {
+    label: "Em Andamento",
+    icon: Loader2,
+    key: "in_progress" as const,
+    filter: (t: TripWithRelations) =>
+      ["loading", "loaded", "in_transit", "at_destination", "unloading"].includes(t.status),
+  },
+  {
+    label: "Concluídas",
+    icon: CheckCircle2,
+    key: "completed" as const,
+    filter: (t: TripWithRelations) => t.status === "completed",
+  },
+] as const;
+
 export default function Trips() {
   const { user } = useAuth();
   const canWrite = userCanWriteLogistics(user);
@@ -66,7 +93,9 @@ export default function Trips() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortBy>("loading");
   const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>("week");
-  const [calendarStartDate, setCalendarStartDate] = useState(startOfWeek(new Date(), { locale: ptBR }));
+  const [calendarStartDate, setCalendarStartDate] = useState(
+    startOfWeek(new Date(), { locale: ptBR })
+  );
 
   const { data: trips, isLoading } = useQuery<TripWithRelations[]>({
     queryKey: ["/api/trips"],
@@ -76,7 +105,6 @@ export default function Trips() {
     queryKey: ["/api/events"],
   });
 
-  // Count active filters
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.eventDate) count++;
@@ -86,124 +114,91 @@ export default function Trips() {
     return count;
   }, [filters]);
 
-  // Apply filters
   const filteredTrips = useMemo(() => {
     if (!trips) return [];
-    
     return trips.filter((trip) => {
-      // Filter by event date
       if (filters.eventDate) {
         if (!trip.event?.eventDate) return false;
         const eventDate = startOfDay(new Date(trip.event.eventDate));
         const filterDate = startOfDay(parseISO(filters.eventDate));
         if (eventDate.getTime() !== filterDate.getTime()) return false;
       }
-
-      // Filter by event
-      if (filters.eventId && trip.eventId !== filters.eventId) {
-        return false;
-      }
-
-      // Filter by movement date (loading or unloading)
+      if (filters.eventId && trip.eventId !== filters.eventId) return false;
       if (filters.movementDate) {
         const filterDate = startOfDay(parseISO(filters.movementDate));
         const filterDateEnd = endOfDay(parseISO(filters.movementDate));
-        
-        let matchesMovementDate = false;
-        
-        // Check loading date
+        let match = false;
         if (trip.loadingStartTime) {
-          const loadingDate = new Date(trip.loadingStartTime);
-          if (loadingDate >= filterDate && loadingDate <= filterDateEnd) {
-            matchesMovementDate = true;
-          }
+          const d = new Date(trip.loadingStartTime);
+          if (d >= filterDate && d <= filterDateEnd) match = true;
         }
-        
-        // Check unloading date
         if (trip.unloadingStartTime) {
-          const unloadingDate = new Date(trip.unloadingStartTime);
-          if (unloadingDate >= filterDate && unloadingDate <= filterDateEnd) {
-            matchesMovementDate = true;
-          }
+          const d = new Date(trip.unloadingStartTime);
+          if (d >= filterDate && d <= filterDateEnd) match = true;
         }
-        
-        if (!matchesMovementDate) return false;
+        if (!match) return false;
       }
-
-      // Filter by status group
       if (filters.statusGroup) {
-        const inProgress = ['loading', 'loaded', 'in_transit', 'at_destination', 'unloading'];
-        if (filters.statusGroup === 'planned' && trip.status !== 'planned') return false;
-        if (filters.statusGroup === 'in_progress' && !inProgress.includes(trip.status)) return false;
-        if (filters.statusGroup === 'completed' && trip.status !== 'completed') return false;
+        const inProgress = ["loading", "loaded", "in_transit", "at_destination", "unloading"];
+        if (filters.statusGroup === "planned" && trip.status !== "planned") return false;
+        if (filters.statusGroup === "in_progress" && !inProgress.includes(trip.status)) return false;
+        if (filters.statusGroup === "completed" && trip.status !== "completed") return false;
       }
-
       return true;
     });
   }, [trips, filters]);
 
-  // Sort trips
   const sortedTrips = useMemo(() => {
-    if (!filteredTrips) return [];
-    
     return [...filteredTrips].sort((a, b) => {
-      const dateA = sortBy === "loading" 
-        ? (a.loadingStartTime ? new Date(a.loadingStartTime).getTime() : Infinity)
-        : (a.unloadingStartTime ? new Date(a.unloadingStartTime).getTime() : Infinity);
-      const dateB = sortBy === "loading"
-        ? (b.loadingStartTime ? new Date(b.loadingStartTime).getTime() : Infinity)
-        : (b.unloadingStartTime ? new Date(b.unloadingStartTime).getTime() : Infinity);
-      
+      const dateA =
+        sortBy === "loading"
+          ? a.loadingStartTime
+            ? new Date(a.loadingStartTime).getTime()
+            : Infinity
+          : a.unloadingStartTime
+          ? new Date(a.unloadingStartTime).getTime()
+          : Infinity;
+      const dateB =
+        sortBy === "loading"
+          ? b.loadingStartTime
+            ? new Date(b.loadingStartTime).getTime()
+            : Infinity
+          : b.unloadingStartTime
+          ? new Date(b.unloadingStartTime).getTime()
+          : Infinity;
       return dateA - dateB;
     });
   }, [filteredTrips, sortBy]);
 
-  // Calendar period calculation
   const calendarEndDate = useMemo(() => {
-    if (calendarPeriod === "week") {
-      return endOfWeek(calendarStartDate, { locale: ptBR });
-    } else {
-      return endOfWeek(addWeeks(calendarStartDate, 1), { locale: ptBR });
-    }
+    if (calendarPeriod === "week") return endOfWeek(calendarStartDate, { locale: ptBR });
+    return endOfWeek(addWeeks(calendarStartDate, 1), { locale: ptBR });
   }, [calendarStartDate, calendarPeriod]);
 
-  // Generate calendar days
   const calendarDays = useMemo(() => {
-    const days = [];
-    let currentDay = calendarStartDate;
-    
-    while (currentDay <= calendarEndDate) {
-      days.push(currentDay);
-      currentDay = addDays(currentDay, 1);
+    const days: Date[] = [];
+    let cur = calendarStartDate;
+    while (cur <= calendarEndDate) {
+      days.push(cur);
+      cur = addDays(cur, 1);
     }
-    
     return days;
   }, [calendarStartDate, calendarEndDate]);
 
-  // Group trips by date for calendar view
   const tripsByDate = useMemo(() => {
     const grouped: Record<string, CalendarTripEntry[]> = {};
-    
     sortedTrips.forEach((trip) => {
-      // Add loading entry
       if (trip.loadingStartTime) {
-        const loadingDateKey = format(new Date(trip.loadingStartTime), "yyyy-MM-dd");
-        if (!grouped[loadingDateKey]) {
-          grouped[loadingDateKey] = [];
-        }
-        grouped[loadingDateKey].push({ trip, type: "loading" });
+        const key = format(new Date(trip.loadingStartTime), "yyyy-MM-dd");
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({ trip, type: "loading" });
       }
-      
-      // Add unloading entry
       if (trip.unloadingStartTime) {
-        const unloadingDateKey = format(new Date(trip.unloadingStartTime), "yyyy-MM-dd");
-        if (!grouped[unloadingDateKey]) {
-          grouped[unloadingDateKey] = [];
-        }
-        grouped[unloadingDateKey].push({ trip, type: "unloading" });
+        const key = format(new Date(trip.unloadingStartTime), "yyyy-MM-dd");
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({ trip, type: "unloading" });
       }
     });
-    
     return grouped;
   }, [sortedTrips]);
 
@@ -217,34 +212,22 @@ export default function Trips() {
     setShowDialog(false);
   };
 
-  const clearFilters = () => {
-    setFilters({});
+  const clearFilters = () => setFilters({});
+
+  const navigateCalendar = (dir: "prev" | "next") => {
+    const weeks = calendarPeriod === "week" ? 1 : 2;
+    setCalendarStartDate(addWeeks(calendarStartDate, dir === "next" ? weeks : -weeks));
   };
 
-  const navigateCalendar = (direction: "prev" | "next") => {
-    const weeksToAdd = calendarPeriod === "week" ? 1 : 2;
-    setCalendarStartDate(
-      direction === "next"
-        ? addWeeks(calendarStartDate, weeksToAdd)
-        : addWeeks(calendarStartDate, -weeksToAdd)
-    );
-  };
+  const goToToday = () => setCalendarStartDate(startOfWeek(new Date(), { locale: ptBR }));
 
-  const goToToday = () => {
-    setCalendarStartDate(startOfWeek(new Date(), { locale: ptBR }));
-  };
-
-  if (isLoading) {
-    return (
-      <PageLoading message="Carregando viagens..." />
-    );
-  }
+  if (isLoading) return <PageLoading message="Carregando viagens..." />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Planejamento de Transporte"
-        description="Agende e gerencie a logística de veículos e rotas"
+        description="Agende e gerencie viagens, veículos, rotas e carregamentos."
       >
         {canWrite && (
           <Button onClick={() => setShowDialog(true)} data-testid="button-create-trip">
@@ -254,99 +237,121 @@ export default function Trips() {
         )}
       </PageHeader>
 
-      {/* Stats Bar */}
+      {/* Stats */}
       {trips && trips.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {([
-            { label: "Total", count: trips.length, key: undefined },
-            { label: "Agendadas", count: trips.filter(t => t.status === 'planned').length, key: 'planned' as const },
-            { label: "Em Andamento", count: trips.filter(t => ['loading','loaded','in_transit','at_destination','unloading'].includes(t.status)).length, key: 'in_progress' as const },
-            { label: "Concluídas", count: trips.filter(t => t.status === 'completed').length, key: 'completed' as const },
-          ] as const).map(({ label, count, key }) => (
-            <Card
-              key={label}
-              className={`border-border/60 hover-elevate cursor-pointer${filters.statusGroup === key && key !== undefined ? ' ring-1 ring-primary' : ''}`}
-              onClick={() => setFilters(prev => ({ ...prev, statusGroup: prev.statusGroup === key ? undefined : key }))}
-              data-testid={`stat-card-${label.toLowerCase().replace(/ /g, '-')}`}
-            >
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold tabular-nums">{count}</div>
-                <div className="text-sm text-muted-foreground">{label}</div>
-              </CardContent>
-            </Card>
-          ))}
+          {STATS.map(({ label, icon: Icon, key, filter }) => {
+            const count = trips.filter(filter).length;
+            const active = filters.statusGroup === key && key !== undefined;
+            return (
+              <Card
+                key={label}
+                className={`border-border/60 hover-elevate cursor-pointer transition-all ${
+                  active ? "ring-1 ring-primary border-primary/40" : ""
+                }`}
+                onClick={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    statusGroup: prev.statusGroup === key ? undefined : key,
+                  }))
+                }
+                data-testid={`stat-card-${label.toLowerCase().replace(/ /g, "-")}`}
+              >
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-4 w-4 text-primary/70" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold tabular-nums leading-none">{count}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* View Controls */}
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
-              <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as ViewMode)}>
-                <ToggleGroupItem value="list" aria-label="Visualização em lista" data-testid="toggle-view-list">
-                  <List className="h-4 w-4 mr-2" />
-                  Lista
-                </ToggleGroupItem>
-                <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" data-testid="toggle-view-calendar">
-                  <CalendarDays className="h-4 w-4 mr-2" />
-                  Calendário
-                </ToggleGroupItem>
-              </ToggleGroup>
-
-              <div className="flex items-center gap-2">
-                <Label htmlFor="sort-by" className="text-sm whitespace-nowrap">Ordenar por:</Label>
-                <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
-                  <SelectTrigger id="sort-by" className="w-[180px]" data-testid="select-sort-by">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="loading">Data de Carregamento</SelectItem>
-                    <SelectItem value="unloading">Data de Descarregamento</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {viewMode === "calendar" && (
-              <div className="flex items-center gap-2">
-                <Label htmlFor="calendar-period" className="text-sm whitespace-nowrap">Período:</Label>
-                <Select value={calendarPeriod} onValueChange={(value) => setCalendarPeriod(value as CalendarPeriod)}>
-                  <SelectTrigger id="calendar-period" className="w-[140px]" data-testid="select-calendar-period">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="week">Semana</SelectItem>
-                    <SelectItem value="biweekly">Quinzena</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Filters Panel */}
+      {/* Controls + Filters (single card) */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
         <Card className="border-border/60">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    data-testid="button-toggle-filters"
+          <CardContent className="p-4 space-y-4">
+            {/* Top row: view toggle + sort + filter trigger */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* View toggle */}
+                <ToggleGroup
+                  type="single"
+                  value={viewMode}
+                  onValueChange={(v) => v && setViewMode(v as ViewMode)}
+                  className="border border-border/60 rounded-md p-0.5"
+                >
+                  <ToggleGroupItem
+                    value="list"
+                    aria-label="Lista"
+                    className="px-3 py-1.5 text-sm rounded-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                    data-testid="toggle-view-list"
                   >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtros
-                    {activeFilterCount > 0 && (
-                      <Badge variant="secondary" className="ml-2" data-testid="badge-filter-count">
-                        {activeFilterCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
+                    <List className="h-3.5 w-3.5 mr-1.5" />
+                    Lista
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="calendar"
+                    aria-label="Calendário"
+                    className="px-3 py-1.5 text-sm rounded-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                    data-testid="toggle-view-calendar"
+                  >
+                    <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
+                    Calendário
+                  </ToggleGroupItem>
+                </ToggleGroup>
+
+                {/* Sort (only in list) */}
+                {viewMode === "list" && (
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="sort-by" className="text-xs text-muted-foreground whitespace-nowrap">
+                      Ordenar por
+                    </Label>
+                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+                      <SelectTrigger id="sort-by" className="w-[180px] h-8 text-sm" data-testid="select-sort-by">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="loading">Data de Carregamento</SelectItem>
+                        <SelectItem value="unloading">Data de Descarregamento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Calendar period */}
+                {viewMode === "calendar" && (
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="calendar-period" className="text-xs text-muted-foreground whitespace-nowrap">
+                      Período
+                    </Label>
+                    <Select
+                      value={calendarPeriod}
+                      onValueChange={(v) => setCalendarPeriod(v as CalendarPeriod)}
+                    >
+                      <SelectTrigger
+                        id="calendar-period"
+                        className="w-[130px] h-8 text-sm"
+                        data-testid="select-calendar-period"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="week">Semana</SelectItem>
+                        <SelectItem value="biweekly">Quinzena</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter toggle */}
+              <div className="flex items-center gap-2">
                 {activeFilterCount > 0 && (
                   <Button
                     variant="ghost"
@@ -354,205 +359,276 @@ export default function Trips() {
                     onClick={clearFilters}
                     data-testid="button-clear-filters"
                   >
-                    Limpar Filtros
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Limpar
                   </Button>
                 )}
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="button-toggle-filters">
+                    <Filter className="h-3.5 w-3.5 mr-1.5" />
+                    Filtros
+                    {activeFilterCount > 0 && (
+                      <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1.5" data-testid="badge-filter-count">
+                        {activeFilterCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
               </div>
             </div>
-          </CardContent>
-          <CollapsibleContent>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Event Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-event">Evento</Label>
+
+            {/* Expanded filters */}
+            <CollapsibleContent>
+              <div className="pt-3 border-t border-border/40 grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Status */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="filter-status" className="text-xs text-muted-foreground">Status</Label>
                   <Select
-                    value={filters.eventId || "all"}
-                    onValueChange={(value) =>
-                      setFilters((prev) => ({ ...prev, eventId: value === "all" ? undefined : value }))
+                    value={filters.statusGroup || "all"}
+                    onValueChange={(v) =>
+                      setFilters((p) => ({
+                        ...p,
+                        statusGroup: v === "all" ? undefined : (v as TripFilters["statusGroup"]),
+                      }))
                     }
                   >
-                    <SelectTrigger id="filter-event" data-testid="select-filter-event">
+                    <SelectTrigger id="filter-status" className="h-8 text-sm" data-testid="select-filter-status">
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os status</SelectItem>
+                      <SelectItem value="planned">Agendadas</SelectItem>
+                      <SelectItem value="in_progress">Em Andamento</SelectItem>
+                      <SelectItem value="completed">Concluídas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Evento */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="filter-event" className="text-xs text-muted-foreground">Evento</Label>
+                  <Select
+                    value={filters.eventId || "all"}
+                    onValueChange={(v) =>
+                      setFilters((p) => ({ ...p, eventId: v === "all" ? undefined : v }))
+                    }
+                  >
+                    <SelectTrigger id="filter-event" className="h-8 text-sm" data-testid="select-filter-event">
                       <SelectValue placeholder="Todos os eventos" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os eventos</SelectItem>
-                      {events?.map((event) => (
-                        <SelectItem key={event.id} value={String(event.id)}>
-                          {event.name}
+                      {events?.map((ev) => (
+                        <SelectItem key={ev.id} value={String(ev.id)}>
+                          {ev.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Event Date Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-event-date">Data do Evento</Label>
-                  <div className="flex gap-2">
+                {/* Data do Evento */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="filter-event-date" className="text-xs text-muted-foreground">Data do Evento</Label>
+                  <div className="flex gap-1">
                     <Input
                       id="filter-event-date"
                       type="date"
                       value={filters.eventDate || ""}
                       onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          eventDate: e.target.value || undefined,
-                        }))
+                        setFilters((p) => ({ ...p, eventDate: e.target.value || undefined }))
                       }
-                      className="flex-1"
+                      className="h-8 text-sm flex-1"
                       data-testid="input-filter-event-date"
                     />
                     {filters.eventDate && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() =>
-                          setFilters((prev) => ({ ...prev, eventDate: undefined }))
-                        }
+                        className="h-8 w-8"
+                        onClick={() => setFilters((p) => ({ ...p, eventDate: undefined }))}
                         data-testid="button-clear-event-date"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
                 </div>
 
-                {/* Movement Date Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="filter-movement-date">Movimentações do Dia</Label>
-                  <div className="flex gap-2">
+                {/* Data de Movimentação */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="filter-movement-date" className="text-xs text-muted-foreground">
+                    Movimentações do Dia
+                  </Label>
+                  <div className="flex gap-1">
                     <Input
                       id="filter-movement-date"
                       type="date"
                       value={filters.movementDate || ""}
                       onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          movementDate: e.target.value || undefined,
-                        }))
+                        setFilters((p) => ({ ...p, movementDate: e.target.value || undefined }))
                       }
-                      className="flex-1"
+                      className="h-8 text-sm flex-1"
                       data-testid="input-filter-movement-date"
                     />
                     {filters.movementDate && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() =>
-                          setFilters((prev) => ({ ...prev, movementDate: undefined }))
-                        }
+                        className="h-8 w-8"
+                        onClick={() => setFilters((p) => ({ ...p, movementDate: undefined }))}
                         data-testid="button-clear-movement-date"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Filtra por data de carregamento ou descarregamento
-                  </p>
+                  <p className="text-[10px] text-muted-foreground">Carregamento ou descarregamento</p>
                 </div>
               </div>
-            </CardContent>
-          </CollapsibleContent>
+            </CollapsibleContent>
+          </CardContent>
         </Card>
       </Collapsible>
 
-      {/* List View */}
+      {/* ── LISTA ── */}
       {viewMode === "list" && (
         <>
-          {!sortedTrips || sortedTrips.length === 0 ? (
+          {sortedTrips.length === 0 ? (
             <EmptyState
               icon={Truck}
               title={activeFilterCount > 0 ? "Nenhuma viagem encontrada" : "Nenhuma viagem agendada"}
-              description={activeFilterCount > 0 ? "Tente ajustar os filtros para ver mais resultados" : "Comece a planejar o transporte para seus eventos"}
-              action={activeFilterCount === 0 && canWrite ? { label: "Planejar Viagem", onClick: () => setShowDialog(true) } : undefined}
+              description={
+                activeFilterCount > 0
+                  ? "Tente ajustar os filtros para ver mais resultados."
+                  : "Comece a planejar o transporte para seus eventos."
+              }
+              action={
+                activeFilterCount === 0 && canWrite
+                  ? { label: "Planejar Viagem", onClick: () => setShowDialog(true) }
+                  : activeFilterCount > 0
+                  ? { label: "Limpar filtros", onClick: clearFilters }
+                  : undefined
+              }
             />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {sortedTrips.map((trip) => (
                 <Card
                   key={trip.id}
-                  className={`border-border/60 ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
-                  onClick={canWrite ? () => handleEdit(trip) : undefined}
+                  className="border-border/60 hover-elevate"
                   data-testid={`card-trip-${trip.id}`}
                 >
                   <CardContent className="p-4">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           <StatusBadge status={trip.status} />
+                          {trip.event?.name && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {trip.event.name}
+                            </span>
+                          )}
                         </div>
-                        <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
-                          <Truck className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          {trip.event?.name || "Viagem"}
-                        </h3>
+                        {trip.description ? (
+                          <h3 className="font-semibold text-base text-foreground">
+                            {trip.description}
+                          </h3>
+                        ) : (
+                          <h3 className="font-semibold text-base text-foreground">
+                            {trip.event?.name || "Viagem sem descrição"}
+                          </h3>
+                        )}
+
+                        {/* Rota */}
                         {(trip.loadingLocation || trip.unloadingLocation) && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                            <span className="truncate">{trip.loadingLocation || "—"}</span>
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1 flex-wrap">
+                            <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary/60" />
+                            <span className="truncate max-w-[140px]">
+                              {trip.loadingLocation || "—"}
+                            </span>
                             <ArrowRight className="h-3.5 w-3.5 flex-shrink-0" />
-                            <span className="truncate">{trip.unloadingLocation || "—"}</span>
+                            <span className="truncate max-w-[140px]">
+                              {trip.unloadingLocation || "—"}
+                            </span>
+                            {(trip as any).destinations?.length > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 h-4">
+                                +{(trip as any).destinations.length} destino
+                                {(trip as any).destinations.length !== 1 ? "s" : ""}
+                              </Badge>
+                            )}
                           </div>
                         )}
-                        {trip.description && (
-                          <p className="text-sm text-muted-foreground mt-0.5">{trip.description}</p>
-                        )}
                       </div>
+
+                      {canWrite && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(trip)}
+                          aria-label="Editar viagem"
+                          data-testid={`button-edit-trip-${trip.id}`}
+                        >
+                          Editar
+                        </Button>
+                      )}
                     </div>
 
                     {/* Metadados */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3 pt-3 border-t border-border/40">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 mt-3 pt-3 border-t border-border/40 flex-wrap">
                       <div>
                         <p className="text-xs text-muted-foreground">Veículo</p>
-                        <p className="text-sm font-medium">{trip.vehicleType?.name || "—"}</p>
+                        <p className="text-sm font-medium leading-tight">
+                          {trip.vehicleType?.name || "—"}
+                        </p>
                         {trip.vehicle?.plate && (
                           <p className="text-xs text-muted-foreground font-mono">{trip.vehicle.plate}</p>
                         )}
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Motorista</p>
-                        <p className="text-sm font-medium">{trip.driver?.name || "—"}</p>
+                        <p className="text-sm font-medium leading-tight">{trip.driver?.name || "—"}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Carregamento</p>
-                        <div>
-                          {trip.loadingStartTime && trip.loadingEndTime ? (
-                            <>
-                              <p className="text-sm font-medium">{format(new Date(trip.loadingStartTime), "dd/MM/yyyy")}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(trip.loadingStartTime), "HH:mm")} - {format(new Date(trip.loadingEndTime), "HH:mm")}
-                              </p>
-                            </>
-                          ) : trip.loadingStartTime ? (
-                            <p className="text-sm font-medium">{format(new Date(trip.loadingStartTime), "dd/MM/yyyy 'às' HH:mm")}</p>
-                          ) : (
-                            <p className="text-sm font-medium">—</p>
-                          )}
-                        </div>
+                        {trip.loadingStartTime ? (
+                          <>
+                            <p className="text-sm font-medium leading-tight">
+                              {format(new Date(trip.loadingStartTime), "dd/MM/yyyy")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(trip.loadingStartTime), "HH:mm")}
+                              {trip.loadingEndTime &&
+                                ` – ${format(new Date(trip.loadingEndTime), "HH:mm")}`}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm font-medium">—</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Descarregamento</p>
-                        <div>
-                          {trip.unloadingStartTime && trip.unloadingEndTime ? (
-                            <>
-                              <p className="text-sm font-medium">{format(new Date(trip.unloadingStartTime), "dd/MM/yyyy")}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(trip.unloadingStartTime), "HH:mm")} - {format(new Date(trip.unloadingEndTime), "HH:mm")}
-                              </p>
-                            </>
-                          ) : trip.unloadingStartTime ? (
-                            <p className="text-sm font-medium">{format(new Date(trip.unloadingStartTime), "dd/MM/yyyy 'às' HH:mm")}</p>
-                          ) : (
-                            <p className="text-sm font-medium">—</p>
-                          )}
-                        </div>
+                        {trip.unloadingStartTime ? (
+                          <>
+                            <p className="text-sm font-medium leading-tight">
+                              {format(new Date(trip.unloadingStartTime), "dd/MM/yyyy")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(trip.unloadingStartTime), "HH:mm")}
+                              {trip.unloadingEndTime &&
+                                ` – ${format(new Date(trip.unloadingEndTime), "HH:mm")}`}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm font-medium">—</p>
+                        )}
                       </div>
                     </div>
+
                     {trip.notes && (
                       <div className="mt-2 pt-2 border-t border-border/40">
-                        <p className="text-xs text-muted-foreground mb-0.5">Observações</p>
-                        <p className="text-sm">{trip.notes}</p>
+                        <p className="text-xs text-muted-foreground">{trip.notes}</p>
                       </div>
                     )}
                   </CardContent>
@@ -563,30 +639,31 @@ export default function Trips() {
         </>
       )}
 
-      {/* Calendar View */}
+      {/* ── CALENDÁRIO ── */}
       {viewMode === "calendar" && (
         <div className="space-y-4">
-          {/* Calendar Navigation */}
+          {/* Navegação */}
           <Card className="border-border/60">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => navigateCalendar("prev")}
                   data-testid="button-calendar-prev"
                 >
-                  Anterior
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <div className="text-center">
-                  <p className="font-medium">
-                    {format(calendarStartDate, "dd 'de' MMMM", { locale: ptBR })} - {format(calendarEndDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  <p className="font-semibold text-sm">
+                    {format(calendarStartDate, "dd 'de' MMMM", { locale: ptBR })} –{" "}
+                    {format(calendarEndDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </p>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={goToToday}
-                    className="mt-1"
+                    className="h-6 text-xs mt-0.5"
                     data-testid="button-calendar-today"
                   >
                     Hoje
@@ -598,64 +675,84 @@ export default function Trips() {
                   onClick={() => navigateCalendar("next")}
                   data-testid="button-calendar-next"
                 >
-                  Próximo
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+          {/* Grade */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-7 gap-3">
             {calendarDays.map((day) => {
               const dayKey = format(day, "yyyy-MM-dd");
               const dayTrips = tripsByDate[dayKey] || [];
               const isToday = isSameDay(day, new Date());
 
               return (
-                <Card 
-                  key={dayKey} 
-                  className={isToday ? "border-primary" : "border-border/60"}
+                <Card
+                  key={dayKey}
+                  className={`border-border/60 ${isToday ? "ring-1 ring-primary border-primary/40" : ""}`}
                   data-testid={`calendar-day-${dayKey}`}
                 >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="capitalize">
-                          {format(day, "EEE", { locale: ptBR })}
-                        </span>
-                        <span className={isToday ? "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs" : ""}>
-                          {format(day, "dd")}
-                        </span>
-                      </div>
+                  <CardHeader className="p-3 pb-2">
+                    <CardTitle className="text-xs font-normal flex items-center justify-between">
+                      <span className="capitalize text-muted-foreground">
+                        {format(day, "EEE", { locale: ptBR })}
+                      </span>
+                      <span
+                        className={`text-sm font-semibold ${
+                          isToday
+                            ? "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {format(day, "dd")}
+                      </span>
                     </CardTitle>
+                    {dayTrips.length > 0 && (
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        {dayTrips.length} viagem{dayTrips.length !== 1 ? "ns" : ""}
+                      </div>
+                    )}
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent
+                    className="p-2 pt-0 space-y-1.5"
+                    style={{ scrollbarWidth: "thin" }}
+                  >
                     {dayTrips.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">
-                        Sem viagens
-                      </p>
+                      <div className="py-3 text-center">
+                        <div className="w-1 h-1 rounded-full bg-border mx-auto" />
+                      </div>
                     ) : (
-                      dayTrips.map((entry, index) => (
-                        <div
-                          key={`${entry.trip.id}-${entry.type}-${index}`}
-                          className={`p-2 rounded-md bg-card border ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
+                      dayTrips.map((entry, idx) => (
+                        <button
+                          key={`${entry.trip.id}-${entry.type}-${idx}`}
+                          type="button"
+                          className={`w-full text-left p-2 rounded-md border border-border/60 hover-elevate ${
+                            canWrite ? "cursor-pointer" : "cursor-default"
+                          } ${entry.type === "loading" ? "bg-primary/5" : "bg-chart-2/5"}`}
                           onClick={canWrite ? () => handleEdit(entry.trip) : undefined}
                           data-testid={`calendar-trip-${entry.trip.id}-${entry.type}`}
                         >
-                          <div className="flex items-start gap-3">
-                            <div className={`flex-shrink-0 w-8 h-8 rounded flex items-center justify-center font-bold text-lg ${
-                              entry.type === "loading" 
-                                ? "bg-pink-500/20 text-pink-600 dark:bg-pink-500/30 dark:text-pink-400" 
-                                : "bg-blue-500/20 text-blue-600 dark:bg-blue-500/30 dark:text-blue-400"
-                            }`}>
-                              {entry.type === "loading" ? "C" : "D"}
-                            </div>
-                            <div className="flex-1 min-w-0 space-y-1">
-                              <p className="font-medium text-sm line-clamp-2">{entry.trip.event?.name}</p>
-                              <StatusBadge status={entry.trip.status} className="text-[10px] px-1.5 py-0.5 h-auto" />
-                            </div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                entry.type === "loading"
+                                  ? "bg-primary/15 text-primary"
+                                  : "bg-chart-2/15 text-chart-2"
+                              }`}
+                            >
+                              {entry.type === "loading" ? "CARGA" : "DESC"}
+                            </span>
                           </div>
-                        </div>
+                          <p className="text-xs font-medium leading-tight line-clamp-2">
+                            {entry.trip.description || entry.trip.event?.name || "Viagem"}
+                          </p>
+                          <StatusBadge
+                            status={entry.trip.status}
+                            className="mt-1 text-[10px] px-1.5 py-0.5 h-auto"
+                          />
+                        </button>
                       ))
                     )}
                   </CardContent>
@@ -666,11 +763,7 @@ export default function Trips() {
         </div>
       )}
 
-      <TripDialog 
-        open={showDialog}
-        onOpenChange={handleClose}
-        trip={selectedTrip}
-      />
+      <TripDialog open={showDialog} onOpenChange={handleClose} trip={selectedTrip} />
     </div>
   );
 }

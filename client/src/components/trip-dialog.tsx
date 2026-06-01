@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,12 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Trip, InsertTrip, Event, VehicleType, Driver, Dock } from "@shared/schema";
 import { format } from "date-fns";
-import { Plus, X, MapPin } from "lucide-react";
+import { Plus, X, MapPin, AlertTriangle, ArrowRight, Truck, User, Anchor } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { StatusBadge } from "@/components/status-badge";
 
 interface TripDialogProps {
   open: boolean;
@@ -55,6 +55,37 @@ interface TripFormData {
   notes?: string;
 }
 
+function SectionLabel({ label, description }: { label: string; description?: string }) {
+  return (
+    <div className="pb-2 border-b border-border/40">
+      <div className="text-sm font-semibold text-foreground">{label}</div>
+      {description && (
+        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+      )}
+    </div>
+  );
+}
+
+const STATUS_OPTIONS = [
+  { value: "planned", label: "Planejada" },
+  { value: "loading", label: "Carregando" },
+  { value: "loaded", label: "Carregada" },
+  { value: "in_transit", label: "Em Trânsito" },
+  { value: "at_destination", label: "No Destino" },
+  { value: "unloading", label: "Descarregando" },
+  { value: "completed", label: "Concluída" },
+  { value: "cancelled", label: "Cancelada" },
+];
+
+function formatDt(dt?: string) {
+  if (!dt) return "—";
+  try {
+    return format(new Date(dt), "dd/MM HH:mm");
+  } catch {
+    return "—";
+  }
+}
+
 export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -67,7 +98,6 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     status: "planned",
     notes: "",
   });
-
   const [destinations, setDestinations] = useState<Destination[]>([]);
 
   useEffect(() => {
@@ -79,23 +109,33 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         driverId: trip.driverId || "",
         dockId: trip.dockId || "",
         loadingLocation: trip.loadingLocation || "",
-        loadingStartTime: trip.loadingStartTime ? format(new Date(trip.loadingStartTime), "yyyy-MM-dd'T'HH:mm") : "",
-        loadingEndTime: trip.loadingEndTime ? format(new Date(trip.loadingEndTime), "yyyy-MM-dd'T'HH:mm") : "",
-        departureDateTime: trip.departureDateTime ? format(new Date(trip.departureDateTime), "yyyy-MM-dd'T'HH:mm") : "",
+        loadingStartTime: trip.loadingStartTime
+          ? format(new Date(trip.loadingStartTime), "yyyy-MM-dd'T'HH:mm")
+          : "",
+        loadingEndTime: trip.loadingEndTime
+          ? format(new Date(trip.loadingEndTime), "yyyy-MM-dd'T'HH:mm")
+          : "",
+        departureDateTime: trip.departureDateTime
+          ? format(new Date(trip.departureDateTime), "yyyy-MM-dd'T'HH:mm")
+          : "",
         unloadingLocation: trip.unloadingLocation || "",
-        unloadingStartTime: trip.unloadingStartTime ? format(new Date(trip.unloadingStartTime), "yyyy-MM-dd'T'HH:mm") : "",
-        unloadingEndTime: trip.unloadingEndTime ? format(new Date(trip.unloadingEndTime), "yyyy-MM-dd'T'HH:mm") : "",
+        unloadingStartTime: trip.unloadingStartTime
+          ? format(new Date(trip.unloadingStartTime), "yyyy-MM-dd'T'HH:mm")
+          : "",
+        unloadingEndTime: trip.unloadingEndTime
+          ? format(new Date(trip.unloadingEndTime), "yyyy-MM-dd'T'HH:mm")
+          : "",
         status: trip.status || "planned",
         notes: trip.notes || "",
       });
-      
-      // Load existing destinations if any
       if ((trip as any).destinations && Array.isArray((trip as any).destinations)) {
         setDestinations(
           (trip as any).destinations.map((dest: any) => ({
             id: dest.id || crypto.randomUUID(),
             location: dest.location || "",
-            arrivalDateTime: dest.arrivalDateTime ? format(new Date(dest.arrivalDateTime), "yyyy-MM-dd'T'HH:mm") : ""
+            arrivalDateTime: dest.arrivalDateTime
+              ? format(new Date(dest.arrivalDateTime), "yyyy-MM-dd'T'HH:mm")
+              : "",
           }))
         );
       } else {
@@ -121,9 +161,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   const { data: docks } = useQuery<Dock[]>({ queryKey: ["/api/docks"] });
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertTrip) => {
-      return apiRequest("POST", "/api/trips", data);
-    },
+    mutationFn: async (data: InsertTrip) => apiRequest("POST", "/api/trips", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -136,9 +174,8 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<InsertTrip>) => {
-      return apiRequest("PATCH", `/api/trips/${trip?.id}`, data);
-    },
+    mutationFn: async (data: Partial<InsertTrip>) =>
+      apiRequest("PATCH", `/api/trips/${trip?.id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       toast({ description: "Viagem atualizada com sucesso" });
@@ -149,34 +186,64 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     },
   });
 
-  const addDestination = () => {
-    setDestinations([
-      ...destinations,
-      {
-        id: crypto.randomUUID(),
-        location: "",
-        arrivalDateTime: "",
-      },
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  // ── Validações reativas de datas ──
+  const loadingDateError = useMemo(() => {
+    if (formData.loadingStartTime && formData.loadingEndTime) {
+      return formData.loadingStartTime > formData.loadingEndTime;
+    }
+    return false;
+  }, [formData.loadingStartTime, formData.loadingEndTime]);
+
+  const unloadingDateError = useMemo(() => {
+    if (formData.unloadingStartTime && formData.unloadingEndTime) {
+      return formData.unloadingStartTime > formData.unloadingEndTime;
+    }
+    return false;
+  }, [formData.unloadingStartTime, formData.unloadingEndTime]);
+
+  const hasDateErrors = loadingDateError || unloadingDateError;
+  const missingRequired = !formData.eventId || !formData.vehicleTypeId;
+  const canSubmit = !hasDateErrors && !missingRequired && !isPending;
+
+  // Dados para resumo
+  const selectedEvent = events?.find((e) => String(e.id) === formData.eventId);
+  const selectedVehicleType = vehicleTypes?.find((v) => String(v.id) === formData.vehicleTypeId);
+  const selectedDriver = drivers?.find((d) => d.id === formData.driverId);
+  const selectedDock = docks?.find((d) => d.id === formData.dockId);
+  const selectedStatus = STATUS_OPTIONS.find((s) => s.value === formData.status);
+
+  const addDestination = () =>
+    setDestinations((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), location: "", arrivalDateTime: "" },
     ]);
-  };
 
-  const removeDestination = (id: string) => {
-    setDestinations(destinations.filter((d) => d.id !== id));
-  };
+  const removeDestination = (id: string) =>
+    setDestinations((prev) => prev.filter((d) => d.id !== id));
 
-  const updateDestination = (id: string, field: keyof Destination, value: string) => {
-    setDestinations(
-      destinations.map((d) => (d.id === id ? { ...d, [field]: value } : d))
+  const updateDestination = (id: string, field: keyof Destination, value: string) =>
+    setDestinations((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, [field]: value } : d))
     );
-  };
+
+  const update = (patch: Partial<TripFormData>) =>
+    setFormData((prev) => ({ ...prev, ...patch }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.eventId || !formData.vehicleTypeId) {
-      toast({ 
-        description: "Preencha os campos obrigatórios (Evento e Tipo de Veículo)", 
-        variant: "destructive" 
+    if (missingRequired) {
+      toast({
+        description: "Preencha os campos obrigatórios: Evento e Tipo de Veículo",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (hasDateErrors) {
+      toast({
+        description: "Corrija as datas antes de salvar",
+        variant: "destructive",
       });
       return;
     }
@@ -192,17 +259,18 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       loadingEndTime: formData.loadingEndTime ? new Date(formData.loadingEndTime) : null,
       departureDateTime: formData.departureDateTime ? new Date(formData.departureDateTime) : null,
       unloadingLocation: formData.unloadingLocation || null,
-      unloadingStartTime: formData.unloadingStartTime ? new Date(formData.unloadingStartTime) : null,
+      unloadingStartTime: formData.unloadingStartTime
+        ? new Date(formData.unloadingStartTime)
+        : null,
       unloadingEndTime: formData.unloadingEndTime ? new Date(formData.unloadingEndTime) : null,
       status: formData.status || "planned",
       notes: formData.notes || null,
     };
 
-    // Include destinations if any are defined
     if (destinations.length > 0) {
-      submitData.destinations = destinations.map(dest => ({
-        location: dest.location,
-        arrivalDateTime: dest.arrivalDateTime
+      submitData.destinations = destinations.map((d) => ({
+        location: d.location,
+        arrivalDateTime: d.arrivalDateTime,
       }));
     }
 
@@ -215,86 +283,127 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-border/60">
-        <DialogHeader>
+      <DialogContent
+        className="max-w-4xl p-0 border-border/60 flex flex-col"
+        style={{ maxHeight: "90vh" }}
+      >
+        {/* ── Header fixo ── */}
+        <DialogHeader className="px-6 py-4 border-b border-border/40 flex-none">
           <DialogTitle>{trip ? "Editar Viagem" : "Nova Viagem"}</DialogTitle>
           <DialogDescription>
-            {trip ? "Atualize os detalhes do planejamento de transporte" : "Crie um novo planejamento de transporte"}
+            Planeje veículo, rota, carregamento e descarregamento da operação.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Campo: Descrição */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              placeholder="Breve descrição do planejamento de transporte"
-              value={formData.description || ""}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              data-testid="input-description"
-            />
-          </div>
-
-          {/* Seção: Evento */}
+        {/* ── Corpo rolável ── */}
+        <form
+          id="trip-form"
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto px-6 py-5 space-y-6"
+          style={{ scrollbarWidth: "thin" }}
+        >
+          {/* A. Identificação */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium border-b pb-2">Evento</h3>
-            <div className="space-y-2">
-              <Label htmlFor="eventId">Evento *</Label>
-              <Select 
+            <SectionLabel
+              label="Identificação"
+              description="Descreva e vincule a viagem ao evento correto."
+            />
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Descrição</Label>
+              <Input
+                id="description"
+                placeholder="Ex: Carreta 1 — Night Run Belo Horizonte"
+                value={formData.description || ""}
+                onChange={(e) => update({ description: e.target.value })}
+                data-testid="input-description"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use uma descrição curta para identificar a viagem na operação.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="eventId">
+                Evento <span className="text-destructive">*</span>
+              </Label>
+              <Select
                 value={formData.eventId}
-                onValueChange={(value) => setFormData({ ...formData, eventId: value })}
+                onValueChange={(v) => update({ eventId: v })}
               >
-                <SelectTrigger data-testid="select-event">
+                <SelectTrigger
+                  id="eventId"
+                  className={!formData.eventId ? "border-border" : ""}
+                  data-testid="select-event"
+                >
                   <SelectValue placeholder="Selecione um evento" />
                 </SelectTrigger>
                 <SelectContent>
-                  {events?.map((event) => (
-                    <SelectItem key={event.id} value={event.id.toString()}>
-                      {event.name}
+                  {events?.map((ev) => (
+                    <SelectItem key={ev.id} value={String(ev.id)}>
+                      <div className="leading-tight">
+                        <div>{ev.name}</div>
+                        {ev.eventDate && (
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(ev.eventDate).toLocaleDateString("pt-BR")}
+                            {ev.location ? ` — ${ev.location}` : ""}
+                          </div>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedEvent && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedEvent.name}
+                  {selectedEvent.location ? ` • ${selectedEvent.location}` : ""}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Seção: Tipo de Veículo e Motorista */}
+          {/* B. Transporte */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium border-b pb-2">Veículo e Motorista</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="vehicleTypeId">Tipo de Veículo *</Label>
-                <Select 
+            <SectionLabel
+              label="Transporte"
+              description="Informe o veículo, motorista e doca de operação."
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="vehicleTypeId">
+                  Tipo de Veículo <span className="text-destructive">*</span>
+                </Label>
+                <Select
                   value={formData.vehicleTypeId}
-                  onValueChange={(value) => setFormData({ ...formData, vehicleTypeId: value })}
+                  onValueChange={(v) => update({ vehicleTypeId: v })}
                 >
-                  <SelectTrigger data-testid="select-vehicle-type">
+                  <SelectTrigger id="vehicleTypeId" data-testid="select-vehicle-type">
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {vehicleTypes?.map((type) => (
-                      <SelectItem key={type.id} value={type.id.toString()}>
-                        {type.name}
+                    {vehicleTypes?.map((vt) => (
+                      <SelectItem key={vt.id} value={String(vt.id)}>
+                        {vt.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="driverId">Motorista</Label>
-                <Select 
-                  value={formData.driverId}
-                  onValueChange={(value) => setFormData({ ...formData, driverId: value })}
+                <Select
+                  value={formData.driverId || "none"}
+                  onValueChange={(v) => update({ driverId: v === "none" ? "" : v })}
                 >
-                  <SelectTrigger data-testid="select-driver">
+                  <SelectTrigger id="driverId" data-testid="select-driver">
                     <SelectValue placeholder="Selecione um motorista" />
                   </SelectTrigger>
                   <SelectContent>
-                    {drivers?.map((driver) => (
-                      <SelectItem key={driver.id} value={driver.id}>
-                        {driver.name}
+                    <SelectItem value="none">Nenhum motorista</SelectItem>
+                    {drivers?.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -302,20 +411,20 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="dockId">Doca (Opcional)</Label>
-              <Select 
+              <Select
                 value={formData.dockId || "none"}
-                onValueChange={(value) => setFormData({ ...formData, dockId: value === "none" ? undefined : value })}
+                onValueChange={(v) => update({ dockId: v === "none" ? undefined : v })}
               >
-                <SelectTrigger data-testid="select-dock">
+                <SelectTrigger id="dockId" data-testid="select-dock">
                   <SelectValue placeholder="Selecione uma doca" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhuma doca</SelectItem>
-                  {docks?.map((dock) => (
-                    <SelectItem key={dock.id} value={dock.id}>
-                      {dock.name}
+                  {docks?.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -323,10 +432,15 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
             </div>
           </div>
 
-          {/* Seção: Destinos */}
+          {/* C. Destinos */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="text-sm font-medium">Destinos</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+              <div>
+                <div className="text-sm font-semibold">Destinos</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Adicione um ou mais destinos para a rota.
+                </div>
+              </div>
               <Button
                 type="button"
                 size="sm"
@@ -334,214 +448,350 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
                 onClick={addDestination}
                 data-testid="button-add-destination"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-1.5" />
                 Incluir Destino
               </Button>
             </div>
 
             {destinations.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                Nenhum destino adicionado. Clique em "Incluir Destino" para adicionar.
-              </div>
+              <EmptyState
+                icon={MapPin}
+                title="Nenhum destino adicionado"
+                description='Clique em "Incluir Destino" para definir os pontos de entrega.'
+                compact
+              />
             ) : (
-              <div className="space-y-3">
-                {destinations.map((destination, index) => (
-                  <Card key={destination.id} className="border-border/60" data-testid={`card-destination-${index}`}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-start gap-4">
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Destino {index + 1}</span>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor={`destination-location-${destination.id}`}>
-                              Endereço
-                            </Label>
-                            <Input
-                              id={`destination-location-${destination.id}`}
-                              value={destination.location}
-                              onChange={(e) =>
-                                updateDestination(destination.id, "location", e.target.value)
-                              }
-                              placeholder="Ex: Rua ABC, 123 - Bairro"
-                              data-testid={`input-destination-location-${index}`}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor={`destination-arrival-${destination.id}`}>
-                              Data e Horário de Chegada
-                            </Label>
-                            <Input
-                              id={`destination-arrival-${destination.id}`}
-                              type="datetime-local"
-                              value={destination.arrivalDateTime}
-                              onChange={(e) =>
-                                updateDestination(destination.id, "arrivalDateTime", e.target.value)
-                              }
-                              data-testid={`input-destination-arrival-${index}`}
-                            />
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeDestination(destination.id)}
-                          data-testid={`button-remove-destination-${index}`}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+              <div className="space-y-2">
+                {destinations.map((dest, index) => (
+                  <div
+                    key={dest.id}
+                    className="flex items-start gap-3 p-3 border border-border/60 rounded-md"
+                    data-testid={`card-destination-${index}`}
+                  >
+                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor={`dest-loc-${dest.id}`} className="text-xs">
+                          Endereço
+                        </Label>
+                        <Input
+                          id={`dest-loc-${dest.id}`}
+                          value={dest.location}
+                          onChange={(e) => updateDestination(dest.id, "location", e.target.value)}
+                          placeholder="Ex: Rua ABC, 123 — Bairro"
+                          className="h-8 text-sm"
+                          data-testid={`input-destination-location-${index}`}
+                        />
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="space-y-1">
+                        <Label htmlFor={`dest-arr-${dest.id}`} className="text-xs">
+                          Data e Hora de Chegada
+                        </Label>
+                        <Input
+                          id={`dest-arr-${dest.id}`}
+                          type="datetime-local"
+                          value={dest.arrivalDateTime}
+                          onChange={(e) =>
+                            updateDestination(dest.id, "arrivalDateTime", e.target.value)
+                          }
+                          className="h-8 text-sm"
+                          data-testid={`input-destination-arrival-${index}`}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeDestination(dest.id)}
+                      data-testid={`button-remove-destination-${index}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Seção: Carregamento */}
+          {/* D. Carregamento */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium border-b pb-2">Carregamento</h3>
-            <div className="space-y-2">
+            <SectionLabel
+              label="Carregamento"
+              description="Local, horário de início/fim e saída do veículo."
+            />
+            <div className="space-y-1.5">
               <Label htmlFor="loadingLocation">Local de Carregamento</Label>
               <Input
                 id="loadingLocation"
                 value={formData.loadingLocation || ""}
-                onChange={(e) => setFormData({ ...formData, loadingLocation: e.target.value })}
+                onChange={(e) => update({ loadingLocation: e.target.value })}
                 placeholder="Ex: Armazém Central"
                 data-testid="input-loading-location"
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
                 <Label htmlFor="loadingStartTime">Início do Carregamento</Label>
                 <Input
                   id="loadingStartTime"
                   type="datetime-local"
                   value={formData.loadingStartTime || ""}
-                  onChange={(e) => setFormData({ ...formData, loadingStartTime: e.target.value })}
+                  onChange={(e) => update({ loadingStartTime: e.target.value })}
+                  className={loadingDateError ? "border-destructive" : ""}
                   data-testid="input-loading-start"
                 />
               </div>
-
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="loadingEndTime">Fim do Carregamento</Label>
                 <Input
                   id="loadingEndTime"
                   type="datetime-local"
                   value={formData.loadingEndTime || ""}
-                  onChange={(e) => setFormData({ ...formData, loadingEndTime: e.target.value })}
+                  onChange={(e) => update({ loadingEndTime: e.target.value })}
+                  className={loadingDateError ? "border-destructive" : ""}
                   data-testid="input-loading-end"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="departureDateTime">Data/Hora de Saída</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="departureDateTime">Saída do Veículo</Label>
                 <Input
                   id="departureDateTime"
                   type="datetime-local"
                   value={formData.departureDateTime || ""}
-                  onChange={(e) => setFormData({ ...formData, departureDateTime: e.target.value })}
+                  onChange={(e) => update({ departureDateTime: e.target.value })}
                   data-testid="input-departure"
                 />
               </div>
             </div>
+            {loadingDateError && (
+              <div className="flex items-center gap-1.5 text-xs text-destructive">
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                Início do carregamento deve ser anterior ao fim
+              </div>
+            )}
           </div>
 
-          {/* Seção: Descarregamento */}
+          {/* E. Descarregamento */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium border-b pb-2">Descarregamento</h3>
-            <div className="space-y-2">
+            <SectionLabel
+              label="Descarregamento"
+              description="Local e horário de início/fim no destino."
+            />
+            <div className="space-y-1.5">
               <Label htmlFor="unloadingLocation">Local de Descarregamento</Label>
               <Input
                 id="unloadingLocation"
                 value={formData.unloadingLocation || ""}
-                onChange={(e) => setFormData({ ...formData, unloadingLocation: e.target.value })}
+                onChange={(e) => update({ unloadingLocation: e.target.value })}
                 placeholder="Ex: Local do Evento"
                 data-testid="input-unloading-location"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <Label htmlFor="unloadingStartTime">Início do Descarregamento</Label>
                 <Input
                   id="unloadingStartTime"
                   type="datetime-local"
                   value={formData.unloadingStartTime || ""}
-                  onChange={(e) => setFormData({ ...formData, unloadingStartTime: e.target.value })}
+                  onChange={(e) => update({ unloadingStartTime: e.target.value })}
+                  className={unloadingDateError ? "border-destructive" : ""}
                   data-testid="input-unloading-start"
                 />
               </div>
-
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="unloadingEndTime">Fim do Descarregamento</Label>
                 <Input
                   id="unloadingEndTime"
                   type="datetime-local"
                   value={formData.unloadingEndTime || ""}
-                  onChange={(e) => setFormData({ ...formData, unloadingEndTime: e.target.value })}
+                  onChange={(e) => update({ unloadingEndTime: e.target.value })}
+                  className={unloadingDateError ? "border-destructive" : ""}
                   data-testid="input-unloading-end"
                 />
               </div>
             </div>
+            {unloadingDateError && (
+              <div className="flex items-center gap-1.5 text-xs text-destructive">
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                Início do descarregamento deve ser anterior ao fim
+              </div>
+            )}
           </div>
 
-          {/* Seção: Status e Notas */}
+          {/* F. Status e Observações */}
           <div className="space-y-4">
-            <div className="space-y-2">
+            <SectionLabel label="Status e Observações" />
+            <div className="space-y-1.5">
               <Label htmlFor="status">Status</Label>
-              <Select 
+              <Select
                 value={formData.status as string}
-                onValueChange={(value) => setFormData({ ...formData, status: value as any })}
+                onValueChange={(v) => update({ status: v })}
               >
-                <SelectTrigger data-testid="select-status">
+                <SelectTrigger id="status" data-testid="select-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="planned">Planejada</SelectItem>
-                  <SelectItem value="loading">Carregando</SelectItem>
-                  <SelectItem value="loaded">Carregada</SelectItem>
-                  <SelectItem value="in_transit">Em Trânsito</SelectItem>
-                  <SelectItem value="at_destination">No Destino</SelectItem>
-                  <SelectItem value="unloading">Descarregando</SelectItem>
-                  <SelectItem value="completed">Concluída</SelectItem>
+                  {STATUS_OPTIONS.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="notes">Observações</Label>
               <Textarea
                 id="notes"
                 value={formData.notes || ""}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) => update({ notes: e.target.value })}
                 placeholder="Notas sobre a viagem..."
-                rows={3}
+                rows={2}
                 data-testid="input-notes"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          {/* G. Timeline operacional */}
+          {(formData.loadingStartTime ||
+            formData.loadingEndTime ||
+            formData.departureDateTime ||
+            formData.unloadingStartTime) && (
+            <div className="space-y-3">
+              <SectionLabel label="Cronograma da Operação" />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: "Início Carga", value: formData.loadingStartTime, color: "bg-primary/10 border-primary/30 text-primary" },
+                  { label: "Fim Carga / Saída", value: formData.loadingEndTime || formData.departureDateTime, color: "bg-chart-2/10 border-chart-2/30 text-chart-2" },
+                  { label: "Início Desc.", value: formData.unloadingStartTime, color: "bg-chart-5/10 border-chart-5/30 text-chart-5" },
+                  { label: "Fim Desc.", value: formData.unloadingEndTime, color: "bg-chart-4/10 border-chart-4/30 text-chart-4" },
+                ].map(({ label, value, color }, idx, arr) => (
+                  <div key={label} className="relative">
+                    <div
+                      className={`rounded-md border p-2.5 text-center text-xs ${
+                        value ? color : "border-border/40 text-muted-foreground"
+                      }`}
+                    >
+                      <div className="text-[10px] font-medium uppercase tracking-wide opacity-70 mb-1">
+                        {label}
+                      </div>
+                      <div className="font-semibold tabular-nums">{formatDt(value)}</div>
+                    </div>
+                    {idx < arr.length - 1 && (
+                      <ArrowRight className="absolute -right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground hidden sm:block" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* H. Resumo */}
+          <div className="space-y-3">
+            <SectionLabel label="Resumo da Viagem" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              <div className="flex items-start gap-2">
+                <div className="h-7 w-7 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                  <Truck className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">Veículo</div>
+                  <div className="font-medium leading-tight truncate">
+                    {selectedVehicleType?.name || "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <div className="h-7 w-7 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">Motorista</div>
+                  <div className="font-medium leading-tight truncate">
+                    {selectedDriver?.name || "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <div className="h-7 w-7 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                  <Anchor className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">Doca</div>
+                  <div className="font-medium leading-tight truncate">
+                    {selectedDock?.name || "—"}
+                  </div>
+                </div>
+              </div>
+
+              {(formData.loadingLocation || formData.unloadingLocation) && (
+                <div className="col-span-2 sm:col-span-3 flex items-center gap-1.5 text-sm">
+                  <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-muted-foreground truncate">
+                    {formData.loadingLocation || "—"}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium truncate">
+                    {formData.unloadingLocation || "—"}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-muted-foreground">Status:</div>
+                {formData.status && <StatusBadge status={formData.status} />}
+              </div>
+            </div>
+          </div>
+        </form>
+
+        {/* ── Footer fixo ── */}
+        <div className="flex-none border-t border-border/40 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          {hasDateErrors && (
+            <div className="flex items-center gap-1.5 text-xs text-destructive">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Corrija os erros de data antes de salvar
+            </div>
+          )}
+          {missingRequired && !hasDateErrors && (
+            <p className="text-xs text-muted-foreground">
+              Preencha Evento e Tipo de Veículo (obrigatórios)
+            </p>
+          )}
+          {!hasDateErrors && !missingRequired && (
+            <div className="hidden sm:block" />
+          )}
+          <div className="flex gap-2 ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancelar
             </Button>
-            <Button 
+            <Button
               type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
+              form="trip-form"
+              disabled={!canSubmit}
               data-testid="button-submit-trip"
             >
-              {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (trip ? "Salvar Viagem" : "Planejar Viagem")}
+              {isPending
+                ? "Salvando..."
+                : trip
+                ? "Salvar Viagem"
+                : "Planejar Viagem"}
             </Button>
-          </DialogFooter>
-        </form>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
