@@ -331,29 +331,29 @@ export default function LoadingOrderDetails() {
 
       {/* Informações da Ordem */}
       <Card className="border-border/60 overflow-hidden">
-        <CardContent className="p-6">
-          <div className="font-semibold text-base flex items-center gap-2 mb-12 pb-6 border-b border-border/20">
+        <CardContent className="p-4">
+          <div className="font-semibold text-base flex items-center gap-2 mb-3 pb-3 border-b border-border/20">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
               <ClipboardList className="h-3.5 w-3.5" />
             </div>
             Informações da Ordem
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8 text-sm mt-6">
-            <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+            <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Início</span>
               <span className="font-medium" data-testid="text-planned-start">
                 {format(new Date(order.plannedStartTime), "dd MMM, HH:mm", { locale: ptBR })}
               </span>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Fim</span>
               <span className="font-medium" data-testid="text-planned-end">
                 {format(new Date(order.plannedEndTime), "dd MMM, HH:mm", { locale: ptBR })}
               </span>
             </div>
             {order.loadingDate && (
-              <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Carregamento</span>
                 <span className="font-medium">
                   {format(new Date(order.loadingDate), "dd MMM, HH:mm", { locale: ptBR })}
@@ -361,19 +361,19 @@ export default function LoadingOrderDetails() {
               </div>
             )}
             {order.unloadingDate && (
-              <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Descarregamento</span>
                 <span className="font-medium">
                   {format(new Date(order.unloadingDate), "dd MMM, HH:mm", { locale: ptBR })}
                 </span>
               </div>
             )}
-            <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Responsável</span>
               <span className="font-medium" data-testid="text-created-by">{order.createdBy || "Não informado"}</span>
             </div>
             {order.event && (
-              <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Evento</span>
                 <span className="font-medium">{order.event.name}</span>
               </div>
