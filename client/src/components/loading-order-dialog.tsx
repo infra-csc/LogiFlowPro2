@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,6 +96,14 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       selectedEventId &&
       req.eventId === selectedEventId
   ) || [];
+
+  const reqNumericIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!allRequests) return map;
+    const sorted = [...allRequests].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    sorted.forEach((req, idx) => map.set(req.id, String(idx + 1).padStart(3, "0")));
+    return map;
+  }, [allRequests]);
 
   const availableTrips = allTrips?.filter(
     (trip) => selectedEventId && trip.eventId === selectedEventId
@@ -587,7 +595,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                           onClick={(e) => e.stopPropagation()}
                           aria-label={`Selecionar requisição ${request.area}`}
                         />
-                        <span className="text-xs font-mono text-muted-foreground">#{request.id.slice(0, 8).toUpperCase()}</span>
+                        <span className="text-xs font-mono text-muted-foreground">REQ-{reqNumericIdMap.get(request.id) || request.id.slice(0, 6).toUpperCase()}</span>
                         <span className="text-sm font-medium truncate">{request.area}</span>
                         <span className="text-xs text-muted-foreground text-right flex justify-end">
                           <StatusBadge status={request.status} />
