@@ -2,7 +2,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useQueries, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, FileText, Calendar, CheckCircle, XCircle, TruckIcon, AlertCircle } from "lucide-react";
+import { ArrowLeft, Package, FileText, Calendar, CheckCircle, XCircle, Truck, AlertCircle, Edit, User, ClipboardList, Layers, Info } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -10,21 +10,26 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { LoadingOrder, Event, MaterialRequest, Movement, MovementItem } from "@shared/schema";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   userCanApproveLoadingOrder,
   userCanMarkLoadingOrderReady,
+  userCanWriteLogistics,
 } from "@/lib/authz";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { ActionBar } from "@/components/action-bar";
+import { LoadingOrderDialog } from "@/components/loading-order-dialog";
 
 type LoadingOrderItem = {
   id: string;
   loadingOrderId: string;
   productId: string;
   consolidatedQuantity: number;
+  pickedQuantity?: number;
+  loadedQuantity?: number;
   sourceRequests: Array<{
     requestId: string;
     area: string;
@@ -49,6 +54,8 @@ export default function LoadingOrderDetails() {
   const { user } = useAuth();
   const canMarkReady = userCanMarkLoadingOrderReady(user);
   const canApprove = userCanApproveLoadingOrder(user);
+  const canWrite = userCanWriteLogistics(user);
+  const [showDialog, setShowDialog] = useState(false);
 
   const { data: order, isLoading: orderLoading } = useQuery<LoadingOrderWithRelations>({
     queryKey: [`/api/loading-orders/${id}`],
@@ -93,12 +100,10 @@ export default function LoadingOrderDetails() {
       loadedQuantity: number;
     }>();
 
-    // Initialize with loading order items and accumulate expected quantities for duplicate products
     items.forEach(item => {
       if (item.product) {
         const existing = progressMap.get(item.productId);
         if (existing) {
-          // Accumulate expected quantity for duplicate products
           existing.expectedQuantity += item.consolidatedQuantity;
         } else {
           progressMap.set(item.productId, {
@@ -112,7 +117,6 @@ export default function LoadingOrderDetails() {
       }
     });
 
-    // Aggregate loaded quantities from all movements
     movementItemsQueries.forEach(query => {
       if (query.data) {
         query.data.forEach(movementItem => {
@@ -191,9 +195,7 @@ export default function LoadingOrderDetails() {
   });
 
   if (orderLoading) {
-    return (
-      <PageLoading message="Carregando ordem..." />
-    );
+    return <PageLoading message="Carregando ordem..." />;
   }
 
   if (!order) {
@@ -212,95 +214,157 @@ export default function LoadingOrderDetails() {
 
   return (
     <div className="space-y-6">
+      {/* Page Header with Actions */}
       <PageHeader
         title={order.orderNumber}
         description={order.event?.name || "Evento não encontrado"}
       >
-        <div className="flex items-center gap-2">
+        <ActionBar className="flex-wrap justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/loading-orders")}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+          {canWrite && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDialog(true)}
+              data-testid="button-edit"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          )}
+          {order.status === "draft" && canMarkReady && (
+            <Button
+              size="sm"
+              onClick={() => markAsReadyMutation.mutate()}
+              disabled={markAsReadyMutation.isPending}
+              data-testid="button-mark-ready"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              {markAsReadyMutation.isPending ? "Marcando..." : "Marcar como Pronta"}
+            </Button>
+          )}
           {order.status === "ready" && canApprove && (
             <Button
+              size="sm"
               onClick={() => approveMutation.mutate()}
               disabled={approveMutation.isPending}
               data-testid="button-approve"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Aprovar para Carga
+              {approveMutation.isPending ? "Aprovando..." : "Aprovar para Carga"}
             </Button>
           )}
           {order.status === "approved" && canApprove && (
             <Button
               variant="outline"
+              size="sm"
               onClick={() => disapproveMutation.mutate()}
               disabled={disapproveMutation.isPending}
               data-testid="button-disapprove"
             >
               <XCircle className="h-4 w-4 mr-2" />
-              Desaprovar
+              {disapproveMutation.isPending ? "Desaprovando..." : "Desaprovar"}
             </Button>
           )}
-        </div>
+        </ActionBar>
       </PageHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="font-semibold text-base flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
+      {/* Resumo da Ordem */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="border-border/60">
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+              <ClipboardList className="h-5 w-5 text-muted-foreground" />
               Informações da Ordem
             </div>
-            <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-              <div className="flex items-center gap-1">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Status:</span>
+                <StatusBadge status={order.status} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Evento:</span>
+                <span className="font-medium">{order.event?.name || "—"}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-muted-foreground">Início:</span>
                 <span className="font-medium" data-testid="text-planned-start">
                   {format(new Date(order.plannedStartTime), "dd/MM/yyyy, HH:mm")}
                 </span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-muted-foreground">Fim:</span>
                 <span className="font-medium" data-testid="text-planned-end">
                   {format(new Date(order.plannedEndTime), "dd/MM/yyyy, HH:mm")}
                 </span>
               </div>
-              <div className="flex items-center gap-1">
+              {order.loadingDate && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Carregamento:</span>
+                  <span className="font-medium">{format(new Date(order.loadingDate), "dd/MM/yyyy, HH:mm")}</span>
+                </div>
+              )}
+              {order.unloadingDate && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Descarregamento:</span>
+                  <span className="font-medium">{format(new Date(order.unloadingDate), "dd/MM/yyyy, HH:mm")}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-muted-foreground">Criado por:</span>
-                <span className="font-medium" data-testid="text-created-by">
-                  {order.createdBy}
-                </span>
+                <span className="font-medium" data-testid="text-created-by">{order.createdBy}</span>
               </div>
-              <StatusBadge status={order.status} />
             </div>
             {order.notes && (
-              <div className="mt-2 pt-2 border-t border-border/40">
-                <div className="text-sm text-muted-foreground">Observações</div>
-                <div className="text-sm mt-1" data-testid="text-notes">{order.notes}</div>
+              <div className="mt-3 pt-3 border-t border-border/40">
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+                  <Info className="h-3.5 w-3.5" />
+                  Observações
+                </div>
+                <div className="text-sm text-foreground" data-testid="text-notes">{order.notes}</div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="font-semibold text-base flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+        {/* Requisições Incluídas */}
+        <Card className="border-border/60">
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+              <FileText className="h-5 w-5 text-muted-foreground" />
               Requisições Incluídas ({requests.length})
             </div>
             {requests.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nenhuma requisição vinculada
-              </p>
+              <EmptyState
+                icon={FileText}
+                title="Nenhuma requisição"
+                description="Nenhuma requisição vinculada a esta ordem"
+                compact
+              />
             ) : (
               <div className="space-y-2">
                 {requests.map((request) => (
                   <div
                     key={request.id}
-                    className="border rounded-lg p-3 hover-elevate cursor-pointer"
+                    className="border rounded-lg p-3 hover-elevate cursor-pointer bg-card/50"
                     onClick={() => navigate(`/requests/${request.id}`)}
                     data-testid={`request-${request.id}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{request.area}</span>
-                        <span className="text-xs text-muted-foreground font-mono">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium text-sm truncate">{request.area}</span>
+                        <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
                           #{request.id.slice(0, 8)}
                         </span>
                       </div>
@@ -314,199 +378,231 @@ export default function LoadingOrderDetails() {
         </Card>
       </div>
 
-      <Card>
+      {/* Itens Consolidados */}
+      <Card className="border-border/60">
         <CardContent className="p-4">
-          <div className="font-semibold text-base flex items-center gap-2">
-            <Package className="h-5 w-5" />
+          <div className="font-semibold text-base flex items-center gap-2 mb-3">
+            <Layers className="h-5 w-5 text-muted-foreground" />
             Itens Consolidados ({items.length})
           </div>
           <div className="mt-3 pt-3 border-t border-border/40">
-          {itemsLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando itens...</p>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum item consolidado
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="border rounded-lg p-3 hover-elevate"
-                  data-testid={`item-${item.id}`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="font-semibold text-base" data-testid={`item-name-${item.id}`}>
-                        {item.product?.name || "Produto não encontrado"}
+            {itemsLoading ? (
+              <PageLoading message="Carregando itens..." compact />
+            ) : items.length === 0 ? (
+              <EmptyState
+                icon={Package}
+                title="Nenhum item consolidado"
+                description="Esta ordem ainda não possui itens consolidados"
+                compact
+              />
+            ) : (
+              <div className="space-y-3">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="border rounded-lg p-3 hover-elevate bg-card/50"
+                    data-testid={`item-${item.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-base" data-testid={`item-name-${item.id}`}>
+                          {item.product?.name || "Produto não encontrado"}
+                        </div>
+                        <div className="text-sm text-muted-foreground font-mono">
+                          SKU: {item.product?.sku || "N/A"}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        SKU: {item.product?.sku || "N/A"}
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-xl font-bold" data-testid={`item-quantity-${item.id}`}>
+                          {item.consolidatedQuantity}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.product?.unit || "un"}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xl font-bold" data-testid={`item-quantity-${item.id}`}>
-                        {item.consolidatedQuantity}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.product?.unit || "un"}
-                      </div>
-                    </div>
-                  </div>
 
-                  {item.sourceRequests && item.sourceRequests.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-border/40">
-                      <div className="text-sm font-medium text-muted-foreground">
-                        Origem:
+                    {/* Quantidades operacionais */}
+                    {(item.pickedQuantity !== undefined || item.loadedQuantity !== undefined) && (
+                      <div className="flex flex-wrap gap-3 mt-2 text-sm">
+                        {item.pickedQuantity !== undefined && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">Separado:</span>
+                            <span className="font-medium">{item.pickedQuantity}</span>
+                          </div>
+                        )}
+                        {item.loadedQuantity !== undefined && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">Carregado:</span>
+                            <span className="font-medium">{item.loadedQuantity}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {item.sourceRequests.map((source, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="text-xs"
-                            data-testid={`source-${item.id}-${idx}`}
-                          >
-                            {source.area}: {source.quantity} {item.product?.unit || "un"}
-                          </Badge>
-                        ))}
+                    )}
+
+                    {/* Origens */}
+                    {item.sourceRequests && item.sourceRequests.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-border/40">
+                        <div className="text-xs text-muted-foreground mb-1.5">Origem:</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {item.sourceRequests.map((source, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className="text-xs font-normal"
+                              data-testid={`source-${item.id}-${idx}`}
+                            >
+                              {source.area}: {source.quantity} {item.product?.unit || "un"}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Seção de Movimentações e Progresso */}
-      {movements.length > 0 && (
-        <Card>
-          <CardContent className="p-4 space-y-6">
-            <div className="font-semibold text-base flex items-center gap-2">
-              <TruckIcon className="h-5 w-5" />
-              Movimentações e Progresso ({movements.length})
+      {/* Progresso de Carregamento */}
+      {productProgress.length > 0 && (
+        <Card className="border-border/60">
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+              <Truck className="h-5 w-5 text-muted-foreground" />
+              Progresso de Carregamento
             </div>
-            {/* Resumo de Progresso por Produto */}
             <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground">
-                Progresso por Produto
-              </h3>
-              <div className="space-y-3">
-                {productProgress.map((progress) => {
-                  const percentage = progress.expectedQuantity > 0
-                    ? Math.round((progress.loadedQuantity / progress.expectedQuantity) * 100)
-                    : 0;
-                  const isComplete = progress.loadedQuantity >= progress.expectedQuantity;
-                  const isExceeded = progress.loadedQuantity > progress.expectedQuantity;
+              {productProgress.map((progress) => {
+                const percentage = progress.expectedQuantity > 0
+                  ? Math.round((progress.loadedQuantity / progress.expectedQuantity) * 100)
+                  : 0;
+                const isComplete = progress.loadedQuantity >= progress.expectedQuantity && progress.expectedQuantity > 0;
+                const isExceeded = progress.loadedQuantity > progress.expectedQuantity;
 
-                  return (
-                    <div
-                      key={progress.productId}
-                      className="border rounded-lg p-4 space-y-2"
-                      data-testid={`product-progress-${progress.productId}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium">{progress.productName}</p>
-                          <p className="text-sm text-muted-foreground">SKU: {progress.productSku}</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xl font-bold">
-                            {progress.loadedQuantity} / {progress.expectedQuantity}
-                          </div>
-                          <div className="text-xs text-muted-foreground">{percentage}%</div>
-                        </div>
+                return (
+                  <div
+                    key={progress.productId}
+                    className="border rounded-lg p-3 space-y-2 bg-card/50"
+                    data-testid={`product-progress-${progress.productId}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{progress.productName}</p>
+                        <p className="text-xs text-muted-foreground font-mono">SKU: {progress.productSku}</p>
                       </div>
-                      <Progress
-                        value={Math.min(percentage, 100)}
-                        className={`h-2 ${isExceeded ? "[&>div]:bg-destructive" : isComplete ? "[&>div]:bg-chart-4" : ""}`}
-                      />
-                      {isExceeded && (
-                        <div className="flex items-center gap-1 text-sm text-destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <span>Excedido em {progress.loadedQuantity - progress.expectedQuantity} unidades</span>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-lg font-bold">
+                          {progress.loadedQuantity} / {progress.expectedQuantity}
                         </div>
-                      )}
-                      {isComplete && !isExceeded && (
-                        <div className="flex items-center gap-1 text-sm text-chart-4">
-                          <CheckCircle className="h-4 w-4" />
-                          <span>Completo</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Lista de Movimentações */}
-            <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground">
-                Histórico de Movimentações
-              </h3>
-              <div className="space-y-2">
-                {movements.map((movement, idx) => {
-                  const movementItems = movementItemsQueries[idx]?.data || [];
-                  const totalItems = movementItems.reduce((sum, item) => sum + item.quantity, 0);
-
-                  return (
-                    <div
-                      key={movement.id}
-                      className="border rounded-lg p-4 hover-elevate cursor-pointer"
-                      onClick={() => navigate(`/movements/${movement.id}`)}
-                      data-testid={`movement-${movement.id}`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{movement.type || "Movimentação"}</p>
-                            <StatusBadge status={movement.status} />
-                          </div>
-                          {movement.vehiclePlate && (
-                            <p className="text-sm text-muted-foreground">
-                              Veículo: {movement.vehiclePlate}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(movement.createdAt), "dd/MM/yyyy, HH:mm")}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold">{totalItems}</div>
-                          <div className="text-xs text-muted-foreground">itens carregados</div>
-                        </div>
+                        <div className="text-xs text-muted-foreground">{percentage}%</div>
                       </div>
-                      {movementItems.length > 0 && (
-                        <div className="mt-2 pt-2 border-t">
-                          <div className="text-xs text-muted-foreground mb-1">Itens:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {movementItems.slice(0, 3).map((item, itemIdx) => {
-                              const product = items.find(i => i.productId === item.productId)?.product;
-                              return (
-                                <Badge key={itemIdx} variant="secondary" className="text-xs">
-                                  {product?.name || "Produto"}: {item.quantity}
-                                </Badge>
-                              );
-                            })}
-                            {movementItems.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{movementItems.length - 3} mais
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  );
-                })}
-              </div>
+                    <Progress
+                      value={Math.min(percentage, 100)}
+                      className={`h-1.5 ${
+                        isExceeded
+                          ? "[&>div]:bg-destructive"
+                          : isComplete
+                          ? "[&>div]:bg-chart-4"
+                          : "[&>div]:bg-primary"
+                      }`}
+                    />
+                    {isExceeded && (
+                      <div className="flex items-center gap-1 text-sm text-destructive">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span>Excedido em {progress.loadedQuantity - progress.expectedQuantity} unidades</span>
+                      </div>
+                    )}
+                    {isComplete && !isExceeded && (
+                      <div className="flex items-center gap-1 text-sm text-chart-4">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        <span>Completo</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Histórico de Movimentações */}
+      {movements.length > 0 && (
+        <Card className="border-border/60">
+          <CardContent className="p-4">
+            <div className="font-semibold text-base flex items-center gap-2 mb-3">
+              <Truck className="h-5 w-5 text-muted-foreground" />
+              Movimentações ({movements.length})
+            </div>
+            <div className="space-y-2">
+              {movements.map((movement, idx) => {
+                const movementItems = movementItemsQueries[idx]?.data || [];
+                const totalItems = movementItems.reduce((sum, item) => sum + item.quantity, 0);
+
+                return (
+                  <div
+                    key={movement.id}
+                    className="border rounded-lg p-3 hover-elevate cursor-pointer bg-card/50"
+                    onClick={() => navigate(`/movements/${movement.id}`)}
+                    data-testid={`movement-${movement.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{movement.type || "Movimentação"}</span>
+                          <StatusBadge status={movement.status} />
+                        </div>
+                        {movement.vehiclePlate && (
+                          <p className="text-sm text-muted-foreground">
+                            Veículo: {movement.vehiclePlate}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(movement.createdAt), "dd/MM/yyyy, HH:mm")}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-lg font-bold">{totalItems}</div>
+                        <div className="text-xs text-muted-foreground">itens</div>
+                      </div>
+                    </div>
+                    {movementItems.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-border/40">
+                        <div className="flex flex-wrap gap-1">
+                          {movementItems.slice(0, 3).map((item, itemIdx) => {
+                            const product = items.find(i => i.productId === item.productId)?.product;
+                            return (
+                              <Badge key={itemIdx} variant="secondary" className="text-xs font-normal">
+                                {product?.name || "Produto"}: {item.quantity}
+                              </Badge>
+                            );
+                          })}
+                          {movementItems.length > 3 && (
+                            <Badge variant="secondary" className="text-xs font-normal">
+                              +{movementItems.length - 3} mais
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Dialog */}
+      <LoadingOrderDialog
+        open={showDialog}
+        onOpenChange={setShowDialog}
+        order={order}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Edit, Eye } from "lucide-react";
+import { Plus, Package, Edit, Eye, ClipboardList, CheckCircle2, CircleDot, Truck, Clock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { LoadingOrderDialog } from "@/components/loading-order-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
 import { PageHeader, PageLoading, EmptyState } from "@/components";
+import { ActionBar } from "@/components/action-bar";
 
 interface LoadingOrderWithRelations extends LoadingOrder {
   event?: Event;
@@ -94,46 +95,58 @@ export default function LoadingOrders() {
         title="Ordens de Carregamento"
         description="Gerencie listas consolidadas para picking e carregamento"
       >
-        {canWrite && (
-          <Button onClick={() => setShowDialog(true)} data-testid="button-create-loading-order">
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Ordem
-          </Button>
-        )}
+        <ActionBar>
+          {canWrite && (
+            <Button onClick={() => setShowDialog(true)} data-testid="button-create-loading-order">
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Ordem
+            </Button>
+          )}
+        </ActionBar>
       </PageHeader>
 
       {/* Stats Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
-          <div className="h-2 w-2 rounded-full bg-primary" />
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card border-border/60 hover-elevate">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <ClipboardList className="h-4 w-4" />
+          </div>
           <div>
             <div className="text-lg font-semibold leading-none text-foreground">{stats.total}</div>
             <div className="text-xs text-muted-foreground mt-0.5">Total</div>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
-          <div className="h-2 w-2 rounded-full bg-muted-foreground" />
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card border-border/60 hover-elevate">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted-foreground/10 text-muted-foreground">
+            <CircleDot className="h-4 w-4" />
+          </div>
           <div>
             <div className="text-lg font-semibold leading-none text-foreground">{stats.draft}</div>
             <div className="text-xs text-muted-foreground mt-0.5">Rascunhos</div>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
-          <div className="h-2 w-2 rounded-full bg-primary" />
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card border-border/60 hover-elevate">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-chart-4/10 text-chart-4">
+            <CheckCircle2 className="h-4 w-4" />
+          </div>
           <div>
             <div className="text-lg font-semibold leading-none text-foreground">{stats.ready}</div>
             <div className="text-xs text-muted-foreground mt-0.5">Prontas</div>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
-          <div className="h-2 w-2 rounded-full bg-chart-5" />
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card border-border/60 hover-elevate">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-chart-5/10 text-chart-5">
+            <Truck className="h-4 w-4" />
+          </div>
           <div>
             <div className="text-lg font-semibold leading-none text-foreground">{stats.inProgress}</div>
             <div className="text-xs text-muted-foreground mt-0.5">Em Andamento</div>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
-          <div className="h-2 w-2 rounded-full bg-chart-4" />
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card border-border/60 hover-elevate">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-chart-4/10 text-chart-4">
+            <Clock className="h-4 w-4" />
+          </div>
           <div>
             <div className="text-lg font-semibold leading-none text-foreground">{stats.completed}</div>
             <div className="text-xs text-muted-foreground mt-0.5">Finalizadas</div>
@@ -150,7 +163,7 @@ export default function LoadingOrders() {
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="created">Criada</SelectItem>
+              <SelectItem value="draft">Rascunho</SelectItem>
               <SelectItem value="ready">Pronta</SelectItem>
               <SelectItem value="in_progress">Em Andamento</SelectItem>
               <SelectItem value="completed">Finalizada</SelectItem>
@@ -182,7 +195,11 @@ export default function LoadingOrders() {
           description={activeFiltersCount > 0
             ? "Tente ajustar os filtros para ver mais resultados"
             : "Crie uma ordem consolidando requisições aprovadas"}
-          action={canWrite && activeFiltersCount === 0 ? { label: "Nova Ordem", onClick: () => setShowDialog(true) } : undefined}
+          action={activeFiltersCount > 0
+            ? { label: "Limpar Filtros", onClick: clearFilters }
+            : canWrite
+            ? { label: "Nova Ordem", onClick: () => setShowDialog(true) }
+            : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -213,6 +230,7 @@ export default function LoadingOrders() {
                           handleEdit(order);
                         }}
                         data-testid={`button-edit-${order.id}`}
+                        title="Editar"
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
@@ -237,10 +255,6 @@ export default function LoadingOrders() {
                   <div className="text-xs">
                     <span className="text-muted-foreground">Evento:</span>{" "}
                     <span className="text-foreground font-medium">{order.event?.name || "—"}</span>
-                  </div>
-                  <div className="text-xs">
-                    <span className="text-muted-foreground">Criado por:</span>{" "}
-                    <span className="text-foreground font-medium">{order.createdBy || "—"}</span>
                   </div>
                   <div className="text-xs">
                     <span className="text-muted-foreground">Início:</span>{" "}

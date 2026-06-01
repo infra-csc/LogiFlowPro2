@@ -1,0 +1,434 @@
+Vamos refinar a tela de Ordens de Carregamento para nível 10/10.
+
+Telas foco:
+
+* client/src/pages/loading-orders.tsx
+* client/src/pages/loading-order-details.tsx
+* client/src/components/loading-order-dialog.tsx
+
+Objetivo:
+Transformar Ordens de Carregamento em uma experiência operacional profissional, limpa, densa, clara e fácil de usar.
+
+Essa tela precisa parecer uma central de controle de picking/carregamento, conectando requisições aprovadas, itens consolidados, viagens, movimentações e progresso.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+Contexto funcional:
+A ordem de carregamento possui status:
+
+* draft
+* ready
+* approved
+* in_progress
+* completed
+* cancelled
+
+Ações por RBAC:
+
+* Criar/editar: Admin e Logística
+* Adicionar itens: Admin, Logística e Almoxarifado
+* Marcar como pronta: Admin, Logística e Almoxarifado
+* Aprovar/Desaprovar: Admin e Supervisor
+* Visualizar: qualquer usuário logado
+
+Parte 1 — Lista de Ordens de Carregamento
+
+Refinar client/src/pages/loading-orders.tsx.
+
+1. Header
+
+Aplicar PageHeader de forma forte:
+
+* Título: “Ordens de Carregamento”
+* Descrição: “Gerencie listas consolidadas para picking e carregamento”
+* Botão “Nova Ordem” no slot de ações, apenas se userCanWriteLogistics
+* Botão com ícone e texto bem alinhados
+
+2. Stats Bar
+
+Melhorar os 5 cards de estatísticas:
+
+* Total
+* Rascunhos
+* Prontas
+* Em andamento
+* Finalizadas
+
+Design desejado:
+
+* Cards compactos;
+* ícone em container;
+* número em destaque;
+* label secundária;
+* hover sutil;
+* cores usando tokens do Design System;
+* sem exagero de gradiente;
+* responsivo em grid.
+
+3. FilterBar
+
+Melhorar filtros:
+
+* Status
+* Evento
+
+Aplicar:
+
+* badgeCount para filtros ativos;
+* onClear para limpar filtros;
+* labels text-xs text-muted-foreground;
+* grid responsivo;
+* campos bem alinhados;
+* não parecer uma linha vazia;
+* estado fechado visualmente claro.
+
+4. Cards da lista
+
+Cada ordem deve parecer um card operacional compacto.
+
+Aplicar padrão oficial:
+
+* Card com hover-elevate border-border/60
+* CardContent p-4
+* StatusBadge no topo
+* Número da ordem com destaque moderado
+* Evento como contexto principal/secundário
+* Código/número com font-mono text-xs quando fizer sentido
+* Datas planejadas em metadados
+* Status bem visível
+* Ações agrupadas à direita no desktop
+* Ações quebrando para baixo no mobile
+* Botões size="sm"
+
+Cada card precisa responder rapidamente:
+
+* Qual é a ordem?
+* Qual evento?
+* Qual status?
+* Qual o período planejado?
+* O que posso fazer agora?
+* Posso editar ou apenas visualizar?
+
+5. Ações no card
+
+Padronizar:
+
+* Ver detalhes: ghost ou outline com ícone Eye
+* Editar: outline/ghost, apenas se permitido
+* Criar/ação principal: default
+* Não espalhar botões
+* Não usar botões grandes dentro dos cards
+
+6. Empty State
+
+Melhorar EmptyState:
+
+Se não houver nenhuma ordem:
+
+* ícone Package ou Truck;
+* título: “Nenhuma ordem de carregamento”
+* descrição clara;
+* ação “Nova Ordem”, se permitido.
+
+Se filtros não retornarem nada:
+
+* mensagem diferente;
+* botão “Limpar filtros”.
+
+Parte 2 — Detalhes da Ordem de Carregamento
+
+Refinar client/src/pages/loading-order-details.tsx.
+
+1. Header
+
+PageHeader com:
+
+* título: número da ordem, exemplo LO-2026-001
+* descrição: nome do evento
+* StatusBadge visível no topo ou próximo ao título
+* ActionBar com ações permitidas por RBAC:
+
+  * Voltar
+  * Editar, se permitido
+  * Marcar como pronta, se permitido
+  * Aprovar para carga, se status ready e permitido
+  * Desaprovar, se status approved e permitido
+
+As ações devem ficar agrupadas e previsíveis.
+
+2. Resumo da Ordem
+
+Criar seção/card de resumo com:
+
+* status
+* evento
+* início planejado
+* fim planejado
+* data de carregamento
+* data de descarregamento
+* criado por
+* observações, se houver
+
+Design:
+
+* PageSection ou DataCards;
+* grid responsivo;
+* metadados claros;
+* status com StatusBadge;
+* sem cards gigantes.
+
+3. Requisições Incluídas
+
+Melhorar card/seção de requisições vinculadas:
+
+Cada requisição deve mostrar:
+
+* área;
+* StatusBadge;
+* ID curto;
+* link para /requests/:id;
+* visual compacto.
+
+Se não houver requisições:
+
+* EmptyState pequeno e contextual.
+
+4. Itens Consolidados
+
+Essa é uma das partes mais importantes.
+
+Refinar como seção principal de operação:
+
+Cada item deve mostrar:
+
+* nome do produto;
+* SKU;
+* quantidade consolidada;
+* quantidade separada/picked, se existir;
+* quantidade carregada/loaded, se existir;
+* origem por requisição/área;
+* badges com origem, exemplo: “Cenografia: 15 un”;
+* status visual de progresso.
+
+Design desejado:
+
+* lista compacta ou cards menores;
+* quantidade em destaque;
+* SKU secundário com font-mono text-xs;
+* origens em badges discretos;
+* divisores sutis;
+* boa leitura em mobile.
+
+5. Progresso de Carregamento
+
+Se houver movimentações/progresso:
+
+Criar visual claro para progresso por produto:
+
+* barra de progresso;
+* percentual carregado;
+* esperado vs carregado;
+* estado visual:
+
+  * cinza: não iniciado;
+  * azul/ciano: em andamento;
+  * verde: completo;
+  * vermelho: excedido.
+
+Se loadedQuantity > expectedQuantity:
+
+* mostrar alerta visual discreto, porém claro.
+
+Não alterar regra funcional, apenas apresentação.
+
+6. Histórico de Movimentações
+
+Refinar seção de movimentações relacionadas:
+
+Cada movimentação deve mostrar:
+
+* tipo;
+* StatusBadge;
+* veículo;
+* data;
+* quantidade de itens carregados;
+* preview dos primeiros produtos;
+* link para detalhes da movimentação, se já existir.
+
+Visual:
+
+* timeline simples ou lista operacional;
+* compacta;
+* status fácil de ver;
+* sem poluição.
+
+7. Observações
+
+Se houver notes:
+
+* mostrar em PageSection;
+* visual de texto secundário;
+* não misturar com metadados principais.
+
+Se for editável:
+
+* manter lógica existente;
+* apenas melhorar layout.
+
+Parte 3 — Modal Criar/Editar Ordem
+
+Refinar client/src/components/loading-order-dialog.tsx.
+
+Melhorar:
+
+* título e descrição;
+* seleção de evento;
+* datas planejadas;
+* observações;
+* botões;
+* loading/erro;
+* responsividade.
+
+Se houver select de evento grande:
+
+* transformar em combobox pesquisável, se possível e seguro;
+* busca por nome do evento;
+* lista com altura máxima;
+* empty state;
+* scrollbar discreto;
+* resumo do evento selecionado.
+
+Não alterar payload.
+
+Parte 4 — Status Visual
+
+Usar apenas StatusBadge.
+
+Não criar Badge manual com cor hardcoded.
+
+Mapeamento esperado:
+
+* draft: Rascunho/Criada
+* ready: Pronta
+* approved: Aprovada
+* in_progress: Em andamento
+* completed: Finalizada
+* cancelled: Cancelada
+
+Se algum status ainda não estiver mapeado no StatusBadge, ajustar o componente central, não criar lógica local.
+
+Parte 5 — Responsividade
+
+Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* sem overflow horizontal;
+* cards quebram bem;
+* ações descem para baixo no mobile;
+* stats bar vira grid responsivo;
+* filtros ficam em uma coluna no mobile;
+* detalhes continuam legíveis.
+
+Parte 6 — RBAC e regras
+
+Preservar totalmente:
+
+* userCanWriteLogistics
+* userCanHandleLoadingOrderItems
+* userCanMarkLoadingOrderReady
+* userCanApproveLoadingOrder
+
+Não alterar:
+
+* back-end;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* schema;
+* migrations;
+* seed;
+* permissions;
+* role_permissions;
+* status/transições;
+* regras de negócio;
+* lógica de vínculo com requisições;
+* lógica de itens consolidados;
+* lógica de viagens;
+* lógica de movimentações.
+
+Pode alterar apenas:
+
+* layout;
+* JSX visual;
+* classes;
+* composição visual;
+* cards;
+* filtros;
+* botões;
+* status/badges;
+* empty/loading/error states;
+* responsividade;
+* microcopy PT-BR.
+
+Parte 7 — Validações obrigatórias
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+Lista:
+
+* carregar lista;
+* filtrar por status;
+* filtrar por evento;
+* limpar filtros;
+* abrir detalhes;
+* validar botão Nova Ordem por perfil;
+* validar botão Editar por perfil.
+
+Detalhes:
+
+* abrir ordem draft;
+* abrir ordem ready;
+* abrir ordem approved;
+* abrir ordem in_progress;
+* abrir ordem completed;
+* validar ações por status e perfil;
+* validar requisições vinculadas;
+* validar itens consolidados;
+* validar progresso;
+* validar movimentações relacionadas.
+
+Perfis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Entrega final esperada:
+
+* problemas visuais encontrados;
+* melhorias de design aplicadas;
+* melhorias de UX aplicadas;
+* arquivos alterados;
+* componentes do Design System usados;
+* confirmação de que RBAC foi preservado;
+* confirmação de que backend/endpoints/payloads/regras não foram alterados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências para próxima fase.

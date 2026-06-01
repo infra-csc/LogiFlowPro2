@@ -28,7 +28,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2, Calendar, Package, Truck, FileText } from "lucide-react";
 
 interface LoadingOrderDialogProps {
   open: boolean;
@@ -92,7 +92,6 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
 
   useEffect(() => {
     if (open && order) {
-      // Load existing order data when editing
       setFormData({
         eventId: order.eventId || "",
         orderNumber: order.orderNumber || "",
@@ -104,12 +103,10 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       });
       setSelectedEventId(order.eventId || "");
       
-      // Load linked trips
       if (linkedTrips) {
         setSelectedTripIds(linkedTrips.map((lt: any) => lt.tripId));
       }
     } else if (!open) {
-      // Reset form when closing
       setFormData({
         eventId: "",
         orderNumber: "",
@@ -130,7 +127,6 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       const response = await apiRequest("POST", "/api/loading-orders", data);
       const loadingOrder = await response.json() as LoadingOrder;
       
-      // Add trips to the loading order
       for (const tripId of data.tripIds) {
         await apiRequest("POST", `/api/loading-orders/${loadingOrder.id}/trips`, { tripId });
       }
@@ -152,12 +148,9 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       const response = await apiRequest("PATCH", `/api/loading-orders/${order?.id}`, data);
       const updatedOrder = await response.json();
       
-      // Update trips if provided
       if (data.tripIds !== undefined) {
-        // Delete existing trips
         await apiRequest("DELETE", `/api/loading-orders/${order?.id}/trips`);
         
-        // Add new trips
         for (const tripId of data.tripIds) {
           await apiRequest("POST", `/api/loading-orders/${order?.id}/trips`, { tripId });
         }
@@ -248,50 +241,57 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     }
   };
 
+  const isLoading = createMutation.isPending || updateMutation.isPending;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+        {/* Header */}
+        <DialogHeader className="p-6 pb-4 border-b border-border/40">
+          <DialogTitle className="text-lg font-semibold">
             {order ? "Editar Ordem de Carregamento" : "Nova Ordem de Carregamento"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm text-muted-foreground">
             {order 
               ? "Atualize as informações da ordem de carregamento" 
               : "Crie uma ordem consolidando requisições aprovadas"}
           </DialogDescription>
         </DialogHeader>
 
-        {order && canEditData && !canEditData.canEdit && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {canEditData.reason}
-              {canEditData.activeMovements && canEditData.activeMovements.length > 0 && (
-                <div className="mt-2">
-                  <p className="font-medium">Movimentações ativas:</p>
-                  <ul className="list-disc list-inside mt-1">
-                    {canEditData.activeMovements.map((mov: any) => (
-                      <li key={mov.id}>{mov.movementNumber} - {mov.status}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Content */}
+        <div className="p-6 pt-4">
+          {order && canEditData && !canEditData.canEdit && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {canEditData.reason}
+                {canEditData.activeMovements && canEditData.activeMovements.length > 0 && (
+                  <div className="mt-2">
+                    <p className="font-medium text-sm">Movimentações ativas:</p>
+                    <ul className="list-disc list-inside mt-1 text-sm">
+                      {canEditData.activeMovements.map((mov: any) => (
+                        <li key={mov.id}>{mov.movementNumber} - {mov.status}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="event" className="required">Evento</Label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Linha 1: Evento + Número */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="event" className="text-sm font-medium">
+                  Evento <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   value={formData.eventId}
                   onValueChange={handleEventChange}
-                  disabled={!!order}
+                  disabled={!!order || !canEdit}
                 >
-                  <SelectTrigger id="event" data-testid="select-event">
+                  <SelectTrigger id="event" className="h-10" data-testid="select-event">
                     <SelectValue placeholder="Selecione o evento" />
                   </SelectTrigger>
                   <SelectContent>
@@ -304,90 +304,126 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="orderNumber" className="required">Número da Ordem</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="orderNumber" className="text-sm font-medium">
+                  Número da Ordem <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="orderNumber"
                   value={formData.orderNumber}
                   onChange={(e) => setFormData({ ...formData, orderNumber: e.target.value })}
-                  placeholder="Ex: LO-001"
+                  placeholder="Ex: LO-2026-001"
                   disabled={!canEdit}
+                  className="h-10"
                   data-testid="input-order-number"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="plannedStart" className="required">Início Planejado</Label>
+            {/* Linha 2: Datas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="plannedStart" className="text-sm font-medium">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    Início Planejado <span className="text-destructive">*</span>
+                  </span>
+                </Label>
                 <Input
                   id="plannedStart"
                   type="datetime-local"
                   value={formData.plannedStartTime}
                   onChange={(e) => setFormData({ ...formData, plannedStartTime: e.target.value })}
                   disabled={!canEdit}
+                  className="h-10"
                   data-testid="input-planned-start"
                 />
               </div>
 
-              <div>
-                <Label htmlFor="plannedEnd" className="required">Fim Planejado</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="plannedEnd" className="text-sm font-medium">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    Fim Planejado <span className="text-destructive">*</span>
+                  </span>
+                </Label>
                 <Input
                   id="plannedEnd"
                   type="datetime-local"
                   value={formData.plannedEndTime}
                   onChange={(e) => setFormData({ ...formData, plannedEndTime: e.target.value })}
                   disabled={!canEdit}
+                  className="h-10"
                   data-testid="input-planned-end"
                 />
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="createdBy" className="required">Criado por</Label>
+            {/* Linha 3: Criado por */}
+            <div className="space-y-1.5">
+              <Label htmlFor="createdBy" className="text-sm font-medium">
+                Criado por <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="createdBy"
                 value={formData.createdBy}
                 onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
                 placeholder="Nome do responsável"
                 disabled={!canEdit}
+                className="h-10"
                 data-testid="input-created-by"
               />
             </div>
 
-            <div>
-              <Label htmlFor="notes">Observações</Label>
+            {/* Linha 4: Observações */}
+            <div className="space-y-1.5">
+              <Label htmlFor="notes" className="text-sm font-medium">
+                Observações
+              </Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Observações adicionais..."
+                placeholder="Observações adicionais sobre a ordem..."
                 disabled={!canEdit}
+                rows={3}
                 data-testid="textarea-notes"
               />
             </div>
 
+            {/* Seleção de Requisições (apenas criação) */}
             {!order && selectedEventId && (
-              <div>
-                <Label>Requisições Aprovadas ({approvedRequests.length})</Label>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Selecione as requisições para consolidar nesta ordem
-                </p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">
+                    <span className="inline-flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      Requisições Aprovadas ({approvedRequests.length})
+                    </span>
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione as requisições para consolidar nesta ordem
+                  </p>
+                </div>
                 
                 {approvedRequests.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-8">
+                  <Card className="border-border/60">
+                    <CardContent className="py-6">
                       <p className="text-center text-sm text-muted-foreground">
                         Nenhuma requisição aprovada encontrada para este evento
                       </p>
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                  <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-3 bg-card/50">
                     {approvedRequests.map((request) => (
                       <div
                         key={request.id}
-                        className="flex items-center space-x-3 p-2 rounded hover-elevate"
+                        className={`flex items-center gap-3 p-2.5 rounded-md border transition-colors ${
+                          selectedRequestIds.includes(request.id)
+                            ? "border-primary/40 bg-primary/5"
+                            : "border-transparent hover:bg-muted/50"
+                        }`}
                         data-testid={`request-item-${request.id}`}
                       >
                         <Checkbox
@@ -412,18 +448,30 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
               </div>
             )}
 
+            {/* Seleção de Viagens */}
             {selectedEventId && availableTrips.length > 0 && canLinkTrips && (
-              <div>
-                <Label>Viagens ({availableTrips.length})</Label>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Selecione as viagens associadas a esta ordem (opcional)
-                </p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                      Viagens ({availableTrips.length})
+                    </span>
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione as viagens associadas a esta ordem (opcional)
+                  </p>
+                </div>
                 
-                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-3 bg-card/50">
                   {availableTrips.map((trip) => (
                     <div
                       key={trip.id}
-                      className="flex items-center space-x-3 p-2 rounded hover-elevate"
+                      className={`flex items-center gap-3 p-2.5 rounded-md border transition-colors ${
+                        selectedTripIds.includes(trip.id)
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-transparent hover:bg-muted/50"
+                      }`}
                       data-testid={`trip-item-${trip.id}`}
                     >
                       <Checkbox
@@ -447,30 +495,38 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 </div>
               </div>
             )}
-          </div>
+          </form>
+        </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              data-testid="button-cancel"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending || !canEdit}
-              data-testid="button-submit"
-            >
-              {createMutation.isPending || updateMutation.isPending
-                ? "Salvando..."
-                : order
-                ? "Atualizar"
-                : "Criar Ordem"}
-            </Button>
-          </DialogFooter>
-        </form>
+        {/* Footer */}
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 bg-muted/30">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+            data-testid="button-cancel"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={isLoading || !canEdit}
+            data-testid="button-submit"
+          >
+            {isLoading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Salvando...
+              </span>
+            ) : order ? (
+              "Atualizar"
+            ) : (
+              "Criar Ordem"
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
