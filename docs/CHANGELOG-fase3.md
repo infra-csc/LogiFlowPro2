@@ -589,9 +589,95 @@ Aplicação profunda do Design System nas telas operacionais críticas. Transfor
 - `npm run build`: ✅ passando (276.5kb)
 - Zero alteração de back-end, RBAC, endpoints, queries, mutations, payloads, schema
 
+## Fase 3.3.1 — Movements List (refinamento operacional)
+
+### movements.tsx
+
+**Layout** — Grid responsivo (1 coluna mobile, 1-2 colunas tablet, 2 colunas desktop). Cards compactos (p-4) com `hover-elevate border-border/60`. Espaçamento vertical reduzido (`space-y-4`).
+
+**Stats** — Cards compactos com `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3`. Clicáveis para filtrar por status (toggle). Estado ativo (`bg-primary/10 border-primary/30`) quando filtro aplicado. Dot indicator colorido.
+
+**FilterBar** — Estado fechado mostra badgeCount e botão Limpar. Campos abertos com `h-9` e `rounded-md`, labels `text-[10px] uppercase`. Grid responsivo de filtros (2-4 colunas). Chips de filtros ativos visíveis quando barra fechada (`Badge variant="secondary"`), clicáveis para remover individualmente.
+
+**Card operacional** — Hierarquia clara:
+- Header: `StatusBadge` + código (`font-mono`) + tipo traduzido + hint operacional + ações (Editar/Detalhes)
+- Metadata: grid 2 colunas com Evento, Veículo, Doca, Início, Duração, Viagens — ícones lucide (`h-3.5`), labels `text-muted-foreground`, valores `font-medium`. Fallbacks: "Não vinculado", "Não informado".
+- Rodapé: ações de status (Iniciar/Pausar/Finalizar/Continuar) + botão Detalhes outline. Todos `size="sm"`, respeitando `userCanEditMovement`.
+
+**Tipo traduzido** — `movementTypeLabel()` PT-BR: outbound_event → Saída para evento, inbound_return → Retorno de evento, inbound_event → Entrada de evento, outbound_return → Saída para retorno, transfer → Transferência, internal_transfer → Transferência interna, loading → Carga, unloading → Descarga, adjustment → Ajuste, inventory → Inventário, other → Outro. Fallback `movementTypeConfig.name`.
+
+**Hint operacional** — Microcopy por status: created → "Pronta para iniciar", in_progress → "Em operação", paused → "Pausada — aguardando retomada", completed → "Finalizada", cancelled → "Cancelada".
+
+**Acessibilidade** — `role="button"`, `tabIndex`, `onKeyDown` (Enter/Space) em cards. `aria-label`/`title` em ações.
+
+**Scrollbar** — Custom 5px scrollbar para lista longa (>12 movimentações), track transparent, thumb sutil.
+
+### Arquivos alterados
+- `client/src/pages/movements.tsx` (refinamento completo)
+- `docs/CHANGELOG-fase3.md` (esta seção)
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (276.5kb)
+- Zero alteração de back-end, RBAC, endpoints, queries, mutations, payloads, schema, scanner, status/transições
+
+---
+
+## Fase 3.4.0 — Requisições: Dialog de Criação/Edição (2026-06-01)
+
+### request-dialog.tsx
+
+**Combobox com busca e status badges** — Cada opção de evento exibe: nome do evento, data/local e um badge de status da janela de requisição (Aberto/Futuro/Encerrado). Cores semânticas: Aberto (verde), Futuro (âmbar), Encerrado (vermelho). Ícones correspondentes (PartyPopper/Clock/Lock). Seleção persistente com checkmark.
+
+**Resumo do evento selecionado** — Card compacto (`CardContent p-3`) exibe nome do evento + ícone, período de requisição (data-hora formatado em pt-BR), e badge de status da janela. Alerta `variant="destructive"` quando o período está fora da janela (antes ou depois), com instrução clara.
+
+**Layout 3 blocos (scrollável)** — Form dividido em blocos com `Label` claro:
+1. Evento (combobox + resumo + alerta)
+2. Área / Nome da requisição (input + hint explicativo)
+3. Observações (textarea, opcional)
+
+**Scroll e fixed footer** — `max-h-[90vh]` no Dialog, `max-h-[60vh]` no form com `overflow-y-auto` e `scrollbarWidth: thin`. Footer com botões Cancelar (outline) e Criar/Atualizar (primary), responsivo `w-full sm:w-auto`.
+
+**Microcopy PT-BR** — "Nova Requisição", "Editar Requisição", "Área / Nome da requisição", "Selecione o evento", "Buscar evento por nome...", "Período ainda não iniciado", "Período encerrado", etc.
+
+### Arquivos alterados
+- `client/src/components/request-dialog.tsx` (refinamento completo)
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (276.5kb)
+- Zero alteração de back-end, RBAC, endpoints, queries, mutations, payloads, schema
+
+---
+
+## Fase 3.4.1 — Requisições: Lista Operacional (2026-06-01)
+
+### requests.tsx
+
+**Stats bar clicável** — 5 botões com status counts (Total, Rascunho, Pendente, Aprovado, Rejeitado). Toggle ativo com cor semântica (`bg-primary/10 border-primary/30` etc.). Ícones lucide (`ClipboardList`, `Clock`, `CheckCircle2`, `XCircle`). Visualização rápida do pipeline.
+
+**FilterBar** — Colapsável com `badgeCount` e botão limpar. Labels `text-[10px] uppercase` tracking-widest. Filtros: Status (Select) e Evento (Select). Chips de filtros ativos clicáveis para remover individualmente.
+
+**Cards de requisição** — Grid 2 colunas (`lg:grid-cols-2`). Cards com `border-l-3` colorido por status: Draft (primary), Pendente (chart-5), Aprovado (chart-4), Rejeitado (destructive), Bloqueado (chart-3). Dot indicator semântico. Hint operacional abaixo do status: "Pronta para editar e enviar", "Aguardando decisão do aprovador", "Aprovada — pode gerar ordem de carregamento", "Rejeitada — revise e reenvie", "Bloqueada pelo prazo de corte".
+
+**Metadata compacta** — Grid 2 colunas com ícones `h-3.5`: Usuário (`User`), Data (`CalendarDays` + label contextual por status), Evento (`Layers`), Status (`StatusIcon`). Divider `border-t border-border/40` antes do rodapé.
+
+**ID amigável** — `REQ-001` (numérico sequencial baseado em createdAt) ou fallback `REQ-{id.slice(0,8).toUpperCase()}`.
+
+**Empty states** — "Nenhuma requisição ainda" com CTA "Nova Requisição" (quando lista vazia). "Nenhuma requisição encontrada" com CTA "Limpar Filtros" (quando filtros sem match).
+
+**Acentuação corrigida** — Todas as strings PT-BR com acentos corretos (requisição, requisições, criação, etc.). Nenhuma sequência de escape `\u` restante.
+
+### Arquivos alterados
+- `client/src/pages/requests.tsx` (refinamento completo)
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (276.5kb)
+- Zero alteração de back-end, RBAC, endpoints, queries, mutations, payloads, schema
+
 ### Próximas fases
-- **3.3.1** — Movement details (refinamento)
-- **3.4** — Requisições
+- **3.4.2** — Request details (refinamento)
 - **3.5** — Catálogo
 - **3.6** — Devoluções
 - **3.7** — Admin/Configurações

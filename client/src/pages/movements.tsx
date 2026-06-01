@@ -4,9 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/filter-bar";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, X } from "lucide-react";
+import {
+  Plus, Truck, PlayCircle, PauseCircle, CheckCircle2, Eye, Pencil, X,
+  MapPin, CalendarDays, Clock, ArrowRight, AlertCircle, FileText, Tag,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,6 +26,9 @@ import {
   userCanEditMovement,
 } from "@/lib/authz";
 import { PageHeader, PageLoading, EmptyState, StatusBadge } from "@/components";
+import { ActionBar } from "@/components/action-bar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import type { Movement, LoadingOrder, Event, Dock, Trip, MovementTypeConfig } from "@shared/schema";
 
 type MovementWithRelations = Movement & {
@@ -36,7 +41,7 @@ type MovementWithRelations = Movement & {
 };
 
 const formatDuration = (minutes?: number | null) => {
-  if (!minutes) return "—";
+  if (!minutes) return "\u2014";
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (hours > 0) {
@@ -44,6 +49,36 @@ const formatDuration = (minutes?: number | null) => {
   }
   return `${mins}min`;
 };
+
+// Movement type label translation (fallback when movementTypeConfig.name is missing)
+function movementTypeLabel(type: string | null): string {
+  const labels: Record<string, string> = {
+    outbound_event: "Sa\u00edda para evento",
+    inbound_return: "Retorno de evento",
+    inbound_event: "Entrada de evento",
+    outbound_return: "Sa\u00edda para retorno",
+    transfer: "Transfer\u00eancia",
+    internal_transfer: "Transfer\u00eancia interna",
+    loading: "Carga",
+    unloading: "Descarga",
+    adjustment: "Ajuste",
+    inventory: "Invent\u00e1rio",
+    other: "Outro",
+  };
+  return labels[type || ""] || type || "Movimenta\u00e7\u00e3o";
+}
+
+// Next action hint based on status
+function statusHint(status: string): string {
+  const hints: Record<string, string> = {
+    created: "Pronta para iniciar",
+    in_progress: "Em opera\u00e7\u00e3o",
+    paused: "Pausada \u2014 aguardando retomada",
+    completed: "Finalizada",
+    cancelled: "Cancelada",
+  };
+  return hints[status] || "";
+}
 
 // Stat counter mini-card
 function StatCounter({
@@ -71,7 +106,7 @@ function StatCounter({
       <div className={`h-2 w-2 rounded-full ${colorClass || "bg-muted-foreground"}`} />
       <div>
         <div className="text-lg font-semibold leading-none text-foreground">{count}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+        <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
       </div>
     </button>
   );
@@ -150,12 +185,12 @@ export default function Movements() {
     return count;
   }, [filterEventId, filterStartDate, filterEndDate, filterStatus, filterType, filterVehiclePlate, filterDockId]);
 
-  // Labels dos filtros ativos (para pills no FilterBar fechado)
-  const activeFilterPills = useMemo(() => {
-    const pills: { label: string; onRemove: () => void }[] = [];
+  // Labels dos filtros ativos (para chips visíveis quando FilterBar fechado)
+  const activeFilterChips = useMemo(() => {
+    const chips: { label: string; onClear: () => void }[] = [];
     if (filterEventId) {
       const ev = events.find((e) => e.id === filterEventId);
-      pills.push({ label: ev?.name || "Evento", onRemove: () => setFilterEventId("") });
+      chips.push({ label: `Evento: ${ev?.name || filterEventId}`, onClear: () => setFilterEventId("") });
     }
     if (filterStatus) {
       const labels: Record<string, string> = {
@@ -165,26 +200,26 @@ export default function Movements() {
         completed: "Finalizada",
         cancelled: "Cancelada",
       };
-      pills.push({ label: labels[filterStatus] || filterStatus, onRemove: () => setFilterStatus("") });
+      chips.push({ label: `Status: ${labels[filterStatus] || filterStatus}`, onClear: () => setFilterStatus("") });
     }
     if (filterType) {
       const mt = movementTypes.find((t) => t.id === filterType);
-      pills.push({ label: mt?.name || "Tipo", onRemove: () => setFilterType("") });
+      chips.push({ label: `Tipo: ${mt?.name || filterType}`, onClear: () => setFilterType("") });
     }
     if (filterDockId) {
       const dk = docks.find((d) => d.id === filterDockId);
-      pills.push({ label: dk?.name || "Doca", onRemove: () => setFilterDockId("") });
+      chips.push({ label: `Doca: ${dk?.name || filterDockId}`, onClear: () => setFilterDockId("") });
     }
     if (filterVehiclePlate) {
-      pills.push({ label: `Placa: ${filterVehiclePlate}`, onRemove: () => setFilterVehiclePlate("") });
+      chips.push({ label: `Placa: ${filterVehiclePlate}`, onClear: () => setFilterVehiclePlate("") });
     }
     if (filterStartDate) {
-      pills.push({ label: `De: ${filterStartDate}`, onRemove: () => setFilterStartDate("") });
+      chips.push({ label: `De: ${filterStartDate}`, onClear: () => setFilterStartDate("") });
     }
     if (filterEndDate) {
-      pills.push({ label: `Até: ${filterEndDate}`, onRemove: () => setFilterEndDate("") });
+      chips.push({ label: `At\u00e9: ${filterEndDate}`, onClear: () => setFilterEndDate("") });
     }
-    return pills;
+    return chips;
   }, [filterEventId, filterStatus, filterType, filterDockId, filterVehiclePlate, filterStartDate, filterEndDate, events, movementTypes, docks]);
 
   // Limpar todos os filtros
@@ -225,31 +260,31 @@ export default function Movements() {
       <div className="space-y-6">
         <PageHeader
           title="Carga e Descarga"
-          description="Gerencie movimentações operacionais do armazém"
+          description="Gerencie movimenta\u00e7\u00f5es operacionais do armaz\u00e9m"
         />
-        <PageLoading message="Carregando movimentações..." />
+        <PageLoading message="Carregando movimenta\u00e7\u00f5es..." />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Carga e Descarga"
-        description="Gerencie movimentações operacionais do armazém"
+        description="Gerencie movimenta\u00e7\u00f5es operacionais do armaz\u00e9m"
       >
         {userCanCreateMovement(user) && (
           <MovementDialog>
             <Button data-testid="button-new-movement">
               <Plus className="h-4 w-4 mr-2" />
-              Nova Movimentação
+              Nova Movimenta\u00e7\u00e3o
             </Button>
           </MovementDialog>
         )}
       </PageHeader>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCounter
           label="Total"
           count={stats.all}
@@ -288,11 +323,11 @@ export default function Movements() {
       </div>
 
       {/* Filtros */}
-      <FilterBar badgeCount={activeFiltersCount} onClear={clearAllFilters}>
+      <FilterBar badgeCount={activeFiltersCount} onClear={activeFiltersCount > 0 ? clearAllFilters : undefined}>
         <div className="flex flex-col gap-2">
           <label htmlFor="filter-event" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Evento</label>
           <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
-            <SelectTrigger id="filter-event" data-testid="select-filter-event" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+            <SelectTrigger id="filter-event" data-testid="select-filter-event" className="h-9 bg-card border-border/60 rounded-md text-sm">
               <SelectValue placeholder="Todos os eventos" />
             </SelectTrigger>
             <SelectContent>
@@ -308,7 +343,7 @@ export default function Movements() {
         <div className="flex flex-col gap-2">
           <label htmlFor="filter-status" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Status</label>
           <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || "")}>
-            <SelectTrigger id="filter-status" data-testid="select-filter-status" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+            <SelectTrigger id="filter-status" data-testid="select-filter-status" className="h-9 bg-card border-border/60 rounded-md text-sm">
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
@@ -324,7 +359,7 @@ export default function Movements() {
         <div className="flex flex-col gap-2">
           <label htmlFor="filter-type" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Tipo</label>
           <Select value={filterType || undefined} onValueChange={(value) => setFilterType(value || "")}>
-            <SelectTrigger id="filter-type" data-testid="select-filter-type" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+            <SelectTrigger id="filter-type" data-testid="select-filter-type" className="h-9 bg-card border-border/60 rounded-md text-sm">
               <SelectValue placeholder="Todos os tipos" />
             </SelectTrigger>
             <SelectContent>
@@ -340,7 +375,7 @@ export default function Movements() {
         <div className="flex flex-col gap-2">
           <label htmlFor="filter-dock" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Doca</label>
           <Select value={filterDockId || undefined} onValueChange={(value) => setFilterDockId(value || "")}>
-            <SelectTrigger id="filter-dock" data-testid="select-filter-dock" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+            <SelectTrigger id="filter-dock" data-testid="select-filter-dock" className="h-9 bg-card border-border/60 rounded-md text-sm">
               <SelectValue placeholder="Todas as docas" />
             </SelectTrigger>
             <SelectContent>
@@ -361,19 +396,19 @@ export default function Movements() {
             value={filterVehiclePlate}
             onChange={(e) => setFilterVehiclePlate(e.target.value)}
             data-testid="input-filter-vehicle"
-            className="h-10 bg-card border-border/60 rounded-lg text-sm"
+            className="h-9 bg-card border-border/60 rounded-md text-sm"
           />
         </div>
 
         <div className="flex flex-col gap-2">
-          <label htmlFor="filter-start-date" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Data Início</label>
+          <label htmlFor="filter-start-date" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Data In\u00edcio</label>
           <Input
             id="filter-start-date"
             type="date"
             value={filterStartDate}
             onChange={(e) => setFilterStartDate(e.target.value)}
             data-testid="input-filter-start-date"
-            className="h-10 bg-card border-border/60 rounded-lg text-sm"
+            className="h-9 bg-card border-border/60 rounded-md text-sm"
           />
         </div>
 
@@ -385,193 +420,256 @@ export default function Movements() {
             value={filterEndDate}
             onChange={(e) => setFilterEndDate(e.target.value)}
             data-testid="input-filter-end-date"
-            className="h-10 bg-card border-border/60 rounded-lg text-sm"
+            className="h-9 bg-card border-border/60 rounded-md text-sm"
           />
         </div>
       </FilterBar>
 
-      {/* Active filter pills — shown when FilterBar is closed */}
-      {activeFilterPills.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {activeFilterPills.map((pill, i) => (
+      {/* Active filter chips */}
+      {activeFilterChips.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {activeFilterChips.map((chip, idx) => (
             <Badge
-              key={i}
+              key={idx}
               variant="secondary"
-              className="text-xs font-normal gap-1 pr-1 cursor-pointer"
-              onClick={pill.onRemove}
+              className="text-xs font-normal cursor-pointer hover:bg-muted"
+              onClick={chip.onClear}
+              data-testid={`filter-chip-${idx}`}
             >
-              {pill.label}
-              <X className="h-3 w-3" />
+              {chip.label}
+              <X className="h-3 w-3 ml-1 inline" />
             </Badge>
           ))}
         </div>
       )}
 
-      {/* Lista de Movimentações */}
-      <div className="space-y-3">
+      {/* Custom scrollbar for list */}
+      <style>{`
+        .movements-scroll::-webkit-scrollbar { width: 5px; }
+        .movements-scroll::-webkit-scrollbar-track { background: transparent; }
+        .movements-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border) / 0.5); border-radius: 3px; }
+      `}</style>
+
+      {/* Lista de Movimenta\u00e7\u00f5es */}
+      <div className={`space-y-3 ${movements.length > 12 ? 'max-h-[70vh] overflow-y-auto movements-scroll pr-1' : ''}`}>
         {filteredMovements.length === 0 ? (
           <EmptyState
             icon={Truck}
-            title="Nenhuma movimentação encontrada"
+            title="Nenhuma movimenta\u00e7\u00e3o encontrada"
             description={activeFiltersCount > 0
               ? "Tente ajustar os filtros para ver mais resultados"
-              : "Crie uma nova movimentação para começar"}
+              : "Crie uma nova movimenta\u00e7\u00e3o para come\u00e7ar"}
+            action={activeFiltersCount > 0
+              ? { label: "Limpar Filtros", onClick: clearAllFilters }
+              : userCanCreateMovement(user)
+              ? { label: "Nova Movimenta\u00e7\u00e3o", onClick: () => navigate("/movements/new") }
+              : undefined}
           />
         ) : (
-          filteredMovements.map((movement) => (
-            <Card
-              key={movement.id}
-              className="hover-elevate border-border/60 cursor-pointer"
-              onClick={() => navigate(`/movements/${movement.id}`)}
-              data-testid={`card-movement-${movement.id}`}
-            >
-              <CardContent className="p-4">
-                {/* Row 1: Status + Number + Name + Actions */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <StatusBadge status={movement.status} />
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {movement.movementNumber}
-                      </span>
-                      {movement.movementTypeConfig && (
-                        <span className="text-xs text-muted-foreground">
-                          {movement.movementTypeConfig.name}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-base text-foreground mt-1" data-testid={`text-movement-name-${movement.id}`}>
-                      {movement.name}
-                    </h3>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* Edit button — always visible but only clickable when applicable */}
-                    {(movement.status === "created" || movement.status === "paused") && userCanEditMovement(user) && (
-                      <MovementDialog movement={movement}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {filteredMovements.map((movement) => {
+              const hint = statusHint(movement.status);
+              const typeName = movement.movementTypeConfig?.name
+                || movementTypeLabel(movement.type);
+
+              return (
+                <Card
+                  key={movement.id}
+                  className="hover-elevate border-border/60 cursor-pointer overflow-hidden"
+                  onClick={() => navigate(`/movements/${movement.id}`)}
+                  data-testid={`card-movement-${movement.id}`}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/movements/${movement.id}`);
+                    }
+                  }}
+                >
+                  <CardContent className="p-4">
+                    {/* Header: status + code + name + actions */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <StatusBadge status={movement.status} />
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {movement.movementNumber || "\u2014"}
+                          </span>
+                          {typeName && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Tag className="h-3 w-3" />
+                              {typeName}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-base text-foreground mt-1 truncate" data-testid={`text-movement-name-${movement.id}`}>
+                          {movement.name || "Movimenta\u00e7\u00e3o sem nome"}
+                        </h3>
+                        {hint && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {(movement.status === "created" || movement.status === "paused") && userCanEditMovement(user) && (
+                          <MovementDialog movement={movement}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => e.stopPropagation()}
+                              data-testid={`button-edit-${movement.id}`}
+                              title="Editar"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </MovementDialog>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={(e) => e.stopPropagation()}
-                          data-testid={`button-edit-${movement.id}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                      </MovementDialog>
-                    )}
-                    {movement.status === "created" && userCanEditMovement(user) && (
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateStatusMutation.mutate(
-                            { id: movement.id, status: "in_progress" },
-                            { onSuccess: () => navigate(`/movements/${movement.id}`) }
-                          );
-                        }}
-                        disabled={updateStatusMutation.isPending}
-                        data-testid={`button-start-${movement.id}`}
-                      >
-                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                        Iniciar
-                      </Button>
-                    )}
-                    {movement.status === "in_progress" && userCanEditMovement(user) && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            updateStatusMutation.mutate({ id: movement.id, status: "paused" });
+                            navigate(`/movements/${movement.id}`);
                           }}
-                          disabled={updateStatusMutation.isPending}
-                          data-testid={`button-pause-${movement.id}`}
+                          data-testid={`button-details-${movement.id}`}
+                          title="Ver detalhes"
                         >
-                          <PauseCircle className="h-3.5 w-3.5 mr-1" />
-                          Pausar
+                          <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            updateStatusMutation.mutate({ id: movement.id, status: "completed" });
-                          }}
-                          disabled={updateStatusMutation.isPending}
-                          data-testid={`button-finish-${movement.id}`}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                          Finalizar
-                        </Button>
-                      </>
-                    )}
-                    {movement.status === "paused" && userCanEditMovement(user) && (
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateStatusMutation.mutate({ id: movement.id, status: "in_progress" });
-                        }}
-                        disabled={updateStatusMutation.isPending}
-                        data-testid={`button-continue-${movement.id}`}
-                      >
-                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                        Continuar
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/movements/${movement.id}`);
-                      }}
-                      data-testid={`button-details-${movement.id}`}
-                      title="Ver detalhes"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                {/* Row 2: Compact metadata strip */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40">
-                  {movement.loadingOrder && (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Ordem:</span>{" "}
-                      <span className="text-foreground font-medium">{movement.loadingOrder.orderNumber}</span>
+                    {/* Metadata grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40 text-xs">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-muted-foreground">Evento:</span>
+                        <span className="text-foreground font-medium truncate">
+                          {movement.events?.[0]?.name || movement.event?.name || "N\u00e3o vinculado"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-muted-foreground">Ve\u00edculo:</span>
+                        <span className="text-foreground font-medium">
+                          {movement.vehiclePlate || "N\u00e3o informado"}
+                        </span>
+                      </div>
+                      {movement.dock && (
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">Doca:</span>
+                          <span className="text-foreground font-medium">{movement.dock.name}</span>
+                        </div>
+                      )}
+                      {movement.startedAt && (
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">In\u00edcio:</span>
+                          <span className="text-foreground font-medium">
+                            {format(new Date(movement.startedAt), "dd MMM HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                      )}
+                      {movement.totalDuration && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">Dura\u00e7\u00e3o:</span>
+                          <span className="text-foreground font-medium">{formatDuration(movement.totalDuration)}</span>
+                        </div>
+                      )}
+                      {movement.trips && movement.trips.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">Viagens:</span>
+                          <span className="text-foreground font-medium">{movement.trips.length}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {movement.vehiclePlate && (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Veículo:</span>{" "}
-                      <span className="text-foreground font-medium">{movement.vehiclePlate}</span>
+
+                    {/* Actions footer */}
+                    <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-border/40">
+                      <div className="flex items-center gap-1">
+                        {/* Status actions */}
+                        {movement.status === "created" && userCanEditMovement(user) && (
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateStatusMutation.mutate(
+                                { id: movement.id, status: "in_progress" },
+                                { onSuccess: () => navigate(`/movements/${movement.id}`) }
+                              );
+                            }}
+                            disabled={updateStatusMutation.isPending}
+                            data-testid={`button-start-${movement.id}`}
+                          >
+                            <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                            Iniciar
+                          </Button>
+                        )}
+                        {movement.status === "in_progress" && userCanEditMovement(user) && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatusMutation.mutate({ id: movement.id, status: "paused" });
+                              }}
+                              disabled={updateStatusMutation.isPending}
+                              data-testid={`button-pause-${movement.id}`}
+                            >
+                              <PauseCircle className="h-3.5 w-3.5 mr-1" />
+                              Pausar
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatusMutation.mutate({ id: movement.id, status: "completed" });
+                              }}
+                              disabled={updateStatusMutation.isPending}
+                              data-testid={`button-finish-${movement.id}`}
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                              Finalizar
+                            </Button>
+                          </>
+                        )}
+                        {movement.status === "paused" && userCanEditMovement(user) && (
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateStatusMutation.mutate({ id: movement.id, status: "in_progress" });
+                            }}
+                            disabled={updateStatusMutation.isPending}
+                            data-testid={`button-continue-${movement.id}`}
+                          >
+                            <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                            Continuar
+                          </Button>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/movements/${movement.id}`);
+                        }}
+                        data-testid={`button-details-footer-${movement.id}`}
+                      >
+                        Detalhes
+                        <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                      </Button>
                     </div>
-                  )}
-                  {movement.dock && (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Doca:</span>{" "}
-                      <span className="text-foreground font-medium">{movement.dock.name}</span>
-                    </div>
-                  )}
-                  {movement.totalDuration && (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Duração:</span>{" "}
-                      <span className="text-foreground font-medium">{formatDuration(movement.totalDuration)}</span>
-                    </div>
-                  )}
-                  {movement.events && movement.events.length > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      {movement.events.map((event) => (
-                        <Badge key={event.id} variant="outline" className="text-xs font-normal" data-testid={`badge-movement-event-${event.id}`}>
-                          {event.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

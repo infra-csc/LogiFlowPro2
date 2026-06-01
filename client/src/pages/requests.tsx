@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, Eye, User, CalendarDays, Layers, ClipboardList } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Eye, User, CalendarDays, Layers, ClipboardList, CheckCircle2, Clock, XCircle, Lock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -22,14 +23,14 @@ import { FilterBar } from "@/components/filter-bar";
 
 // Status color mapping for left border strips
 const statusStripColor: Record<string, string> = {
-  draft: "bg-primary",
-  pending_approval: "bg-chart-5",
-  approved: "bg-chart-4",
-  rejected: "bg-destructive",
-  cutoff_locked: "bg-chart-3",
+  draft: "border-l-primary",
+  pending_approval: "border-l-chart-5",
+  approved: "border-l-chart-4",
+  rejected: "border-l-destructive",
+  cutoff_locked: "border-l-chart-3",
 };
 
-// Status dot color for badge
+// Status dot color
 const statusDotColor: Record<string, string> = {
   draft: "bg-primary",
   pending_approval: "bg-chart-5",
@@ -45,6 +46,24 @@ const statusLabel: Record<string, string> = {
   approved: "Aprovado",
   rejected: "Rejeitado",
   cutoff_locked: "Bloqueado",
+};
+
+// Operational status hint
+const statusHint: Record<string, string> = {
+  draft: "Pronta para editar e enviar",
+  pending_approval: "Aguardando decisão do aprovador",
+  approved: "Aprovada — pode gerar ordem de carregamento",
+  rejected: "Rejeitada — revise e reenvie",
+  cutoff_locked: "Bloqueada pelo prazo de corte",
+};
+
+// Status icon for filter chips
+const statusFilterIcon: Record<string, React.ElementType> = {
+  draft: Clock,
+  pending_approval: Clock,
+  approved: CheckCircle2,
+  rejected: XCircle,
+  cutoff_locked: Lock,
 };
 
 type MaterialRequest = BaseMaterialRequest & {
@@ -94,6 +113,18 @@ export default function Requests() {
     return [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [requests, statusFilter, eventFilter]);
 
+  // Stats counts
+  const stats = useMemo(() => {
+    if (!requests) return { draft: 0, pending: 0, approved: 0, rejected: 0, total: 0 };
+    return {
+      draft: requests.filter((r) => r.status === "draft").length,
+      pending: requests.filter((r) => r.status === "pending_approval").length,
+      approved: requests.filter((r) => r.status === "approved").length,
+      rejected: requests.filter((r) => r.status === "rejected").length,
+      total: requests.length,
+    };
+  }, [requests]);
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (statusFilter !== "all") count++;
@@ -132,11 +163,10 @@ export default function Requests() {
     }
   };
 
-  // Generate numeric display IDs — must be called BEFORE any conditional returns
+  // Generate numeric display IDs
   const numericIdMap = useMemo(() => {
     const map = new Map<string, string>();
     if (!requests) return map;
-    // Sort by creation date ascending for stable numbering
     const sorted = [...requests].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     sorted.forEach((req, index) => {
       map.set(req.id, String(index + 1).padStart(3, "0"));
@@ -145,20 +175,91 @@ export default function Requests() {
   }, [requests]);
 
   if (isLoading) {
-    return <PageLoading message="Carregando requisicoes..." />;
+    return <PageLoading message="Carregando requisições..." />;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Requisicao de Materiais"
-        description="Gerencie requisicoes de materiais para seus eventos"
+        title="Requisição de Materiais"
+        description="Gerencie requisições de materiais para seus eventos"
       >
         <Button onClick={() => setShowDialog(true)} data-testid="button-create-request">
           <Plus className="h-4 w-4 mr-2" />
-          Nova Requisicao
+          Nova Requisição
         </Button>
       </PageHeader>
+
+      {/* Stats bar */}
+      {requests && requests.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+              statusFilter === "all"
+                ? "bg-primary/10 border-primary/30 text-primary"
+                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+            }`}
+            data-testid="stat-all"
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+            <span className="font-medium">{stats.total}</span>
+            <span className="text-xs">Total</span>
+          </button>
+          <button
+            onClick={() => setStatusFilter(statusFilter === "draft" ? "all" : "draft")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+              statusFilter === "draft"
+                ? "bg-primary/10 border-primary/30 text-primary"
+                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+            }`}
+            data-testid="stat-draft"
+          >
+            <Clock className="h-3.5 w-3.5" />
+            <span className="font-medium">{stats.draft}</span>
+            <span className="text-xs">Rascunho</span>
+          </button>
+          <button
+            onClick={() => setStatusFilter(statusFilter === "pending_approval" ? "all" : "pending_approval")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+              statusFilter === "pending_approval"
+                ? "bg-chart-5/10 border-chart-5/30 text-chart-5"
+                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+            }`}
+            data-testid="stat-pending"
+          >
+            <Clock className="h-3.5 w-3.5" />
+            <span className="font-medium">{stats.pending}</span>
+            <span className="text-xs">Pendente</span>
+          </button>
+          <button
+            onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+              statusFilter === "approved"
+                ? "bg-chart-4/10 border-chart-4/30 text-chart-4"
+                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+            }`}
+            data-testid="stat-approved"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span className="font-medium">{stats.approved}</span>
+            <span className="text-xs">Aprovado</span>
+          </button>
+          <button
+            onClick={() => setStatusFilter(statusFilter === "rejected" ? "all" : "rejected")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+              statusFilter === "rejected"
+                ? "bg-destructive/10 border-destructive/30 text-destructive"
+                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+            }`}
+            data-testid="stat-rejected"
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            <span className="font-medium">{stats.rejected}</span>
+            <span className="text-xs">Rejeitado</span>
+          </button>
+        </div>
+      )}
 
       {/* Filtros */}
       {requests && requests.length > 0 && (
@@ -166,7 +267,7 @@ export default function Requests() {
           <div className="flex flex-col gap-2">
             <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Status</label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger data-testid="select-status-filter" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+              <SelectTrigger data-testid="select-status-filter" className="h-9 bg-card border-border/60 rounded-md text-sm">
                 <SelectValue placeholder="Todos os status" />
               </SelectTrigger>
               <SelectContent>
@@ -182,7 +283,7 @@ export default function Requests() {
           <div className="flex flex-col gap-2">
             <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Evento</label>
             <Select value={eventFilter} onValueChange={setEventFilter}>
-              <SelectTrigger data-testid="select-event-filter" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+              <SelectTrigger data-testid="select-event-filter" className="h-9 bg-card border-border/60 rounded-md text-sm">
                 <SelectValue placeholder="Todos os eventos" />
               </SelectTrigger>
               <SelectContent>
@@ -198,10 +299,36 @@ export default function Requests() {
         </FilterBar>
       )}
 
+      {/* Active filter chips */}
+      {activeFiltersCount > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {statusFilter !== "all" && (
+            <Badge
+              variant="secondary"
+              className="cursor-pointer hover:bg-muted transition-colors"
+              onClick={() => setStatusFilter("all")}
+              data-testid="filter-chip-status"
+            >
+              Status: {statusLabel[statusFilter]} ×
+            </Badge>
+          )}
+          {eventFilter !== "all" && (
+            <Badge
+              variant="secondary"
+              className="cursor-pointer hover:bg-muted transition-colors"
+              onClick={() => setEventFilter("all")}
+              data-testid="filter-chip-event"
+            >
+              Evento: {events?.find((e) => e.id === eventFilter)?.name || eventFilter} ×
+            </Badge>
+          )}
+        </div>
+      )}
+
       {/* Contador */}
       {filteredRequests.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          {filteredRequests.length} requisicao{filteredRequests.length > 1 ? "es" : ""} encontrada{filteredRequests.length > 1 ? "s" : ""}
+          {filteredRequests.length} requisiç{filteredRequests.length > 1 ? "ões" : "ão"} encontrada{filteredRequests.length > 1 ? "s" : ""}
         </p>
       )}
 
@@ -209,124 +336,93 @@ export default function Requests() {
       {!requests || requests.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="Nenhuma requisicao ainda"
-          description="Crie requisicoes de materiais para seus eventos. Cada requisicao comeca como rascunho e pode ser enviada para aprovacao."
-          action={{ label: "Nova Requisicao", onClick: () => setShowDialog(true) }}
+          title="Nenhuma requisição ainda"
+          description="Crie requisições de materiais para seus eventos. Cada requisição começa como rascunho e pode ser enviada para aprovação."
+          action={{ label: "Nova Requisição", onClick: () => setShowDialog(true) }}
         />
       ) : filteredRequests.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="Nenhuma requisicao encontrada"
-          description="Ajuste os filtros para ver mais requisicoes."
+          title="Nenhuma requisição encontrada"
+          description="Ajuste os filtros para ver mais requisições."
           action={{ label: "Limpar Filtros", onClick: clearFilters }}
         />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredRequests.map((request) => {
-            const stripColor = statusStripColor[request.status] || "bg-muted";
+            const stripColor = statusStripColor[request.status] || "border-l-muted";
             const dotColor = statusDotColor[request.status] || "bg-muted";
             const sLabel = statusLabel[request.status] || request.status;
+            const hint = statusHint[request.status] || "";
+            const StatusIcon = statusFilterIcon[request.status] || Clock;
 
             return (
               <Card
                 key={request.id}
-                className="group border-border/60 overflow-hidden relative hover-elevate"
+                className={`group border-border/60 overflow-hidden relative hover-elevate border-l-3 ${stripColor}`}
                 data-testid={`card-request-${request.id}`}
               >
-                {/* Left status strip */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${stripColor}`} />
-
-                <CardContent className="p-5 pl-6">
-                  {/* Header: ID + Status */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-medium text-primary font-mono mb-1">
+                <CardContent className="p-4">
+                  {/* Header: ID + Area + Status */}
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-[10px] font-medium text-primary font-mono mb-0.5">
                         REQ-{numericIdMap.get(request.id) || request.id.slice(0, 8).toUpperCase()}
                       </span>
-                      <h3 className="font-semibold text-base text-foreground truncate">
+                      <h3 className="font-semibold text-sm text-foreground truncate leading-tight">
                         {request.area}
                       </h3>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border shrink-0"
-                      style={{
-                        backgroundColor: "hsl(var(--muted) / 0.5)",
-                        borderColor: "hsl(var(--border) / 0.5)",
-                      }}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`} />
-                      {sLabel}
-                    </span>
+                    <div className="shrink-0 flex flex-col items-end gap-1">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-medium px-2 py-0 h-5 border-border/50"
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dotColor}`} />
+                        {sLabel}
+                      </Badge>
+                      {hint && (
+                        <span className="text-[10px] text-muted-foreground text-right leading-tight">
+                          {hint}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Event subtitle */}
-                  <p className="text-sm text-muted-foreground truncate mb-4">
-                    {request.event?.name || "Evento nao vinculado"}
+                  <p className="text-xs text-muted-foreground truncate mb-3">
+                    {request.event?.name || "Evento não vinculado"}
                   </p>
 
-                  {/* Metadata grid: 2x2 with icon containers */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                        <User className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
-                          Requisitante
-                        </p>
-                        <p className="text-sm text-foreground truncate">
-                          {request.requestedByUser?.name || "Usuario"}
-                        </p>
-                      </div>
+                  {/* Compact metadata grid */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground">{request.requestedByUser?.name || "Usuário"}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                        <CalendarDays className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
-                          {getDateLabel(request.status)}
-                        </p>
-                        <p className="text-sm text-foreground truncate">
-                          {formatDate(getDateValue(request))}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground">{getDateLabel(request.status)}</span>
+                      <span className="text-xs text-foreground">{formatDate(getDateValue(request))}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                        <Layers className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
-                          Evento
-                        </p>
-                        <p className="text-sm text-foreground truncate">
-                          {request.event?.name || "—"}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground">{request.event?.name || "—"}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                        <ClipboardList className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
-                          Status
-                        </p>
-                        <p className="text-sm text-foreground truncate">
-                          {sLabel}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-1.5">
+                      <StatusIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground">{sLabel}</span>
                     </div>
                   </div>
 
                   {/* Divider + Actions */}
                   <div className="flex items-center justify-between pt-3 border-t border-border/40">
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                      <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
                         {request.requestedByUser?.name?.charAt(0) || "U"}
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {request.requestedByUser?.name || "Usuario"}
+                        {request.requestedByUser?.name || "Usuário"}
                       </span>
                     </div>
                     <Button

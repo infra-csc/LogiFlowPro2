@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -23,6 +22,17 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import type { MaterialRequest, InsertMaterialRequest, Event } from "@shared/schema";
 import { cn } from "@/lib/utils";
+
+// Helper to compute request window status for an event
+function getEventWindowStatus(event: Event) {
+  if (!event.requestWindowStart || !event.requestWindowEnd) return null;
+  const now = new Date();
+  const start = new Date(event.requestWindowStart);
+  const end = new Date(event.requestWindowEnd);
+  if (now < start) return { label: "Futuro", color: "bg-chart-5/10 text-chart-5 border-chart-5/20" as const, icon: Clock };
+  if (now > end) return { label: "Encerrado", color: "bg-destructive/10 text-destructive border-destructive/20" as const, icon: Lock };
+  return { label: "Aberto", color: "bg-chart-4/10 text-chart-4 border-chart-4/20" as const, icon: PartyPopper };
+}
 
 interface RequestDialogProps {
   open: boolean;
@@ -183,7 +193,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg overflow-hidden p-0">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden p-0 flex flex-col" style={{ maxHeight: '90vh' }}>
         {/* Header */}
         <div className="p-6 pb-4 border-b border-border">
           <DialogHeader>
@@ -198,7 +208,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
           </DialogHeader>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+        <form onSubmit={handleSubmit} className="space-y-6 p-6 overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin', maxHeight: '60vh' }}>
           {/* Bloco 1: Evento */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Evento *</Label>
@@ -233,31 +243,45 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                       </CommandEmpty>
                     ) : (
                       <CommandGroup>
-                        {events?.map((event) => (
-                          <CommandItem
-                            key={event.id}
-                            value={event.name}
-                            onSelect={() => {
-                              setFormData({ ...formData, eventId: event.id });
-                              setEventOpen(false);
-                            }}
-                            data-testid={`event-option-${event.id}`}
-                          >
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                              <span className="text-sm font-medium truncate">{event.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {event.eventDate ? new Date(event.eventDate).toLocaleDateString('pt-BR') : ''}
-                                {event.location ? ` · ${event.location}` : ''}
-                              </span>
-                            </div>
-                            <Check
-                              className={cn(
-                                "ml-auto h-4 w-4 shrink-0",
-                                formData.eventId === event.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                          </CommandItem>
-                        ))}
+                        {events?.map((event) => {
+                          const windowStatus = getEventWindowStatus(event);
+                          const WindowIcon = windowStatus?.icon;
+                          return (
+                            <CommandItem
+                              key={event.id}
+                              value={event.name}
+                              onSelect={() => {
+                                setFormData({ ...formData, eventId: event.id });
+                                setEventOpen(false);
+                              }}
+                              data-testid={`event-option-${event.id}`}
+                            >
+                              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-medium truncate">{event.name}</span>
+                                  <Check
+                                    className={cn(
+                                      "h-4 w-4 shrink-0",
+                                      formData.eventId === event.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">
+                                    {event.eventDate ? new Date(event.eventDate).toLocaleDateString('pt-BR') : ''}
+                                    {event.location ? ` · ${event.location}` : ''}
+                                  </span>
+                                  {windowStatus && (
+                                    <Badge variant="outline" className={cn("text-[10px] font-medium px-1.5 py-0 h-4", windowStatus.color)}>
+                                      {WindowIcon && <WindowIcon className="h-2.5 w-2.5 mr-1" />}
+                                      {windowStatus.label}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </CommandItem>
+                          );
+                        })}
                       </CommandGroup>
                     )}
                   </CommandList>
