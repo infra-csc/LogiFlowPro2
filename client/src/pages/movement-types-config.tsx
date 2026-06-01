@@ -202,7 +202,7 @@ export default function MovementTypesConfigPage() {
       >
         <Button onClick={handleCreate} data-testid="button-create-type">
           <Plus className="mr-2 h-4 w-4" />
-          Novo Tipo
+          Criar Tipo
         </Button>
       </PageHeader>
 
@@ -236,7 +236,7 @@ export default function MovementTypesConfigPage() {
 
           {/* Group tabs */}
           {groups.length > 0 && (
-            <div className="flex gap-2 flex-wrap mt-3">
+            <div className="flex gap-2 flex-wrap mt-3" data-testid="select-filter-group">
               <Button
                 variant={selectedGroupId === "all" ? "default" : "outline"}
                 size="sm"

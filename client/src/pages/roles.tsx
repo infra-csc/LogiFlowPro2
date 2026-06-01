@@ -182,7 +182,7 @@ export default function RolesPage() {
           </Button>
           <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-role">
             <Shield className="mr-2 h-4 w-4" />
-            Novo Papel
+            Criar Papel
           </Button>
         </div>
       </PageHeader>

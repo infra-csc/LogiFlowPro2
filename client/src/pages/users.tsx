@@ -238,7 +238,7 @@ export default function UsersPage() {
 
   const statsItems = [
     { label: "Total", count: totalCount, filter: "all", testId: "stat-total" },
-    { label: "Pendentes", count: pendingCount, filter: "pending", testId: "stat-pending", className: "text-yellow-700 dark:text-yellow-400" },
+    { label: "Pendentes", count: pendingCount, filter: "pending", testId: "stat-pending", badgeTestId: "badge-pending-count", className: "text-yellow-700 dark:text-yellow-400" },
     { label: "Aprovados", count: approvedCount, filter: "approved", testId: "stat-approved", className: "text-green-700 dark:text-green-400" },
     { label: "Rejeitados", count: rejectedCount, filter: "rejected", testId: "stat-rejected", className: "text-red-700 dark:text-red-400" },
   ];
@@ -248,7 +248,7 @@ export default function UsersPage() {
       <PageHeader title="Usuários" description="Gerencie os usuários do sistema">
         <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-user">
           <UserPlus className="mr-2 h-4 w-4" />
-          Novo Usuário
+          Convidar
         </Button>
       </PageHeader>
 
@@ -264,7 +264,12 @@ export default function UsersPage() {
             <Card className={`border-border/60 hover-elevate cursor-pointer transition-colors ${approvalFilter === item.filter ? "border-primary/60" : ""}`}>
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground">{item.label}</p>
-                <p className={`text-2xl font-bold mt-0.5 ${item.className || ""}`}>{item.count}</p>
+                <p
+                  className={`text-2xl font-bold mt-0.5 ${item.className || ""}`}
+                  data-testid={(item as any).badgeTestId}
+                >
+                  {item.count}
+                </p>
               </CardContent>
             </Card>
           </button>

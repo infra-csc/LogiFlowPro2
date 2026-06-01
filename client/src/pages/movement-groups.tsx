@@ -171,7 +171,7 @@ export default function MovementGroupsPage() {
       >
         <Button onClick={handleCreate} data-testid="button-create-group">
           <Plus className="mr-2 h-4 w-4" />
-          Novo Grupo
+          Criar Grupo
         </Button>
       </PageHeader>
 
