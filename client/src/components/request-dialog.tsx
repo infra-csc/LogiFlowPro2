@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,19 +12,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Calendar, AlertCircle, Check, ChevronsUpDown, Loader2, PartyPopper, Clock, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import type { MaterialRequest, InsertMaterialRequest, Event } from "@shared/schema";
+import { cn } from "@/lib/utils";
 
 interface RequestDialogProps {
   open: boolean;
@@ -41,8 +39,19 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     area: request?.area || "",
     notes: request?.notes || "",
   });
+  const [eventOpen, setEventOpen] = useState(false);
 
-  const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
+  const { data: events, isLoading: eventsLoading } = useQuery<Event[]>({ queryKey: ["/api/events"] });
+
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        eventId: request?.eventId || "",
+        area: request?.area || "",
+        notes: request?.notes || "",
+      });
+    }
+  }, [open, request]);
 
   const selectedEvent = useMemo(() => {
     return events?.find(e => e.id === formData.eventId);
@@ -91,24 +100,24 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      toast({ description: "Requisicao criada com sucesso" });
+      toast({ description: "Requisição criada com sucesso" });
       onOpenChange(false);
     },
     onError: (error: any) => {
-      let description = "Erro ao criar requisicao";
-      
+      let description = "Erro ao criar requisição";
+
       if (error?.windowStart && error?.windowEnd) {
         const start = new Date(error.windowStart);
         const end = new Date(error.windowEnd);
-        description = `${error.error}\n\nPeriodo permitido: ${start.toLocaleString('pt-BR', { 
-          day: '2-digit', 
-          month: '2-digit', 
+        description = `${error.error}\n\nPeríodo permitido: ${start.toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
-        })} ate ${end.toLocaleString('pt-BR', { 
-          day: '2-digit', 
-          month: '2-digit', 
+        })} até ${end.toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
@@ -116,10 +125,10 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
       } else if (error?.error) {
         description = error.error;
       }
-      
-      toast({ 
-        description: description, 
-        variant: "destructive" 
+
+      toast({
+        description: description,
+        variant: "destructive"
       });
     },
   });
@@ -130,19 +139,22 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      toast({ description: "Requisicao atualizada com sucesso" });
+      toast({ description: "Requisição atualizada com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Erro ao atualizar requisicao", variant: "destructive" });
+      toast({ description: "Erro ao atualizar requisição", variant: "destructive" });
     },
   });
 
+  const isValid = formData.eventId && formData.area.trim().length > 0;
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.eventId || !formData.area) {
-      toast({ description: "Preencha todos os campos obrigatorios", variant: "destructive" });
+      toast({ description: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
 
@@ -161,67 +173,148 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     }
   };
 
+  const windowBadge = requestWindowInfo
+    ? requestWindowInfo.isWithinWindow
+      ? { label: "Requisições abertas", icon: PartyPopper, color: "bg-chart-4/10 text-chart-4 border-chart-4/20" }
+      : requestWindowInfo.isBeforeWindow
+        ? { label: "Período ainda não iniciado", icon: Clock, color: "bg-chart-5/10 text-chart-5 border-chart-5/20" }
+        : { label: "Período encerrado", icon: Lock, color: "bg-destructive/10 text-destructive border-destructive/20" }
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md overflow-hidden p-0">
-        {/* Header with border */}
-        <div className="p-6 border-b border-border">
+      <DialogContent className="max-w-lg overflow-hidden p-0">
+        {/* Header */}
+        <div className="p-6 pb-4 border-b border-border">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">{request ? "Editar Requisicao" : "Nova Requisicao"}</DialogTitle>
+            <DialogTitle className="text-lg font-semibold">
+              {request ? "Editar Requisição" : "Nova Requisição"}
+            </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
               {request
-                ? "Atualize os dados da requisicao."
-                : "Crie uma requisicao de materiais. Ela comeca como rascunho e so pode ser enviada para aprovacao dentro do periodo permitido pelo evento."}
+                ? "Atualize os dados da requisição."
+                : "Crie uma requisição de materiais. Ela começa como rascunho e só pode ser enviada para aprovação dentro do período permitido pelo evento."}
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 p-6">
-          {/* Evento */}
-          <div className="space-y-2">
-            <Label htmlFor="eventId" className="text-sm font-medium">Evento *</Label>
-            <Select
-              value={formData.eventId}
-              onValueChange={(value) => setFormData({ ...formData, eventId: value })}
-            >
-              <SelectTrigger data-testid="select-event" className="h-10">
-                <SelectValue placeholder="Selecione o evento" />
-              </SelectTrigger>
-              <SelectContent>
-                {events?.map((event) => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {event.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {requestWindowInfo && (
-              <Alert variant={requestWindowInfo.isWithinWindow ? "default" : "destructive"} className="mt-2">
-                <div className="flex items-start gap-2">
-                  {requestWindowInfo.isWithinWindow ? (
-                    <Calendar className="h-4 w-4 mt-0.5 shrink-0" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                  )}
-                  <AlertDescription className="text-sm">
-                    {requestWindowInfo.isWithinWindow && (
-                      <span>
-                        <strong>Periodo permitido:</strong> {requestWindowInfo.start} ate {requestWindowInfo.end}
-                      </span>
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+          {/* Bloco 1: Evento */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Evento *</Label>
+            <Popover open={eventOpen} onOpenChange={setEventOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={eventOpen}
+                  className="w-full justify-between h-10 font-normal"
+                  data-testid="combobox-event"
+                >
+                  {selectedEvent ? selectedEvent.name : "Selecione o evento"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar evento por nome..." />
+                  <CommandList className="max-h-[280px]">
+                    {eventsLoading ? (
+                      <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando eventos...
+                      </div>
+                    ) : events?.length === 0 ? (
+                      <CommandEmpty>
+                        <div className="flex flex-col items-center py-4 gap-2">
+                          <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-sm">Nenhum evento encontrado</span>
+                        </div>
+                      </CommandEmpty>
+                    ) : (
+                      <CommandGroup>
+                        {events?.map((event) => (
+                          <CommandItem
+                            key={event.id}
+                            value={event.name}
+                            onSelect={() => {
+                              setFormData({ ...formData, eventId: event.id });
+                              setEventOpen(false);
+                            }}
+                            data-testid={`event-option-${event.id}`}
+                          >
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                              <span className="text-sm font-medium truncate">{event.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {event.eventDate ? new Date(event.eventDate).toLocaleDateString('pt-BR') : ''}
+                                {event.location ? ` · ${event.location}` : ''}
+                              </span>
+                            </div>
+                            <Check
+                              className={cn(
+                                "ml-auto h-4 w-4 shrink-0",
+                                formData.eventId === event.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
                     )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            {/* Resumo do evento selecionado */}
+            {selectedEvent && (
+              <Card className="border-border/60 bg-muted/30">
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <PartyPopper className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-sm">{selectedEvent.name}</span>
+                  </div>
+                  {requestWindowInfo ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5" />
+                        <span>
+                          {requestWindowInfo.start} até {requestWindowInfo.end}
+                        </span>
+                      </div>
+                      {windowBadge && (
+                        <Badge variant="outline" className={cn("text-[10px] font-medium", windowBadge.color)}>
+                          <windowBadge.icon className="h-3 w-3 mr-1" />
+                          {windowBadge.label}
+                        </Badge>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Sem período de requisição configurado para este evento.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Alerta de janela de requisição */}
+            {requestWindowInfo && !requestWindowInfo.isWithinWindow && (
+              <Alert variant="destructive">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <AlertDescription className="text-sm">
                     {requestWindowInfo.isBeforeWindow && (
                       <span>
-                        <strong>Atencao:</strong> Requisicoes para este evento ainda nao estao permitidas.
+                        <strong>Atenção:</strong> Requisições para este evento ainda não estão permitidas.
                         <br />
-                        <span className="text-xs">Periodo: {requestWindowInfo.start} ate {requestWindowInfo.end}</span>
+                        <span className="text-xs">Período: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
                       </span>
                     )}
                     {requestWindowInfo.isAfterWindow && (
                       <span>
-                        <strong>Atencao:</strong> O periodo de requisicao para este evento ja foi encerrado.
+                        <strong>Atenção:</strong> O período de requisição para este evento já foi encerrado.
                         <br />
-                        <span className="text-xs">Periodo permitido era: {requestWindowInfo.start} ate {requestWindowInfo.end}</span>
+                        <span className="text-xs">Período permitido era: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
                       </span>
                     )}
                   </AlertDescription>
@@ -230,44 +323,63 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
             )}
           </div>
 
-          {/* Nome */}
-          <div className="space-y-2">
-            <Label htmlFor="area" className="text-sm font-medium">Nome da Requisicao *</Label>
+          {/* Bloco 2: Identificação */}
+          <div className="space-y-3">
+            <Label htmlFor="area" className="text-sm font-medium">
+              Área / Nome da requisição *
+            </Label>
             <Input
               id="area"
               value={formData.area}
               onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-              placeholder="Ex: Cenografia Palco Principal"
+              placeholder="Ex: Cenografia — Palco Principal"
               data-testid="input-area"
               className="h-10"
             />
+            <p className="text-xs text-muted-foreground">
+              Use um nome que ajude a identificar o setor ou uso dos materiais.
+            </p>
           </div>
 
-          {/* Observacoes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm font-medium">Observacoes</Label>
+          {/* Bloco 3: Observações */}
+          <div className="space-y-3">
+            <Label htmlFor="notes" className="text-sm font-medium">Observações</Label>
             <Textarea
               id="notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Observacoes sobre a requisicao (opcional)"
+              placeholder="Observações sobre a requisição (opcional)"
               data-testid="input-notes"
               rows={3}
             />
           </div>
         </form>
 
-        {/* Footer bar */}
-        <div className="bg-muted/50 p-4 flex justify-end gap-3 border-t border-border">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-request">
+        {/* Footer */}
+        <div className="bg-muted/50 p-4 flex flex-col sm:flex-row justify-end gap-2 border-t border-border">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            data-testid="button-cancel-request"
+            className="w-full sm:w-auto"
+          >
             Cancelar
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={createMutation.isPending || updateMutation.isPending}
+            disabled={!isValid || isPending}
             data-testid="button-submit-request"
+            className="w-full sm:w-auto"
           >
-            {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (request ? "Atualizar" : "Criar")}
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              request ? "Atualizar" : "Criar"
+            )}
           </Button>
         </div>
       </DialogContent>
