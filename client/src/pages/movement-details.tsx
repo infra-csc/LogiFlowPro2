@@ -44,6 +44,11 @@ import {
   Clock,
   User,
   FileText,
+  BarChart3,
+  Truck,
+  MapPin,
+  Tag,
+  Layers,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -107,6 +112,7 @@ export default function MovementDetails() {
   const [searchQuery, setSearchQuery] = useState("");
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
   const [loadedSearchQuery, setLoadedSearchQuery] = useState("");
+  const [expectedFilter, setExpectedFilter] = useState<"all" | "pending" | "complete" | "exceeded">("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [scannedSku, setScannedSku] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
@@ -283,19 +289,35 @@ export default function MovementDetails() {
   // Calculate overall progress
   const totalExpected = expectedItems.reduce((sum, item) => sum + item.expectedQuantity, 0);
   const totalLoaded = expectedItems.reduce((sum, item) => sum + item.loadedQuantity, 0);
+  const totalExceeded = expectedItems.reduce((sum, item) => sum + Math.max(0, item.loadedQuantity - item.expectedQuantity), 0);
+  const totalPending = expectedItems.reduce((sum, item) => sum + Math.max(0, item.expectedQuantity - item.loadedQuantity), 0);
   const progress = totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0;
 
-  // Filter expected items based on order search query
+  // Filter expected items based on order search query + status filter
   const filteredExpectedItems = useMemo(() => {
-    if (!orderSearchQuery.trim()) return expectedItems;
-    const query = orderSearchQuery.toLowerCase();
-    return expectedItems.filter(
-      (item) =>
-        item.product.name.toLowerCase().includes(query) ||
-        item.product.sku?.toLowerCase().includes(query) ||
-        item.product.barcode?.toLowerCase().includes(query)
-    );
-  }, [expectedItems, orderSearchQuery]);
+    let items = expectedItems;
+    if (orderSearchQuery.trim()) {
+      const query = orderSearchQuery.toLowerCase();
+      items = items.filter(
+        (item) =>
+          item.product.name.toLowerCase().includes(query) ||
+          item.product.sku?.toLowerCase().includes(query) ||
+          item.product.barcode?.toLowerCase().includes(query)
+      );
+    }
+    if (expectedFilter !== "all") {
+      items = items.filter((item) => {
+        const isExceeded = item.loadedQuantity > item.expectedQuantity;
+        const isComplete = item.remaining === 0 && !isExceeded;
+        const isPending = item.remaining > 0;
+        if (expectedFilter === "pending") return isPending;
+        if (expectedFilter === "complete") return isComplete;
+        if (expectedFilter === "exceeded") return isExceeded;
+        return true;
+      });
+    }
+    return items;
+  }, [expectedItems, orderSearchQuery, expectedFilter]);
 
   // Filter loaded items based on loaded search query
   const filteredLoadedItems = useMemo(() => {
@@ -688,12 +710,8 @@ export default function MovementDetails() {
       {/* Header */}
       {!focusMode && (
         <PageHeader
-          title={movement.movementNumber}
-          description={
-            movement.name +
-            (movement.movementTypeConfig ? ` • ${movement.movementTypeConfig.name}` : "") +
-            (movement.loadingOrder ? ` • Ordem: ${movement.loadingOrder.orderNumber}` : "")
-          }
+          title={movement.name}
+          description={movement.movementNumber}
         >
           {userCanChangeMovementStatusFreely(user) && (
             <Button
@@ -758,41 +776,99 @@ export default function MovementDetails() {
         </PageHeader>
       )}
 
-      {/* Status e Informações */}
+      {/* Resumo Operacional */}
       {!focusMode && (
         <PageSection>
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="font-semibold text-base">Status e Informações</div>
-              <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Status:</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Card>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <BarChart3 className="h-4 w-4" />
+                  Status
+                </div>
+                <div className="mt-1">
                   <StatusBadge status={movement.status} />
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Doca:</span>
-                  <span className="font-medium">{movement.dock?.name || "-"}</span>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ClipboardList className="h-4 w-4" />
+                  Esperados
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Veículo:</span>
-                  <span className="font-medium">{movement.vehiclePlate || "-"}</span>
+                <div className="mt-1 text-xl font-semibold">{totalExpected}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <PackageCheck className="h-4 w-4" />
+                  Carregados
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Progresso:</span>
-                  <span className="font-medium">{totalLoaded} / {totalExpected} ({progress}%)</span>
+                <div className="mt-1 text-xl font-semibold">{totalLoaded}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <AlertTriangle className="h-4 w-4" />
+                  Pendentes
                 </div>
-                {movement.events && movement.events.length > 0 && (
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-muted-foreground">Eventos:</span>
-                    {movement.events.map(e => (
-                      <Badge key={e.id} variant="outline" className="text-xs">{e.name}</Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <Progress value={progress} className="h-2" />
-            </CardContent>
-          </Card>
+                <div className="mt-1 text-xl font-semibold">{totalPending}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Plus className="h-4 w-4" />
+                  Excedentes
+                </div>
+                <div className={`mt-1 text-xl font-semibold ${totalExceeded > 0 ? "text-rose-500" : ""}`}>
+                  {totalExceeded}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <BarChart3 className="h-4 w-4" />
+                  Progresso
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-xl font-semibold">{progress}%</span>
+                  <Progress value={progress} className="h-2 w-16 flex-1" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          {/* Metadados */}
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3.5 w-3.5" />
+              Doca: <span className="text-foreground font-medium">{movement.dock?.name || "-"}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <Truck className="h-3.5 w-3.5" />
+              Veículo: <span className="text-foreground font-medium">{movement.vehiclePlate || "-"}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <Tag className="h-3.5 w-3.5" />
+              Tipo: <span className="text-foreground font-medium">{movement.movementTypeConfig?.name || "-"}</span>
+            </span>
+            {movement.loadingOrder && (
+              <span className="flex items-center gap-1">
+                <Layers className="h-3.5 w-3.5" />
+                Ordem: <span className="text-foreground font-medium">{movement.loadingOrder.orderNumber}</span>
+              </span>
+            )}
+            {movement.events && movement.events.length > 0 && (
+              <span className="flex items-center gap-1">
+                <Tag className="h-3.5 w-3.5" />
+                Evento: <span className="text-foreground font-medium">{movement.events.map(e => e.name).join(", ")}</span>
+              </span>
+            )}
+          </div>
         </PageSection>
       )}
 
@@ -803,10 +879,10 @@ export default function MovementDetails() {
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               {movement.status === "pending_approval" && "Movimentação pendente de aprovação. Aguarde a aprovação para registrar produtos."}
-              {movement.status === "paused" && "Movimentação pausada. Clique em 'Continuar' para retomar o registro de produtos."}
+              {movement.status === "paused" && "Movimentação pausada. Leitura temporariamente interrompida. Clique em 'Continuar' para retomar."}
               {movement.status === "completed" && "Movimentação finalizada. Não é possível adicionar ou modificar produtos."}
               {movement.status === "cancelled" && "Movimentação cancelada. Não é possível adicionar ou modificar produtos."}
-              {movement.status === "created" && "Clique em 'Iniciar Movimentação' para começar a registrar produtos."}
+              {movement.status === "created" && "Clique em 'Iniciar' para começar a registrar produtos."}
             </AlertDescription>
           </Alert>
         </PageSection>
@@ -1029,7 +1105,7 @@ export default function MovementDetails() {
                   <ClipboardList className="h-5 w-5" />
                   Itens da Ordem ({expectedItems.length})
                 </div>
-              <div className="relative mb-4">
+              <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nome, SKU ou código de barras..."
@@ -1039,7 +1115,31 @@ export default function MovementDetails() {
                   data-testid="input-search-order-items"
                 />
               </div>
-              <ScrollArea className="h-[500px] pr-4" style={{ scrollbarWidth: 'thin' }}>
+              {/* Filtros rápidos */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {(["all", "pending", "complete", "exceeded"] as const).map((f) => {
+                  const counts = {
+                    all: expectedItems.length,
+                    pending: expectedItems.filter(i => i.remaining > 0).length,
+                    complete: expectedItems.filter(i => i.remaining === 0 && i.loadedQuantity <= i.expectedQuantity).length,
+                    exceeded: expectedItems.filter(i => i.loadedQuantity > i.expectedQuantity).length,
+                  };
+                  const labels = { all: "Todos", pending: "Pendentes", complete: "Completos", exceeded: "Excedidos" };
+                  const isActive = expectedFilter === f;
+                  return (
+                    <Button
+                      key={f}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setExpectedFilter(f)}
+                      className="text-xs h-7"
+                    >
+                      {labels[f]} ({counts[f]})
+                    </Button>
+                  );
+                })}
+              </div>
+              <ScrollArea className="h-[460px] pr-4" style={{ scrollbarWidth: 'thin' }}>
                 <div className="space-y-3">
                   {filteredExpectedItems.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
@@ -1130,7 +1230,23 @@ export default function MovementDetails() {
               <PackageCheck className="h-5 w-5" />
               Itens Carregados ({consolidatedLoadedItems.length})
             </div>
-            <div className="relative mb-4">
+            {/* Resumo de alertas */}
+            {(consolidatedLoadedItems.some(i => i.isNotInOrder) || consolidatedLoadedItems.some(i => i.ownerTypes.has("rented"))) && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {consolidatedLoadedItems.filter(i => i.isNotInOrder).length > 0 && (
+                  <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-700">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    {consolidatedLoadedItems.filter(i => i.isNotInOrder).length} fora da ordem
+                  </Badge>
+                )}
+                {consolidatedLoadedItems.filter(i => i.ownerTypes.has("rented")).length > 0 && (
+                  <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
+                    {consolidatedLoadedItems.filter(i => i.ownerTypes.has("rented")).length} locados
+                  </Badge>
+                )}
+              </div>
+            )}
+            <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome, SKU ou código de barras..."
@@ -1140,7 +1256,7 @@ export default function MovementDetails() {
                 data-testid="input-search-loaded-items"
               />
             </div>
-            <ScrollArea className="h-[500px] pr-4" style={{ scrollbarWidth: 'thin' }}>
+            <ScrollArea className="h-[460px] pr-4" style={{ scrollbarWidth: 'thin' }}>
               {filteredLoadedItems.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   {loadedSearchQuery ? "Nenhum item encontrado" : "Nenhum item carregado ainda"}
@@ -1157,38 +1273,38 @@ export default function MovementDetails() {
                         }`}
                         data-testid={`item-${item.productId}`}
                       >
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium">{product?.name || "Produto desconhecido"}</p>
+                            <p className="font-medium text-sm truncate">{product?.name || "Produto desconhecido"}</p>
                             {item.isNotInOrder && (
-                              <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-700">
+                              <Badge variant="outline" className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-700">
                                 <AlertTriangle className="h-3 w-3 mr-1" />
                                 Fora da ordem
                               </Badge>
                             )}
                             {item.ownerTypes.has("rented") && (
-                              <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
+                              <Badge variant="outline" className="text-xs bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
                                 LOCADO
                               </Badge>
                             )}
                             {item.ownerTypes.has("third_party") && (
-                              <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
                                 TERCEIROS
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 flex-wrap">
-                            <p className="text-sm text-muted-foreground">
-                              SKU: {product?.sku || "-"}
+                          <div className="flex items-center gap-3 flex-wrap mt-0.5">
+                            <p className="text-xs font-mono text-muted-foreground">
+                              {product?.sku || "-"}
                             </p>
                             {item.owners.size > 0 && (
-                              <p className="text-sm text-muted-foreground">
-                                Fornecedor: {Array.from(item.owners).join(", ")}
+                              <p className="text-xs text-muted-foreground">
+                                {Array.from(item.owners).join(", ")}
                               </p>
                             )}
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-lg px-4 py-1">
+                        <Badge variant="outline" className="text-base px-3 py-0.5 flex-shrink-0">
                           {item.totalQuantity}x
                         </Badge>
                         {movement?.status === "in_progress" && userCanManageMovementItems(user) && (
@@ -1210,7 +1326,7 @@ export default function MovementDetails() {
                               onClick={() => removeItemMutation.mutate(item.productId)}
                               disabled={!isEditable || removeItemMutation.isPending}
                               data-testid={`button-remove-${item.productId}`}
-                              className="flex-shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              className="flex-shrink-0 text-destructive"
                               title={!isEditable ? "Movimentação precisa estar em andamento" : "Remover item completo"}
                             >
                               <X className="h-4 w-4" />
@@ -1452,69 +1568,63 @@ export default function MovementDetails() {
       {!focusMode && auditLogs.length > 0 && (
         <PageSection title="Histórico" description="Registro de ações na movimentação">
           <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3 font-semibold text-base">
-              <Clock className="h-5 w-5" />
-              Histórico de Ações
-            </div>
-            <ScrollArea className="h-[400px] pr-4" style={{ scrollbarWidth: 'thin' }}>
-              <div className="space-y-4">
-                {auditLogs.map((log) => {
-                  const getActionIcon = () => {
-                    switch (log.action) {
-                      case "item_added": return <Plus className="h-4 w-4 text-emerald-500" />;
-                      case "item_removed": return <Minus className="h-4 w-4 text-rose-500" />;
-                      case "status_changed": return <FileText className="h-4 w-4 text-sky-500" />;
-                      case "item_quantity_changed": return <FileText className="h-4 w-4 text-sky-500" />;
-                      default: return <Clock className="h-4 w-4 text-muted-foreground" />;
-                    }
-                  };
+            <CardContent className="p-4">
+              <ScrollArea className="h-[320px] pr-4" style={{ scrollbarWidth: 'thin' }}>
+                <div className="space-y-2">
+                  {auditLogs.map((log, index) => {
+                    const getActionIcon = () => {
+                      switch (log.action) {
+                        case "item_added": return <Plus className="h-3.5 w-3.5 text-emerald-500" />;
+                        case "item_removed": return <Minus className="h-3.5 w-3.5 text-rose-500" />;
+                        case "status_changed": return <FileText className="h-3.5 w-3.5 text-sky-500" />;
+                        case "item_quantity_changed": return <FileText className="h-3.5 w-3.5 text-sky-500" />;
+                        default: return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
+                      }
+                    };
 
-                  const getActionDescription = () => {
-                    const metadata = log.metadata as any;
-                    const context = log.context as any;
-                    
-                    switch (log.action) {
-                      case "item_added":
-                        return `Adicionou ${metadata?.quantity}x ${metadata?.productName} (SKU: ${metadata?.sku})${metadata?.ownerName ? ` - ${metadata.ownerName}` : ""}`;
-                      case "item_removed":
-                        return `Removeu ${metadata?.quantity}x ${metadata?.productName} (SKU: ${metadata?.sku})${metadata?.ownerName ? ` - ${metadata.ownerName}` : ""}`;
-                      case "status_changed":
-                        return `Alterou status de ${getStatusLabel(context?.previousStatus)} para ${getStatusLabel(context?.newStatus)}`;
-                      case "item_quantity_changed":
-                        return `Alterou quantidade de ${metadata?.productName} (SKU: ${metadata?.sku}) de ${metadata?.previousQuantity} para ${metadata?.newQuantity} (${metadata?.quantityDecremented > 0 ? 'removidos ' + metadata?.quantityDecremented : 'ajustados ' + Math.abs(metadata?.quantityDecremented || 0)})${metadata?.ownerName ? ` - ${metadata.ownerName}` : ""}`;
-                      default:
-                        return log.action;
-                    }
-                  };
+                    const getActionDescription = () => {
+                      const metadata = log.metadata as any;
+                      const context = log.context as any;
+                      switch (log.action) {
+                        case "item_added":
+                          return `Adicionou ${metadata?.quantity}x ${metadata?.productName}`;
+                        case "item_removed":
+                          return `Removeu ${metadata?.quantity}x ${metadata?.productName}`;
+                        case "status_changed":
+                          return `Status: ${getStatusLabel(context?.previousStatus)} → ${getStatusLabel(context?.newStatus)}`;
+                        case "item_quantity_changed":
+                          return `${metadata?.productName}: ${metadata?.previousQuantity} → ${metadata?.newQuantity}`;
+                        default:
+                          return log.action;
+                      }
+                    };
 
-                  return (
-                    <div
-                      key={log.id}
-                      className="flex gap-3 p-3 border rounded-lg hover-elevate"
-                      data-testid={`audit-log-${log.id}`}
-                    >
-                      <div className="mt-1">{getActionIcon()}</div>
-                      <div className="flex-1">
-                        <p className="font-medium">{getActionDescription()}</p>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {log.actorName}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {format(new Date(log.occurredAt), "dd/MM/yyyy HH:mm")}
-                          </span>
+                    return (
+                      <div
+                        key={log.id}
+                        className="flex items-start gap-2.5 py-2 px-2 border-b last:border-b-0 border-border/40"
+                        data-testid={`audit-log-${log.id}`}
+                      >
+                        <div className="mt-0.5 flex-shrink-0">{getActionIcon()}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{getActionDescription()}</p>
+                          <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {log.actorName}
+                            </span>
+                            <span>
+                              {format(new Date(log.occurredAt), "dd/MM/yyyy HH:mm")}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </PageSection>
       )}
     </div>
