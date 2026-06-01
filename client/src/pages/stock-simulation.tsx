@@ -1,33 +1,28 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  BarChart3, 
-  Download, 
-  AlertTriangle, 
-  CheckCircle2, 
+import {
+  BarChart3,
+  FileSpreadsheet,
+  AlertTriangle,
+  CheckCircle2,
   AlertCircle,
   ChevronDown,
   ChevronRight,
-  FileSpreadsheet,
   Play,
   Filter,
+  Search,
+  X,
+  PackageX,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { StatusBadge } from "@/components/status-badge";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -59,7 +54,7 @@ interface ProductSimulation {
   totalNeed: number;
   currentStock: number;
   balance: number;
-  status: 'FALTA' | 'CRÍTICO' | 'ADEQUADO';
+  status: "FALTA" | "CRÍTICO" | "ADEQUADO";
   eventBreakdown: Array<{
     eventId: string;
     eventName: string;
@@ -95,35 +90,78 @@ interface SimulationResult {
   products: ProductSimulation[];
 }
 
+const REQUEST_STATUS_OPTIONS = [
+  { value: "draft", label: "Rascunho" },
+  { value: "pending_approval", label: "Aguardando Aprovação" },
+  { value: "approved", label: "Aprovado" },
+  { value: "rejected", label: "Rejeitado" },
+  { value: "cutoff_locked", label: "Bloqueado por Prazo" },
+];
+
+function SimStatusBadge({ status }: { status: string }) {
+  if (status === "FALTA") {
+    return (
+      <Badge className="gap-1 bg-destructive text-destructive-foreground text-xs">
+        <AlertTriangle className="w-3 h-3" />
+        Falta
+      </Badge>
+    );
+  }
+  if (status === "CRÍTICO") {
+    return (
+      <Badge className="gap-1 bg-chart-5/20 text-chart-5 border border-chart-5/30 text-xs">
+        <AlertCircle className="w-3 h-3" />
+        Crítico
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="gap-1 bg-chart-4/20 text-chart-4 border border-chart-4/30 text-xs">
+      <CheckCircle2 className="w-3 h-3" />
+      Adequado
+    </Badge>
+  );
+}
+
 export default function StockSimulation() {
   const { toast } = useToast();
   const [filters, setFilters] = useState<SimulationFilters>({
     eventIds: [],
     requestIds: [],
-    requestStatus: ['approved', 'pending_approval'],
+    requestStatus: ["approved", "pending_approval"],
   });
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
   const [showOnlyShortage, setShowOnlyShortage] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [breakdownView, setBreakdownView] = useState<'event' | 'request'>('event');
+  const [breakdownView, setBreakdownView] = useState<"event" | "request">("event");
+  const [eventSearch, setEventSearch] = useState("");
 
-  // Fetch events for filter
   const { data: events } = useQuery<any[]>({
     queryKey: ["/api/reports/simulation-events"],
   });
 
-  // Fetch requests based on selected events
   const { data: requests } = useQuery<any[]>({
-    queryKey: ["/api/reports/simulation-requests", filters.eventIds.join(',')],
+    queryKey: ["/api/reports/simulation-requests", filters.eventIds.join(",")],
     enabled: filters.eventIds.length > 0,
   });
 
-  // Run simulation
+  const filteredEvents = useMemo(() => {
+    if (!events) return [];
+    if (!eventSearch.trim()) return events;
+    const q = eventSearch.toLowerCase();
+    return events.filter(
+      (e) =>
+        e.name?.toLowerCase().includes(q) ||
+        e.client?.toLowerCase().includes(q) ||
+        e.location?.toLowerCase().includes(q)
+    );
+  }, [events, eventSearch]);
+
   const runSimulation = useMutation({
     mutationFn: async (): Promise<SimulationResult> => {
       const response = await apiRequest("POST", "/api/reports/stock-simulation", filters);
-      return await response.json() as SimulationResult;
+      return (await response.json()) as SimulationResult;
     },
     onSuccess: (data: SimulationResult) => {
       setSimulation(data);
@@ -141,336 +179,378 @@ export default function StockSimulation() {
     },
   });
 
-  const toggleEventSelection = (eventId: string) => {
-    setFilters(prev => ({
-      ...prev,
-      eventIds: prev.eventIds.includes(eventId)
-        ? prev.eventIds.filter(id => id !== eventId)
-        : [...prev.eventIds, eventId]
+  const toggleEvent = (id: string) =>
+    setFilters((p) => ({
+      ...p,
+      eventIds: p.eventIds.includes(id)
+        ? p.eventIds.filter((x) => x !== id)
+        : [...p.eventIds, id],
     }));
-  };
 
-  const toggleRequestSelection = (requestId: string) => {
-    setFilters(prev => ({
-      ...prev,
-      requestIds: prev.requestIds.includes(requestId)
-        ? prev.requestIds.filter(id => id !== requestId)
-        : [...prev.requestIds, requestId]
+  const toggleRequest = (id: string) =>
+    setFilters((p) => ({
+      ...p,
+      requestIds: p.requestIds.includes(id)
+        ? p.requestIds.filter((x) => x !== id)
+        : [...p.requestIds, id],
     }));
-  };
 
-  const toggleProductExpansion = (productId: string) => {
-    setExpandedProducts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(productId)) {
-        newSet.delete(productId);
-      } else {
-        newSet.add(productId);
-      }
-      return newSet;
+  const toggleStatus = (value: string, checked: boolean) =>
+    setFilters((p) => ({
+      ...p,
+      requestStatus: checked
+        ? [...p.requestStatus, value]
+        : p.requestStatus.filter((s) => s !== value),
+    }));
+
+  const selectAllEvents = () =>
+    setFilters((p) => ({ ...p, eventIds: (events || []).map((e) => e.id) }));
+  const clearEvents = () =>
+    setFilters((p) => ({ ...p, eventIds: [] }));
+
+  const toggleProductExpansion = (id: string) =>
+    setExpandedProducts((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
     });
-  };
 
   const exportToExcel = () => {
     if (!simulation) return;
-
     const wb = XLSX.utils.book_new();
-
-    // Aba 1: Resumo Executivo
     const summaryData = [
       ["RELATÓRIO DE SIMULAÇÃO DE ESTOQUE"],
       [""],
-      ["Data/Hora da Simulação:", new Date(simulation.generatedAt).toLocaleString("pt-BR")],
+      ["Data/Hora:", new Date(simulation.generatedAt).toLocaleString("pt-BR")],
       ["Eventos Selecionados:", filters.eventIds.length],
       ["Requisições Consideradas:", simulation.consideredRequests?.length || 0],
       [""],
-      ["RESUMO EXECUTIVO"],
-      ["Total de Produtos Analisados:", simulation.summary.totalProducts],
-      ["Produtos em FALTA:", simulation.summary.productsShortage],
-      ["Produtos em estado CRÍTICO:", simulation.summary.productsCritical],
-      ["Produtos com estoque ADEQUADO:", simulation.summary.productsAdequate],
+      ["RESUMO"],
+      ["Total de Produtos:", simulation.summary.totalProducts],
+      ["Em Falta:", simulation.summary.productsShortage],
+      ["Crítico:", simulation.summary.productsCritical],
+      ["Adequado:", simulation.summary.productsAdequate],
     ];
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Resumo Executivo");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "Resumo Executivo");
 
-    // Aba 2: Requisições Consideradas
-    if (simulation.consideredRequests && simulation.consideredRequests.length > 0) {
-      const requestsData = [
-        ["Área", "Evento", "Status"]
-      ];
-      simulation.consideredRequests.forEach(req => {
-        requestsData.push([
-          req.area,
-          req.eventName,
-          req.status === 'approved' ? 'Aprovado' : 
-          req.status === 'pending_approval' ? 'Aguardando Aprovação' : req.status
-        ]);
-      });
-      const wsRequests = XLSX.utils.aoa_to_sheet(requestsData);
-      XLSX.utils.book_append_sheet(wb, wsRequests, "Requisições");
+    if (simulation.consideredRequests?.length) {
+      const data = [["Área", "Evento", "Status"]];
+      simulation.consideredRequests.forEach((r) =>
+        data.push([
+          r.area,
+          r.eventName,
+          REQUEST_STATUS_OPTIONS.find((o) => o.value === r.status)?.label ?? r.status,
+        ])
+      );
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "Requisições");
     }
 
-    // Aba 3: Detalhamento por Produto
-    const productsData = [
-      ["Código/SKU", "Produto", "Necessidade", "Inventário", "Saldo", "Status", "Unidade"]
-    ];
-    simulation.products.forEach(p => {
-      productsData.push([
-        p.productSku,
-        p.productName,
-        p.totalNeed.toString(),
-        p.currentStock.toString(),
-        p.balance.toString(),
-        p.status,
-        p.unit
-      ]);
-    });
-    const wsProducts = XLSX.utils.aoa_to_sheet(productsData);
-    XLSX.utils.book_append_sheet(wb, wsProducts, "Detalhamento por Produto");
+    const pData = [["Código/SKU", "Produto", "Necessidade", "Inventário", "Saldo", "Status", "Unidade"]];
+    simulation.products.forEach((p) =>
+      pData.push([p.productSku, p.productName, String(p.totalNeed), String(p.currentStock), String(p.balance), p.status, p.unit])
+    );
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pData), "Produtos");
 
-    // Aba 4: Detalhamento por Evento
-    const eventsData = [
-      ["Código/SKU", "Produto", "Evento", "Data do Evento", "Quantidade"]
-    ];
-    simulation.products.forEach(p => {
-      p.eventBreakdown?.forEach(e => {
-        eventsData.push([
-          p.productSku,
-          p.productName,
-          e.eventName,
-          new Date(e.eventDate).toLocaleDateString("pt-BR"),
-          e.quantity.toString()
-        ]);
-      });
-    });
-    const wsEvents = XLSX.utils.aoa_to_sheet(eventsData);
-    XLSX.utils.book_append_sheet(wb, wsEvents, "Detalhamento por Evento");
+    const evData = [["Código/SKU", "Produto", "Evento", "Data do Evento", "Quantidade"]];
+    simulation.products.forEach((p) =>
+      p.eventBreakdown?.forEach((e) =>
+        evData.push([p.productSku, p.productName, e.eventName, new Date(e.eventDate).toLocaleDateString("pt-BR"), String(e.quantity)])
+      )
+    );
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(evData), "Por Evento");
 
-    // Aba 5: Detalhamento por Requisição
-    const requestBreakdownData = [
-      ["Código/SKU", "Produto", "Área", "Evento", "Data do Evento", "Quantidade"]
-    ];
-    simulation.products.forEach(p => {
-      p.requestBreakdown?.forEach(req => {
-        requestBreakdownData.push([
-          p.productSku,
-          p.productName,
-          req.requestArea,
-          req.eventName,
-          new Date(req.eventDate).toLocaleDateString("pt-BR"),
-          req.quantity.toString()
-        ]);
-      });
-    });
-    const wsRequestBreakdown = XLSX.utils.aoa_to_sheet(requestBreakdownData);
-    XLSX.utils.book_append_sheet(wb, wsRequestBreakdown, "Detalhamento por Requisição");
+    const reqData = [["Código/SKU", "Produto", "Área", "Evento", "Data do Evento", "Quantidade"]];
+    simulation.products.forEach((p) =>
+      p.requestBreakdown?.forEach((r) =>
+        reqData.push([p.productSku, p.productName, r.requestArea, r.eventName, new Date(r.eventDate).toLocaleDateString("pt-BR"), String(r.quantity)])
+      )
+    );
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(reqData), "Por Requisição");
 
-    // Save file
-    const fileName = `Simulacao_Estoque_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`;
+    const fileName = `Simulacao_Estoque_${new Date().toISOString().replace(/[:.]/g, "-")}.xlsx`;
     XLSX.writeFile(wb, fileName);
-
-    toast({
-      title: "Exportado com sucesso",
-      description: `Arquivo ${fileName} baixado`,
-    });
+    toast({ title: "Exportado com sucesso", description: fileName });
   };
 
-  const filteredProducts = simulation?.products?.filter(p => {
-    if (showOnlyShortage && p.status !== 'FALTA') return false;
-    if (searchTerm && !p.productName.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !p.productSku.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
-    return true;
-  }) || [];
+  const filteredProducts = useMemo(
+    () =>
+      (simulation?.products || []).filter((p) => {
+        if (showOnlyShortage && p.status !== "FALTA") return false;
+        if (
+          searchTerm &&
+          !p.productName.toLowerCase().includes(searchTerm.toLowerCase()) &&
+          !p.productSku.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+          return false;
+        return true;
+      }),
+    [simulation, showOnlyShortage, searchTerm]
+  );
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'FALTA':
-        return <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" />FALTA</Badge>;
-      case 'CRÍTICO':
-        return <Badge className="gap-1 bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"><AlertCircle className="w-3 h-3" />CRÍTICO</Badge>;
-      case 'ADEQUADO':
-        return <Badge className="gap-1 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"><CheckCircle2 className="w-3 h-3" />ADEQUADO</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
+  const canRun = filters.eventIds.length > 0 && filters.requestStatus.length > 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Simulação de Estoque"
-        description="Confronte requisições de eventos com inventário disponível"
-      />
+        description="Compare requisições de eventos com o inventário disponível."
+      >
+        {simulation && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSimulation(null)}
+            data-testid="button-clear-simulation"
+          >
+            <X className="w-4 h-4 mr-1.5" />
+            Limpar simulação
+          </Button>
+        )}
+      </PageHeader>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Filters Panel */}
-        <Card className="lg:col-span-1 border-border/60">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              Filtros
-            </CardTitle>
-            <CardDescription>Configure os parâmetros da simulação</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Event Selection */}
-            <div className="space-y-2">
-              <Label>Eventos</Label>
-              <div className="border rounded-md p-3 max-h-64 overflow-y-auto space-y-2">
-                {events?.map((event) => (
-                  <div key={event.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`event-${event.id}`}
-                      checked={filters.eventIds.includes(event.id)}
-                      onCheckedChange={() => toggleEventSelection(event.id)}
-                      data-testid={`checkbox-event-${event.id}`}
-                    />
-                    <label
-                      htmlFor={`event-${event.id}`}
-                      className="text-sm flex-1 cursor-pointer"
-                    >
-                      {event.name}
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(event.eventDate).toLocaleDateString("pt-BR")}
-                      </div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-              {filters.eventIds.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {filters.eventIds.length} evento(s) selecionado(s)
-                </p>
-              )}
-            </div>
-
-            {/* Request Selection (optional refinement) */}
-            {requests && requests.length > 0 && (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* ── Painel de filtros ── */}
+        <div className="lg:sticky lg:top-4 space-y-4">
+          <Card className="border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Filter className="w-4 h-4" />
+                Filtros
+              </CardTitle>
+              <CardDescription>Configure os parâmetros da simulação</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* ── Eventos ── */}
               <div className="space-y-2">
-                <Label>Requisições (opcional)</Label>
-                <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                  {requests.map((request) => (
-                    <div key={request.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`request-${request.id}`}
-                        checked={filters.requestIds.includes(request.id)}
-                        onCheckedChange={() => toggleRequestSelection(request.id)}
-                        data-testid={`checkbox-request-${request.id}`}
-                      />
+                <div className="flex items-center justify-between">
+                  <Label>
+                    Eventos
+                    {filters.eventIds.length > 0 && (
+                      <span className="ml-1.5 text-muted-foreground font-normal">
+                        ({filters.eventIds.length} selecionado{filters.eventIds.length !== 1 ? "s" : ""})
+                      </span>
+                    )}
+                  </Label>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectAllEvents}
+                      className="h-6 text-xs px-2"
+                      data-testid="button-select-all-events"
+                    >
+                      Todos
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearEvents}
+                      disabled={filters.eventIds.length === 0}
+                      className="h-6 text-xs px-2"
+                      data-testid="button-clear-events"
+                    >
+                      Limpar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar evento..."
+                    value={eventSearch}
+                    onChange={(e) => setEventSearch(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                    data-testid="input-event-search"
+                  />
+                </div>
+
+                <div
+                  className="border border-border/60 rounded-md p-2 max-h-56 overflow-y-auto space-y-1"
+                  style={{ scrollbarWidth: "thin" }}
+                >
+                  {filteredEvents.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      {events?.length === 0 ? "Nenhum evento disponível" : "Nenhum resultado"}
+                    </p>
+                  ) : (
+                    filteredEvents.map((event) => (
                       <label
-                        htmlFor={`request-${request.id}`}
-                        className="text-sm flex-1 cursor-pointer"
+                        key={event.id}
+                        htmlFor={`ev-${event.id}`}
+                        className={`flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors ${
+                          filters.eventIds.includes(event.id)
+                            ? "bg-primary/8"
+                            : "hover:bg-muted/50"
+                        }`}
                       >
-                        {request.area} - {request.status}
+                        <Checkbox
+                          id={`ev-${event.id}`}
+                          checked={filters.eventIds.includes(event.id)}
+                          onCheckedChange={() => toggleEvent(event.id)}
+                          className="mt-0.5"
+                          data-testid={`checkbox-event-${event.id}`}
+                        />
+                        <div className="min-w-0">
+                          <div className="text-sm leading-tight truncate">{event.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(event.eventDate).toLocaleDateString("pt-BR")}
+                          </div>
+                        </div>
                       </label>
-                    </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* ── Requisições opcionais ── */}
+              {requests && requests.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Requisições (opcional)</Label>
+                  <div
+                    className="border border-border/60 rounded-md p-2 max-h-40 overflow-y-auto space-y-1"
+                    style={{ scrollbarWidth: "thin" }}
+                  >
+                    {requests.map((req) => (
+                      <label
+                        key={req.id}
+                        htmlFor={`req-${req.id}`}
+                        className="flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          id={`req-${req.id}`}
+                          checked={filters.requestIds.includes(req.id)}
+                          onCheckedChange={() => toggleRequest(req.id)}
+                          className="mt-0.5"
+                          data-testid={`checkbox-request-${req.id}`}
+                        />
+                        <div className="min-w-0">
+                          <div className="text-sm truncate">{req.area}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {REQUEST_STATUS_OPTIONS.find((o) => o.value === req.status)?.label ?? req.status}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Status das requisições ── */}
+              <div className="space-y-2">
+                <Label>
+                  Status das Requisições
+                  {filters.requestStatus.length === 0 && (
+                    <span className="ml-1.5 text-xs text-destructive">(obrigatório)</span>
+                  )}
+                </Label>
+                <div className="space-y-1.5">
+                  {REQUEST_STATUS_OPTIONS.map(({ value, label }) => (
+                    <label
+                      key={value}
+                      htmlFor={`st-${value}`}
+                      className="flex items-center gap-2.5 cursor-pointer hover:bg-muted/50 rounded px-2 py-1"
+                    >
+                      <Checkbox
+                        id={`st-${value}`}
+                        checked={filters.requestStatus.includes(value)}
+                        onCheckedChange={(checked) => toggleStatus(value, !!checked)}
+                        data-testid={`checkbox-status-${value}`}
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* Request Status Filter */}
-            <div className="space-y-2">
-              <Label>Status das Requisições</Label>
-              <div className="space-y-2">
-                {[
-                  { value: 'draft', label: 'Rascunho' },
-                  { value: 'pending_approval', label: 'Aguardando Aprovação' },
-                  { value: 'approved', label: 'Aprovado' },
-                  { value: 'rejected', label: 'Rejeitado' }
-                ].map(({ value, label }) => (
-                  <div key={value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`status-${value}`}
-                      checked={filters.requestStatus.includes(value)}
-                      onCheckedChange={(checked) => {
-                        setFilters(prev => ({
-                          ...prev,
-                          requestStatus: checked
-                            ? [...prev.requestStatus, value]
-                            : prev.requestStatus.filter(s => s !== value)
-                        }));
-                      }}
-                    />
-                    <label htmlFor={`status-${value}`} className="text-sm">
-                      {label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
+              <Button
+                className="w-full"
+                onClick={() => runSimulation.mutate()}
+                disabled={!canRun || runSimulation.isPending}
+                data-testid="button-run-simulation"
+              >
+                {runSimulation.isPending ? (
+                  "Processando..."
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Gerar Simulação
+                  </>
+                )}
+              </Button>
 
-            <Button
-              className="w-full"
-              onClick={() => runSimulation.mutate()}
-              disabled={filters.eventIds.length === 0 || runSimulation.isPending}
-              data-testid="button-run-simulation"
-            >
-              {runSimulation.isPending ? (
-                "Processando..."
-              ) : (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Simular Estoque
-                </>
+              {!canRun && !runSimulation.isPending && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {filters.eventIds.length === 0
+                    ? "Selecione ao menos 1 evento"
+                    : "Selecione ao menos 1 status"}
+                </p>
               )}
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Results Panel */}
+        {/* ── Painel de resultados ── */}
         <div className="lg:col-span-2 space-y-4">
-          {simulation && simulation.summary && (
+          {/* Summary */}
+          {simulation && (
             <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <Card className="border-border/60">
-                  <CardHeader className="pb-3">
-                    <CardDescription>Total Analisado</CardDescription>
-                    <CardTitle className="text-3xl">{simulation.summary?.totalProducts || 0}</CardTitle>
-                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold">{simulation.summary.totalProducts}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Total Analisado</div>
+                  </CardContent>
                 </Card>
-                <Card className="border-red-200/60 dark:border-red-900/60">
-                  <CardHeader className="pb-3">
-                    <CardDescription>Em Falta</CardDescription>
-                    <CardTitle className="text-3xl text-red-600">{simulation.summary?.productsShortage || 0}</CardTitle>
-                  </CardHeader>
+                <Card className="border-destructive/40">
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold text-destructive">
+                      {simulation.summary.productsShortage}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Em Falta</div>
+                  </CardContent>
                 </Card>
-                <Card className="border-orange-200/60 dark:border-orange-900/60">
-                  <CardHeader className="pb-3">
-                    <CardDescription>Crítico</CardDescription>
-                    <CardTitle className="text-3xl text-orange-600">{simulation.summary?.productsCritical || 0}</CardTitle>
-                  </CardHeader>
+                <Card className="border-chart-5/40">
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold text-chart-5">
+                      {simulation.summary.productsCritical}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Crítico</div>
+                  </CardContent>
                 </Card>
-                <Card className="border-green-200/60 dark:border-green-900/60">
-                  <CardHeader className="pb-3">
-                    <CardDescription>Adequado</CardDescription>
-                    <CardTitle className="text-3xl text-green-600">{simulation.summary?.productsAdequate || 0}</CardTitle>
-                  </CardHeader>
+                <Card className="border-chart-4/40">
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold text-chart-4">
+                      {simulation.summary.productsAdequate}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Adequado</div>
+                  </CardContent>
                 </Card>
               </div>
 
-              {/* Considered Requests */}
-              {simulation.consideredRequests && simulation.consideredRequests.length > 0 && (
+              {/* Requisições consideradas */}
+              {simulation.consideredRequests?.length > 0 && (
                 <Card className="border-border/60">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Requisições Consideradas</CardTitle>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold">Requisições Consideradas</CardTitle>
                     <CardDescription>
-                      {simulation.consideredRequests.length} requisição(ões) incluída(s) nesta simulação
+                      {simulation.consideredRequests.length} requisição
+                      {simulation.consideredRequests.length !== 1 ? "ões" : ""} incluída
+                      {simulation.consideredRequests.length !== 1 ? "s" : ""} nesta simulação
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {simulation.consideredRequests.map(req => (
-                        <div key={req.id} className="text-sm p-2 border rounded-md">
-                          <div className="font-medium">{req.area}</div>
-                          <div className="text-muted-foreground text-xs">{req.eventName}</div>
-                          <Badge variant="outline" className="mt-1 text-xs">
-                            {req.status === 'approved' ? 'Aprovado' : 
-                             req.status === 'pending_approval' ? 'Aguardando' : req.status}
-                          </Badge>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {simulation.consideredRequests.map((req) => (
+                        <div
+                          key={req.id}
+                          className="flex items-start justify-between gap-2 p-2.5 border border-border/60 rounded-md"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{req.area}</div>
+                            <div className="text-xs text-muted-foreground truncate">{req.eventName}</div>
+                          </div>
+                          <StatusBadge status={req.status} />
                         </div>
                       ))}
                     </div>
@@ -478,30 +558,33 @@ export default function StockSimulation() {
                 </Card>
               )}
 
-              {/* Report Details */}
+              {/* Detalhamento por produto */}
               <Card className="border-border/60">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <CardTitle>Detalhamento por Produto</CardTitle>
+                      <CardTitle className="text-base font-semibold">Detalhamento por Produto</CardTitle>
                       <CardDescription>
-                        Gerado em {new Date(simulation.generatedAt).toLocaleString("pt-BR")}
+                        Gerado em{" "}
+                        {new Date(simulation.generatedAt).toLocaleString("pt-BR")}
                       </CardDescription>
                     </div>
-                    <div className="flex gap-2">
-                      <div className="flex border rounded-md">
+                    <div className="flex flex-wrap gap-2">
+                      <div className="flex rounded-md border border-border/60 overflow-hidden">
                         <Button
-                          variant={breakdownView === 'event' ? 'default' : 'ghost'}
+                          variant={breakdownView === "event" ? "default" : "ghost"}
                           size="sm"
-                          onClick={() => setBreakdownView('event')}
+                          className="rounded-none"
+                          onClick={() => setBreakdownView("event")}
                           data-testid="button-view-event"
                         >
                           Por Evento
                         </Button>
                         <Button
-                          variant={breakdownView === 'request' ? 'default' : 'ghost'}
+                          variant={breakdownView === "request" ? "default" : "ghost"}
                           size="sm"
-                          onClick={() => setBreakdownView('request')}
+                          className="rounded-none"
+                          onClick={() => setBreakdownView("request")}
                           data-testid="button-view-request"
                         >
                           Por Requisição
@@ -513,138 +596,180 @@ export default function StockSimulation() {
                         onClick={exportToExcel}
                         data-testid="button-export-excel"
                       >
-                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        <FileSpreadsheet className="w-4 h-4 mr-1.5" />
                         Exportar Excel
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Search and filters */}
-                  <div className="flex gap-4">
-                    <Input
-                      placeholder="Buscar produto..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="max-w-sm"
-                      data-testid="input-search-product"
-                    />
-                    <div className="flex items-center space-x-2">
+                  {/* Busca + filtro */}
+                  <div className="flex flex-wrap gap-3 items-center">
+                    <div className="relative flex-1 min-w-48">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar produto ou SKU..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8"
+                        data-testid="input-search-product"
+                      />
+                    </div>
+                    <label
+                      htmlFor="showOnlyShortage"
+                      className="flex items-center gap-2 cursor-pointer text-sm"
+                    >
                       <Checkbox
                         id="showOnlyShortage"
                         checked={showOnlyShortage}
-                        onCheckedChange={(checked) => setShowOnlyShortage(checked as boolean)}
+                        onCheckedChange={(v) => setShowOnlyShortage(!!v)}
+                        data-testid="checkbox-only-shortage"
                       />
-                      <label htmlFor="showOnlyShortage" className="text-sm">
-                        Mostrar apenas produtos em FALTA
-                      </label>
-                    </div>
+                      Apenas em falta
+                    </label>
+                    {(searchTerm || showOnlyShortage) && (
+                      <span className="text-xs text-muted-foreground">
+                        {filteredProducts.length} de {simulation.products.length} produto
+                        {simulation.products.length !== 1 ? "s" : ""}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Products Table */}
-                  <div className="border border-border/60 rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-12"></TableHead>
-                          <TableHead>Produto</TableHead>
-                          <TableHead className="text-right">Necessidade</TableHead>
-                          <TableHead className="text-right">Inventário</TableHead>
-                          <TableHead className="text-right">Saldo</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredProducts.map((product) => (
-                          <Collapsible
-                            key={product.productId}
-                            open={expandedProducts.has(product.productId)}
-                            onOpenChange={() => toggleProductExpansion(product.productId)}
-                            asChild
-                          >
-                            <>
-                              <CollapsibleTrigger asChild>
-                                <TableRow
-                                  className={`cursor-pointer hover-elevate ${
-                                    product.status === 'FALTA' ? 'bg-red-50 dark:bg-red-950/20' : ''
-                                  }`}
-                                  data-testid={`row-product-${product.productId}`}
-                                >
-                                  <TableCell>
-                                    {expandedProducts.has(product.productId) ? (
-                                      <ChevronDown className="w-4 h-4" />
-                                    ) : (
-                                      <ChevronRight className="w-4 h-4" />
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="font-medium">{product.productName}</div>
-                                    <div className="text-sm text-muted-foreground">{product.productSku}</div>
-                                  </TableCell>
-                                  <TableCell className="text-right font-semibold">
-                                    {product.totalNeed} {product.unit}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {product.currentStock} {product.unit}
-                                  </TableCell>
-                                  <TableCell className={`text-right font-semibold ${
-                                    product.balance < 0 ? 'text-red-600' : 'text-green-600'
-                                  }`}>
-                                    {product.balance} {product.unit}
-                                  </TableCell>
-                                  <TableCell>
-                                    {getStatusBadge(product.status)}
-                                  </TableCell>
-                                </TableRow>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent asChild>
-                                <TableRow>
-                                  <TableCell colSpan={6} className="bg-muted/30">
-                                    <div className="p-4 space-y-2">
-                                      {breakdownView === 'event' ? (
-                                        <>
-                                          <div className="text-sm font-medium mb-2">Detalhamento por Evento:</div>
-                                          {product.eventBreakdown?.map((event, idx) => (
-                                            <div key={idx} className="flex items-center gap-2 text-sm pl-4">
-                                              <span className="flex-1">{event.eventName}</span>
-                                              <span className="text-muted-foreground">
-                                                {new Date(event.eventDate).toLocaleDateString("pt-BR")}
-                                              </span>
-                                              <span className="font-semibold">
-                                                {event.quantity} {product.unit}
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </>
+                  {filteredProducts.length === 0 ? (
+                    <EmptyState
+                      icon={PackageX}
+                      title="Nenhum produto encontrado"
+                      description="Ajuste a busca ou os filtros para ver resultados."
+                      compact
+                    />
+                  ) : (
+                    <div
+                      className="border border-border/60 rounded-md overflow-hidden"
+                      style={{ scrollbarWidth: "thin" }}
+                    >
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-8" />
+                            <TableHead>Produto</TableHead>
+                            <TableHead className="text-right">Necessário</TableHead>
+                            <TableHead className="text-right">Inventário</TableHead>
+                            <TableHead className="text-right">Saldo</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredProducts.map((product) => (
+                            <Collapsible
+                              key={product.productId}
+                              open={expandedProducts.has(product.productId)}
+                              onOpenChange={() => toggleProductExpansion(product.productId)}
+                              asChild
+                            >
+                              <>
+                                <CollapsibleTrigger asChild>
+                                  <TableRow
+                                    className={`cursor-pointer hover-elevate ${
+                                      product.status === "FALTA"
+                                        ? "bg-destructive/5"
+                                        : ""
+                                    }`}
+                                    data-testid={`row-product-${product.productId}`}
+                                  >
+                                    <TableCell className="pr-0">
+                                      {expandedProducts.has(product.productId) ? (
+                                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
                                       ) : (
-                                        <>
-                                          <div className="text-sm font-medium mb-2">Detalhamento por Requisição:</div>
-                                          {product.requestBreakdown?.map((req, idx) => (
-                                            <div key={idx} className="flex items-center gap-2 text-sm pl-4">
-                                              <div className="flex-1">
-                                                <div>{req.requestArea}</div>
-                                                <div className="text-xs text-muted-foreground">{req.eventName}</div>
-                                              </div>
-                                              <span className="text-muted-foreground text-xs">
-                                                {new Date(req.eventDate).toLocaleDateString("pt-BR")}
-                                              </span>
-                                              <span className="font-semibold">
-                                                {req.quantity} {product.unit}
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </>
+                                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
                                       )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              </CollapsibleContent>
-                            </>
-                          </Collapsible>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="font-medium text-sm leading-tight">
+                                        {product.productName}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground font-mono">
+                                        {product.productSku}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right font-semibold text-sm">
+                                      {product.totalNeed} {product.unit}
+                                    </TableCell>
+                                    <TableCell className="text-right text-sm">
+                                      {product.currentStock} {product.unit}
+                                    </TableCell>
+                                    <TableCell
+                                      className={`text-right font-semibold text-sm ${
+                                        product.balance < 0
+                                          ? "text-destructive"
+                                          : "text-chart-4"
+                                      }`}
+                                    >
+                                      {product.balance} {product.unit}
+                                    </TableCell>
+                                    <TableCell>
+                                      <SimStatusBadge status={product.status} />
+                                    </TableCell>
+                                  </TableRow>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent asChild>
+                                  <TableRow>
+                                    <TableCell colSpan={6} className="bg-muted/30 p-0">
+                                      <div
+                                        className="p-4 space-y-1.5"
+                                        style={{ scrollbarWidth: "thin" }}
+                                      >
+                                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                          {breakdownView === "event"
+                                            ? "Detalhamento por Evento"
+                                            : "Detalhamento por Requisição"}
+                                        </div>
+                                        {breakdownView === "event"
+                                          ? product.eventBreakdown?.map((ev, idx) => (
+                                              <div
+                                                key={idx}
+                                                className="flex items-center gap-2 text-sm pl-2 py-0.5"
+                                              >
+                                                <span className="flex-1 text-foreground">
+                                                  {ev.eventName}
+                                                </span>
+                                                <span className="text-muted-foreground text-xs">
+                                                  {new Date(ev.eventDate).toLocaleDateString("pt-BR")}
+                                                </span>
+                                                <span className="font-semibold tabular-nums">
+                                                  {ev.quantity} {product.unit}
+                                                </span>
+                                              </div>
+                                            ))
+                                          : product.requestBreakdown?.map((req, idx) => (
+                                              <div
+                                                key={idx}
+                                                className="flex items-start gap-2 text-sm pl-2 py-0.5"
+                                              >
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="truncate">{req.requestArea}</div>
+                                                  <div className="text-xs text-muted-foreground truncate">
+                                                    {req.eventName}
+                                                  </div>
+                                                </div>
+                                                <span className="text-muted-foreground text-xs whitespace-nowrap">
+                                                  {new Date(req.eventDate).toLocaleDateString("pt-BR")}
+                                                </span>
+                                                <span className="font-semibold tabular-nums">
+                                                  {req.quantity} {product.unit}
+                                                </span>
+                                              </div>
+                                            ))}
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                </CollapsibleContent>
+                              </>
+                            </Collapsible>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>
@@ -654,7 +779,15 @@ export default function StockSimulation() {
             <EmptyState
               icon={BarChart3}
               title="Nenhuma simulação executada"
-              description='Selecione os eventos e clique em "Simular Estoque" para ver os resultados'
+              description="Selecione eventos e status de requisições, depois clique em Gerar Simulação para ver disponibilidade e alocações."
+              action={
+                canRun
+                  ? {
+                      label: "Gerar Simulação",
+                      onClick: () => runSimulation.mutate(),
+                    }
+                  : undefined
+              }
             />
           )}
         </div>
