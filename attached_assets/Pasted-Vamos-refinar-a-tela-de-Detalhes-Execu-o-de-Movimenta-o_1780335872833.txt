@@ -1,0 +1,317 @@
+Vamos refinar a tela de Detalhes/Execução de Movimentação para nível 10/10.
+
+Arquivo foco:
+
+* client/src/pages/movement-details.tsx
+* e componentes relacionados usados nessa tela, se existirem
+
+Objetivo:
+Transformar a tela de detalhes/execução de movimentação em uma central operacional clara, rápida e profissional para carga/descarga, conferência de itens, status, progresso e histórico.
+
+Essa tela é crítica para operação. O usuário precisa bater o olho e entender:
+
+* qual movimentação está aberta;
+* qual status atual;
+* se está pausada, em andamento ou finalizada;
+* quantos itens eram esperados;
+* quantos já foram carregados;
+* quantos faltam;
+* se há excedentes;
+* quais itens estão fora da ordem;
+* qual ação pode executar agora.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+Problemas observados na tela atual:
+
+1. Header
+
+* O título da movimentação parece estar cortado/alinhado incorretamente à esquerda.
+* Corrigir alinhamento e garantir que o título nunca fique cortado.
+* Header precisa mostrar melhor:
+
+  * código da movimentação;
+  * nome da movimentação;
+  * tipo amigável;
+  * evento;
+  * status;
+  * ação principal.
+
+2. Inconsistência de microcopy
+
+* O alerta diz: “Clique em 'Retomar Movimentação'...”
+* Mas o botão aparece como “Continuar”.
+* Padronizar o texto.
+* Se a ação real for retomar, usar “Retomar Movimentação”.
+* Se a ação real for continuar, ajustar alerta para “Clique em Continuar...”.
+* Não alterar lógica, apenas microcopy.
+
+3. Resumo operacional no topo
+   Adicionar ou melhorar cards/resumo compacto com:
+
+* Status
+* Progresso geral
+* Itens esperados
+* Itens carregados
+* Itens pendentes
+* Itens excedidos/fora da ordem
+
+Exemplo:
+
+* Esperado: 50
+* Carregado: 50
+* Pendente: 0
+* Excedente: 8
+* Progresso: 100%
+
+Esse resumo deve aparecer antes das listas para orientar a operação.
+
+4. Status e informações
+   A seção “Status e Informações” está boa, mas pode ficar mais compacta.
+
+Melhorar:
+
+* StatusBadge visível;
+* doca;
+* veículo;
+* evento;
+* progresso;
+* tipo da movimentação;
+* barra de progresso;
+* layout em grid compacto;
+* evitar card alto demais.
+
+5. Estado pausado
+   Quando a movimentação estiver pausada:
+
+* mostrar alerta claro e discreto;
+* destacar que a leitura/conferência está temporariamente interrompida;
+* se a busca/scanner não deve ser usada enquanto pausada, desabilitar visualmente;
+* se ainda puder buscar, deixar claro que é apenas consulta;
+* ação principal deve ser “Retomar Movimentação” ou equivalente.
+
+Não alterar regra funcional. Apenas melhorar apresentação conforme a lógica existente.
+
+6. Itens da Ordem
+   Refinar a seção “Itens da Ordem”:
+
+* Cards mais compactos.
+* Separar visualmente:
+
+  * pendentes;
+  * completos;
+  * excedidos.
+* Se possível, adicionar chips/filtros rápidos:
+
+  * Todos
+  * Pendentes
+  * Completos
+  * Excedidos
+* Mostrar:
+
+  * nome do produto;
+  * SKU;
+  * quantidade esperada;
+  * quantidade carregada;
+  * percentual;
+  * status visual.
+* Itens completos devem ser verdes, mas sem exagero.
+* Itens excedidos devem ter alerta claro, mas não poluir a tela.
+* Evitar cards muito altos.
+
+7. Itens Carregados
+   Refinar a seção “Itens Carregados”:
+
+* Cards mais compactos.
+* Mostrar quantidade carregada em destaque à direita.
+* Mostrar SKU em font-mono text-xs text-muted-foreground.
+* Agrupar ou destacar itens:
+
+  * pertencem à ordem;
+  * não constam na ordem;
+  * locados;
+  * excedentes.
+* O badge “Produto não consta na ordem” está útil, mas aparece muito repetido e visualmente pesado.
+* Tornar o alerta mais compacto.
+* Se houver muitos itens fora da ordem, exibir um resumo no topo da seção:
+
+  * “X itens fora da ordem”
+  * “Y itens locados”
+
+8. Busca/scanner
+   As buscas estão boas, mas podem ficar mais operacionais:
+
+* Placeholder claro:
+
+  * “Buscar por nome, SKU ou código de barras...”
+* Se houver scanner, destacar a área de leitura.
+* Se a movimentação estiver pausada, mostrar estado visual coerente.
+* Garantir foco e uso rápido por teclado.
+* Empty state quando busca não encontrar resultados.
+
+Não alterar scanner nem lógica de leitura.
+
+9. Histórico de Ações
+   O histórico está visualmente grande e repetitivo.
+
+Refinar para uma timeline operacional mais compacta:
+
+* ícone pequeno por tipo de ação;
+* texto principal;
+* usuário;
+* data/hora;
+* status/ação;
+* menos altura por item;
+* scroll interno discreto, se necessário.
+
+Exemplos de labels amigáveis:
+
+* “Status alterado: Em andamento → Pausada”
+* “Adicionou 1x Tenda 5×5”
+* “Adicionou 2x Box Truss”
+
+Evitar cards enormes para cada evento do histórico.
+
+10. Scrollbars
+    Garantir scrollbars discretos em dark mode:
+
+* finos;
+* track transparente;
+* thumb sutil;
+* sem scrollbar branco/cinza padrão;
+* aplicar nos painéis internos, se houver.
+
+11. Layout geral
+    Melhorar a estrutura da tela:
+
+Topo:
+
+* PageHeader com código/nome/status/ações.
+
+Depois:
+
+* Resumo operacional compacto.
+* Alerta de pausa, se aplicável.
+* Grid principal:
+
+  * Itens da Ordem
+  * Itens Carregados
+* Histórico de Ações.
+
+Em desktop:
+
+* duas colunas para itens.
+
+Em tablet/mobile:
+
+* colunas empilhadas;
+* sem overflow horizontal;
+* ações acessíveis.
+
+12. Design System
+    Aplicar padrões existentes:
+
+* PageHeader
+* PageSection
+* StatusBadge
+* DataCard, se fizer sentido
+* ActionBar
+* EmptyState
+* PageLoading
+* ErrorState
+
+Regras:
+
+* Cards operacionais com p-4.
+* Títulos com text-base font-semibold.
+* SKU/IDs com font-mono text-xs text-muted-foreground.
+* Status sempre com StatusBadge.
+* Não criar badges manuais com cores hardcoded se StatusBadge atender.
+* Botões com size="sm" dentro de cards.
+* Nada de hover:bg-* manual em Button.
+
+13. Responsividade
+    Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* título não corta;
+* cards não estouram;
+* listas internas continuam utilizáveis;
+* botões ficam acessíveis;
+* sem overflow horizontal;
+* histórico não domina a tela.
+
+14. Restrições absolutas
+    Não alterar:
+
+* backend;
+* endpoints;
+* payloads;
+* queries;
+* mutations;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* helpers de autorização;
+* regras de negócio;
+* status/transições;
+* scanner;
+* lógica de leitura;
+* lógica de adicionar item;
+* lógica de pausar/retomar/finalizar;
+* lógica de histórico.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição visual;
+* cards;
+* painéis;
+* microcopy PT-BR;
+* labels amigáveis;
+* organização das listas;
+* empty/loading/error states;
+* responsividade;
+* scrollbars.
+
+15. Validações obrigatórias
+    Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir movimentação em andamento;
+* abrir movimentação pausada;
+* abrir movimentação finalizada;
+* buscar item da ordem;
+* buscar item carregado;
+* validar item completo;
+* validar item excedido;
+* validar produto fora da ordem;
+* pausar/retomar;
+* finalizar;
+* validar histórico;
+* validar mobile básico.
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* confirmação de que scanner, RBAC e regras foram preservados;
+* resultado do npm run check;
+* resultado do npm run build.
