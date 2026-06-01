@@ -38,7 +38,7 @@ export default function Config() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Configuração"
+        title="Configurações do Sistema"
         description="Gerencie configurações e recursos do sistema"
       />
 

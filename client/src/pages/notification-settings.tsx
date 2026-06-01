@@ -70,7 +70,7 @@ export default function NotificationSettingsPage() {
   return (
     <div className="space-y-6 max-w-3xl" data-testid="page-notification-settings">
       <PageHeader
-        title="Configurações de Notificação"
+        title="Preferências de Notificação"
         description="Gerencie como você deseja receber notificações"
       />
 
@@ -180,7 +180,7 @@ export default function NotificationSettingsPage() {
                 data-testid="button-save-settings"
               >
                 <Save className="h-4 w-4 mr-2" />
-                Salvar Configurações
+                Salvar Preferências
               </Button>
             </div>
           </div>
