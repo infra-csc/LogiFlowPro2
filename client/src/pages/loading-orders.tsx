@@ -17,6 +17,8 @@ import { ActionBar } from "@/components/action-bar";
 
 interface LoadingOrderWithRelations extends LoadingOrder {
   event?: Event;
+  totalItems?: number;
+  loadedItems?: number;
 }
 
 const statusBarColors: Record<string, string> = {
@@ -229,17 +231,34 @@ export default function LoadingOrders() {
                   </div>
                 </div>
 
-                {/* Progress bar */}
-                <div className="w-full bg-muted rounded-full h-1.5 mb-4">
-                  <div
-                    className={`h-full rounded-full ${
-                      order.status === "completed" ? "bg-chart-4" :
-                      order.status === "in_progress" ? "bg-primary" :
-                      order.status === "ready" ? "bg-chart-4" :
-                      "bg-muted-foreground"
-                    }`}
-                    style={{ width: order.status === "completed" ? "100%" : order.status === "in_progress" ? "65%" : order.status === "ready" ? "100%" : "20%" }}
-                  />
+                {/* Quantidade de itens + progresso */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted-foreground">
+                        Total: <span className="font-semibold text-foreground">{order.totalItems || 0}</span> itens
+                      </span>
+                      <span className="text-muted-foreground">
+                        Carregados: <span className="font-semibold text-foreground">{order.loadedItems || 0}</span>
+                      </span>
+                    </div>
+                    <span className="font-medium text-foreground">
+                      {order.totalItems && order.totalItems > 0
+                        ? Math.round(((order.loadedItems || 0) / order.totalItems) * 100) + "%"
+                        : "0%"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div
+                      className={`h-full rounded-full ${
+                        order.status === "completed" ? "bg-chart-4" :
+                        order.status === "in_progress" ? "bg-primary" :
+                        order.status === "ready" ? "bg-chart-4" :
+                        "bg-muted-foreground"
+                      }`}
+                      style={{ width: `${order.totalItems && order.totalItems > 0 ? Math.min(((order.loadedItems || 0) / order.totalItems) * 100, 100) : 10}%` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Footer */}

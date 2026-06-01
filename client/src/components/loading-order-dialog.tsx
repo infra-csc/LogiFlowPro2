@@ -459,16 +459,8 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                           />
                           <span className="text-xs font-mono text-muted-foreground">#{request.id.slice(0, 8)}</span>
                           <span className="text-sm font-medium truncate">{request.area}</span>
-                          <span className="text-xs text-right">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                              request.priority === "high"
-                                ? "bg-destructive/10 text-destructive"
-                                : request.priority === "medium"
-                                ? "bg-chart-5/10 text-chart-5"
-                                : "bg-muted text-muted-foreground"
-                            }`}>
-                              {request.priority === "high" ? "Alta" : request.priority === "medium" ? "Média" : "Normal"}
-                            </span>
+                          <span className="text-xs text-muted-foreground text-right">
+                            {request.status}
                           </span>
                         </div>
                       ))}
@@ -525,20 +517,8 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                               </span>
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {trip.plannedStartTime ? format(new Date(trip.plannedStartTime), "dd MMM, HH:mm") : "N/A"}
+                                {trip.scheduledStart ? format(new Date(trip.scheduledStart), "dd MMM, HH:mm") : "N/A"}
                               </span>
-                              {trip.distance && (
-                                <span className="flex items-center gap-1">
-                                  <ArrowRight className="h-3 w-3" />
-                                  {trip.distance} km
-                                </span>
-                              )}
-                              {trip.estimatedDuration && (
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {trip.estimatedDuration} min
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>

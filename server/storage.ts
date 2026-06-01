@@ -918,6 +918,16 @@ export class DatabaseStorage implements IStorage {
 
   // Loading Orders
   async getLoadingOrders(): Promise<any[]> {
+    const itemsAgg = db
+      .select({
+        loadingOrderId: loadingOrderItems.loadingOrderId,
+        totalItems: sql<number>`COALESCE(SUM(${loadingOrderItems.consolidatedQuantity}), 0)`.as("totalItems"),
+        loadedItems: sql<number>`COALESCE(SUM(${loadingOrderItems.loadedQuantity}), 0)`.as("loadedItems"),
+      })
+      .from(loadingOrderItems)
+      .groupBy(loadingOrderItems.loadingOrderId)
+      .as("itemsAgg");
+
     const results = await db
       .select({
         id: loadingOrders.id,
@@ -935,9 +945,12 @@ export class DatabaseStorage implements IStorage {
         createdAt: loadingOrders.createdAt,
         updatedAt: loadingOrders.updatedAt,
         event: events,
+        totalItems: itemsAgg.totalItems,
+        loadedItems: itemsAgg.loadedItems,
       })
       .from(loadingOrders)
       .leftJoin(events, eq(loadingOrders.eventId, events.id))
+      .leftJoin(itemsAgg, eq(loadingOrders.id, itemsAgg.loadingOrderId))
       .orderBy(desc(loadingOrders.createdAt));
     
     return results;
