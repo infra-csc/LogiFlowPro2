@@ -48,7 +48,7 @@ interface TripFilters {
 
 interface CalendarTripEntry {
   trip: TripWithRelations;
-  type: "loading" | "unloading";
+  type: "loading" | "unloading" | "departure" | "event";
 }
 
 type ViewMode = "list" | "calendar";
@@ -188,15 +188,29 @@ export default function Trips() {
   const tripsByDate = useMemo(() => {
     const grouped: Record<string, CalendarTripEntry[]> = {};
     sortedTrips.forEach((trip) => {
+      let placed = false;
       if (trip.loadingStartTime) {
         const key = format(new Date(trip.loadingStartTime), "yyyy-MM-dd");
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push({ trip, type: "loading" });
+        placed = true;
       }
       if (trip.unloadingStartTime) {
         const key = format(new Date(trip.unloadingStartTime), "yyyy-MM-dd");
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push({ trip, type: "unloading" });
+        placed = true;
+      }
+      if (!placed && trip.departureDateTime) {
+        const key = format(new Date(trip.departureDateTime), "yyyy-MM-dd");
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({ trip, type: "departure" });
+        placed = true;
+      }
+      if (!placed && trip.event?.eventDate) {
+        const key = format(new Date(trip.event.eventDate), "yyyy-MM-dd");
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({ trip, type: "event" });
       }
     });
     return grouped;
@@ -739,10 +753,20 @@ export default function Trips() {
                               className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                                 entry.type === "loading"
                                   ? "bg-primary/15 text-primary"
-                                  : "bg-chart-2/15 text-chart-2"
+                                  : entry.type === "unloading"
+                                  ? "bg-chart-2/15 text-chart-2"
+                                  : entry.type === "departure"
+                                  ? "bg-chart-5/15 text-chart-5"
+                                  : "bg-muted text-muted-foreground"
                               }`}
                             >
-                              {entry.type === "loading" ? "CARGA" : "DESC"}
+                              {entry.type === "loading"
+                                ? "CARGA"
+                                : entry.type === "unloading"
+                                ? "DESC"
+                                : entry.type === "departure"
+                                ? "SAÍDA"
+                                : "EVENTO"}
                             </span>
                           </div>
                           <p className="text-xs font-medium leading-tight line-clamp-2">

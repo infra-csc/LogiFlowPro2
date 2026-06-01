@@ -1,0 +1,708 @@
+Vamos criar uma tela 10/10 de Detalhes do Evento / Central do Evento.
+
+Objetivo:
+Quando o usuário clicar em um evento na tela de Eventos, ele deve abrir uma tela completa com tudo que está acontecendo naquele evento.
+
+Essa tela deve funcionar como uma Central Operacional do Evento, mostrando requisições, itens, viagens, ordens de carregamento, movimentações, status, pendências e alertas.
+
+Nome conceitual:
+Event Control Center
+
+Rotas/telas foco:
+- client/src/pages/events.tsx
+- criar ou refinar client/src/pages/event-details.tsx
+- componentes relacionados a EventOverview/EventSummary, se necessário
+- server/routes.ts, se for necessário criar endpoint agregado
+- storage/repositories relacionados a eventos, requisições, loading orders, viagens, movimentações e estoque
+
+Objetivo de UX:
+O admin/logística/supervisor deve clicar em um evento e entender rapidamente:
+
+- Qual é o evento?
+- Qual cliente/local/data?
+- Qual status?
+- A janela de requisição está aberta, futura ou encerrada?
+- Quantas requisições existem?
+- Quantas estão pendentes, aprovadas ou rejeitadas?
+- Quais itens foram solicitados?
+- Quais itens foram aprovados?
+- Quais ordens de carregamento existem?
+- Quais viagens estão planejadas?
+- Quais movimentações estão em andamento/finalizadas?
+- Existem pendências ou riscos?
+- O que precisa ser feito agora?
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — NAVEGAÇÃO A PARTIR DA LISTA DE EVENTOS
+==================================================
+
+Na tela:
+- client/src/pages/events.tsx
+
+Alterar comportamento visual/UX:
+
+1. Card de evento clicável
+- O card inteiro deve levar para /events/:id ou rota equivalente.
+- Manter botão Editar separado, sem conflito com clique do card.
+- Cursor/hover deve indicar que o card abre detalhes.
+- Ação Editar continua respeitando permissão atual.
+- Não remover ação existente.
+
+2. Ações do card
+- Ação principal: abrir detalhes do evento.
+- Ação secundária: editar, se permitido.
+- Se necessário, adicionar botão/ícone “Ver detalhes”.
+
+3. Não alterar:
+- RBAC;
+- payloads;
+- regras de evento;
+- lógica de edição.
+
+==================================================
+PARTE 2 — CRIAR TELA DETALHE DO EVENTO
+==================================================
+
+Criar/refinar:
+
+- client/src/pages/event-details.tsx
+
+Rota sugerida:
+- /events/:id
+
+Estrutura visual da página:
+
+1. PageHeader
+2. Resumo operacional
+3. Alertas do evento
+4. Timeline do evento
+5. Requisições
+6. Itens do evento
+7. Ordens de carregamento
+8. Viagens
+9. Movimentações
+10. Histórico/atividade, se houver dados
+
+==================================================
+PARTE 3 — HEADER DA CENTRAL DO EVENTO
+==================================================
+
+PageHeader deve mostrar:
+
+- Nome do evento;
+- Cliente;
+- Local;
+- StatusBadge;
+- Data principal do evento;
+- Ações:
+  - Voltar;
+  - Editar evento, se permitido;
+  - Nova Requisição, se permitido;
+  - Planejar Viagem, se permitido;
+  - Criar Ordem de Carregamento, se permitido.
+
+Exemplo:
+
+Título:
+“Night Run Belo Horizonte”
+
+Descrição:
+“Tatica Mkt • Praça Nova da Pampulha • 28/11/2025”
+
+Ações:
+- Voltar
+- Editar
+- Nova Requisição
+- Planejar Viagem
+- Criar Ordem
+
+Todas as ações devem respeitar RBAC atual.
+
+==================================================
+PARTE 4 — RESUMO OPERACIONAL DO EVENTO
+==================================================
+
+Logo abaixo do header, criar cards compactos de resumo.
+
+Cards sugeridos:
+
+1. Requisições
+- total;
+- pendentes;
+- aprovadas;
+- rejeitadas.
+
+2. Itens solicitados
+- total de itens solicitados;
+- total aprovado;
+- itens com possível conflito/estoque baixo, se disponível.
+
+3. Ordens de carregamento
+- total;
+- rascunho;
+- prontas;
+- aprovadas;
+- em andamento;
+- finalizadas.
+
+4. Viagens
+- total;
+- próximas;
+- em andamento;
+- concluídas.
+
+5. Movimentações
+- total;
+- em andamento;
+- pausadas;
+- finalizadas;
+- com excesso, se disponível.
+
+6. Janela de requisição
+- aberta;
+- futura;
+- encerrada;
+- sem janela definida.
+
+Design:
+- cards compactos;
+- ícone em container;
+- número em destaque;
+- label secundária;
+- StatusBadge quando fizer sentido;
+- sem gráficos complexos;
+- responsivo.
+
+==================================================
+PARTE 5 — ALERTAS DO EVENTO
+==================================================
+
+Criar seção “Alertas do Evento”.
+
+Mostrar apenas quando houver alertas.
+
+Alertas possíveis:
+
+- requisições pendentes de aprovação;
+- janela de requisição encerrando em breve;
+- janela de requisição encerrada sem requisições aprovadas;
+- evento próximo sem viagem planejada;
+- evento próximo sem ordem de carregamento;
+- ordem aprovada sem viagem;
+- movimentação pausada;
+- movimentação com itens excedidos;
+- produto solicitado sem estoque suficiente;
+- produto locado/terceiro sem fornecedor;
+- ordem sem período definido;
+- viagem sem motorista;
+- viagem sem veículo;
+- viagem sem destino.
+
+Cada alerta deve mostrar:
+- severidade;
+- descrição clara;
+- entidade relacionada;
+- ação/link para resolver.
+
+Exemplos:
+- “2 requisições aguardam aprovação”
+- “Evento ocorre em 5 dias e ainda não possui viagem planejada”
+- “1 movimentação pausada precisa ser retomada”
+- “3 produtos podem ter conflito de estoque”
+
+Se não houver alertas:
+- mostrar estado positivo discreto:
+  “Nenhum alerta crítico para este evento.”
+
+==================================================
+PARTE 6 — TIMELINE DO EVENTO
+==================================================
+
+Criar uma timeline visual simples:
+
+- Janela de requisição abre;
+- Janela de requisição fecha;
+- Montagem;
+- Data do evento;
+- Desmontagem;
+- Carregamentos planejados;
+- Viagens;
+- Movimentações.
+
+Design:
+- horizontal em desktop, vertical em mobile;
+- datas claras;
+- status visual;
+- marcar etapa atual;
+- não exagerar em animação.
+
+Objetivo:
+O usuário deve entender onde o evento está no ciclo operacional.
+
+==================================================
+PARTE 7 — REQUISIÇÕES DO EVENTO
+==================================================
+
+Seção “Requisições”.
+
+Mostrar requisições vinculadas ao evento.
+
+Cada item deve mostrar:
+- área;
+- solicitante;
+- status;
+- data de criação/envio;
+- quantidade de itens;
+- link para detalhe.
+
+Agrupar ou filtrar por:
+- Rascunho;
+- Aguardando aprovação;
+- Aprovadas;
+- Rejeitadas.
+
+Design:
+- cards compactos ou tabela;
+- StatusBadge;
+- ações claras;
+- botão “Ver todas” se houver muitas;
+- botão “Nova Requisição”, se permitido.
+
+EmptyState:
+- “Nenhuma requisição para este evento”
+- ação “Nova Requisição”, se permitido e janela permitir.
+
+Importante:
+Não alterar regra de janela de requisição.
+Apenas apresentar visualmente.
+
+==================================================
+PARTE 8 — ITENS DO EVENTO
+==================================================
+
+Criar seção “Itens do Evento”.
+
+Objetivo:
+Mostrar uma visão consolidada dos materiais solicitados/aprovados para aquele evento.
+
+Cada item deve mostrar:
+
+- nome do produto/kit;
+- SKU;
+- quantidade solicitada;
+- quantidade aprovada;
+- quantidade carregada, se disponível;
+- estoque disponível, se disponível;
+- origem/área solicitante;
+- status:
+  - solicitado;
+  - aprovado;
+  - parcialmente aprovado;
+  - carregado;
+  - pendente;
+  - conflito de estoque.
+
+Se os dados estiverem disponíveis, consolidar por produto.
+
+Exemplo:
+
+Produto: Box Truss Q30
+SKU: BOX_3Q30
+Solicitado: 30
+Aprovado: 25
+Carregado: 12
+Origem: Cenografia, Iluminação
+
+Design:
+- tabela compacta se houver muitos itens;
+- cards compactos se houver poucos;
+- SKU com font-mono text-xs;
+- quantidades alinhadas;
+- alertas discretos para conflito;
+- sem cards gigantes.
+
+Se consolidar itens exigir query complexa:
+- criar endpoint agregado seguro;
+- ou registrar como melhoria futura e mostrar itens por requisição inicialmente.
+
+==================================================
+PARTE 9 — ORDENS DE CARREGAMENTO DO EVENTO
+==================================================
+
+Seção “Ordens de Carregamento”.
+
+Mostrar loading orders vinculadas ao evento.
+
+Cada ordem deve mostrar:
+- número da ordem;
+- status;
+- período planejado;
+- progresso carregado;
+- quantidade total de itens;
+- viagens vinculadas;
+- link para detalhe.
+
+Status possíveis:
+- draft;
+- ready;
+- approved;
+- in_progress;
+- completed;
+- cancelled.
+
+Usar labels amigáveis:
+- Rascunho;
+- Pronta;
+- Aprovada;
+- Em andamento;
+- Finalizada;
+- Cancelada.
+
+Design:
+- cards compactos;
+- barra de progresso se houver quantidade carregada;
+- StatusBadge;
+- ação “Abrir ordem”.
+
+Ação:
+- “Criar Ordem de Carregamento”, se permitido e houver requisições aprovadas.
+
+==================================================
+PARTE 10 — VIAGENS DO EVENTO
+==================================================
+
+Seção “Viagens”.
+
+Mostrar viagens relacionadas ao evento.
+
+Cada viagem deve mostrar:
+- descrição;
+- status;
+- veículo;
+- motorista;
+- doca;
+- origem → destino;
+- carregamento;
+- descarregamento;
+- link para detalhe/editar.
+
+Design:
+- lista compacta;
+- mini timeline da viagem;
+- StatusBadge;
+- botão “Planejar Viagem”, se permitido.
+
+EmptyState:
+- “Nenhuma viagem planejada para este evento”
+- ação “Planejar Viagem”, se permitido.
+
+==================================================
+PARTE 11 — MOVIMENTAÇÕES DO EVENTO
+==================================================
+
+Seção “Movimentações”.
+
+Mostrar movimentações vinculadas ao evento.
+
+Cada movimentação deve mostrar:
+- nome;
+- código;
+- tipo amigável;
+- status;
+- veículo;
+- doca;
+- progresso;
+- itens carregados;
+- link para detalhe.
+
+Tipos técnicos devem ser traduzidos visualmente:
+- outbound_event → Saída para evento
+- inbound_return → Retorno de evento
+- loading → Carga
+- unloading → Descarga
+- internal_transfer → Transferência interna
+
+Não alterar valor real no banco/payload.
+
+Destacar:
+- movimentações em andamento;
+- pausadas;
+- com excesso;
+- finalizadas.
+
+==================================================
+PARTE 12 — HISTÓRICO / ATIVIDADE DO EVENTO
+==================================================
+
+Se houver dados suficientes, criar seção “Atividade recente”.
+
+Mostrar:
+- requisição criada;
+- requisição enviada;
+- requisição aprovada/rejeitada;
+- ordem criada;
+- viagem planejada;
+- movimentação iniciada/finalizada;
+- item carregado.
+
+Se não houver audit central:
+- registrar como melhoria futura;
+- não inventar dados.
+
+==================================================
+PARTE 13 — BACK-END / ENDPOINT AGREGADO
+==================================================
+
+Avaliar criar endpoint agregado:
+
+GET /api/events/:id/overview
+
+Esse endpoint deve retornar dados consolidados do evento:
+
+- event;
+- requisitionsSummary;
+- requisitions;
+- itemsSummary;
+- loadingOrdersSummary;
+- loadingOrders;
+- tripsSummary;
+- trips;
+- movementsSummary;
+- movements;
+- alerts;
+- timeline;
+- recentActivity, se existir.
+
+Importante:
+- endpoint apenas leitura;
+- requireAuth obrigatório;
+- respeitar RBAC;
+- não vazar dados que o usuário não poderia ver;
+- limitar listas, exemplo top 5 ou top 10 por seção;
+- permitir “Ver todas” levando para a tela específica filtrada por evento;
+- evitar query pesada;
+- usar joins/queries eficientes;
+- não alterar contratos existentes.
+
+Se criar endpoint agregado for arriscado:
+- usar queries existentes no front;
+- registrar endpoint agregado como melhoria futura.
+
+Preferência:
+Criar endpoint agregado, se for seguro, porque a tela precisa de muitos dados relacionados.
+
+==================================================
+PARTE 14 — RBAC
+==================================================
+
+Preservar RBAC atual.
+
+Regras gerais:
+- qualquer usuário logado que já pode ver eventos pode ver a central do evento conforme permissões atuais;
+- ações de criar/editar só aparecem para quem pode;
+- aprovações só aparecem/agem para Admin/Supervisor;
+- logística só executa ações permitidas;
+- usuário comum não deve ver ações administrativas indevidas.
+
+Back-end continua fonte da verdade.
+
+Não alterar:
+- role_permissions;
+- helpers de autorização;
+- permissões globais;
+- regras de negócio.
+
+==================================================
+PARTE 15 — LINKS E AÇÕES CONTEXTUAIS
+==================================================
+
+A Central do Evento deve permitir navegar para:
+
+- Requisição específica;
+- Lista de requisições filtrada por evento;
+- Ordem de carregamento específica;
+- Lista de loading orders filtrada por evento;
+- Viagem específica;
+- Lista de viagens filtrada por evento;
+- Movimentação específica;
+- Lista de movimentações filtrada por evento;
+- Estoque/simulação de estoque filtrada pelo evento, se existir.
+
+Se filtros por query param ainda não existirem:
+- implementar de forma segura;
+- ou registrar como melhoria futura.
+
+Exemplos:
+- /requests?eventId=...
+- /loading-orders?eventId=...
+- /trips?eventId=...
+- /movements?eventId=...
+- /stock-simulation?eventId=...
+
+==================================================
+PARTE 16 — DESIGN SYSTEM
+==================================================
+
+Usar:
+
+- PageHeader;
+- PageSection;
+- DataCard;
+- StatusBadge;
+- ActionBar;
+- EmptyState;
+- PageLoading;
+- ErrorState;
+- FilterBar, se houver filtros internos;
+- cards compactos;
+- timeline simples.
+
+Regras:
+- cards operacionais com p-4;
+- títulos text-base font-semibold;
+- IDs/SKUs com font-mono text-xs text-muted-foreground;
+- status sempre com StatusBadge;
+- botões size="sm" dentro de cards;
+- ações agrupadas;
+- sem cores hardcoded desnecessárias;
+- sem gráficos complexos.
+
+==================================================
+PARTE 17 — RESPONSIVIDADE
+==================================================
+
+Desktop:
+- layout em grid;
+- resumo no topo;
+- seções em duas colunas quando fizer sentido;
+- itens/tabelas com boa leitura.
+
+Tablet:
+- seções empilhadas parcialmente;
+- cards responsivos.
+
+Mobile:
+- tudo em coluna;
+- cards compactos;
+- ações full width quando necessário;
+- sem overflow horizontal;
+- timeline vertical.
+
+==================================================
+PARTE 18 — ESTADOS
+==================================================
+
+Implementar estados:
+
+Loading:
+- PageLoading.
+
+Erro:
+- ErrorState com mensagem clara.
+
+Evento não encontrado:
+- ErrorState:
+  “Evento não encontrado”
+  ação “Voltar para eventos”.
+
+Sem dados em uma seção:
+- EmptyState pequeno e contextual.
+
+Exemplos:
+- “Nenhuma requisição vinculada”
+- “Nenhuma ordem de carregamento criada”
+- “Nenhuma viagem planejada”
+- “Nenhuma movimentação registrada”
+
+==================================================
+PARTE 19 — VALIDAÇÕES TÉCNICAS
+==================================================
+
+Rodar:
+
+- npm run check
+- npm run build
+
+Se criar endpoint:
+- testar endpoint manualmente;
+- validar dados retornados;
+- validar permissões.
+
+Smoke test obrigatório:
+
+Eventos:
+- abrir lista de eventos;
+- clicar em card;
+- abrir central do evento;
+- voltar;
+- editar evento;
+- abrir evento sem requisições;
+- abrir evento com requisições;
+- abrir evento com loading orders;
+- abrir evento com viagens;
+- abrir evento com movimentações.
+
+Central do Evento:
+- validar resumo;
+- validar alertas;
+- validar timeline;
+- abrir requisição;
+- abrir ordem;
+- abrir viagem;
+- abrir movimentação;
+- validar ações por permissão;
+- validar estado vazio;
+- validar evento inexistente;
+- validar responsividade.
+
+Perfis:
+- Admin;
+- Logística;
+- Almoxarifado;
+- Supervisor;
+- Usuário comum.
+
+Confirmar:
+- usuário comum não vê ações indevidas;
+- Admin vê ações administrativas;
+- Supervisor vê aprovações permitidas;
+- Logística vê ações logísticas permitidas;
+- backend retorna 403 quando necessário.
+
+==================================================
+PARTE 20 — ENTREGA FINAL
+==================================================
+
+Entregar:
+
+- arquivos alterados;
+- rota criada;
+- endpoint agregado criado ou justificativa para não criar;
+- dados exibidos na Central do Evento;
+- melhorias visuais aplicadas;
+- melhorias de UX aplicadas;
+- ações contextuais criadas;
+- confirmações de RBAC;
+- confirmações de contratos preservados;
+- resultado do npm run check;
+- resultado do npm run build;
+- pendências ou riscos restantes.
+
+Critério de aceite:
+
+A tela de Detalhes do Evento só será considerada 10/10 se:
+
+- clicar no evento abrir uma central completa;
+- o usuário entender tudo que está acontecendo no evento;
+- requisições, itens, ordens, viagens e movimentações estiverem visíveis;
+- pendências e alertas forem destacados;
+- ações forem contextuais e respeitarem RBAC;
+- a tela for útil para operação real;
+- não for apenas um cadastro de evento;
+- nenhuma integração existente for quebrada.
