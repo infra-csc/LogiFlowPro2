@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Package, TrendingUp, AlertTriangle, Lightbulb, Clock } from "lucide-react";
+import { Sparkles, Package, TrendingUp, AlertTriangle, Lightbulb, Clock, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -63,7 +63,7 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-border/60">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
@@ -76,7 +76,7 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
 
         <div className="space-y-6">
           {/* Request new optimization */}
-          <Card>
+          <Card className="border-border/60">
             <CardHeader>
               <CardTitle className="text-base">Solicitar Nova Otimização</CardTitle>
               <CardDescription>Selecione o tipo de veículo para gerar uma sugestão otimizada</CardDescription>
@@ -85,7 +85,7 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
               <div className="flex gap-4">
                 <div className="flex-1">
                   <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
-                    <SelectTrigger data-testid="select-vehicle-type">
+                    <SelectTrigger className="h-9 bg-card border-border/60" data-testid="select-vehicle-type">
                       <SelectValue placeholder="Selecione tipo de veículo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -104,7 +104,10 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
                     disabled={!selectedVehicleType || runOptimization.isPending}
                   >
                     {runOptimization.isPending ? (
-                      <>Processando...</>
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processando...
+                      </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 mr-2" />
@@ -118,7 +121,12 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
           </Card>
 
           {/* Show latest optimization results */}
-          {loadingOptimizations && <div className="text-center py-8 text-muted-foreground">Carregando...</div>}
+          {loadingOptimizations && (
+            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Carregando otimizações...</span>
+            </div>
+          )}
           
           {!loadingOptimizations && latestOptimization && (
             <Card className="border-primary/20">
@@ -242,10 +250,12 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
           )}
 
           {!loadingOptimizations && !latestOptimization && optimizations && optimizations.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Nenhuma otimização gerada ainda.</p>
-              <p className="text-sm mt-1">Selecione um tipo de veículo acima para começar.</p>
+            <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+              <div className="rounded-full bg-muted p-4 mb-1">
+                <Sparkles className="w-8 h-8 text-muted-foreground/50" />
+              </div>
+              <p className="font-medium text-foreground">Nenhuma otimização gerada ainda</p>
+              <p className="text-sm text-muted-foreground">Selecione um tipo de veículo acima para começar.</p>
             </div>
           )}
         </div>

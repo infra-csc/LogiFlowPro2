@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Edit, Eye, ArrowRight, ClipboardList, CheckCircle2, CircleDot, Truck, Clock, MapPin, CalendarDays, User, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Package, Edit, Eye, ArrowRight, ClipboardList, CheckCircle2, CircleDot, Truck, Clock, MapPin, CalendarDays, User, AlertCircle, CheckCircle, XCircle, X } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -202,11 +202,12 @@ export default function LoadingOrders() {
             <Badge
               key={idx}
               variant="secondary"
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center gap-1"
               onClick={chip.onClear}
               data-testid={`filter-chip-${idx}`}
             >
-              {chip.label} ×
+              {chip.label}
+              <X className="h-3 w-3 ml-0.5" />
             </Badge>
           ))}
         </div>
