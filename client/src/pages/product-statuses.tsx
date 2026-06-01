@@ -452,11 +452,11 @@ export default function ProductStatusesPage() {
                               size="icon"
                               onClick={() => handleToggleActive(status)}
                               disabled={toggleActiveMutation.isPending}
-                              title={status.active ? "Desativar" : "Ativar"}
-                              data-testid={`button-toggle-${status.id}`}
+                              title={status.active ? "Desativar status" : "Reativar status"}
+                              data-testid={`button-delete-${status.id}`}
                             >
                               {status.active ? (
-                                <Lock className="h-4 w-4 text-destructive" />
+                                <Trash2 className="h-4 w-4 text-destructive" />
                               ) : (
                                 <CheckCircle className="h-4 w-4 text-emerald-600" />
                               )}

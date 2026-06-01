@@ -337,7 +337,7 @@ export default function SuppliersPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSuppliers.map((supplier) => (
-              <Card key={supplier.id} className="border-border/60" data-testid={`card-supplier-${supplier.id}`}>
+              <Card key={supplier.id} className="border-border/60" data-testid={`row-supplier-${supplier.id}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
