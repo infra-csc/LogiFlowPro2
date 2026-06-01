@@ -3,7 +3,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -200,22 +200,22 @@ export default function MovementGroupsPage() {
               className="hover-elevate border-border/60 relative"
               data-testid={`card-group-${group.id}`}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl" data-testid={`icon-${group.id}`}>
+                    <span className="text-xl" data-testid={`icon-${group.id}`}>
                       {group.icon}
                     </span>
                     <div>
-                      <CardTitle className="text-lg" data-testid={`text-name-${group.id}`}>
+                      <h3 className="font-semibold text-base text-foreground" data-testid={`text-name-${group.id}`}>
                         {group.name}
-                      </CardTitle>
-                      <CardDescription className="text-xs" data-testid={`text-code-${group.id}`}>
+                      </h3>
+                      <p className="text-xs text-muted-foreground" data-testid={`text-code-${group.id}`}>
                         {group.code}
-                      </CardDescription>
+                      </p>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 shrink-0">
                     <Button
                       size="icon"
                       variant="ghost"
@@ -234,8 +234,6 @@ export default function MovementGroupsPage() {
                     </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
                 <p className="text-sm text-muted-foreground" data-testid={`text-description-${group.id}`}>
                   {group.description || "Sem descrição"}
                 </p>

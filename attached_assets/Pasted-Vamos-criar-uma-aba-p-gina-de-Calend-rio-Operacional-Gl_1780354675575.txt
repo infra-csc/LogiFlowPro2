@@ -1,0 +1,633 @@
+Vamos criar uma aba/página de Calendário Operacional Global para o EventFlow.
+
+Objetivo:
+Criar uma visão mensal, semanal e diária onde o Admin/Logística/Supervisor consiga enxergar tudo que está planejado para os próximos dias, semanas e meses.
+
+Essa tela deve funcionar como uma agenda operacional do sistema, mostrando eventos, viagens, carregamentos, descarregamentos, ordens de carregamento, movimentações, janelas de requisição e pendências relevantes.
+
+Nome conceitual:
+Calendário Operacional / Operational Calendar
+
+Possíveis rotas:
+
+* /calendar
+  ou
+* /dashboard/calendar
+  ou
+* aba “Calendário” dentro do Dashboard
+
+Escolher a opção mais simples e consistente com a arquitetura atual.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — OBJETIVO DA TELA
+==========================
+
+O usuário deve conseguir abrir o calendário e responder rapidamente:
+
+* O que está planejado para hoje?
+* O que acontece amanhã?
+* Quais eventos estão próximos?
+* Quais viagens estão agendadas?
+* Quais carregamentos/descarregamentos vão ocorrer?
+* Quais janelas de requisição abrem ou fecham?
+* Quais ordens de carregamento estão programadas?
+* Existem pendências ou riscos em algum dia?
+* O que está atrasado ou exige ação?
+
+A tela deve ser uma central de agenda operacional, não apenas um calendário visual bonito.
+
+==================================================
+PARTE 2 — INFORMAÇÕES QUE DEVEM APARECER NO CALENDÁRIO
+======================================================
+
+Exibir no calendário, se os dados existirem:
+
+1. Eventos
+
+* Data do evento
+* Data de montagem
+* Data de desmontagem
+* Status do evento
+* Cliente
+* Local
+
+2. Janelas de Requisição
+
+* Início da janela de requisição
+* Fim da janela de requisição
+* Status:
+
+  * abre hoje
+  * fecha hoje
+  * aberta
+  * encerrada
+  * futura
+
+3. Viagens
+
+* Data/hora de carregamento
+* Data/hora de saída
+* Data/hora de descarregamento
+* Veículo
+* Motorista
+* Origem
+* Destino
+* Status
+
+4. Ordens de Carregamento
+
+* Início planejado
+* Fim planejado
+* Status
+* Evento vinculado
+* Progresso, se disponível
+
+5. Movimentações
+
+* Movimentações em andamento
+* Movimentações pausadas
+* Movimentações finalizadas
+* Tipo amigável:
+
+  * Saída para evento
+  * Retorno de evento
+  * Carga
+  * Descarga
+  * Transferência interna
+
+6. Aprovações/Pendências
+
+* Requisições pendentes há muito tempo
+* Loading orders aguardando aprovação
+* Movimentações pendentes, se existir
+
+==================================================
+PARTE 3 — VISÕES DO CALENDÁRIO
+==============================
+
+Criar visualizações:
+
+1. Mês
+
+* visão principal;
+* usuário pode trocar mês anterior/próximo;
+* mostrar dias do mês;
+* mostrar eventos agrupados por dia;
+* destacar hoje;
+* destacar dias com muitos itens;
+* mostrar contador quando houver muitos itens no mesmo dia.
+
+2. Semana
+
+* visão mais detalhada;
+* mostrar eventos por dia da semana;
+* útil para operação próxima.
+
+3. Dia
+
+* lista detalhada do dia selecionado;
+* mostrar todos os itens ordenados por hora/prioridade.
+
+Se implementar as 3 visões for muito grande agora:
+
+* implementar primeiro Mês + Detalhe do Dia selecionado;
+* deixar Semana como melhoria futura.
+
+==================================================
+PARTE 4 — INTERAÇÃO DE NAVEGAÇÃO
+================================
+
+A tela deve permitir:
+
+* mês anterior;
+* próximo mês;
+* voltar para mês atual;
+* trocar entre Mês/Semana/Dia, se implementado;
+* clicar em um dia para abrir painel lateral ou seção de detalhes;
+* clicar em um item para ir para a tela de detalhe correspondente.
+
+Exemplos de navegação:
+
+* clicar em evento → /events/:id
+* clicar em viagem → /trips/:id ou abrir edição/detalhe
+* clicar em ordem → /loading-orders/:id
+* clicar em movimentação → /movements/:id
+* clicar em requisição → /requests/:id ou /approvals/:id
+
+Se alguma rota ainda não existir:
+
+* criar link apenas quando existir;
+* caso contrário, registrar como melhoria futura.
+
+==================================================
+PARTE 5 — FILTROS
+=================
+
+Adicionar filtros úteis.
+
+Filtros obrigatórios:
+
+* Tipo de item:
+
+  * Eventos
+  * Viagens
+  * Carregamentos
+  * Descarregamentos
+  * Ordens de carregamento
+  * Movimentações
+  * Janelas de requisição
+  * Aprovações/Pendências
+
+* Status:
+
+  * Planejamento
+  * Em andamento
+  * Aprovado
+  * Pendente
+  * Finalizado
+  * Cancelado
+  * Pausado
+
+* Evento
+
+* Cliente
+
+* Veículo
+
+* Motorista
+
+* Doca
+
+* Apenas pendências/alertas
+
+* Apenas próximos 7 dias
+
+* Apenas hoje
+
+Aplicar:
+
+* FilterBar;
+* badgeCount de filtros ativos;
+* onClear;
+* chips/resumo de filtros ativos;
+* campos em grid responsivo;
+* busca por nome de evento/viagem/ordem;
+* filtros não podem parecer uma barra vazia.
+
+==================================================
+PARTE 6 — DESIGN VISUAL DO CALENDÁRIO
+=====================================
+
+A visão mensal deve ser limpa e operacional.
+
+Cada dia deve mostrar:
+
+* número do dia;
+* indicador se é hoje;
+* lista compacta de itens;
+* cor/ícone por tipo;
+* contador “+3” quando houver muitos itens;
+* alerta visual se houver pendência crítica.
+
+Exemplo de item no dia:
+
+* Evento: Night Run BH
+* Viagem: Carreta 1
+* Carga: LO-2026-001
+* Req fecha hoje
+* Mov. pausada
+
+Design:
+
+* cards pequenos;
+* badges discretos;
+* StatusBadge quando couber;
+* sem poluição visual;
+* dark mode profissional;
+* responsivo.
+
+Cores/tipos:
+
+* Evento: azul/ciano;
+* Viagem: amarelo/âmbar;
+* Ordem de carregamento: verde/teal;
+* Movimentação: roxo/azul;
+* Janela de requisição: laranja;
+* Pendência/alerta: vermelho/âmbar.
+
+Usar tokens do Design System.
+Evitar cores hardcoded desnecessárias.
+
+==================================================
+PARTE 7 — PAINEL DO DIA SELECIONADO
+===================================
+
+Ao clicar em um dia, mostrar painel de detalhes.
+
+Pode ser:
+
+* painel lateral;
+* drawer;
+* card abaixo do calendário;
+* modal leve.
+
+Escolher o mais simples e consistente com o app.
+
+O painel deve mostrar:
+
+Título:
+“Agenda de 28/11/2025”
+
+Agrupamentos:
+
+* Eventos
+* Viagens
+* Carregamentos/Descarregamentos
+* Ordens
+* Movimentações
+* Pendências
+
+Cada item deve mostrar:
+
+* tipo;
+* nome;
+* horário;
+* status;
+* entidade relacionada;
+* ação “Abrir”.
+
+Exemplo:
+
+Evento
+Night Run Belo Horizonte
+Tatica Mkt • Praça Nova da Pampulha
+Status: Em andamento
+Ação: Abrir evento
+
+Viagem
+Carreta 1
+Armazém Central → Evento
+Carregamento: 08:00
+Motorista: João
+Ação: Abrir viagem
+
+==================================================
+PARTE 8 — ALERTAS NO CALENDÁRIO
+===============================
+
+Destacar dias com problemas.
+
+Alertas possíveis:
+
+* evento próximo sem viagem;
+* evento próximo sem ordem de carregamento;
+* requisição pendente próxima da data do evento;
+* ordem sem período definido;
+* viagem sem motorista;
+* viagem sem veículo;
+* movimentação pausada;
+* produto com estoque baixo para evento próximo;
+* janela de requisição fechando hoje;
+* janela de requisição já encerrada sem aprovação.
+
+No mês:
+
+* mostrar ícone/indicador pequeno no dia.
+
+No painel do dia:
+
+* mostrar alerta com descrição e link.
+
+==================================================
+PARTE 9 — BACK-END / ENDPOINT AGREGADO
+======================================
+
+Preferência:
+Criar endpoint agregado de leitura para o calendário.
+
+Endpoint sugerido:
+
+GET /api/calendar/operational
+
+Query params:
+
+* startDate
+* endDate
+* types
+* statuses
+* eventId
+* client
+* vehicleId
+* driverId
+* dockId
+* onlyAlerts
+
+Retornar lista normalizada de itens:
+
+{
+id,
+type,
+title,
+subtitle,
+start,
+end,
+status,
+severity,
+entityId,
+entityType,
+route,
+metadata
+}
+
+Tipos possíveis:
+
+* event
+* event_setup
+* event_teardown
+* request_window_start
+* request_window_end
+* trip_loading
+* trip_departure
+* trip_unloading
+* loading_order
+* movement
+* approval_pending
+* stock_alert
+
+Importante:
+
+* endpoint apenas leitura;
+* requireAuth obrigatório;
+* respeitar RBAC;
+* não vazar dados indevidos para usuário comum;
+* limitar range máximo, por exemplo 90 dias, para evitar consulta pesada;
+* retornar apenas dados necessários para o calendário;
+* não quebrar endpoints existentes.
+
+Se criar endpoint agregado for arriscado:
+
+* usar queries existentes no front;
+* registrar endpoint agregado como melhoria futura.
+
+==================================================
+PARTE 10 — RBAC
+===============
+
+Preservar RBAC atual.
+
+Regras:
+
+* Admin vê visão completa.
+* Logística vê viagens, ordens, movimentações e eventos conforme permissão.
+* Supervisor vê aprovações e operações relevantes.
+* Almoxarifado vê movimentações/estoque relevantes.
+* Usuário comum vê apenas o que já poderia ver.
+
+Ações contextuais devem respeitar permissão.
+
+Não alterar:
+
+* role_permissions;
+* helpers de autorização;
+* permissões globais;
+* regras de negócio.
+
+==================================================
+PARTE 11 — DASHBOARD
+====================
+
+Adicionar entrada para o Calendário Operacional:
+
+Opção A:
+
+* Criar aba no Dashboard:
+
+  * “Visão Geral”
+  * “Calendário”
+
+Opção B:
+
+* Criar card/ação rápida:
+
+  * “Abrir Calendário Operacional”
+
+Opção C:
+
+* Adicionar item no menu lateral:
+
+  * “Calendário Operacional”
+
+Escolher a opção mais simples para arquitetura atual.
+
+Ideal:
+
+* adicionar item no menu lateral dentro de Operações ou Logística;
+* adicionar também ação rápida no Dashboard.
+
+==================================================
+PARTE 12 — RESPONSIVIDADE
+=========================
+
+Desktop:
+
+* calendário mensal em grid 7 colunas;
+* painel lateral ou abaixo;
+* filtros em grid.
+
+Tablet:
+
+* calendário ainda em 7 colunas, mas cards menores;
+* painel abaixo.
+
+Mobile:
+
+* alternativa em lista por dia/agenda;
+* evitar grid mensal minúsculo se ficar ruim;
+* mostrar dias em formato agenda vertical;
+* filtros empilhados;
+* sem overflow horizontal.
+
+==================================================
+PARTE 13 — ESTADOS
+==================
+
+Implementar:
+
+Loading:
+
+* PageLoading.
+
+Erro:
+
+* ErrorState.
+
+Sem itens no período:
+
+* EmptyState:
+  “Nenhum planejamento encontrado”
+  “Ajuste os filtros ou selecione outro período.”
+
+Sem resultado por filtro:
+
+* EmptyState:
+  “Nenhum item encontrado com os filtros atuais”
+  ação “Limpar filtros”.
+
+==================================================
+PARTE 14 — DESIGN SYSTEM
+========================
+
+Usar:
+
+* PageHeader;
+* PageSection;
+* FilterBar;
+* StatusBadge;
+* DataCard;
+* EmptyState;
+* PageLoading;
+* ErrorState;
+* ActionBar;
+* botões padronizados;
+* scrollbar dark customizada.
+
+Regras:
+
+* cards compactos com p-4;
+* IDs/SKUs com font-mono text-xs;
+* status com StatusBadge;
+* ações agrupadas;
+* sem cores hardcoded exageradas;
+* sem gráficos complexos.
+
+==================================================
+PARTE 15 — VALIDAÇÕES TÉCNICAS
+==============================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Se criar endpoint:
+
+* testar manualmente com diferentes ranges;
+* testar filtros;
+* testar usuário sem permissão.
+
+Smoke test obrigatório:
+
+Calendário:
+
+* abrir tela;
+* trocar mês anterior;
+* trocar próximo mês;
+* voltar para hoje;
+* clicar em um dia;
+* abrir painel do dia;
+* clicar em evento;
+* clicar em viagem;
+* clicar em ordem;
+* clicar em movimentação;
+* aplicar filtros;
+* limpar filtros;
+* testar período sem dados;
+* testar mês com muitos dados;
+* testar mobile.
+
+Perfis:
+
+* Admin;
+* Logística;
+* Almoxarifado;
+* Supervisor;
+* Usuário comum.
+
+Confirmar:
+
+* cada perfil vê apenas dados permitidos;
+* links funcionam;
+* ações respeitam RBAC;
+* não há overflow horizontal;
+* performance aceitável.
+
+==================================================
+PARTE 16 — ENTREGA FINAL
+========================
+
+Entregar:
+
+* rota criada;
+* menu/aba criada;
+* endpoint agregado criado ou justificativa para não criar;
+* filtros implementados;
+* tipos de itens exibidos;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* arquivos alterados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências ou riscos restantes.
+
+Critério de aceite:
+
+O Calendário Operacional só será considerado 10/10 se:
+
+* o admin conseguir ver o mês completo;
+* conseguir trocar meses;
+* conseguir clicar em um dia e ver detalhes;
+* conseguir filtrar por tipo/status/evento;
+* eventos, viagens, ordens, movimentações e janelas aparecerem;
+* alertas operacionais forem destacados;
+* links levarem para as telas corretas;
+* a tela funcionar bem em desktop e mobile;
+* RBAC for respeitado;
+* nenhuma regra existente for quebrada.

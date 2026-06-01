@@ -103,7 +103,7 @@ export default function InventoryViews() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Filter className="h-5 w-5" />
-                  <CardTitle className="text-lg">Filtros Avançados</CardTitle>
+                  <CardTitle className="text-base font-semibold">Filtros Avançados</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -296,7 +296,7 @@ function InventoryGroupCard({ group, dimension }: InventoryGroupCardProps) {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="p-0 h-auto font-semibold text-xl hover-elevate" data-testid={`group-${group.groupKey}`}>
+                <Button variant="ghost" className="p-0 h-auto font-semibold text-base hover-elevate" data-testid={`group-${group.groupKey}`}>
                   <div className="flex items-center gap-2">
                     {isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                     {group.groupLabel}

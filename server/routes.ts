@@ -465,6 +465,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/events/:id/overview", requireAuth, async (req, res) => {
+    try {
+      const eventId = req.params.id;
+      const event = await storage.getEvent(eventId);
+      if (!event) return res.status(404).json({ error: "Event not found" });
+
+      const [allRequests, allLoadingOrders, allTrips, allMovements] = await Promise.all([
+        storage.getMaterialRequests(),
+        storage.getLoadingOrders(),
+        storage.getTrips(),
+        storage.getMovements(),
+      ]);
+
+      const requests = (allRequests as any[]).filter((r) => r.eventId === eventId);
+      const loadingOrders = (allLoadingOrders as any[]).filter((lo) => lo.eventId === eventId);
+      const eventTrips = (allTrips as any[]).filter((t) => t.eventId === eventId);
+      const eventMovements = (allMovements as any[]).filter((m) =>
+        Array.isArray(m.events) && m.events.some((e: any) => e && e.id === eventId)
+      );
+
+      const requestsSummary = {
+        total: requests.length,
+        draft: requests.filter((r) => r.status === "draft").length,
+        pending: requests.filter((r) => r.status === "pending_approval").length,
+        approved: requests.filter((r) => ["approved", "partial_approval"].includes(r.status)).length,
+        rejected: requests.filter((r) => r.status === "rejected").length,
+      };
+      const loadingOrdersSummary = {
+        total: loadingOrders.length,
+        draft: loadingOrders.filter((lo) => lo.status === "draft").length,
+        ready: loadingOrders.filter((lo) => lo.status === "ready").length,
+        approved: loadingOrders.filter((lo) => lo.status === "approved").length,
+        inProgress: loadingOrders.filter((lo) => lo.status === "in_progress").length,
+        completed: loadingOrders.filter((lo) => lo.status === "completed").length,
+      };
+      const tripsSummary = {
+        total: eventTrips.length,
+        planned: eventTrips.filter((t) => t.status === "planned").length,
+        inProgress: eventTrips.filter((t) =>
+          ["loading", "loaded", "in_transit", "at_destination", "unloading"].includes(t.status)
+        ).length,
+        completed: eventTrips.filter((t) => t.status === "completed").length,
+      };
+      const movementsSummary = {
+        total: eventMovements.length,
+        inProgress: eventMovements.filter((m) => m.status === "in_progress").length,
+        paused: eventMovements.filter((m) => m.status === "paused").length,
+        completed: eventMovements.filter((m) => m.status === "completed").length,
+        pendingApproval: eventMovements.filter((m) => m.status === "pending_approval").length,
+      };
+
+      const now = new Date();
+      const eventDate = event.eventDate ? new Date(event.eventDate) : null;
+      const daysToEvent = eventDate
+        ? Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      const alerts: Array<{ severity: string; message: string; type: string }> = [];
+      if (requestsSummary.pending > 0)
+        alerts.push({ severity: "warning", message: `${requestsSummary.pending} requisição(ões) aguardam aprovação`, type: "pending_requests" });
+      if (movementsSummary.paused > 0)
+        alerts.push({ severity: "warning", message: `${movementsSummary.paused} movimentação(ões) pausada(s)`, type: "paused_movements" });
+      if (daysToEvent !== null && daysToEvent > 0 && daysToEvent <= 7 && eventTrips.length === 0)
+        alerts.push({ severity: "critical", message: `Evento em ${daysToEvent} dia(s) sem viagem planejada`, type: "no_trips" });
+      if (daysToEvent !== null && daysToEvent > 0 && daysToEvent <= 7 && loadingOrders.length === 0)
+        alerts.push({ severity: "warning", message: `Evento em ${daysToEvent} dia(s) sem ordem de carregamento`, type: "no_loading_orders" });
+      const tripsWithoutDriver = eventTrips.filter((t) => !t.driverId).length;
+      if (tripsWithoutDriver > 0)
+        alerts.push({ severity: "info", message: `${tripsWithoutDriver} viagem(ns) sem motorista definido`, type: "trips_no_driver" });
+
+      const windowStart = event.requestWindowStart ? new Date(event.requestWindowStart) : null;
+      const windowEnd = event.requestWindowEnd ? new Date(event.requestWindowEnd) : null;
+      let windowStatus: "open" | "future" | "closed" | "none" = "none";
+      if (windowStart || windowEnd) {
+        if (windowStart && now < windowStart) windowStatus = "future";
+        else if (windowEnd && now > windowEnd) windowStatus = "closed";
+        else windowStatus = "open";
+      }
+      if (windowEnd) {
+        const hoursToClose = (windowEnd.getTime() - now.getTime()) / (1000 * 60 * 60);
+        if (hoursToClose > 0 && hoursToClose <= 48)
+          alerts.push({ severity: "warning", message: `Janela de requisição encerra em ${Math.ceil(hoursToClose)}h`, type: "window_closing" });
+      }
+      if (windowStatus === "closed" && requestsSummary.approved === 0 && requestsSummary.total > 0)
+        alerts.push({ severity: "warning", message: "Janela encerrada sem requisições aprovadas", type: "window_closed_no_approvals" });
+
+      res.json({
+        event,
+        windowStatus,
+        daysToEvent,
+        requestsSummary,
+        requests: requests.slice(0, 10),
+        loadingOrdersSummary,
+        loadingOrders: loadingOrders.slice(0, 10),
+        tripsSummary,
+        trips: eventTrips.slice(0, 10),
+        movementsSummary,
+        movements: eventMovements.slice(0, 10),
+        alerts,
+      });
+    } catch (error) {
+      console.error("[events/overview] error:", error);
+      res.status(500).json({ error: "Failed to fetch event overview" });
+    }
+  });
+
   app.post("/api/events", requireAuth, requireAdmin({ message: "Apenas administradores podem criar eventos" }), async (req, res) => {
     try {
       const data = insertEventSchema.parse(req.body);

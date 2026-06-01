@@ -14,6 +14,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -89,6 +90,7 @@ function fmtDate(val: string | Date | null | undefined) {
 
 export default function Events() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const canWrite = userIsAdmin(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
@@ -295,8 +297,9 @@ export default function Events() {
             return (
               <Card
                 key={event.id}
-                className={`border-border/60 flex flex-col ${canWrite ? "hover-elevate" : ""}`}
+                className="border-border/60 flex flex-col hover-elevate cursor-pointer"
                 data-testid={`card-event-${event.id}`}
+                onClick={() => navigate(`/events/${event.id}`)}
               >
                 <CardContent className="p-4 flex flex-col flex-1">
                   {/* Status + edit button */}
@@ -314,7 +317,7 @@ export default function Events() {
                         variant="ghost"
                         size="icon"
                         className="-mr-1 -mt-1 shrink-0"
-                        onClick={() => handleEdit(event)}
+                        onClick={(e) => { e.stopPropagation(); handleEdit(event); }}
                         data-testid={`button-edit-event-${event.id}`}
                         aria-label={`Editar ${event.name}`}
                       >

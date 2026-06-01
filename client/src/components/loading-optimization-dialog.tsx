@@ -133,7 +133,7 @@ export function LoadingOptimizationDialog({ open, onOpenChange, loadingOrderId }
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
                       <Package className="w-5 h-5" />
                       Sugestão de Carregamento - {latestOptimization.vehicle_type_name}
                     </CardTitle>

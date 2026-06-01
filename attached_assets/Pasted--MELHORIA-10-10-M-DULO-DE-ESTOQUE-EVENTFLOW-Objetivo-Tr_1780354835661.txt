@@ -1,0 +1,511 @@
+# MELHORIA 10/10 - MÓDULO DE ESTOQUE EVENTFLOW
+
+Objetivo:
+
+Transformar as telas:
+
+* Gestão de Estoque
+* Visões de Estoque
+
+em um verdadeiro Centro de Controle Operacional de Estoque.
+
+Hoje as telas estão excessivamente simples e informativas.
+
+Elas devem permitir que o administrador identifique rapidamente:
+
+* risco de falta de material;
+* excesso de estoque;
+* materiais reservados;
+* materiais em trânsito;
+* materiais alocados em eventos;
+* materiais que retornam em breve;
+* necessidade de compra;
+* disponibilidade futura.
+
+Usar o Design System atual como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+
+---
+
+## PARTE 1 - NOVA HOME DE ESTOQUE
+
+Substituir os cards atuais por KPIs realmente úteis.
+
+KPIs sugeridos:
+
+Estoque Total
+Quantidade total de unidades cadastradas.
+
+Itens Disponíveis
+Quantidade disponível para uso imediato.
+
+Itens Reservados
+Produtos vinculados a eventos futuros.
+
+Itens em Trânsito
+Produtos em movimentações e viagens.
+
+Itens em Evento
+Materiais atualmente alocados.
+
+Itens com Estoque Baixo
+Abaixo do mínimo configurado.
+
+Itens Críticos
+Abaixo de 20% do mínimo.
+
+Valor Estimado em Estoque
+Se houver custo cadastrado.
+
+Cada KPI deve possuir:
+
+* ícone;
+* tooltip;
+* cor contextual;
+* clique para filtrar a listagem.
+
+---
+
+## PARTE 2 - ALERTAS OPERACIONAIS
+
+Criar uma seção logo abaixo dos KPIs.
+
+Título:
+
+Alertas Operacionais
+
+Exemplos:
+
+🔴 Box Truss Q30 ficará indisponível em 12 dias.
+
+🟠 Tenda 5x5 possui apenas 2 unidades livres.
+
+🔴 Evento Night Run BH excede estoque disponível.
+
+🟡 4 itens retornam ao estoque esta semana.
+
+🔴 3 itens estão abaixo do mínimo.
+
+🟠 2 viagens possuem carga sem retorno planejado.
+
+Ordenar por severidade.
+
+Cada alerta deve ter ação:
+
+* Ver Item
+* Ver Evento
+* Ver Viagem
+
+---
+
+## PARTE 3 - ESTOQUE FUTURO
+
+Adicionar um card extremamente importante.
+
+Título:
+
+Disponibilidade Futura
+
+Exibir:
+
+Hoje
++7 dias
++15 dias
++30 dias
++60 dias
+
+Exemplo:
+
+Hoje:
+Disponível: 120
+
++7 dias:
+Disponível: 90
+
++15 dias:
+Disponível: 40
+
++30 dias:
+Disponível: 180
+
+Calcular considerando:
+
+* eventos;
+* viagens;
+* movimentações;
+* retornos.
+
+Objetivo:
+
+Permitir prever ruptura antes dela acontecer.
+
+---
+
+## PARTE 4 - LISTAGEM DE PRODUTOS
+
+Substituir barras simples por cards ricos.
+
+Cada item deve mostrar:
+
+Nome
+SKU
+Categoria
+Localização principal
+
+Disponível
+Reservado
+Em trânsito
+Em evento
+
+Mínimo
+Máximo
+
+Indicador visual:
+
+Verde:
+Disponível
+
+Amarelo:
+Atenção
+
+Vermelho:
+Crítico
+
+Adicionar:
+
+Ver detalhes
+
+ao clicar.
+
+---
+
+## PARTE 5 - DETALHE DO ITEM
+
+Ao clicar em um item abrir:
+
+Drawer ou Modal lateral.
+
+Exibir:
+
+Informações Gerais
+
+SKU
+Nome
+Categoria
+Unidade
+
+Estoque Atual
+
+Disponível
+Reservado
+Em trânsito
+Em evento
+
+Histórico recente
+
+Últimas movimentações.
+
+Próximos eventos
+
+Eventos que utilizarão o item.
+
+Disponibilidade futura
+
+Linha do tempo.
+
+Localizações
+
+Galpão A
+Galpão B
+Em trânsito
+Evento
+
+---
+
+## PARTE 6 - VISÃO DE ESTOQUE
+
+A tela "Visões de Estoque" precisa virar uma tela analítica.
+
+Adicionar abas:
+
+1. Estoque Físico
+
+2. Disponibilidade
+
+3. Alocações
+
+4. Movimentações
+
+5. Projeções
+
+---
+
+## ABA 1 - ESTOQUE FÍSICO
+
+Mostrar:
+
+Localização
+Quantidade
+Capacidade
+Ocupação
+
+Agrupar por:
+
+* galpão;
+* setor;
+* doca;
+* localização.
+
+---
+
+## ABA 2 - DISPONIBILIDADE
+
+Mostrar:
+
+Disponível
+Reservado
+Em trânsito
+Em evento
+
+Tabela consolidada.
+
+Filtros:
+
+Evento
+Cliente
+Período
+
+---
+
+## ABA 3 - ALOCAÇÕES
+
+Mostrar:
+
+Produto
+Evento
+Quantidade
+Data de saída
+Data de retorno
+
+Objetivo:
+
+Saber onde cada item está comprometido.
+
+---
+
+## ABA 4 - MOVIMENTAÇÕES
+
+Timeline operacional.
+
+Mostrar:
+
+Saídas
+Entradas
+Transferências
+Retornos
+
+Filtros:
+
+Status
+Veículo
+Motorista
+Evento
+
+---
+
+## ABA 5 - PROJEÇÕES
+
+Tela mais estratégica.
+
+Mostrar:
+
+Disponibilidade futura.
+
+Hoje
+7 dias
+15 dias
+30 dias
+60 dias
+
+Identificar:
+
+* rupturas previstas;
+* conflitos;
+* excesso de demanda.
+
+---
+
+## PARTE 7 - RESERVAS DE EVENTOS
+
+Adicionar painel:
+
+Itens Mais Reservados
+
+Top 10 itens.
+
+Mostrar:
+
+Produto
+Quantidade reservada
+Eventos vinculados
+
+---
+
+## PARTE 8 - CONFLITOS
+
+Adicionar painel:
+
+Conflitos de Estoque
+
+Exemplo:
+
+Night Run BH
+Precisa:
+10 Tendas
+
+Disponível:
+6
+
+Déficit:
+4
+
+Status:
+Conflito
+
+Permitir abrir diretamente o evento.
+
+---
+
+## PARTE 9 - RETORNOS PREVISTOS
+
+Adicionar painel:
+
+Retornos Próximos
+
+Hoje
+Amanhã
+Próximos 7 dias
+
+Exemplo:
+
+Box Truss Q30
+Retorno previsto:
+03/06
+
+Evento:
+Night Run BH
+
+---
+
+## PARTE 10 - DASHBOARD EXECUTIVO
+
+Adicionar resumo:
+
+Saúde do Estoque
+
+Excelente
+Boa
+Atenção
+Crítica
+
+Calcular considerando:
+
+* itens críticos;
+* rupturas;
+* conflitos;
+* estoque abaixo do mínimo.
+
+---
+
+## PARTE 11 - FILTROS
+
+Adicionar filtros avançados.
+
+Produto
+SKU
+Categoria
+Evento
+Cliente
+Status
+
+Disponível
+Reservado
+Em trânsito
+Em evento
+
+Localização
+
+Galpão
+Setor
+Doca
+
+Período
+
+Aplicar badgeCount.
+
+---
+
+## PARTE 12 - RBAC
+
+Preservar RBAC atual.
+
+Admin:
+Tudo.
+
+Logística:
+Tudo relacionado a estoque.
+
+Supervisor:
+Visualização.
+
+Usuário comum:
+Apenas permitido atualmente.
+
+Não alterar permissões globais.
+
+---
+
+## PARTE 13 - PERFORMANCE
+
+Evitar consultas pesadas.
+
+Criar endpoints agregados se necessário.
+
+Cache para dashboards.
+
+Paginação.
+
+Lazy loading.
+
+---
+
+## PARTE 14 - CRITÉRIO 10/10
+
+A tela só será considerada pronta quando o administrador conseguir responder rapidamente:
+
+* O que tenho?
+* O que está reservado?
+* O que está em trânsito?
+* O que vai faltar?
+* Qual evento causará falta?
+* O que retorna em breve?
+* O que preciso comprar?
+* Qual a disponibilidade futura?
+
+Sem precisar abrir múltiplas telas.
+
+Executar:
+
+npm run check
+npm run build
+
+Entregar:
+
+* arquivos alterados;
+* endpoints criados;
+* melhorias implementadas;
+* RBAC preservado;
+* resultado dos testes;
+* riscos restantes.
