@@ -432,7 +432,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(data);
       res.status(201).json(product);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        if (error?.constraint?.includes("barcode")) {
+          return res.status(409).json({ error: "Código de barras já cadastrado." });
+        }
+        return res.status(409).json({ error: "SKU já cadastrado." });
+      }
       res.status(400).json({ error: "Invalid product data" });
     }
   });
@@ -479,7 +485,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertProductSchema.partial().parse(req.body);
       const product = await storage.updateProduct(req.params.id, data);
       res.json(product);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        if (error?.constraint?.includes("barcode")) {
+          return res.status(409).json({ error: "Código de barras já cadastrado." });
+        }
+        return res.status(409).json({ error: "SKU já cadastrado." });
+      }
       res.status(400).json({ error: "Invalid product data" });
     }
   });

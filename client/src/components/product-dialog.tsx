@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Product, InsertProduct } from "@shared/schema";
 import { ObjectUploader, type ObjectUploaderResult } from "@/components/ObjectUploader";
-import { ImageIcon, Trash2 } from "lucide-react";
+import { ImageIcon, Trash2, AlertTriangle, Info } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProductDialogProps {
@@ -32,10 +32,22 @@ interface ProductDialogProps {
   product?: Product;
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 pt-2">
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        {children}
+      </span>
+      <div className="flex-1 border-t border-border/40" />
+    </div>
+  );
+}
+
 export function ProductDialog({ open, onOpenChange, product }: ProductDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<Partial<InsertProduct>>({
     sku: "",
     name: "",
@@ -53,13 +65,11 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     currentStock: 0,
   });
 
-  // Fetch all products for principal product selection
   const { data: allProducts } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     enabled: open,
   });
 
-  // Reset form data when dialog opens or product changes
   useEffect(() => {
     if (open) {
       setFormData({
@@ -79,144 +89,146 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         currentStock: product?.currentStock || 0,
       });
       setImageUrl(product?.imageUrl || null);
+      setErrors({});
     }
   }, [open, product]);
 
-  // Get list of principal products for variant selection
-  const principalProducts = allProducts?.filter(p => p.productType === "principal" && p.id !== product?.id) || [];
+  const principalProducts =
+    allProducts?.filter((p) => p.productType === "principal" && p.id !== product?.id) || [];
+
+  const isLowStock =
+    (formData.minimumStock ?? 0) > 0 &&
+    (formData.currentStock ?? 0) <= (formData.minimumStock ?? 0);
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.sku?.trim()) newErrors.sku = "Informe o SKU do produto.";
+    if (!formData.name?.trim()) newErrors.name = "Informe o nome do produto.";
+    if (!formData.unit?.trim()) newErrors.unit = "Informe a unidade do produto.";
+    if (formData.productType === "variante" && !formData.equivalentSku) {
+      newErrors.equivalentSku = "Selecione o produto principal para esta variante.";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertProduct) => {
-      const product: any = await apiRequest("POST", "/api/products", data);
-      
-      // If there's an image URL from upload, set it with proper ACL
-      if (imageUrl && product.id) {
+      const created: any = await apiRequest("POST", "/api/products", data);
+      if (imageUrl && created.id) {
         try {
-          const imageResponse: any = await apiRequest("PUT", `/api/products/${product.id}/image`, {
-            imageUrl: imageUrl,
+          const imageResponse: any = await apiRequest("PUT", `/api/products/${created.id}/image`, {
+            imageUrl,
           });
-          // Update local state with the normalized object path
-          if (imageResponse.objectPath) {
-            setImageUrl(imageResponse.objectPath);
-          }
-        } catch (error) {
-          console.error("Failed to set product image:", error);
-          toast({ 
-            description: "Produto criado, mas houve erro ao processar a imagem", 
-            variant: "destructive" 
-          });
+          if (imageResponse.objectPath) setImageUrl(imageResponse.objectPath);
+        } catch {
+          toast({ description: "Produto criado, mas houve erro ao processar a imagem.", variant: "destructive" });
         }
       }
-      
-      return product;
+      return created;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({ description: "Produto criado com sucesso" });
+      toast({ description: "Produto criado com sucesso." });
       onOpenChange(false);
     },
-    onError: () => {
-      toast({ description: "Erro ao criar produto", variant: "destructive" });
+    onError: (error: any) => {
+      const msg = error?.message || "";
+      if (msg.includes("409") || msg.includes("duplicate") || msg.includes("SKU")) {
+        setErrors((prev) => ({ ...prev, sku: "SKU já cadastrado. Escolha outro." }));
+        toast({ description: "SKU já cadastrado.", variant: "destructive" });
+      } else if (msg.includes("barcode")) {
+        setErrors((prev) => ({ ...prev, barcode: "Código de barras já cadastrado." }));
+        toast({ description: "Código de barras já cadastrado.", variant: "destructive" });
+      } else {
+        toast({ description: "Erro ao criar produto. Verifique os dados e tente novamente.", variant: "destructive" });
+      }
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<InsertProduct>) => {
-      return apiRequest("PATCH", `/api/products/${product?.id}`, data);
-    },
+    mutationFn: async (data: Partial<InsertProduct>) =>
+      apiRequest("PATCH", `/api/products/${product?.id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ description: "Produto atualizado com sucesso" });
+      toast({ description: "Produto atualizado com sucesso." });
       onOpenChange(false);
     },
-    onError: () => {
-      toast({ description: "Erro ao atualizar produto", variant: "destructive" });
+    onError: (error: any) => {
+      const msg = error?.message || "";
+      if (msg.includes("409") || msg.includes("duplicate") || msg.includes("SKU")) {
+        setErrors((prev) => ({ ...prev, sku: "SKU já cadastrado. Escolha outro." }));
+        toast({ description: "SKU já cadastrado.", variant: "destructive" });
+      } else if (msg.includes("barcode")) {
+        setErrors((prev) => ({ ...prev, barcode: "Código de barras já cadastrado." }));
+        toast({ description: "Código de barras já cadastrado.", variant: "destructive" });
+      } else {
+        toast({ description: "Erro ao atualizar produto. Verifique os dados e tente novamente.", variant: "destructive" });
+      }
     },
   });
 
   const handleUploadComplete = async (result: ObjectUploaderResult) => {
     if (result.successful && result.successful.length > 0) {
       const uploadedFile = result.successful[0];
-      // Get the URL from the server response
       const objectPath = (uploadedFile.response as any)?.body?.url as string;
-
       if (!objectPath) {
-        toast({ description: "Erro: URL da imagem não recebida", variant: "destructive" });
+        toast({ description: "Erro: URL da imagem não recebida.", variant: "destructive" });
         return;
       }
-
       if (!product?.id) {
-        // If creating a new product, just store the URL to be used after creation
         setImageUrl(objectPath);
-        toast({ description: "Imagem carregada com sucesso" });
+        toast({ description: "Imagem carregada. Será salva ao confirmar o produto." });
         return;
       }
-
-      // If editing, update the product image immediately
       try {
         const response: any = await apiRequest("PUT", `/api/products/${product.id}/image`, {
           imageUrl: objectPath,
         });
-        // Use the normalized object path from the response
         setImageUrl(response.objectPath || objectPath);
         queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-        toast({ description: "Imagem atualizada com sucesso" });
-      } catch (error) {
-        console.error("Error uploading image:", error);
-        toast({ description: "Erro ao atualizar imagem", variant: "destructive" });
+        toast({ description: "Imagem atualizada com sucesso." });
+      } catch {
+        toast({ description: "Erro ao atualizar imagem.", variant: "destructive" });
       }
     }
   };
 
   const handleRemoveImage = async () => {
     if (product?.id) {
-      // If editing, update the product to remove the image
       try {
-        await apiRequest("PATCH", `/api/products/${product.id}`, {
-          imageUrl: null,
-        });
+        await apiRequest("PATCH", `/api/products/${product.id}`, { imageUrl: null });
         setImageUrl(null);
         queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-        toast({ description: "Imagem removida com sucesso" });
-      } catch (error) {
-        toast({ description: "Erro ao remover imagem", variant: "destructive" });
+        toast({ description: "Imagem removida com sucesso." });
+      } catch {
+        toast({ description: "Erro ao remover imagem.", variant: "destructive" });
       }
     } else {
-      // If creating, just clear the local state
       setImageUrl(null);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.sku || !formData.name) {
-      toast({ description: "Preencha os campos obrigatórios", variant: "destructive" });
-      return;
-    }
-
-    // Validate variant has a principal product selected
-    if (formData.productType === "variante" && !formData.equivalentSku) {
-      toast({ description: "Selecione o produto principal para esta variante", variant: "destructive" });
-      return;
-    }
+    if (!validate()) return;
 
     const submitData: InsertProduct = {
-      sku: formData.sku,
-      name: formData.name,
-      description: formData.description,
-      ownership: formData.ownership as any || "owned",
-      productType: formData.productType as any || "principal",
+      sku: formData.sku!.trim(),
+      name: formData.name!.trim(),
+      description: formData.description?.trim() || undefined,
+      ownership: (formData.ownership as any) || "owned",
+      productType: (formData.productType as any) || "principal",
       equivalentSku: formData.productType === "variante" ? formData.equivalentSku : undefined,
       requiresSupplier: formData.requiresSupplier || false,
-      unit: formData.unit || "unit",
+      unit: formData.unit?.trim() || "unit",
       weight: formData.weight,
-      dimensions: formData.dimensions,
-      barcode: formData.barcode,
-      location: formData.location,
-      minimumStock: formData.minimumStock || 0,
-      currentStock: formData.currentStock || 0,
+      dimensions: formData.dimensions?.trim() || undefined,
+      barcode: formData.barcode?.trim() || undefined,
+      location: formData.location?.trim() || undefined,
+      minimumStock: formData.minimumStock ?? 0,
+      currentStock: formData.currentStock ?? 0,
     };
 
     if (product) {
@@ -226,260 +238,375 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     }
   };
 
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-border/60">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl flex flex-col p-0 gap-0 max-h-[90vh] border-border/60">
+        {/* Fixed header */}
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
           <DialogTitle>{product ? "Editar Produto" : "Novo Produto"}</DialogTitle>
           <DialogDescription>
-            {product ? "Atualize os dados do produto" : "Adicione um novo produto ao catálogo"}
+            {product
+              ? "Atualize as informações do produto para uso em estoque, requisições e movimentações."
+              : "Cadastre as informações do item para uso em estoque, requisições e movimentações."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sku">SKU *</Label>
-              <Input
-                id="sku"
-                value={formData.sku}
-                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                placeholder="PROD-001"
-                data-testid="input-sku"
+        {/* Scrollable form body */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 min-h-0"
+          id="product-form"
+        >
+          <div
+            className="flex-1 overflow-y-auto px-6 py-5 space-y-5"
+            style={{ scrollbarWidth: "thin" }}
+          >
+            {/* ── A. Identificação ── */}
+            <SectionLabel>Identificação</SectionLabel>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="sku">
+                  SKU <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="sku"
+                  value={formData.sku}
+                  onChange={(e) => {
+                    setFormData({ ...formData, sku: e.target.value });
+                    if (errors.sku) setErrors((prev) => ({ ...prev, sku: "" }));
+                  }}
+                  placeholder="Ex: PROD-001"
+                  className={`font-mono ${errors.sku ? "border-destructive" : ""}`}
+                  data-testid="input-sku"
+                />
+                {errors.sku && (
+                  <p className="text-xs text-destructive">{errors.sku}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="name">
+                  Nome <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
+                  }}
+                  placeholder="Nome do produto"
+                  className={errors.name ? "border-destructive" : ""}
+                  data-testid="input-name"
+                />
+                {errors.name && (
+                  <p className="text-xs text-destructive">{errors.name}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={formData.description || ""}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Descrição do produto, características ou observações"
+                rows={2}
+                data-testid="input-description"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nome do produto"
-                data-testid="input-name"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              value={formData.description || ""}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Descrição do produto..."
-              rows={2}
-              data-testid="input-description"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="productType">Tipo de Produto</Label>
-              <Select 
-                value={formData.productType as string}
-                onValueChange={(value) => {
-                  setFormData({ 
-                    ...formData, 
-                    productType: value as any,
-                    equivalentSku: value === "principal" ? undefined : formData.equivalentSku
-                  });
-                }}
-              >
-                <SelectTrigger data-testid="select-product-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="principal">Principal</SelectItem>
-                  <SelectItem value="variante">Variante</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.productType === "variante" && (
-              <div className="space-y-2">
-                <Label htmlFor="equivalentSku">Produto Principal *</Label>
-                <Select 
-                  value={formData.equivalentSku || ""}
-                  onValueChange={(value) => setFormData({ ...formData, equivalentSku: value })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="productType">Tipo de Produto</Label>
+                <Select
+                  value={formData.productType as string}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      productType: value as any,
+                      equivalentSku: value === "principal" ? undefined : formData.equivalentSku,
+                    })
+                  }
                 >
-                  <SelectTrigger data-testid="select-principal-product">
-                    <SelectValue placeholder="Selecione o produto principal..." />
+                  <SelectTrigger data-testid="select-product-type">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {principalProducts.map((p) => (
-                      <SelectItem key={p.id} value={p.sku}>
-                        {p.sku} - {p.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="principal">Principal</SelectItem>
+                    <SelectItem value="variante">Variante</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {formData.productType === "variante" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="equivalentSku">
+                    Produto Principal <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.equivalentSku || ""}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, equivalentSku: value });
+                      if (errors.equivalentSku) setErrors((prev) => ({ ...prev, equivalentSku: "" }));
+                    }}
+                  >
+                    <SelectTrigger
+                      data-testid="select-principal-product"
+                      className={errors.equivalentSku ? "border-destructive" : ""}
+                    >
+                      <SelectValue placeholder="Selecione o produto principal..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {principalProducts.map((p) => (
+                        <SelectItem key={p.id} value={p.sku}>
+                          {p.sku} — {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.equivalentSku && (
+                    <p className="text-xs text-destructive">{errors.equivalentSku}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── B. Controle Operacional ── */}
+            <SectionLabel>Controle Operacional</SectionLabel>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="ownership">Titularidade</Label>
+                <Select
+                  value={formData.ownership as string}
+                  onValueChange={(value) => setFormData({ ...formData, ownership: value as any })}
+                >
+                  <SelectTrigger data-testid="select-ownership">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owned">Próprio</SelectItem>
+                    <SelectItem value="rented">Locado</SelectItem>
+                    <SelectItem value="third_party">Terceiros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="unit">
+                  Unidade <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="unit"
+                  value={formData.unit}
+                  onChange={(e) => {
+                    setFormData({ ...formData, unit: e.target.value });
+                    if (errors.unit) setErrors((prev) => ({ ...prev, unit: "" }));
+                  }}
+                  placeholder="Ex: unidade, caixa, metro"
+                  className={errors.unit ? "border-destructive" : ""}
+                  data-testid="input-unit"
+                />
+                {errors.unit && (
+                  <p className="text-xs text-destructive">{errors.unit}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="weight">Peso (kg)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.weight || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, weight: e.target.value || undefined })
+                  }
+                  placeholder="0,00"
+                  data-testid="input-weight"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="barcode">Código de Barras / QR Code</Label>
+                <Input
+                  id="barcode"
+                  value={formData.barcode || ""}
+                  onChange={(e) => {
+                    setFormData({ ...formData, barcode: e.target.value });
+                    if (errors.barcode) setErrors((prev) => ({ ...prev, barcode: "" }));
+                  }}
+                  placeholder="Código de barras ou QR code"
+                  className={errors.barcode ? "border-destructive" : ""}
+                  data-testid="input-barcode"
+                />
+                {errors.barcode && (
+                  <p className="text-xs text-destructive">{errors.barcode}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="location">Localização</Label>
+                <Input
+                  id="location"
+                  value={formData.location || ""}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="Ex: Rua A, Prateleira 3, Box 02"
+                  data-testid="input-location"
+                />
+              </div>
+            </div>
+
+            {/* ── C. Estoque ── */}
+            <SectionLabel>Estoque</SectionLabel>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="currentStock">Estoque Atual</Label>
+                <Input
+                  id="currentStock"
+                  type="number"
+                  min="0"
+                  value={formData.currentStock ?? 0}
+                  onChange={(e) =>
+                    setFormData({ ...formData, currentStock: parseInt(e.target.value) || 0 })
+                  }
+                  data-testid="input-current-stock"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="minimumStock">Estoque Mínimo</Label>
+                <Input
+                  id="minimumStock"
+                  type="number"
+                  min="0"
+                  value={formData.minimumStock ?? 0}
+                  onChange={(e) =>
+                    setFormData({ ...formData, minimumStock: parseInt(e.target.value) || 0 })
+                  }
+                  data-testid="input-minimum-stock"
+                />
+              </div>
+            </div>
+
+            {isLowStock && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Este produto ficará marcado como <strong>estoque baixo</strong> com os valores atuais.
+                </p>
+              </div>
+            )}
+
+            {/* ── D. Regras Operacionais ── */}
+            <SectionLabel>Regras Operacionais</SectionLabel>
+
+            <div className="rounded-md border border-border/60 bg-muted/20 p-4">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="requiresSupplier"
+                  checked={formData.requiresSupplier}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, requiresSupplier: checked as boolean })
+                  }
+                  className="mt-0.5"
+                  data-testid="checkbox-requires-supplier"
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="requiresSupplier" className="text-sm font-medium cursor-pointer">
+                    Exigir fornecedor ao movimentar este produto
+                  </Label>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Info className="h-3 w-3 shrink-0" />
+                    Use para itens locados ou de terceiros que precisam registrar origem/fornecedor.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── E. Imagem do Produto ── */}
+            <SectionLabel>Imagem do Produto</SectionLabel>
+
+            {imageUrl ? (
+              <div className="flex items-center gap-4 p-3 rounded-md border border-border/60 bg-muted/20">
+                <div className="h-20 w-20 rounded-md border border-border/60 overflow-hidden shrink-0">
+                  <img
+                    src={imageUrl}
+                    alt="Pré-visualização"
+                    className="h-full w-full object-cover"
+                    data-testid="img-product-preview"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">Imagem carregada</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Clique em remover para substituir a imagem.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRemoveImage}
+                  data-testid="button-remove-image"
+                  className="shrink-0 text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Remover
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-6 flex flex-col items-center gap-3 text-center">
+                <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
+                  <ImageIcon className="h-5 w-5 text-muted-foreground/60" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Arraste uma imagem aqui ou clique para selecionar
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    PNG, JPG ou WebP — máximo 10 MB
+                  </p>
+                </div>
+                <ObjectUploader
+                  maxNumberOfFiles={1}
+                  maxFileSize={10485760}
+                  onComplete={handleUploadComplete}
+                  buttonVariant="outline"
+                >
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Selecionar imagem
+                </ObjectUploader>
               </div>
             )}
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="requiresSupplier"
-              checked={formData.requiresSupplier}
-              onCheckedChange={(checked) => 
-                setFormData({ ...formData, requiresSupplier: checked as boolean })
-              }
-              data-testid="checkbox-requires-supplier"
-            />
-            <Label 
-              htmlFor="requiresSupplier" 
-              className="text-sm font-normal cursor-pointer"
+          {/* Fixed footer */}
+          <DialogFooter className="px-6 py-4 border-t border-border/40 shrink-0 flex-row justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isPending}
+              data-testid="button-cancel-product"
             >
-              Requer registro de fornecedor nas movimentações
-            </Label>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="ownership">Titularidade</Label>
-              <Select 
-                value={formData.ownership as string}
-                onValueChange={(value) => setFormData({ ...formData, ownership: value as any })}
-              >
-                <SelectTrigger data-testid="select-ownership">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="owned">Próprio</SelectItem>
-                  <SelectItem value="rented">Alugado</SelectItem>
-                  <SelectItem value="third_party">Terceiro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="unit">Unidade</Label>
-              <Input
-                id="unit"
-                value={formData.unit}
-                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                placeholder="unidade, caixa, metro"
-                data-testid="input-unit"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="weight">Peso (kg)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.01"
-                value={formData.weight || ""}
-                onChange={(e) => setFormData({ ...formData, weight: e.target.value || undefined })}
-                placeholder="0.00"
-                data-testid="input-weight"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="barcode">Código de Barras</Label>
-              <Input
-                id="barcode"
-                value={formData.barcode || ""}
-                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                placeholder="Código de barras/QR code"
-                data-testid="input-barcode"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Localização</Label>
-              <Input
-                id="location"
-                value={formData.location || ""}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Zona do armazém"
-                data-testid="input-location"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentStock">Estoque Atual</Label>
-              <Input
-                id="currentStock"
-                type="number"
-                value={formData.currentStock || 0}
-                onChange={(e) => setFormData({ ...formData, currentStock: parseInt(e.target.value) || 0 })}
-                data-testid="input-current-stock"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="minimumStock">Estoque Mínimo</Label>
-              <Input
-                id="minimumStock"
-                type="number"
-                value={formData.minimumStock || 0}
-                onChange={(e) => setFormData({ ...formData, minimumStock: parseInt(e.target.value) || 0 })}
-                data-testid="input-minimum-stock"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Imagem do Produto</Label>
-            <div className="flex items-center gap-3">
-              {imageUrl ? (
-                <div className="flex items-center gap-2 flex-1">
-                  <div className="relative h-20 w-20 border border-border/60 rounded-md overflow-hidden">
-                    <img 
-                      src={imageUrl} 
-                      alt="Product preview" 
-                      className="h-full w-full object-cover"
-                      data-testid="img-product-preview"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    onClick={handleRemoveImage}
-                    data-testid="button-remove-image"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="w-full border border-dashed border-border/60 rounded-md p-6 flex flex-col items-center gap-3 bg-muted/30 text-center">
-                  <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Imagem do produto</p>
-                    <p className="text-xs text-muted-foreground">PNG, JPG ou WebP — máx. 10 MB</p>
-                  </div>
-                  <ObjectUploader
-                    maxNumberOfFiles={1}
-                    maxFileSize={10485760}
-                    onComplete={handleUploadComplete}
-                    buttonVariant="outline"
-                  >
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                    Selecionar Imagem
-                  </ObjectUploader>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button 
+            <Button
               type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={isPending || !formData.sku?.trim() || !formData.name?.trim()}
               data-testid="button-submit-product"
             >
-              {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : "Salvar Produto"}
+              {isPending ? "Salvando..." : "Salvar Produto"}
             </Button>
           </DialogFooter>
         </form>
