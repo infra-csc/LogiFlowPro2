@@ -676,6 +676,52 @@ Aplicação profunda do Design System nas telas operacionais críticas. Transfor
 - `npm run build`: ✅ passando (276.5kb)
 - Zero alteração de back-end, RBAC, endpoints, queries, mutations, payloads, schema
 
+---
+
+## Fase 3.3.2 — Modal de Nova Movimentação (refinamento 10/10)
+
+### movement-dialog.tsx
+
+**Estrutura em seções visuais** — Form dividido em 3 blocos com `SectionTitle` (identificação + contexto + operação) + bloco de resumo condicional. Cada seção tem ícone + título + divisor horizontal. Espaçamento consistente (`space-y-4` dentro de cada bloco, `space-y-5` entre blocos).
+
+**Header profissional** — Título + descrição contextual (edição vs criação). Footer fixo com separador `border-t` + botão Cancelar (outline) + Criar/Salvar (primary), desabilitado quando inválido. Loading state com spinner no botão. Responsivo `w-full sm:w-auto`.
+
+**Tipo de Movimentação — campo principal** — Combobox pesquisável com labels amigáveis em PT-BR (mapa visual: `outbound_event` → "Saída para evento", `inbound_event` → "Retorno de evento", etc.). Descrição contextual aparece abaixo do tipo selecionado (ex: "Use para registrar saída de materiais do armazém para o evento."). Payload envia `movementTypeConfigId` original — apenas a label é amigável.
+
+**Combobox pesquisável (reutilizável)** — Componente `SearchableSelect` com `Command`, `Popover`, busca por texto, empty state com ícone, checkmark de seleção, altura máxima `max-h-[260px]`. Aplicado em: Evento, Viagem, Ordem de Carregamento, Doca (quando >8 opções).
+
+**Evento — combobox com contexto** — Busca por nome/cidade/SKU. Cada item exibe nome + local/data. Badges de seleção com botão de remover (X). Ao remover evento, limpa automaticamente viagens e ordem (dependência preservada). Empty state amigável.
+
+**Viagem — dependência de evento** — Mensagem informativa quando nenhum evento selecionado: "Selecione um evento para ver viagens disponíveis". Quando evento selecionado, filtra viagens automaticamente. Badges de seleção com remoção. Combobox com busca.
+
+**Ordem de Carregamento — dependência de evento** — Filtra por eventos selecionados. Mostra status (Aprovada/Em progresso) em cada item. Disabled quando nenhum evento selecionado. Combobox pesquisável.
+
+**Placa do Veículo** — Label "Placa do veículo", placeholder "Ex: ABC-1234". Microcopy explicativo: "Informe a placa quando não houver viagem vinculada.".
+
+**Doca** — Combobox pesquisável quando >8 docas; Select simples quando <=8. Empty state: "Nenhuma doca cadastrada. Cadastre uma doca antes de criar a movimentação.".
+
+**Resumo da movimentação** — Card `bg-muted/30` aparece condicionalmente quando pelo menos um campo preenchido. Mostra apenas campos preenchidos com ícones lucide (`h-3.5`): Nome, Tipo, Evento, Viagem, Ordem, Veículo, Doca. Eventos e viagens em badges outline.
+
+**Scroll e layout** — `max-h-[90vh]` no Dialog. Conteúdo scrollável (`overflow-y-auto`, `scrollbarWidth: thin`). Footer sempre visível. Modal não estoura viewport.
+
+**Validação visual** — Botão submit desabilitado enquanto campos obrigatórios (nome, tipo, doca) não preenchidos. Erros exibidos via `FormMessage` abaixo de cada campo.
+
+**Acessibilidade** — Labels associados, `role="combobox"`, `aria-expanded`, `data-testid` preservados em todos os elementos interativos.
+
+### Restrições absolutas respeitadas
+- Sem alteração de backend, endpoints, payloads, schema, migrations, seed
+- Sem alteração de RBAC, regras de negócio, status/transições, scanner
+- Payload envia `movementTypeConfigId` original (não a label amigável)
+- Lógica de filtragem (eventos → viagens → ordens) preservada
+
+### Arquivos alterados
+- `client/src/components/movement-dialog.tsx` (refinamento completo)
+
+### Validações
+- `npm run check`: ✅ zerado
+- `npm run build`: ✅ passando (276.5kb)
+- Zero alteração de back-end, RBAC, endpoints, queries, mutations, payloads, schema
+
 ### Próximas fases
 - **3.4.2** — Request details (refinamento)
 - **3.5** — Catálogo
