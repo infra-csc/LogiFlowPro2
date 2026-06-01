@@ -542,21 +542,17 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
               </div>
 
               {!selectedEventId ? (
-                <Card className="border-border/60 bg-muted/20">
-                  <CardContent className="py-6 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Selecione um evento para visualizar as requisições aprovadas
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="rounded-md border border-border/60 bg-muted/20 py-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Selecione um evento para visualizar as requisições aprovadas
+                  </p>
+                </div>
               ) : approvedRequests.length === 0 ? (
-                <Card className="border-border/60">
-                  <CardContent className="py-6 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Nenhuma requisição aprovada encontrada para este evento
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="rounded-md border border-border/60 py-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma requisição aprovada encontrada para este evento
+                  </p>
+                </div>
               ) : (
                 <div className="border border-border/60 rounded-lg overflow-hidden bg-card/50">
                   {/* Header */}

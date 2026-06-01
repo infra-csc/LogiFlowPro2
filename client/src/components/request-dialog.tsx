@@ -15,7 +15,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, AlertCircle, Check, ChevronsUpDown, Loader2, PartyPopper, Clock, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -291,34 +290,32 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
 
             {/* Resumo do evento selecionado */}
             {selectedEvent && (
-              <Card className="border-border/60 bg-muted/30">
-                <CardContent className="p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <PartyPopper className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-sm">{selectedEvent.name}</span>
-                  </div>
-                  {requestWindowInfo ? (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span>
-                          {requestWindowInfo.start} até {requestWindowInfo.end}
-                        </span>
-                      </div>
-                      {windowBadge && (
-                        <Badge variant="outline" className={cn("text-[10px] font-medium", windowBadge.color)}>
-                          <windowBadge.icon className="h-3 w-3 mr-1" />
-                          {windowBadge.label}
-                        </Badge>
-                      )}
+              <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <PartyPopper className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">{selectedEvent.name}</span>
+                </div>
+                {requestWindowInfo ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>
+                        {requestWindowInfo.start} até {requestWindowInfo.end}
+                      </span>
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Sem período de requisição configurado para este evento.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+                    {windowBadge && (
+                      <Badge variant="outline" className={cn("text-[10px] font-medium", windowBadge.color)}>
+                        <windowBadge.icon className="h-3 w-3 mr-1" />
+                        {windowBadge.label}
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Sem período de requisição configurado para este evento.
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Alerta de janela de requisição */}
