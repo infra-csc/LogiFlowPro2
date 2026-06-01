@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -28,7 +27,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, Calendar, Package, Truck, FileText } from "lucide-react";
+import {
+  AlertTriangle, Loader2, Calendar, Package, Truck, FileText,
+  X, ChevronRight, MapPin, Clock, ArrowRight
+} from "lucide-react";
 
 interface LoadingOrderDialogProps {
   open: boolean;
@@ -40,7 +42,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
+
   const [formData, setFormData] = useState<{
     eventId: string;
     orderNumber: string;
@@ -67,22 +69,20 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   const { data: allRequests } = useQuery<MaterialRequest[]>({ queryKey: ["/api/requests"] });
   const { data: allTrips } = useQuery<Trip[]>({ queryKey: ["/api/trips"] });
 
-  // Check if order can be edited
   const { data: canEditData } = useQuery<{ canEdit: boolean; reason?: string; activeMovements?: any[] }>({
     queryKey: [`/api/loading-orders/${order?.id}/can-edit`],
     enabled: !!order?.id && open,
   });
 
-  // Load linked trips when editing
   const { data: linkedTrips } = useQuery<any[]>({
     queryKey: [`/api/loading-orders/${order?.id}/trips`],
     enabled: !!order?.id && open,
   });
 
   const approvedRequests = allRequests?.filter(
-    (req) => 
-      req.status === "approved" && 
-      selectedEventId && 
+    (req) =>
+      req.status === "approved" &&
+      selectedEventId &&
       req.eventId === selectedEventId
   ) || [];
 
@@ -102,7 +102,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
         notes: order.notes || "",
       });
       setSelectedEventId(order.eventId || "");
-      
+
       if (linkedTrips) {
         setSelectedTripIds(linkedTrips.map((lt: any) => lt.tripId));
       }
@@ -126,11 +126,11 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     mutationFn: async (data: InsertLoadingOrder & { requestIds: string[]; tripIds: string[] }) => {
       const response = await apiRequest("POST", "/api/loading-orders", data);
       const loadingOrder = await response.json() as LoadingOrder;
-      
+
       for (const tripId of data.tripIds) {
         await apiRequest("POST", `/api/loading-orders/${loadingOrder.id}/trips`, { tripId });
       }
-      
+
       return loadingOrder;
     },
     onSuccess: () => {
@@ -147,15 +147,15 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     mutationFn: async (data: Partial<InsertLoadingOrder> & { tripIds?: string[] }) => {
       const response = await apiRequest("PATCH", `/api/loading-orders/${order?.id}`, data);
       const updatedOrder = await response.json();
-      
+
       if (data.tripIds !== undefined) {
         await apiRequest("DELETE", `/api/loading-orders/${order?.id}/trips`);
-        
+
         for (const tripId of data.tripIds) {
           await apiRequest("POST", `/api/loading-orders/${order?.id}/trips`, { tripId });
         }
       }
-      
+
       return updatedOrder;
     },
     onSuccess: () => {
@@ -212,7 +212,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       return;
     }
 
-    if (!formData.eventId || !formData.orderNumber || 
+    if (!formData.eventId || !formData.orderNumber ||
         !formData.plannedStartTime || !formData.plannedEndTime ||
         !formData.createdBy) {
       toast({ description: "Preencha todos os campos obrigatórios", variant: "destructive" });
@@ -245,17 +245,30 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0">
         {/* Header */}
-        <DialogHeader className="p-6 pb-4 border-b border-border/40">
-          <DialogTitle className="text-lg font-semibold">
-            {order ? "Editar Ordem de Carregamento" : "Nova Ordem de Carregamento"}
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
-            {order 
-              ? "Atualize as informações da ordem de carregamento" 
-              : "Crie uma ordem consolidando requisições aprovadas"}
-          </DialogDescription>
+        <DialogHeader className="p-6 pb-4 border-b border-border/40 bg-muted/20">
+          <div className="flex items-start justify-between">
+            <div>
+              <DialogTitle className="text-xl font-semibold tracking-tight">
+                {order ? "Editar Ordem" : "Nova Ordem de Carregamento"}
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {order
+                  ? "Atualize as informações da ordem de carregamento"
+                  : "Crie uma ordem consolidando requisições aprovadas"}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 -mt-1 -mr-2"
+              onClick={() => onOpenChange(false)}
+              data-testid="button-close-dialog"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
         {/* Content */}
@@ -280,54 +293,53 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Linha 1: Evento + Número */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="event" className="text-sm font-medium">
-                  Evento <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.eventId}
-                  onValueChange={handleEventChange}
-                  disabled={!!order || !canEdit}
-                >
-                  <SelectTrigger id="event" className="h-10" data-testid="select-event">
-                    <SelectValue placeholder="Selecione o evento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events?.map((event) => (
-                      <SelectItem key={event.id} value={event.id} data-testid={`option-event-${event.id}`}>
-                        {event.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="orderNumber" className="text-sm font-medium">
-                  Número da Ordem <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="orderNumber"
-                  value={formData.orderNumber}
-                  onChange={(e) => setFormData({ ...formData, orderNumber: e.target.value })}
-                  placeholder="Ex: LO-2026-001"
-                  disabled={!canEdit}
-                  className="h-10"
-                  data-testid="input-order-number"
-                />
-              </div>
+            {/* Evento */}
+            <div className="space-y-1.5">
+              <Label htmlFor="event" className="text-sm font-semibold flex items-center gap-1.5">
+                <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                Evento <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.eventId}
+                onValueChange={handleEventChange}
+                disabled={!!order || !canEdit}
+              >
+                <SelectTrigger id="event" className="h-10 bg-card" data-testid="select-event">
+                  <SelectValue placeholder="Selecione o evento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {events?.map((event) => (
+                    <SelectItem key={event.id} value={event.id} data-testid={`option-event-${event.id}`}>
+                      {event.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Linha 2: Datas */}
+            {/* Número da Ordem */}
+            <div className="space-y-1.5">
+              <Label htmlFor="orderNumber" className="text-sm font-semibold flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                Número da Ordem <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="orderNumber"
+                value={formData.orderNumber}
+                onChange={(e) => setFormData({ ...formData, orderNumber: e.target.value })}
+                placeholder="Ex: LO-2026-001"
+                disabled={!canEdit}
+                className="h-10 bg-card"
+                data-testid="input-order-number"
+              />
+            </div>
+
+            {/* Datas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="plannedStart" className="text-sm font-medium">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    Início Planejado <span className="text-destructive">*</span>
-                  </span>
+                <Label htmlFor="plannedStart" className="text-sm font-semibold flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  Início Planejado <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="plannedStart"
@@ -335,17 +347,15 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   value={formData.plannedStartTime}
                   onChange={(e) => setFormData({ ...formData, plannedStartTime: e.target.value })}
                   disabled={!canEdit}
-                  className="h-10"
+                  className="h-10 bg-card"
                   data-testid="input-planned-start"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="plannedEnd" className="text-sm font-medium">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    Fim Planejado <span className="text-destructive">*</span>
-                  </span>
+                <Label htmlFor="plannedEnd" className="text-sm font-semibold flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  Fim Planejado <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="plannedEnd"
@@ -353,15 +363,18 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   value={formData.plannedEndTime}
                   onChange={(e) => setFormData({ ...formData, plannedEndTime: e.target.value })}
                   disabled={!canEdit}
-                  className="h-10"
+                  className="h-10 bg-card"
                   data-testid="input-planned-end"
                 />
               </div>
             </div>
 
-            {/* Linha 3: Criado por */}
+            {/* Criado por */}
             <div className="space-y-1.5">
-              <Label htmlFor="createdBy" className="text-sm font-medium">
+              <Label htmlFor="createdBy" className="text-sm font-semibold flex items-center gap-1.5">
+                <span className="text-muted-foreground">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
                 Criado por <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -370,14 +383,17 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
                 placeholder="Nome do responsável"
                 disabled={!canEdit}
-                className="h-10"
+                className="h-10 bg-card"
                 data-testid="input-created-by"
               />
             </div>
 
-            {/* Linha 4: Observações */}
+            {/* Observações */}
             <div className="space-y-1.5">
-              <Label htmlFor="notes" className="text-sm font-medium">
+              <Label htmlFor="notes" className="text-sm font-semibold flex items-center gap-1.5">
+                <span className="text-muted-foreground">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </span>
                 Observações
               </Label>
               <Textarea
@@ -387,25 +403,24 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 placeholder="Observações adicionais sobre a ordem..."
                 disabled={!canEdit}
                 rows={3}
+                className="bg-card"
                 data-testid="textarea-notes"
               />
             </div>
 
-            {/* Seleção de Requisições (apenas criação) */}
+            {/* Seleção de Requisições */}
             {!order && selectedEventId && (
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-sm font-medium">
-                    <span className="inline-flex items-center gap-1.5">
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      Requisições Aprovadas ({approvedRequests.length})
-                    </span>
+                  <Label className="text-sm font-semibold flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    Requisições Aprovadas ({approvedRequests.length})
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     Selecione as requisições para consolidar nesta ordem
                   </p>
                 </div>
-                
+
                 {approvedRequests.length === 0 ? (
                   <Card className="border-border/60">
                     <CardContent className="py-6">
@@ -415,34 +430,49 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-3 bg-card/50">
-                    {approvedRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className={`flex items-center gap-3 p-2.5 rounded-md border transition-colors ${
-                          selectedRequestIds.includes(request.id)
-                            ? "border-primary/40 bg-primary/5"
-                            : "border-transparent hover:bg-muted/50"
-                        }`}
-                        data-testid={`request-item-${request.id}`}
-                      >
-                        <Checkbox
-                          id={`req-${request.id}`}
-                          checked={selectedRequestIds.includes(request.id)}
-                          onCheckedChange={() => toggleRequestSelection(request.id)}
-                          data-testid={`checkbox-request-${request.id}`}
-                        />
-                        <Label
-                          htmlFor={`req-${request.id}`}
-                          className="flex-1 cursor-pointer text-sm"
+                  <div className="border rounded-lg overflow-hidden bg-card/50">
+                    {/* Header */}
+                    <div className="grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2 bg-muted/50 border-b border-border/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <span></span>
+                      <span>ID</span>
+                      <span>Área</span>
+                      <span className="text-right">Status</span>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                      {approvedRequests.map((request) => (
+                        <div
+                          key={request.id}
+                          className={`grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2.5 border-b border-border/20 items-center transition-colors cursor-pointer ${
+                            selectedRequestIds.includes(request.id)
+                              ? "bg-primary/5"
+                              : "hover:bg-muted/30"
+                          }`}
+                          onClick={() => toggleRequestSelection(request.id)}
+                          data-testid={`request-item-${request.id}`}
                         >
-                          <div className="font-medium">{request.area}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Requisição #{request.id.slice(0, 8)}
-                          </div>
-                        </Label>
-                      </div>
-                    ))}
+                          <Checkbox
+                            id={`req-${request.id}`}
+                            checked={selectedRequestIds.includes(request.id)}
+                            onCheckedChange={() => toggleRequestSelection(request.id)}
+                            data-testid={`checkbox-request-${request.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span className="text-xs font-mono text-muted-foreground">#{request.id.slice(0, 8)}</span>
+                          <span className="text-sm font-medium truncate">{request.area}</span>
+                          <span className="text-xs text-right">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                              request.priority === "high"
+                                ? "bg-destructive/10 text-destructive"
+                                : request.priority === "medium"
+                                ? "bg-chart-5/10 text-chart-5"
+                                : "bg-muted text-muted-foreground"
+                            }`}>
+                              {request.priority === "high" ? "Alta" : request.priority === "medium" ? "Média" : "Normal"}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -452,45 +482,68 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
             {selectedEventId && availableTrips.length > 0 && canLinkTrips && (
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-sm font-medium">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Truck className="h-3.5 w-3.5 text-muted-foreground" />
-                      Viagens ({availableTrips.length})
-                    </span>
+                  <Label className="text-sm font-semibold flex items-center gap-1.5">
+                    <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                    Viagens ({availableTrips.length})
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     Selecione as viagens associadas a esta ordem (opcional)
                   </p>
                 </div>
-                
-                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-3 bg-card/50">
+
+                <div className="space-y-2 max-h-60 overflow-y-auto">
                   {availableTrips.map((trip) => (
-                    <div
+                    <Card
                       key={trip.id}
-                      className={`flex items-center gap-3 p-2.5 rounded-md border transition-colors ${
+                      className={`cursor-pointer transition-colors border ${
                         selectedTripIds.includes(trip.id)
                           ? "border-primary/40 bg-primary/5"
-                          : "border-transparent hover:bg-muted/50"
+                          : "border-border/60 hover:bg-muted/50"
                       }`}
+                      onClick={() => canEdit && toggleTripSelection(trip.id)}
                       data-testid={`trip-item-${trip.id}`}
                     >
-                      <Checkbox
-                        id={`trip-${trip.id}`}
-                        checked={selectedTripIds.includes(trip.id)}
-                        onCheckedChange={() => toggleTripSelection(trip.id)}
-                        disabled={!canEdit}
-                        data-testid={`checkbox-trip-${trip.id}`}
-                      />
-                      <Label
-                        htmlFor={`trip-${trip.id}`}
-                        className="flex-1 cursor-pointer text-sm"
-                      >
-                        <div className="font-medium">{trip.description || 'Sem descrição'}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Viagem #{trip.id.slice(0, 8)} - {trip.loadingLocation || 'Local não definido'}
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            id={`trip-${trip.id}`}
+                            checked={selectedTripIds.includes(trip.id)}
+                            onCheckedChange={() => canEdit && toggleTripSelection(trip.id)}
+                            disabled={!canEdit}
+                            data-testid={`checkbox-trip-${trip.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="font-medium text-sm">{trip.description || 'Sem descrição'}</span>
+                              <span className="text-xs font-mono text-muted-foreground">#{trip.id.slice(0, 8)}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {trip.loadingLocation || 'Local não definido'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {trip.plannedStartTime ? format(new Date(trip.plannedStartTime), "dd MMM, HH:mm") : "N/A"}
+                              </span>
+                              {trip.distance && (
+                                <span className="flex items-center gap-1">
+                                  <ArrowRight className="h-3 w-3" />
+                                  {trip.distance} km
+                                </span>
+                              )}
+                              {trip.estimatedDuration && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {trip.estimatedDuration} min
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </Label>
-                    </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -499,13 +552,14 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
         </div>
 
         {/* Footer */}
-        <DialogFooter className="p-6 pt-4 border-t border-border/40 bg-muted/30">
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 bg-muted/20 flex items-center gap-3">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
             data-testid="button-cancel"
+            className="shadow-sm"
           >
             Cancelar
           </Button>
@@ -514,6 +568,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
             onClick={handleSubmit}
             disabled={isLoading || !canEdit}
             data-testid="button-submit"
+            className="shadow-sm"
           >
             {isLoading ? (
               <span className="inline-flex items-center gap-2">
@@ -521,13 +576,35 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 Salvando...
               </span>
             ) : order ? (
-              "Atualizar"
+              <span className="inline-flex items-center gap-2">
+                <CheckIcon className="h-4 w-4" />
+                Atualizar Ordem
+              </span>
             ) : (
-              "Criar Ordem"
+              <span className="inline-flex items-center gap-2">
+                <PlusIcon className="h-4 w-4" />
+                Criar Ordem
+              </span>
             )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6 9 17l-5-5"/>
+    </svg>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14"/><path d="M12 5v14"/>
+    </svg>
   );
 }

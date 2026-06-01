@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-container": "#003852",
+                      "surface-container-low": "#0e1c2d",
+                      "on-primary-fixed": "#001d33",
+                      "surface-container-highest": "#283647",
+                      "status-error": "#EF4444",
+                      "on-tertiary": "#00344d",
+                      "surface-container-high": "#1d2b3c",
+                      "secondary": "#b0c9e8",
+                      "on-primary-fixed-variant": "#004a77",
+                      "inverse-primary": "#00629d",
+                      "outline": "#88919d",
+                      "tertiary-container": "#12a6ea",
+                      "status-success": "#10B981",
+                      "error-container": "#93000a",
+                      "on-secondary-fixed": "#011d35",
+                      "tertiary-fixed": "#c9e6ff",
+                      "secondary-fixed": "#d1e4ff",
+                      "tertiary": "#89ceff",
+                      "on-error": "#690005",
+                      "background": "#051424",
+                      "surface-tint": "#98cbff",
+                      "status-warning": "#F59E0B",
+                      "outline-variant": "#3f4852",
+                      "on-secondary-container": "#9fb7d6",
+                      "surface-container": "#122031",
+                      "on-tertiary-fixed": "#001e2f",
+                      "inverse-on-surface": "#233142",
+                      "text-primary": "#F8FAFC",
+                      "on-secondary": "#19324b",
+                      "on-primary-container": "#00375a",
+                      "on-error-container": "#ffdad6",
+                      "on-surface-variant": "#bec7d4",
+                      "on-background": "#d5e4fa",
+                      "on-tertiary-fixed-variant": "#004c6e",
+                      "on-surface": "#d5e4fa",
+                      "tertiary-fixed-dim": "#89ceff",
+                      "primary-container": "#00a3ff",
+                      "text-secondary": "#94A3B8",
+                      "surface-variant": "#283647",
+                      "primary-fixed-dim": "#98cbff",
+                      "error": "#ffb4ab",
+                      "surface-dim": "#051424",
+                      "surface": "#051424",
+                      "on-secondary-fixed-variant": "#314863",
+                      "inverse-surface": "#d5e4fa",
+                      "primary-fixed": "#cfe5ff",
+                      "on-primary": "#003354",
+                      "surface-bright": "#2c3a4c",
+                      "surface-container-lowest": "#010f1f",
+                      "surface-border": "#1E293B",
+                      "secondary-container": "#314863",
+                      "primary": "#98cbff",
+                      "secondary-fixed-dim": "#b0c9e8"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "16px",
+                      "margin-desktop": "40px",
+                      "unit": "4px",
+                      "gutter": "24px",
+                      "container-max-width": "1440px"
+              },
+              "fontFamily": {
+                      "headline-xl-mobile": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "headline-xl": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-xl-mobile": ["30px", {"lineHeight": "38px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for the modal content */
+        .modal-content-scroll::-webkit-scrollbar { width: 6px; }
+        .modal-content-scroll::-webkit-scrollbar-track { background: #0e1c2d; }
+        .modal-content-scroll::-webkit-scrollbar-thumb { background: #3f4852; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- Dashboard Background Placeholder -->
+<div class="fixed inset-0 z-0 opacity-20 pointer-events-none overflow-hidden">
+<div class="p-10 grid grid-cols-12 gap-6">
+<div class="col-span-3 h-40 bg-surface-container-high rounded-xl"></div>
+<div class="col-span-3 h-40 bg-surface-container-high rounded-xl"></div>
+<div class="col-span-3 h-40 bg-surface-container-high rounded-xl"></div>
+<div class="col-span-3 h-40 bg-surface-container-high rounded-xl"></div>
+<div class="col-span-8 h-96 bg-surface-container-high rounded-xl"></div>
+<div class="col-span-4 h-96 bg-surface-container-high rounded-xl"></div>
+</div>
+</div>
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm px-4">
+<!-- Modal Container -->
+<div class="w-full max-w-4xl bg-surface-container-low border border-outline-variant shadow-2xl rounded-xl flex flex-col max-h-[921px] overflow-hidden">
+<!-- Modal Header -->
+<div class="p-6 border-b border-outline-variant flex justify-between items-start">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Nova Ordem de Carregamento</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Configure os detalhes da operação logística para processamento imediato pela frota.</p>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Modal Content (Scrollable) -->
+<form class="flex-1 overflow-y-auto p-6 modal-content-scroll space-y-8">
+<!-- Grid Form Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Evento -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                            Evento <span class="text-status-error">*</span>
+</label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+<option disabled="" selected="" value="">Selecione um evento...</option>
+<option value="expo_2024">Expo Industrial 2024</option>
+<option value="summit_log">Logistics Global Summit</option>
+<option value="agro_tech">AgroTech Frontier</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<!-- Número da Ordem -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                            Número da Ordem <span class="text-status-error">*</span>
+</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Ex: EF-ORD-2023-001" type="text"/>
+</div>
+<!-- Data Início -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                            Data/Hora de Início <span class="text-status-error">*</span>
+</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none [color-scheme:dark]" type="datetime-local"/>
+</div>
+</div>
+<!-- Data Fim -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                            Data/Hora de Término <span class="text-status-error">*</span>
+</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none [color-scheme:dark]" type="datetime-local"/>
+</div>
+</div>
+<!-- Responsável -->
+<div class="md:col-span-2 space-y-2">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                            Responsável Operacional <span class="text-status-error">*</span>
+</label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+<option disabled="" selected="" value="">Selecione o gestor da ordem...</option>
+<option value="1">Carlos Eduardo (Gerente de Frota)</option>
+<option value="2">Mariana Santos (Sup. Logística)</option>
+<option value="3">Roberto Almeida (Diretor de Ops)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">person</span>
+</div>
+</div>
+<!-- Observações -->
+<div class="md:col-span-2 space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Observações Adicionais</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all" placeholder="Informações críticas de carregamento, restrições de via ou contatos de emergência..." rows="3"></textarea>
+</div>
+</div>
+<!-- Requisições Section -->
+<div class="space-y-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">inventory_2</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Requisições Aprovadas</h3>
+</div>
+<div class="bg-surface-container border border-outline-variant rounded-xl overflow-hidden">
+<div class="grid grid-cols-12 gap-4 px-4 py-3 bg-surface-container-high font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+<div class="col-span-1"></div>
+<div class="col-span-4">ID Requisição</div>
+<div class="col-span-4">Área Destino</div>
+<div class="col-span-3 text-right">Prioridade</div>
+</div>
+<div class="divide-y divide-outline-variant">
+<!-- Requisição Item 1 -->
+<label class="grid grid-cols-12 gap-4 px-4 py-4 hover:bg-surface-container-highest/50 transition-colors cursor-pointer group items-center">
+<div class="col-span-1 flex justify-center">
+<input class="w-5 h-5 rounded border-outline-variant bg-surface-container-lowest text-primary focus:ring-primary cursor-pointer" type="checkbox"/>
+</div>
+<div class="col-span-4 font-label-md text-label-md text-on-surface">#REQ-8829</div>
+<div class="col-span-4 font-body-sm text-body-sm text-on-surface-variant">Pavilhão Norte - A3</div>
+<div class="col-span-3 text-right">
+<span class="px-2 py-1 bg-status-error/10 text-status-error text-[10px] font-bold rounded uppercase">Crítica</span>
+</div>
+</label>
+<!-- Requisição Item 2 -->
+<label class="grid grid-cols-12 gap-4 px-4 py-4 hover:bg-surface-container-highest/50 transition-colors cursor-pointer group items-center">
+<div class="col-span-1 flex justify-center">
+<input class="w-5 h-5 rounded border-outline-variant bg-surface-container-lowest text-primary focus:ring-primary cursor-pointer" type="checkbox"/>
+</div>
+<div class="col-span-4 font-label-md text-label-md text-on-surface">#REQ-9012</div>
+<div class="col-span-4 font-body-sm text-body-sm text-on-surface-variant">Setor de Credenciamento</div>
+<div class="col-span-3 text-right">
+<span class="px-2 py-1 bg-status-warning/10 text-status-warning text-[10px] font-bold rounded uppercase">Normal</span>
+</div>
+</label>
+</div>
+</div>
+</div>
+<!-- Viagens Section -->
+<div class="space-y-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Viagens Disponíveis</h3>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+<!-- Viagem Card 1 -->
+<label class="relative flex items-start gap-4 p-4 rounded-xl border border-outline-variant bg-surface-container hover:border-primary/50 transition-all cursor-pointer group">
+<input class="mt-1 w-5 h-5 rounded border-outline-variant bg-surface-container-lowest text-primary focus:ring-primary" type="checkbox"/>
+<div class="flex-1">
+<p class="font-label-md text-label-md text-on-surface">Rota Sul - Carga Seca</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Veículo: VOL-9920</p>
+<div class="mt-2 flex items-center gap-2 text-[11px] text-on-surface-variant font-medium">
+<span class="material-symbols-outlined text-[14px]">distance</span> 45km
+                                    <span class="material-symbols-outlined text-[14px]">schedule</span> 1h 20min
+                                </div>
+</div>
+</label>
+<!-- Viagem Card 2 -->
+<label class="relative flex items-start gap-4 p-4 rounded-xl border border-outline-variant bg-surface-container hover:border-primary/50 transition-all cursor-pointer group">
+<input class="mt-1 w-5 h-5 rounded border-outline-variant bg-surface-container-lowest text-primary focus:ring-primary" type="checkbox"/>
+<div class="flex-1">
+<p class="font-label-md text-label-md text-on-surface">Centro Logístico Express</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Veículo: MER-4412</p>
+<div class="mt-2 flex items-center gap-2 text-[11px] text-on-surface-variant font-medium">
+<span class="material-symbols-outlined text-[14px]">distance</span> 12km
+                                    <span class="material-symbols-outlined text-[14px]">schedule</span> 25min
+                                </div>
+</div>
+</label>
+</div>
+</div>
+</form>
+<!-- Modal Footer -->
+<div class="p-6 border-t border-outline-variant bg-surface-container-low flex flex-col sm:flex-row justify-end gap-3">
+<button class="px-6 py-2.5 rounded-lg border border-outline text-on-surface font-label-md hover:bg-surface-container-high transition-colors Active:scale-95 duration-150" type="button">
+                    Cancelar
+                </button>
+<button class="px-8 py-2.5 rounded-lg bg-primary text-on-primary font-label-md shadow-lg shadow-primary/20 hover:brightness-110 transition-all Active:scale-95 duration-150 flex items-center justify-center gap-2" type="submit">
+<span class="material-symbols-outlined text-[20px]">task_alt</span>
+                    Criar Ordem
+                </button>
+</div>
+</div>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const card = this.closest('label');
+                if(this.checked) {
+                    card.classList.add('border-primary', 'bg-primary/5');
+                    card.classList.remove('border-outline-variant', 'bg-surface-container');
+                } else {
+                    card.classList.remove('border-primary', 'bg-primary/5');
+                    card.classList.add('border-outline-variant', 'bg-surface-container');
+                }
+            });
+        });
+    </script>
+</body></html>
