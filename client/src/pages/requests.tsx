@@ -334,7 +334,6 @@ export default function Requests() {
                       variant="outline"
                       onClick={() => handleEdit(request)}
                       data-testid={`button-view-request-${request.id}`}
-                      className="text-primary"
                     >
                       <Eye className="h-3.5 w-3.5 mr-1.5" />
                       Detalhes

@@ -171,6 +171,7 @@ export interface IStorage {
   getRequestItems(requestId: string): Promise<RequestItem[]>;
   getRequestItem(id: string): Promise<RequestItem | undefined>;
   createRequestItem(item: InsertRequestItem): Promise<RequestItem>;
+  updateRequestItem(id: string, item: Partial<InsertRequestItem>): Promise<RequestItem>;
   deleteRequestItem(id: string): Promise<void>;
   deleteMaterialRequest(id: string): Promise<void>;
   
@@ -634,6 +635,15 @@ export class DatabaseStorage implements IStorage {
   async getRequestItem(id: string): Promise<RequestItem | undefined> {
     const [item] = await db.select().from(requestItems).where(eq(requestItems.id, id));
     return item;
+  }
+
+  async updateRequestItem(id: string, item: Partial<InsertRequestItem>): Promise<RequestItem> {
+    const [updated] = await db
+      .update(requestItems)
+      .set(item)
+      .where(eq(requestItems.id, id))
+      .returning();
+    return updated;
   }
 
   async deleteRequestItem(id: string): Promise<void> {

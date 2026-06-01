@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface-variant": "#bec7d4",
+                    "outline-variant": "#3f4852",
+                    "on-error-container": "#ffdad6",
+                    "tertiary": "#89ceff",
+                    "surface-container-highest": "#283647",
+                    "tertiary-container": "#12a6ea",
+                    "on-surface": "#d5e4fa",
+                    "inverse-primary": "#00629d",
+                    "text-primary": "#F8FAFC",
+                    "secondary-fixed": "#d1e4ff",
+                    "inverse-surface": "#d5e4fa",
+                    "on-secondary-fixed-variant": "#314863",
+                    "surface": "#051424",
+                    "text-secondary": "#94A3B8",
+                    "primary-fixed": "#cfe5ff",
+                    "primary-fixed-dim": "#98cbff",
+                    "on-error": "#690005",
+                    "surface-container-high": "#1d2b3c",
+                    "surface-tint": "#98cbff",
+                    "secondary-container": "#314863",
+                    "on-secondary-fixed": "#011d35",
+                    "surface-bright": "#2c3a4c",
+                    "outline": "#88919d",
+                    "on-secondary-container": "#9fb7d6",
+                    "status-warning": "#F59E0B",
+                    "error-container": "#93000a",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed-dim": "#89ceff",
+                    "on-tertiary-container": "#003852",
+                    "background": "#051424",
+                    "primary-container": "#00a3ff",
+                    "surface-container-low": "#0e1c2d",
+                    "on-secondary": "#19324b",
+                    "on-primary-fixed-variant": "#004a77",
+                    "surface-dim": "#051424",
+                    "surface-container-lowest": "#010f1f",
+                    "surface-container": "#122031",
+                    "secondary": "#b0c9e8",
+                    "on-tertiary-fixed": "#001e2f",
+                    "on-tertiary": "#00344d",
+                    "on-primary-container": "#00375a",
+                    "secondary-fixed-dim": "#b0c9e8",
+                    "on-primary-fixed": "#001d33",
+                    "inverse-on-surface": "#233142",
+                    "tertiary-fixed": "#c9e6ff",
+                    "surface-variant": "#283647",
+                    "primary": "#98cbff",
+                    "on-tertiary-fixed-variant": "#004c6e",
+                    "on-background": "#d5e4fa",
+                    "surface-border": "#1E293B",
+                    "status-error": "#EF4444",
+                    "status-success": "#10B981",
+                    "on-primary": "#003354",
+                    "muted": "rgba(255, 255, 255, 0.05)"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-max-width": "1440px",
+                    "unit": "4px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "40px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "headline-xl-mobile": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-xl-mobile": ["30px", {"lineHeight": "38px", "fontWeight": "600"}],
+                    "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #051424;
+            color: #d5e4fa;
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-glass {
+            background: rgba(16, 42, 67, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid #1E293B;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #051424;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #3f4852;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-surface shadow-sm flex items-center justify-between px-margin-desktop z-40">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-md text-headline-md font-black text-primary">EventFlow Logistics</h1>
+<div class="hidden md:flex items-center bg-surface-container-low px-4 py-2 rounded-lg border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm text-on-surface ml-2 w-64" placeholder="Search requisitions..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-primary-container rounded-full border border-surface"></span>
+</button>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="flex items-center gap-3 border-l border-outline-variant pl-6">
+<div class="text-right">
+<p class="font-label-md text-label-md text-text-primary">Marcus V.</p>
+<p class="font-label-sm text-label-sm text-text-secondary">Logistics Manager</p>
+</div>
+<img alt="Manager Avatar" class="w-10 h-10 rounded-full border-2 border-primary-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHiPbDPQ2SHXrNygIxy3rbksqWBrw-9LD1MeToGpW0TuAMyXU_LntIbqdCWAp-6QlFVczTMS98-QqtTSy6z5U92V6iGvEymS138JeZoOrjERY-4JSujr0HKIYv4H8NymTP1MJQoCJ6oSIbpL0jn0xE74vRT6ZqKLrFbrEwOkBDumTk6GBbjoUe-fXltCaRkF8Bq1l60hiq7ttjWNt_uYWhhhXd2DTyydCN6TX7CkPSleyaF2TWBFDeu1KguAY7czq6Rrba-4qYgEs"/>
+</div>
+</div>
+</header>
+<!-- SideNav -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-surface-dim shadow-md flex flex-col py-6 z-50">
+<div class="px-6 mb-10">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary-container rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container text-xl">hub</span>
+</div>
+<span class="font-headline-md text-headline-md font-bold text-primary">EventFlow</span>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary font-bold border-r-4 border-primary bg-primary-container/10 transition-colors transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">orders</span>
+<span class="font-body-md text-body-md">Requisitions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-body-md text-body-md">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">warehouse</span>
+<span class="font-body-md text-body-md">Suppliers</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full bg-primary-container text-on-primary-container font-label-md text-label-md py-4 rounded-xl shadow-lg hover:brightness-110 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                New Requisition
+            </button>
+</div>
+</aside>
+<!-- Main Content: Modals Showcase -->
+<main class="ml-64 pt-24 pb-12 px-margin-desktop min-h-screen bg-surface-container-lowest">
+<header class="mb-12">
+<h2 class="font-headline-xl text-headline-xl text-text-primary">Requisition Modals Library</h2>
+<p class="font-body-lg text-body-lg text-text-secondary max-w-2xl mt-2">Preview of the mission-critical requisition interface components designed for speed and inventory precision.</p>
+</header>
+<!-- Grid of Modals -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-12 items-start">
+<!-- 1. Nova Requisição (New Requisition) -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-primary uppercase tracking-widest">01. Standard Creation</span>
+<span class="text-xs bg-surface-container px-2 py-1 rounded text-outline">max-w-md</span>
+</div>
+<div class="modal-glass w-full max-w-md rounded-xl overflow-hidden">
+<div class="p-6 border-b border-outline-variant">
+<h3 class="font-headline-md text-headline-md text-text-primary">Nova Requisição</h3>
+</div>
+<div class="p-6 space-y-6">
+<!-- Alert Box -->
+<div class="bg-status-warning/10 border border-status-warning/30 p-4 rounded-lg flex gap-3">
+<span class="material-symbols-outlined text-status-warning">info</span>
+<div class="space-y-1">
+<p class="font-label-md text-label-md text-status-warning">Event Window Warning</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Selected event "Lollapalooza 2024" starts in 48h. Express processing required.</p>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Event</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all">
+<option>Lollapalooza 2024 - São Paulo</option>
+<option>Rock in Rio - Sunset Stage</option>
+<option>Primavera Sound - VIP Area</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Name</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="e.g., Logistic Ops - Audio Gear" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Notes</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all resize-none" placeholder="Additional logistics details..." rows="3"></textarea>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 flex justify-end gap-4">
+<button class="px-6 py-2.5 rounded-lg border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-variant transition-all">Cancelar</button>
+<button class="px-6 py-2.5 rounded-lg bg-primary-container font-label-md text-label-md text-on-primary-container shadow-md hover:shadow-primary-container/20 transition-all active:scale-95">Confirmar</button>
+</div>
+</div>
+</section>
+<!-- 2. Adicionar Material (Add Material) - REDESIGNED -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-primary uppercase tracking-widest">02. Item Inventory Entry</span>
+<span class="text-xs bg-surface-container px-2 py-1 rounded text-outline">max-w-lg</span>
+</div>
+<div class="modal-glass w-full max-w-lg rounded-xl overflow-hidden">
+<!-- Header -->
+<div class="p-6 border-b border-surface-border">
+<h3 class="font-headline-md text-headline-md text-text-primary">Adicionar Material</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Escolha entre adicionar um produto individual ou um kit completo. A quantidade deve ser maior que zero.</p>
+</div>
+<!-- Tabs Trigger Grid -->
+<div class="px-6 pt-4">
+<div class="grid grid-cols-2 bg-surface-container-low p-1 rounded-lg">
+<button class="tab-trigger px-4 py-2 rounded-md font-label-md text-label-md transition-all bg-primary-container text-on-primary-container" data-tab="produto">Produto</button>
+<button class="tab-trigger px-4 py-2 rounded-md font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-tab="kit">Kit</button>
+</div>
+</div>
+<!-- Form Area -->
+<div class="p-6 pt-2 space-y-4">
+<!-- Produto Tab Content -->
+<div class="tab-content block" id="tab-produto">
+<div class="space-y-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Produto *</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:ring-1 focus:ring-primary-container transition-all">
+<option disabled="" selected="">Selecione o produto</option>
+<option>Cabo XLR 10m - Premium</option>
+<option>Microfone Dinâmico SM58</option>
+<option>Caixa Ativa 15"</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Quantidade *</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:ring-1 focus:ring-primary-container transition-all" min="1" placeholder="0" type="number"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Observações</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:ring-1 focus:ring-primary-container outline-none transition-all resize-none" placeholder="Ex: fragil, carregar na primeira remessa..." rows="3"></textarea>
+</div>
+</div>
+</div>
+<!-- Kit Tab Content (Hidden by default) -->
+<div class="tab-content hidden" id="tab-kit">
+<div class="space-y-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Kit *</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:ring-1 focus:ring-primary-container transition-all">
+<option disabled="" selected="">Selecione o kit</option>
+<option>Kit Áudio Básico</option>
+<option>Kit Iluminação Palco Sunset</option>
+<option>Kit Backline Standard</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Quantidade *</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:ring-1 focus:ring-primary-container transition-all" min="1" placeholder="0" type="number"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Observações</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:ring-1 focus:ring-primary-container outline-none transition-all resize-none" placeholder="Observações específicas para o kit..." rows="3"></textarea>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="bg-muted/50 p-4 border-t border-surface-border flex justify-end gap-3">
+<button class="px-6 py-2 rounded-lg border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-variant transition-all">Cancelar</button>
+<button class="px-6 py-2 rounded-lg bg-primary-container font-label-md text-label-md text-on-primary-container shadow-md hover:brightness-110 transition-all active:scale-95">Adicionar</button>
+</div>
+</div>
+</section>
+<!-- 3. Duplicar Requisição (Duplicate Requisition) -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-primary uppercase tracking-widest">03. Fast Cloning</span>
+<span class="text-xs bg-surface-container px-2 py-1 rounded text-outline">max-w-md</span>
+</div>
+<div class="modal-glass w-full max-w-md rounded-xl overflow-hidden border-primary/20">
+<div class="p-6 border-b border-outline-variant flex items-center justify-between">
+<h3 class="font-headline-md text-headline-md text-text-primary">Duplicar Requisição</h3>
+<span class="material-symbols-outlined text-primary">content_copy</span>
+</div>
+<div class="p-6 space-y-6">
+<div class="p-4 bg-primary-container/5 rounded-lg border border-primary/10">
+<p class="font-body-sm text-body-sm text-on-surface-variant">Cloning allows you to replicate item lists for recurring event setups or standard stage kits.</p>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">New Event Destination</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:ring-1 focus:ring-primary-container transition-all">
+<option>Tomorrowland Winter 2024</option>
+<option>Burning Man Logistics</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">New Requisition Name</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2.5 px-4 text-on-surface focus:ring-1 focus:ring-primary-container transition-all pr-12" type="text" value="Logistic Ops - Audio Gear (Cópia)"/>
+<span class="absolute right-4 top-2.5 material-symbols-outlined text-on-surface-variant text-sm">edit</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-4">
+<input checked="" class="rounded border-outline-variant bg-surface-container text-primary-container focus:ring-primary-container focus:ring-offset-surface" type="checkbox"/>
+<label class="font-body-sm text-body-sm text-on-surface-variant">Duplicate notes and priority tags</label>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 flex justify-end gap-4">
+<button class="px-6 py-2.5 rounded-lg border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-variant transition-all">Cancelar</button>
+<button class="px-6 py-2.5 rounded-lg bg-primary-container font-label-md text-label-md text-on-primary-container shadow-md hover:shadow-primary-container/20 transition-all active:scale-95">Duplicar Agora</button>
+</div>
+</div>
+</section>
+<!-- Abstract Visual Card for spacing balance -->
+<section class="h-full flex items-center justify-center">
+<div class="relative w-full max-w-sm h-64 rounded-2xl overflow-hidden group cursor-pointer">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="A professional warehouse logistics setting with rows of high-tech shelving systems. The lighting is moody and focused, with deep blue tones and vibrant cyan accents from digital tracking displays. A logistics manager in the distance is interacting with a holographic interface. The atmosphere is mission-critical, sleek, and technologically advanced." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnyTVlYzSpzL3pttOJRmV07W8oVvn4HVi1I8ULf6zUGh7u1ukX_1ETm3JV4bVFdhU3VBnb7SYORtWkFTIndyfj5M5s_ZbQ6L--M2IXS6Z9E0zEDVKWFiaTiIbu9qXIzeBjQb8H_E0iIsZHpTftpScQOm9WxdowoUjxpCHndfS6sRvcQka3yQ-ovQGV-nQTagsNtcKIWPQPORmlip_jZ5j0Vuvj2V-J_6y035oQujwRqS6iEOv8NZvPcaCFGX03K7LLpWIX7GYo5vI"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent opacity-80"></div>
+<div class="absolute bottom-6 left-6 right-6">
+<div class="flex items-center gap-2 mb-2">
+<span class="w-3 h-3 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-primary uppercase">Fleet Sync Active</span>
+</div>
+<h4 class="font-headline-md text-headline-md text-white leading-tight">Optimizing Global Supply Chains</h4>
+</div>
+</div>
+</section>
+</div>
+</main>
+<script>
+        // Tab switching logic for the redesigned modal
+        const tabTriggers = document.querySelectorAll('.tab-trigger');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabTriggers.forEach(trigger => {
+            trigger.addEventListener('click', () => {
+                const targetTab = trigger.getAttribute('data-tab');
+                
+                // Update buttons
+                tabTriggers.forEach(btn => {
+                    btn.classList.remove('bg-primary-container', 'text-on-primary-container');
+                    btn.classList.add('text-on-surface-variant', 'hover:text-on-surface');
+                });
+                trigger.classList.remove('text-on-surface-variant', 'hover:text-on-surface');
+                trigger.classList.add('bg-primary-container', 'text-on-primary-container');
+
+                // Update content visibility
+                tabContents.forEach(content => {
+                    if (content.id === `tab-${targetTab}`) {
+                        content.classList.remove('hidden');
+                        content.classList.add('block');
+                    } else {
+                        content.classList.remove('block');
+                        content.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        // Simple scale feedback for all buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                this.classList.add('scale-95');
+                setTimeout(() => this.classList.remove('scale-95'), 100);
+            });
+        });
+    </script>
+</body></html>

@@ -128,12 +128,27 @@ function AppLayout() {
         {!publicRoute && <AppSidebar />}
         <div className={`flex flex-col flex-1 overflow-hidden ${publicRoute ? "" : ""}`}>
           {!publicRoute && (
-            <header className="flex items-center justify-between p-4 border-b border-border bg-card">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <div className="text-sm text-muted-foreground">
-                Gestão de Logística de Eventos
+            <header className="h-16 w-full flex items-center justify-between px-4 border-b border-border/40 bg-card/80 backdrop-blur-sm sticky top-0 z-40 shrink-0">
+              {/* Left: toggle + brand */}
+              <div className="flex items-center gap-3">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <div className="hidden sm:flex items-center gap-2 border-l border-border/40 pl-3">
+                  <div className="w-6 h-6 bg-primary rounded-sm flex items-center justify-center">
+                    <div className="w-3 h-3 border-2 border-primary-foreground rounded-[1px]" />
+                  </div>
+                  <span className="text-foreground font-semibold text-sm tracking-tight">EventFlow</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+
+              {/* Center: page title */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <h1 className="text-sm md:text-base font-medium tracking-wide uppercase text-muted-foreground">
+                  Gestão de Logística de Eventos
+                </h1>
+              </div>
+
+              {/* Right: actions + profile */}
+              <div className="flex items-center gap-1 md:gap-2 relative z-10">
                 <ThemeToggle />
                 <NotificationBell />
               </div>

@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save, ClipboardList, Package, User, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save, ClipboardList, Package, User, CheckCircle2, XCircle, Clock, Pencil, Check, X } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
@@ -143,6 +143,14 @@ export default function RequestDetails() {
     enabled: !!request?.eventId,
   });
 
+  const { data: products = [], isLoading: productsLoading } = useQuery<{ id: string; name: string; sku: string; unit: string }[]>({
+    queryKey: ["/api/products"],
+  });
+
+  const { data: kits = [], isLoading: kitsLoading } = useQuery<{ id: string; name: string; description?: string }[]>({
+    queryKey: ["/api/kits"],
+  });
+
   const requestWindowInfo = useMemo(() => {
     if (!event?.requestWindowStart || !event?.requestWindowEnd) return null;
     const now = new Date();
@@ -198,6 +206,10 @@ export default function RequestDetails() {
     },
   });
 
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editQuantity, setEditQuantity] = useState<string>("");
+  const [editNotes, setEditNotes] = useState<string>("");
+
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
       await apiRequest("DELETE", `/api/request-items/${itemId}`);
@@ -208,6 +220,20 @@ export default function RequestDetails() {
     },
     onError: () => {
       toast({ variant: "destructive", title: "Erro ao remover", description: "Nao foi possivel remover o item" });
+    },
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: async ({ itemId, quantity, notes }: { itemId: string; quantity: number; notes?: string }) => {
+      return apiRequest("PATCH", `/api/request-items/${itemId}`, { quantity, notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests", id, "items"] });
+      toast({ title: "Item atualizado", description: "Quantidade e observacoes atualizadas" });
+      setEditingItemId(null);
+    },
+    onError: () => {
+      toast({ variant: "destructive", title: "Erro ao atualizar", description: "Nao foi possivel atualizar o item" });
     },
   });
 
@@ -394,8 +420,9 @@ export default function RequestDetails() {
       </div>
 
       {/* Observacoes */}
-      <Card className="border-l-4 border-l-secondary border-border/60">
-        <CardContent className="p-4 space-y-3">
+      <Card className="relative overflow-hidden border-border/60">
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary" />
+        <CardContent className="p-4 pl-5 space-y-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
             <div className="font-semibold text-base">Observacoes</div>
@@ -502,20 +529,49 @@ export default function RequestDetails() {
 
                         {/* Right: requested + approved + icon */}
                         <div className="flex items-center gap-6 sm:text-right">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Requisitado</p>
-                            <p className="font-semibold text-base text-primary">
-                              {item.quantity} <span className="text-sm font-normal">{item.product?.unit || "unid"}</span>
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Aprovado</p>
-                            <p className={`font-semibold text-base ${isApproved ? "text-chart-4" : isRejected ? "text-destructive" : "text-muted-foreground"}`}>
-                              {isApproved ? item.approvedQuantity : isRejected ? "—" : "—"}
-                              {isApproved && <span className="text-sm font-normal"> {item.product?.unit || "unid"}</span>}
-                            </p>
-                          </div>
-                          <StatusIcon className={`h-5 w-5 ${statusColor} shrink-0`} />
+                          {editingItemId === item.id ? (
+                            <div className="space-y-2 min-w-[140px]">
+                              <div>
+                                <label className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold">Quantidade</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={editQuantity}
+                                  onChange={(e) => setEditQuantity(e.target.value)}
+                                  className="w-full mt-1 h-8 px-2 rounded-md bg-background border border-border text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  data-testid={`input-edit-quantity-${item.id}`}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold">Observacoes</label>
+                                <input
+                                  type="text"
+                                  value={editNotes}
+                                  onChange={(e) => setEditNotes(e.target.value)}
+                                  placeholder="Observacoes (opcional)"
+                                  className="w-full mt-1 h-8 px-2 rounded-md bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  data-testid={`input-edit-notes-${item.id}`}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Requisitado</p>
+                                <p className="font-semibold text-base text-primary">
+                                  {item.quantity} <span className="text-sm font-normal">{item.product?.unit || "unid"}</span>
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold mb-1">Aprovado</p>
+                                <p className={`font-semibold text-base ${isApproved ? "text-chart-4" : isRejected ? "text-destructive" : "text-muted-foreground"}`}>
+                                  {isApproved ? item.approvedQuantity : isRejected ? "—" : "—"}
+                                  {isApproved && <span className="text-sm font-normal"> {item.product?.unit || "unid"}</span>}
+                                </p>
+                              </div>
+                              <StatusIcon className={`h-5 w-5 ${statusColor} shrink-0`} />
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -538,20 +594,62 @@ export default function RequestDetails() {
                         </div>
                       )}
 
-                      {/* Delete button */}
+                      {/* Edit / Delete buttons */}
                       {canEdit && (
-                        <div className="flex justify-end mt-3">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteItemMutation.mutate(item.id);
-                            }}
-                            data-testid={`button-remove-item-${item.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex justify-end mt-3 gap-1">
+                          {editingItemId === item.id ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const qty = parseInt(editQuantity);
+                                  if (isNaN(qty) || qty < 1) {
+                                    toast({ variant: "destructive", title: "Erro", description: "Quantidade deve ser maior que zero" });
+                                    return;
+                                  }
+                                  updateItemMutation.mutate({ itemId: item.id, quantity: qty, notes: editNotes || undefined });
+                                }}
+                                data-testid={`button-save-item-${item.id}`}
+                              >
+                                <Check className="h-4 w-4 text-chart-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setEditingItemId(null)}
+                                data-testid={`button-cancel-edit-item-${item.id}`}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setEditingItemId(item.id);
+                                  setEditQuantity(String(item.quantity));
+                                  setEditNotes(item.notes || "");
+                                }}
+                                data-testid={`button-edit-item-${item.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteItemMutation.mutate(item.id);
+                                }}
+                                data-testid={`button-remove-item-${item.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -582,7 +680,15 @@ export default function RequestDetails() {
       </AlertDialog>
 
       {/* Add Item */}
-      <AddItemDialog open={showAddItem} onOpenChange={setShowAddItem} requestId={id!} />
+      <AddItemDialog
+        open={showAddItem}
+        onOpenChange={setShowAddItem}
+        requestId={id!}
+        products={products}
+        kits={kits}
+        productsLoading={productsLoading}
+        kitsLoading={kitsLoading}
+      />
 
       {/* Duplicate */}
       <DuplicateRequestDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog} requestId={id!} currentArea={request.area} itemCount={items.length} />

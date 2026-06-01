@@ -161,17 +161,17 @@ export function DuplicateRequestDialog({
         {/* Header with border */}
         <div className="p-6 border-b border-border">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="text-lg font-semibold flex items-center gap-2">
               <Copy className="h-5 w-5" />
               Duplicar Requisicao
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">
               Cria uma nova requisicao como rascunho, copiando todos os {itemCount} {itemCount === 1 ? "item" : "itens"} desta requisicao. Voce pode alterar o evento e o nome antes de confirmar.
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-6">
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
           {/* Info box */}
           <div className="p-4 rounded-lg border"
             style={{
@@ -184,13 +184,14 @@ export function DuplicateRequestDialog({
             </p>
           </div>
 
+          {/* Evento */}
           <div className="space-y-2">
-            <Label htmlFor="eventId">Evento *</Label>
-            <Select 
+            <Label htmlFor="eventId" className="text-sm font-medium">Evento *</Label>
+            <Select
               value={formData.eventId}
               onValueChange={(value) => setFormData({ ...formData, eventId: value })}
             >
-              <SelectTrigger data-testid="select-duplicate-event">
+              <SelectTrigger data-testid="select-duplicate-event" className="h-10">
                 <SelectValue placeholder="Selecione o evento" />
               </SelectTrigger>
               <SelectContent>
@@ -201,14 +202,14 @@ export function DuplicateRequestDialog({
                 ))}
               </SelectContent>
             </Select>
-            
+
             {requestWindowInfo && (
               <Alert variant={requestWindowInfo.isWithinWindow ? "default" : "destructive"} className="mt-2">
                 <div className="flex items-start gap-2">
                   {requestWindowInfo.isWithinWindow ? (
-                    <Calendar className="h-4 w-4 mt-0.5" />
+                    <Calendar className="h-4 w-4 mt-0.5 shrink-0" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 mt-0.5" />
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   )}
                   <AlertDescription className="text-sm">
                     {requestWindowInfo.isWithinWindow && (
@@ -236,19 +237,22 @@ export function DuplicateRequestDialog({
             )}
           </div>
 
+          {/* Nome */}
           <div className="space-y-2">
-            <Label htmlFor="area">Nome da Requisicao *</Label>
+            <Label htmlFor="area" className="text-sm font-medium">Nome da Requisicao *</Label>
             <Input
               id="area"
               value={formData.area}
               onChange={(e) => setFormData({ ...formData, area: e.target.value })}
               placeholder="Ex: Cenografia Palco Principal"
               data-testid="input-duplicate-area"
+              className="h-10"
             />
           </div>
 
+          {/* Observacoes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Observacoes</Label>
+            <Label htmlFor="notes" className="text-sm font-medium">Observacoes</Label>
             <Textarea
               id="notes"
               value={formData.notes}
@@ -262,15 +266,15 @@ export function DuplicateRequestDialog({
 
         {/* Footer bar */}
         <div className="bg-muted/50 p-4 flex justify-end gap-3 border-t border-border">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => onOpenChange(false)} 
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
             data-testid="button-cancel-duplicate"
           >
             Cancelar
           </Button>
-          <Button 
+          <Button
             onClick={handleSubmit}
             disabled={duplicateMutation.isPending}
             data-testid="button-confirm-duplicate"

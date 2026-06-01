@@ -167,8 +167,8 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
         {/* Header with border */}
         <div className="p-6 border-b border-border">
           <DialogHeader>
-            <DialogTitle>{request ? "Editar Requisicao" : "Nova Requisicao"}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg font-semibold">{request ? "Editar Requisicao" : "Nova Requisicao"}</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
               {request
                 ? "Atualize os dados da requisicao."
                 : "Crie uma requisicao de materiais. Ela comeca como rascunho e so pode ser enviada para aprovacao dentro do periodo permitido pelo evento."}
@@ -176,14 +176,15 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
           </DialogHeader>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-6">
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
+          {/* Evento */}
           <div className="space-y-2">
-            <Label htmlFor="eventId">Evento *</Label>
-            <Select 
+            <Label htmlFor="eventId" className="text-sm font-medium">Evento *</Label>
+            <Select
               value={formData.eventId}
               onValueChange={(value) => setFormData({ ...formData, eventId: value })}
             >
-              <SelectTrigger data-testid="select-event">
+              <SelectTrigger data-testid="select-event" className="h-10">
                 <SelectValue placeholder="Selecione o evento" />
               </SelectTrigger>
               <SelectContent>
@@ -194,14 +195,14 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                 ))}
               </SelectContent>
             </Select>
-            
+
             {requestWindowInfo && (
               <Alert variant={requestWindowInfo.isWithinWindow ? "default" : "destructive"} className="mt-2">
                 <div className="flex items-start gap-2">
                   {requestWindowInfo.isWithinWindow ? (
-                    <Calendar className="h-4 w-4 mt-0.5" />
+                    <Calendar className="h-4 w-4 mt-0.5 shrink-0" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 mt-0.5" />
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   )}
                   <AlertDescription className="text-sm">
                     {requestWindowInfo.isWithinWindow && (
@@ -229,19 +230,22 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
             )}
           </div>
 
+          {/* Nome */}
           <div className="space-y-2">
-            <Label htmlFor="area">Nome da Requisicao *</Label>
+            <Label htmlFor="area" className="text-sm font-medium">Nome da Requisicao *</Label>
             <Input
               id="area"
               value={formData.area}
               onChange={(e) => setFormData({ ...formData, area: e.target.value })}
               placeholder="Ex: Cenografia Palco Principal"
               data-testid="input-area"
+              className="h-10"
             />
           </div>
 
+          {/* Observacoes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Observacoes</Label>
+            <Label htmlFor="notes" className="text-sm font-medium">Observacoes</Label>
             <Textarea
               id="notes"
               value={formData.notes}
@@ -258,7 +262,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-request">
             Cancelar
           </Button>
-          <Button 
+          <Button
             onClick={handleSubmit}
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-submit-request"

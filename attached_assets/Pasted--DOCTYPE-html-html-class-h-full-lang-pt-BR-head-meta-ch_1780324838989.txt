@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Precision Logistics - Top Navigation</title>
+<!-- Tailwind CSS v3 CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Inter Font -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            precision: {
+              navy: '#051424',
+              azure: '#00A3FF',
+              slate: '#1E293B',
+              border: '#1E293B'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+<!-- BEGIN: Custom Styles -->
+<style data-purpose="layout-refinements">
+    body {
+      background-color: #020817; /* Darker than the nav for depth */
+      font-family: 'Inter', sans-serif;
+    }
+    .nav-border-bottom {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+<!-- END: Custom Styles -->
+</head>
+<body class="antialiased">
+<!-- BEGIN: MainHeader -->
+<header class="bg-precision-navy h-16 w-full flex items-center justify-between px-4 nav-border-bottom sticky top-0 z-50 shadow-sm" data-purpose="main-navigation-bar">
+<!-- BEGIN: LeftSection (Sidebar Toggle & Context) -->
+<div class="flex items-center gap-4">
+<!-- Sidebar Toggle Icon -->
+<button aria-label="Toggle Sidebar" class="p-2 rounded-md hover:bg-white/10 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-precision-azure" id="sidebar-toggle">
+<svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 6h16M4 12h16m-7 6h7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<!-- App Logo or Brand Mark (Optional but recommended for context) -->
+<div class="hidden sm:flex items-center gap-2 border-l border-white/10 pl-4">
+<div class="w-6 h-6 bg-precision-azure rounded-sm flex items-center justify-center">
+<div class="w-3 h-3 border-2 border-precision-navy"></div>
+</div>
+<span class="text-white font-semibold text-sm tracking-tight">PRECISION</span>
+</div>
+</div>
+<!-- END: LeftSection -->
+<!-- BEGIN: CenterSection (Application Title) -->
+<div class="flex-grow text-center">
+<h1 class="text-slate-100 text-sm md:text-base font-medium tracking-wide uppercase" data-purpose="page-title">
+        Gestão de Logística de Eventos
+      </h1>
+</div>
+<!-- END: CenterSection -->
+<!-- BEGIN: RightSection (Actions & Profile) -->
+<div class="flex items-center gap-2 md:gap-4">
+<!-- Dark/Light Mode Toggle -->
+<button class="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors duration-200" title="Alternar tema">
+<!-- Moon Icon -->
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<!-- Notifications -->
+<button class="relative p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors duration-200" title="Notificações">
+<!-- Bell Icon -->
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- Notification Dot -->
+<span class="absolute top-2 right-2 flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-precision-azure opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-precision-azure"></span>
+</span>
+</button>
+<!-- User Profile Thumbnail -->
+<div class="ml-2 border-l border-white/10 pl-4 hidden md:flex items-center">
+<div class="flex flex-col items-end mr-3">
+<span class="text-xs font-semibold text-white">Admin User</span>
+<span class="text-[10px] text-slate-400 uppercase tracking-tighter">Logistics Lead</span>
+</div>
+<div class="w-8 h-8 rounded bg-precision-slate border border-white/10 flex items-center justify-center text-precision-azure font-bold text-xs cursor-pointer hover:border-precision-azure transition-all">
+          AU
+        </div>
+</div>
+</div>
+<!-- END: RightSection -->
+</header>
+<!-- END: MainHeader -->
+<!-- Placeholder for Main Content -->
+<main class="p-8 text-slate-500 italic text-center">
+    Main content area for Logistics Dashboard...
+  </main>
+<!-- BEGIN: Interactive Logic -->
+<script data-purpose="event-handlers">
+    // Simple logic for interactive elements
+    document.getElementById('sidebar-toggle').addEventListener('click', () => {
+      console.log('Sidebar toggle clicked');
+      // Logic for expanding/collapsing sidebar would go here
+    });
+  </script>
+<!-- END: Interactive Logic -->
+</body></html>

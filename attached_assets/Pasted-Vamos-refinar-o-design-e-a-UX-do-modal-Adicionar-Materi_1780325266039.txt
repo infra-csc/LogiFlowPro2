@@ -1,0 +1,202 @@
+Vamos refinar o design e a UX do modal “Adicionar Material”.
+
+Arquivo foco:
+
+* client/src/components/add-item-dialog.tsx
+
+Objetivo:
+Transformar o modal de adicionar material em uma experiência 10/10, mais profissional, clara, compacta e operacional, seguindo o Design System atual do EventFlow.
+
+Contexto:
+Esse modal é usado dentro da Requisição de Materiais para adicionar Produto ou Kit à requisição. Ele precisa ser rápido de usar, fácil de entender e funcionar bem com listas grandes de produtos/kits.
+
+Problemas visuais atuais:
+
+* Dropdown de produtos/kits fica muito grande e pesado.
+* Lista sem busca dificulta encontrar itens.
+* Select ocupa visualmente muito espaço quando aberto.
+* Campo quantidade usa spinner padrão do navegador, que não combina com o dark mode.
+* Tabs Produto/Kit estão funcionais, mas podem ficar mais refinadas.
+* Falta destaque visual claro do item selecionado.
+* Falta estado de loading/empty/error no seletor.
+* Footer pode ter melhor alinhamento e hierarquia.
+* Corrigir microcopy: “Observacoes” → “Observações”.
+* Melhorar responsividade mobile.
+
+Melhorias desejadas:
+
+1. Estrutura geral do modal
+
+* Manter o modal com visual dark profissional.
+* Melhorar espaçamento interno.
+* Usar largura adequada: não muito largo, não muito estreito.
+* Header com título forte e descrição curta.
+* Separador sutil entre header, conteúdo e footer.
+* Footer fixo/estável com botões alinhados à direita no desktop e empilháveis no mobile.
+
+2. Tabs Produto / Kit
+
+* Refinar visual das tabs.
+* Deixar o estado ativo mais claro, mas sem excesso de brilho.
+* Garantir boa área clicável.
+* Manter o layout limpo e consistente.
+* Evitar tabs com aparência pesada.
+
+3. Seletor de Produto/Kit
+   Se possível, trocar o Select atual por um Combobox pesquisável usando componentes já existentes do projeto/shadcn, sem alterar payload ou lógica funcional.
+
+O seletor deve ter:
+
+* busca por nome e SKU/código;
+* placeholder claro:
+
+  * “Buscar produto por nome ou SKU”
+  * “Buscar kit por nome”
+* lista com altura máxima;
+* scrollbar customizado/discreto;
+* empty state quando não houver resultado;
+* loading state se necessário;
+* destaque visual para o item selecionado.
+
+Cada opção da lista deve mostrar melhor:
+
+* nome principal;
+* SKU/código em estilo secundário `font-mono text-xs`;
+* tipo “Produto” ou “Kit”, se fizer sentido;
+* evitar tudo em caixa alta se o dado original não exigir.
+
+Exemplo visual de opção:
+
+* Linha principal: “Cadeira Tiffany Branca”
+* Linha secundária: “SKU: CAD-001”
+* Badge pequeno: “Produto”
+
+4. Campo quantidade
+   Melhorar o campo de quantidade:
+
+* Remover ou suavizar o spinner padrão do navegador, se possível.
+* Input visualmente consistente com dark mode.
+* Label “Quantidade *”.
+* Valor mínimo 1.
+* Mensagem de erro visual se quantidade for inválida.
+* Opcional: criar controle com botões - e + se for simples e seguro.
+* Não alterar validação funcional existente.
+
+5. Observações
+
+* Corrigir label para “Observações”.
+* Placeholder: “Observações sobre o item (opcional)”.
+* Altura confortável, mas sem exagero.
+* Texto e borda consistentes com o Design System.
+* Não deixar o textarea parecer pesado demais.
+
+6. Resumo do item selecionado
+   Após selecionar Produto ou Kit, exibir um pequeno resumo visual antes dos botões ou abaixo do seletor:
+
+* nome selecionado;
+* SKU/código, se houver;
+* tipo: Produto ou Kit;
+* quantidade escolhida.
+
+Esse resumo deve ser discreto e ajudar o usuário a confirmar o que está adicionando.
+
+7. Botões
+   Padronizar:
+
+* “Cancelar” como outline;
+* “Adicionar” como primary/default;
+* botão “Adicionar” desabilitado enquanto não houver item válido ou quantidade válida;
+* loading visual no botão ao enviar;
+* botões com gap-2;
+* no mobile, botões podem ocupar largura total ou quebrar de forma limpa.
+
+8. Estados
+   Adicionar tratamento visual para:
+
+* carregando produtos/kits;
+* nenhum produto encontrado;
+* nenhum kit encontrado;
+* erro ao carregar lista, se esse estado existir;
+* validação de quantidade inválida.
+
+9. Responsividade
+   Validar:
+
+* desktop;
+* tablet;
+* mobile básico.
+
+Garantir:
+
+* modal não estoura a altura da tela;
+* conteúdo interno pode rolar se necessário;
+* footer continua acessível;
+* dropdown/combobox não sai da tela;
+* sem overflow horizontal.
+
+10. Acessibilidade
+    Garantir:
+
+* foco visível;
+* navegação por teclado no seletor;
+* labels associados aos campos;
+* aria adequado se usar combobox;
+* botão fechar acessível.
+
+Restrições absolutas:
+Não alterar:
+
+* backend;
+* endpoints;
+* payloads;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* regras de negócio;
+* lógica de aprovação;
+* lógica de estoque;
+* fluxo de criação da requisição;
+* contrato de envio do item.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* uso de Select/Combobox;
+* microcopy PT-BR;
+* estados visuais;
+* validação visual;
+* responsividade;
+* organização dos campos.
+
+Validações obrigatórias:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir modal;
+* alternar Produto/Kit;
+* buscar produto;
+* selecionar produto;
+* informar quantidade;
+* adicionar item;
+* buscar kit;
+* selecionar kit;
+* adicionar kit;
+* cancelar;
+* testar quantidade inválida;
+* testar modal em mobile básico.
+
+Entrega final esperada:
+
+* arquivos alterados;
+* melhorias visuais aplicadas;
+* melhorias de UX aplicadas;
+* confirmação de que payload e lógica funcional não foram alterados;
+* resultado do npm run check;
+* resultado do npm run build.

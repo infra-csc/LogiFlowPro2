@@ -785,6 +785,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/request-items/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
+      const item = await storage.getRequestItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ error: "Item não encontrado" });
+      }
+
+      const parentRequest = await storage.getMaterialRequest(item.requestId);
+      if (!parentRequest) {
+        return res.status(404).json({ error: "Requisição não encontrada" });
+      }
+
+      if (!(await canEditResource(req.user, parentRequest.requestedBy))) {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Apenas o criador da requisição pode editar seus itens"
+        });
+      }
+
+      if (parentRequest.status !== "draft") {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Não é possível editar itens de uma requisição já enviada"
+        });
+      }
+
+      const { quantity, notes } = req.body;
+      const updateData: Partial<z.infer<typeof insertRequestItemSchema>> = {};
+      if (quantity !== undefined) {
+        const qty = parseInt(quantity);
+        if (isNaN(qty) || qty < 1) {
+          return res.status(400).json({ error: "Quantidade deve ser maior que zero" });
+        }
+        updateData.quantity = qty;
+      }
+      if (notes !== undefined) {
+        updateData.notes = notes || null;
+      }
+
+      const updated = await storage.updateRequestItem(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating request item:", error);
+      res.status(500).json({ error: "Failed to update item" });
+    }
+  });
+
   app.delete("/api/request-items/:id", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
