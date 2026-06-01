@@ -1,0 +1,639 @@
+Vamos refinar completamente a tela de Eventos para nível 10/10, incluindo front-end, UX/design e revisão segura de back-end/validações.
+
+Telas foco:
+
+* client/src/pages/events.tsx
+* componente/modal de criação/edição de evento, provavelmente event-dialog.tsx ou equivalente
+* endpoints relacionados a eventos em server/routes.ts
+* validações relacionadas a evento, se existirem
+
+Objetivo:
+Transformar a tela de Eventos em uma experiência profissional, clara, operacional e segura.
+
+Eventos são base para:
+
+* Requisições de materiais;
+* Ordens de carregamento;
+* Viagens;
+* Movimentações;
+* Estoque;
+* Aprovações;
+* Filtros operacionais do sistema.
+
+Além disso, o evento controla o período em que requisições de materiais podem ser criadas/enviadas, então a tela precisa deixar datas e janelas muito claras.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — AUDITORIA INICIAL
+===========================
+
+Antes de implementar, audite a tela atual e liste:
+
+1. Problemas visuais:
+
+* cards genéricos;
+* falta de filtros úteis;
+* modal longo demais;
+* scrollbar branco/padrão;
+* datas pouco organizadas;
+* ausência de timeline visual;
+* pouca hierarquia entre cliente, local, status e datas;
+* responsividade.
+
+2. Problemas de UX:
+
+* dificuldade de entender cronograma do evento;
+* dificuldade de entender janela de requisição;
+* falta de validação visual de datas;
+* risco de cadastrar datas incoerentes;
+* falta de resumo antes de salvar;
+* falta de diferenciação entre data de montagem, data do evento e desmontagem.
+
+3. Pontos técnicos/back-end:
+
+* validação de campos obrigatórios;
+* validação de ordem das datas;
+* validação de período de requisição;
+* duplicidade de SKU do evento, se aplicável;
+* RBAC;
+* mensagens de erro;
+* impacto em requisições/loading orders/movimentações.
+
+Não implementar mudanças destrutivas sem identificar risco.
+
+==================================================
+PARTE 2 — LISTA DE EVENTOS
+==========================
+
+Arquivo foco:
+
+* client/src/pages/events.tsx
+
+1. Header
+
+Aplicar PageHeader:
+
+* Título: “Eventos”
+* Descrição: “Gerencie cronogramas, janelas de requisição e logística de eventos”
+* Botão principal: “Novo Evento”
+* Botão visível apenas para quem já tem permissão atualmente.
+
+Não alterar RBAC.
+
+2. Busca e filtros
+
+Adicionar ou melhorar busca/filtros:
+
+Busca:
+
+* buscar por nome do evento;
+* cliente;
+* local;
+* SKU do evento.
+
+Filtros:
+
+* Status;
+* Cliente;
+* Período/data do evento;
+* Eventos com requisição aberta;
+* Eventos futuros;
+* Eventos encerrados.
+
+Usar FilterBar quando fizer sentido.
+
+Aplicar:
+
+* badgeCount de filtros ativos;
+* onClear;
+* grid responsivo;
+* labels text-xs text-muted-foreground;
+* campos bem alinhados;
+* estado fechado não pode parecer uma barra vazia.
+
+3. Stats/resumo
+
+Se os dados estiverem disponíveis sem complexidade alta, adicionar uma faixa compacta:
+
+* Total de eventos;
+* Em andamento;
+* Planejamento;
+* Aprovados;
+* Encerrados;
+* Com janela de requisição aberta.
+
+Se exigir mudança grande, registrar como melhoria futura.
+
+4. Cards de evento
+
+Os cards atuais estão bons, mas ainda genéricos.
+
+Cada card deve responder rapidamente:
+
+* Qual evento?
+* Qual cliente?
+* Onde será?
+* Quando será?
+* Qual status?
+* A janela de requisição está aberta, futura ou encerrada?
+* Qual ação posso executar?
+
+Estrutura sugerida do card:
+
+Topo:
+
+* StatusBadge;
+* nome do evento;
+* ação editar/detalhes.
+
+Meio:
+
+* cliente;
+* local;
+* data do evento;
+* período de montagem/desmontagem, se útil.
+
+Rodapé:
+
+* janela de requisição:
+
+  * “Requisições abertas”
+  * “Janela futura”
+  * “Período encerrado”
+  * “Sem janela definida”
+* ações agrupadas.
+
+Design:
+
+* Card com hover-elevate border-border/60;
+* CardContent p-4;
+* título text-base font-semibold;
+* metadados com ícones discretos;
+* datas com boa hierarquia;
+* StatusBadge sempre para status;
+* evitar cards altos demais;
+* evitar muito espaço vazio.
+
+5. Timeline compacta no card
+
+Se possível, mostrar uma mini timeline visual discreta:
+
+* Montagem
+* Evento
+* Desmontagem
+
+Não precisa ser complexa. Pode ser apenas três labels/datas em linha ou grid.
+
+6. Empty states
+
+Criar EmptyState para:
+
+* nenhum evento cadastrado;
+* busca/filtros sem resultado.
+
+Nenhum evento:
+
+* título: “Nenhum evento cadastrado”
+* descrição: “Crie eventos para organizar requisições, carregamentos e movimentações.”
+* ação “Novo Evento”, se permitido.
+
+Sem resultado:
+
+* título: “Nenhum evento encontrado”
+* descrição: “Tente ajustar a busca ou limpar os filtros.”
+* ação “Limpar filtros”.
+
+==================================================
+PARTE 3 — MODAL NOVO/EDITAR EVENTO
+==================================
+
+Arquivo foco:
+
+* componente de modal de evento
+
+Problemas atuais observados:
+
+* modal longo;
+* scrollbar branco/padrão;
+* campos sem seções claras;
+* datas misturadas;
+* período de requisição pouco destacado;
+* ausência de resumo final;
+* inputs de data nativos com aparência crua;
+* footer depende de scroll;
+* faltam validações visuais fortes.
+
+1. Estrutura do modal
+
+Organizar em seções claras:
+
+A. Identificação
+
+* Nome do Evento *
+* Cliente *
+* Local *
+* SKU do Evento
+
+B. Janela de Requisição de Materiais
+
+* Início
+* Fim
+* status visual da janela
+
+C. Cronograma do Evento
+
+* Data de Montagem *
+* Data do Evento *
+* Data de Desmontagem *
+
+D. Status e Observações
+
+* Status
+* Observações
+
+E. Resumo
+
+* mini resumo antes de salvar
+
+2. Header do modal
+
+Título:
+
+* “Novo Evento”
+* “Editar Evento”
+
+Descrição:
+
+* “Configure datas, cliente, local e janela de requisição de materiais.”
+
+3. Scroll e estrutura
+
+Obrigatório:
+
+* Header fixo no topo, se possível;
+* Footer fixo no rodapé;
+* Apenas conteúdo central rola;
+* Scrollbar customizado dark;
+* Sem scrollbar branco/cinza padrão;
+* max-height adequado;
+* sem overflow horizontal.
+
+4. Identificação
+
+Melhorar campos:
+
+Nome do Evento:
+
+* obrigatório;
+* placeholder: “Ex: Night Run Belo Horizonte”.
+
+Cliente:
+
+* obrigatório;
+* placeholder: “Ex: Tatica Mkt”.
+
+Local:
+
+* obrigatório;
+* placeholder: “Ex: Praça Nova da Pampulha”.
+
+SKU do Evento:
+
+* opcional, se for opcional no backend;
+* placeholder: “Código para integração, se houver”;
+* se houver validação de unicidade, tratar erro.
+
+5. Janela de Requisição de Materiais
+
+Essa seção é crítica.
+
+Melhorar visual:
+
+* título claro: “Período de Requisição de Materiais”
+* descrição curta:
+  “Defina quando os usuários poderão criar e enviar requisições para este evento.”
+* campos Início e Fim organizados.
+* mostrar status visual da janela:
+
+  * “Requisições abertas”
+  * “Período ainda não iniciado”
+  * “Período encerrado”
+  * “Janela não definida”
+
+Não inventar regra. Usar apenas datas preenchidas.
+
+Validação visual:
+
+* se início > fim, mostrar erro;
+* se fim for depois da data do evento, mostrar alerta ou sugestão;
+* se janela estiver vazia, deixar claro que não há bloqueio por janela, se essa for a regra atual.
+
+Não alterar regra de negócio sem confirmar.
+
+6. Cronograma do Evento
+
+Melhorar a organização das datas:
+
+* Data de Montagem *
+* Data do Evento *
+* Data de Desmontagem *
+
+Criar visual de timeline horizontal ou grid bem organizado.
+
+Validação visual:
+
+* montagem deve ser antes ou no mesmo dia do evento;
+* desmontagem deve ser depois ou no mesmo dia do evento;
+* se as datas estiverem fora de ordem, mostrar mensagem amigável.
+
+Não alterar backend sem necessidade, mas se backend não valida, revisar e implementar validação segura.
+
+7. Status
+
+Melhorar select de status:
+
+* usar labels amigáveis:
+
+  * Planejamento
+  * Aprovado
+  * Em andamento
+  * Finalizado
+  * Cancelado
+* se valores internos forem técnicos, mapear apenas visualmente.
+* StatusBadge no resumo, se possível.
+
+Não alterar valores salvos sem necessidade.
+
+8. Observações
+
+Melhorar textarea:
+
+* placeholder: “Detalhes adicionais do evento...”
+* altura confortável, sem exagero;
+* não deixar ocupar espaço demais.
+
+9. Resumo antes de salvar
+
+Adicionar bloco de resumo discreto no final:
+
+* Evento;
+* Cliente;
+* Local;
+* Data do evento;
+* Montagem;
+* Desmontagem;
+* Janela de requisição;
+* Status.
+
+Esse resumo ajuda a evitar cadastro errado.
+
+10. Footer
+
+Melhorar:
+
+* Footer fixo;
+* separador sutil;
+* “Cancelar” como outline;
+* “Criar Evento” ou “Salvar Evento” como primary/default;
+* loading visual no salvar;
+* botão desabilitado enquanto campos obrigatórios estiverem inválidos;
+* em mobile, botões podem ficar full width.
+
+==================================================
+PARTE 4 — BACK-END / VALIDAÇÕES
+===============================
+
+Revisar endpoints de eventos com segurança.
+
+Não alterar schema/migrations automaticamente sem necessidade.
+
+1. RBAC
+
+Preservar regra atual:
+
+* Criar/editar evento deve continuar respeitando permissões existentes.
+* Não confiar no front-end.
+* Back-end continua fonte da verdade.
+
+2. Endpoints
+
+Auditar endpoints relacionados:
+
+* GET /api/events
+* GET /api/events/:id, se existir
+* POST /api/events
+* PATCH /api/events/:id
+* DELETE /api/events/:id, se existir
+
+Verificar:
+
+* requireAuth;
+* autorização correta;
+* validação de payload;
+* tratamento de erros;
+* retorno consistente.
+
+3. Validações obrigatórias
+
+Garantir no back-end, se ainda não existir:
+
+* nome obrigatório;
+* cliente obrigatório;
+* local obrigatório;
+* data de montagem obrigatória;
+* data do evento obrigatória;
+* data de desmontagem obrigatória;
+* montagem <= data do evento;
+* data do evento <= desmontagem;
+* requestWindowStart <= requestWindowEnd, quando ambos existirem;
+* SKU único, se o SKU for usado como identificador;
+* strings com trim.
+
+4. Validações de janela de requisição
+
+Validar:
+
+* início da janela não pode ser depois do fim;
+* se a janela existir, retornar datas corretamente para o front;
+* não quebrar a lógica existente de bloqueio de requisições.
+
+Importante:
+O fluxo de Requisição de Materiais depende de requestWindowStart/requestWindowEnd. Não alterar contrato sem necessidade.
+
+5. Erros
+
+Padronizar mensagens claras:
+
+* 400 payload inválido;
+* 401 não autenticado;
+* 403 sem permissão;
+* 404 evento não encontrado;
+* 409 SKU duplicado, se aplicável;
+* 422 datas inválidas.
+
+==================================================
+PARTE 5 — RESPONSIVIDADE
+========================
+
+Validar:
+
+Desktop:
+
+* grid de eventos confortável;
+* modal com grid de campos.
+
+Tablet:
+
+* cards em 2 colunas;
+* modal sem overflow ruim.
+
+Mobile:
+
+* cards em 1 coluna;
+* modal quase full screen;
+* datas em coluna;
+* footer acessível;
+* sem overflow horizontal.
+
+==================================================
+PARTE 6 — ACESSIBILIDADE
+========================
+
+Garantir:
+
+* labels associados;
+* foco visível;
+* botão fechar acessível;
+* navegação por teclado;
+* aria-invalid em campos inválidos, se houver padrão;
+* status não depender apenas de cor;
+* inputs de data acessíveis.
+
+==================================================
+PARTE 7 — RESTRIÇÕES
+====================
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* cards;
+* filtros;
+* modal;
+* microcopy PT-BR;
+* validações visuais;
+* validações back-end específicas de eventos;
+* mensagens de erro;
+* documentação.
+
+Não alterar sem necessidade:
+
+* schema;
+* migrations;
+* seed;
+* RBAC global;
+* role_permissions;
+* contratos usados por requisições, loading orders, viagens e movimentações;
+* lógica de bloqueio de requisições fora da janela;
+* endpoints de outros módulos.
+
+Se alguma melhoria exigir schema/migration:
+
+* não implementar automaticamente;
+* registrar a necessidade e explicar impacto;
+* só implementar se for indispensável e seguro.
+
+==================================================
+PARTE 8 — VALIDAÇÕES TÉCNICAS
+=============================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test obrigatório:
+
+Lista:
+
+* abrir Eventos;
+* buscar evento;
+* filtrar por status;
+* filtrar por cliente;
+* limpar filtros;
+* abrir novo evento;
+* editar evento;
+* validar responsividade.
+
+Modal:
+
+* tentar salvar sem nome;
+* tentar salvar sem cliente;
+* tentar salvar sem local;
+* tentar salvar com montagem depois do evento;
+* tentar salvar com desmontagem antes do evento;
+* tentar salvar com início da janela depois do fim;
+* criar evento válido;
+* editar evento existente;
+* validar janela de requisição.
+
+Integrações:
+
+* criar requisição para evento dentro da janela;
+* tentar criar/enviar requisição fora da janela, se a regra existir;
+* validar que Loading Orders/Movimentações continuam lendo eventos corretamente.
+
+Perfis:
+
+* Admin;
+* Logística;
+* Almoxarifado;
+* Supervisor;
+* Usuário comum.
+
+Confirmar:
+
+* apenas perfis permitidos criam/editam;
+* usuários sem permissão não veem ou não executam ações indevidas;
+* backend retorna 403 quando usuário sem permissão tenta agir.
+
+==================================================
+PARTE 9 — ENTREGA FINAL
+=======================
+
+Entregar:
+
+* problemas encontrados;
+* melhorias aplicadas na lista de eventos;
+* melhorias aplicadas no modal de evento;
+* melhorias de UX aplicadas;
+* melhorias de back-end/validação aplicadas;
+* arquivos alterados;
+* endpoints revisados;
+* componentes do Design System usados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências ou riscos restantes.
+
+Critério de aceite:
+
+A parte de Eventos só será considerada 10/10 se:
+
+* cards da lista forem compactos e informativos;
+* busca/filtros forem úteis;
+* modal estiver organizado por seções;
+* datas forem fáceis de entender;
+* janela de requisição estiver clara;
+* houver validação visual e back-end para datas incoerentes;
+* scroll do modal estiver refinado;
+* RBAC estiver preservado;
+* nenhuma integração com Requisições, Loading Orders, Viagens ou Movimentações for quebrada.

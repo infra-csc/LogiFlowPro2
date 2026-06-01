@@ -1,0 +1,625 @@
+Vamos refinar completamente as telas de Simulação de Estoque para nível 10/10, incluindo front-end, UX/design e revisão segura de back-end/validações.
+
+Telas foco:
+
+* client/src/pages/stock-simulation.tsx
+* client/src/pages/stock-position-simulation.tsx
+* componentes relacionados a filtros, resultados e cards de simulação
+* endpoints/back-end relacionados às simulações de estoque, se existirem
+
+Objetivo:
+Transformar as telas de Simulação de Estoque em ferramentas operacionais profissionais, claras e úteis para tomada de decisão.
+
+Essas telas devem ajudar o usuário a entender rapidamente:
+
+* quais eventos/ordens estão sendo simulados;
+* qual período está sendo considerado;
+* quais produtos estão disponíveis;
+* quais produtos estão parcialmente alocados;
+* quais produtos estão totalmente alocados;
+* quais produtos estão em falta;
+* quais erros impedem a simulação;
+* qual ação deve ser tomada.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — AUDITORIA INICIAL
+===========================
+
+Antes de implementar, audite as duas telas e liste:
+
+1. Problemas visuais:
+
+* filtros grandes demais;
+* listas com scrollbar branco/padrão;
+* eventos sem busca;
+* estados vazios simples demais;
+* cards de resultado pouco informativos;
+* erros visualmente agressivos ou pouco acionáveis;
+* inconsistência entre as duas telas;
+* responsividade;
+* excesso de espaço vazio.
+
+2. Problemas de UX:
+
+* usuário não entende imediatamente o que cada simulação faz;
+* seleção de eventos/ordens pode ficar cansativa;
+* falta resumo antes/depois de simular;
+* erros não indicam claramente como corrigir;
+* resultados zerados após erro podem confundir;
+* falta distinção entre disponibilidade, alocação parcial, alocação total e falta.
+
+3. Pontos técnicos/back-end:
+
+* validação de período;
+* validação de eventos selecionados;
+* validação de status selecionados;
+* tratamento de ordens sem período;
+* mensagens de erro;
+* desempenho em simulações com muitos eventos/produtos;
+* RBAC/leitura;
+* contratos de API.
+
+Não implementar mudanças destrutivas sem identificar risco.
+
+==================================================
+PARTE 2 — PADRONIZAÇÃO ENTRE AS DUAS TELAS
+==========================================
+
+As duas telas devem parecer parte da mesma família visual.
+
+Telas:
+
+1. Simulação de Estoque
+   Descrição sugerida:
+   “Compare requisições de eventos com o inventário disponível.”
+
+2. Simulação de Posição de Estoque
+   Descrição sugerida:
+   “Visualize o saldo projetado considerando alocações temporárias.”
+
+Padronizar:
+
+* PageHeader;
+* cards de filtros;
+* listas de seleção;
+* botões;
+* estados vazios;
+* erros;
+* resumo de resultados;
+* tabelas/cards de produtos;
+* scrollbars;
+* responsividade.
+
+==================================================
+PARTE 3 — LAYOUT GERAL
+======================
+
+Melhorar layout das telas.
+
+Opção recomendada para desktop:
+
+* Coluna esquerda: filtros compactos e sticky.
+* Coluna direita: resultados da simulação.
+* Em telas menores: filtros acima e resultados abaixo.
+
+A tela deve ter:
+
+1. PageHeader
+
+* título;
+* descrição objetiva;
+* se fizer sentido, ação secundária “Limpar simulação”.
+
+2. Card de filtros
+
+* compacto;
+* bem organizado;
+* com busca nas listas longas;
+* com contadores de selecionados;
+* botões claros.
+
+3. Área de resultados
+
+* EmptyState antes da primeira simulação;
+* ErrorState quando houver erro;
+* resumo quando houver resultado;
+* tabela/lista de produtos simulados.
+
+Evitar:
+
+* filtros ocupando metade da tela sem necessidade;
+* grandes áreas vazias;
+* scrollbars brancos;
+* resultados zerados sem contexto.
+
+==================================================
+PARTE 4 — FILTROS
+=================
+
+Refinar filtros das duas telas.
+
+1. Eventos
+
+Problemas atuais:
+
+* lista longa;
+* sem busca;
+* scrollbar branco;
+* seleção cansativa.
+
+Melhorias:
+
+* adicionar busca por nome do evento;
+* mostrar contador:
+  “Eventos (3 selecionados)”;
+* botões rápidos:
+
+  * “Selecionar todos”
+  * “Limpar”
+* lista com altura máxima;
+* scrollbar customizado dark;
+* cada evento com:
+
+  * nome;
+  * data;
+  * status, se disponível;
+* item selecionado com destaque sutil.
+
+2. Status
+
+Padronizar status com labels amigáveis.
+
+Requisições:
+
+* Rascunho
+* Aguardando aprovação
+* Aprovado
+* Rejeitado
+* Bloqueado por prazo
+
+Ordens:
+
+* Rascunho
+* Pronta
+* Aprovada
+* Em andamento
+* Concluída
+* Cancelada
+
+Não exibir status técnico cru.
+Não alterar valores enviados ao back-end.
+
+3. Datas
+
+Na Simulação de Posição de Estoque:
+
+* validar visualmente data início e data fim;
+* se início > fim, mostrar erro antes de simular;
+* layout das datas deve ser limpo;
+* labels claras;
+* helper text curto:
+  “Defina o período para calcular o saldo projetado.”
+
+4. Botões
+
+Padronizar:
+
+* “Gerar Simulação” como primary/default;
+* “Limpar Filtros” como outline;
+* loading visual ao gerar simulação;
+* botão desabilitado quando filtros obrigatórios estiverem inválidos.
+
+==================================================
+PARTE 5 — ESTADO VAZIO
+======================
+
+Melhorar EmptyState inicial.
+
+Antes da simulação:
+
+Título:
+“Nenhuma simulação executada”
+
+Descrição:
+“Selecione eventos, status e período para visualizar disponibilidade e alocações.”
+
+Ação:
+Se houver filtros mínimos selecionados:
+
+* botão “Gerar Simulação”
+
+Se não houver filtros:
+
+* orientar o usuário a selecionar eventos/status.
+
+Visual:
+
+* ícone em container;
+* texto centralizado;
+* sem ocupar área excessiva;
+* consistente com EmptyState do Design System.
+
+==================================================
+PARTE 6 — ERROS
+===============
+
+A tela atual mostra erro como:
+
+“Night BH - Carga Total: Ordem sem período definido...”
+
+Isso é útil, mas precisa ser mais acionável.
+
+Melhorias:
+
+1. ErrorState/Card de erro
+
+Mostrar:
+
+* título: “Algumas ordens não puderam ser simuladas”
+* descrição clara;
+* lista de problemas;
+* ação sugerida.
+
+Exemplo:
+“Esta ordem não possui período definido. Defina datas próprias ou vincule uma viagem com período válido.”
+
+2. Cada erro deve mostrar:
+
+* nome da ordem/evento;
+* motivo;
+* possível correção;
+* link ou ação para abrir a ordem, se já existir rota.
+
+3. Resultado com erro
+
+Se a simulação falhar completamente:
+
+* não mostrar cards de resultado zerados como se fosse sucesso;
+* mostrar erro em destaque;
+* mostrar resultados apenas se houver simulação parcial válida.
+
+Se a API retornar erros parciais:
+
+* separar:
+
+  * “Resultados calculados”
+  * “Itens ignorados por erro”
+
+Não alterar regra de cálculo sem necessidade.
+
+==================================================
+PARTE 7 — RESUMO DE RESULTADOS
+==============================
+
+Após gerar simulação, mostrar faixa de resumo com cards compactos.
+
+Para Simulação de Estoque:
+
+* Total de produtos avaliados;
+* Disponíveis;
+* Parcialmente disponíveis;
+* Indisponíveis/faltantes;
+* Excedente ou conflito, se existir.
+
+Para Simulação de Posição de Estoque:
+
+* Total de produtos;
+* Disponíveis;
+* Parcialmente alocados;
+* Totalmente alocados;
+* Em falta/conflito.
+
+Design:
+
+* cards compactos;
+* número em destaque;
+* label secundária;
+* cor usando tokens;
+* sem exagero visual;
+* responsivo.
+
+==================================================
+PARTE 8 — RESULTADOS DETALHADOS
+===============================
+
+Criar ou refinar uma área de resultados operacional.
+
+Cada produto/linha deve mostrar:
+
+* nome do produto;
+* SKU;
+* estoque atual;
+* quantidade requerida/alocada;
+* saldo projetado;
+* status:
+
+  * Disponível
+  * Parcial
+  * Alocado
+  * Faltante
+* eventos/ordens que consomem o produto;
+* observações de conflito, se houver.
+
+Opções visuais:
+
+A. Tabela compacta para muitos produtos.
+B. Cards compactos para poucos produtos.
+
+Preferência:
+
+* usar tabela quando houver muitos resultados;
+* usar cards apenas se a informação for mais rica.
+
+Tabela sugerida:
+
+Colunas:
+
+* Produto
+* SKU
+* Estoque
+* Requerido/Alocado
+* Disponível/Saldo
+* Status
+* Origem
+
+Regras:
+
+* SKU com font-mono text-xs;
+* status com StatusBadge ou badge central;
+* linhas com hover sutil;
+* sem cores hardcoded exageradas.
+
+==================================================
+PARTE 9 — VISÃO POR EVENTO / ORDEM
+==================================
+
+Se os dados permitirem, adicionar agrupamento ou resumo por origem:
+
+* Evento;
+* Ordem;
+* Quantidade de produtos impactados;
+* produtos faltantes;
+* produtos disponíveis.
+
+Isso ajuda o usuário a entender qual evento/ordem está causando conflito.
+
+Se não houver dados suficientes, registrar como melhoria futura.
+
+==================================================
+PARTE 10 — BACK-END / VALIDAÇÕES
+================================
+
+Revisar com segurança os endpoints de simulação.
+
+Não alterar contratos sem necessidade.
+
+1. Validar entrada
+
+Garantir:
+
+* pelo menos um evento selecionado, quando obrigatório;
+* pelo menos um status selecionado;
+* data início <= data fim;
+* datas válidas;
+* status permitidos;
+* IDs existentes.
+
+2. Ordens sem período
+
+Se uma ordem não tiver período definido:
+
+* retornar erro claro;
+* informar qual ordem;
+* informar o motivo;
+* não quebrar toda a simulação se for possível calcular parcialmente.
+
+Não alterar regra sem avaliar impacto.
+
+3. Performance
+
+Se houver muitos produtos/eventos:
+
+* evitar processamento desnecessário;
+* evitar trazer dados gigantes sem paginação;
+* registrar melhoria futura se necessário.
+
+4. Erros da API
+
+Padronizar:
+
+* 400 payload inválido;
+* 401 não autenticado;
+* 403 sem permissão, se aplicável;
+* 404 evento/ordem não encontrado;
+* 422 simulação inválida por dados insuficientes.
+
+Mensagens devem ser úteis para o front.
+
+==================================================
+PARTE 11 — RESPONSIVIDADE
+=========================
+
+Validar:
+
+Desktop:
+
+* filtros à esquerda e resultados à direita, se possível;
+* ou filtros em card superior e resultados abaixo.
+
+Tablet:
+
+* filtros acima;
+* resultados abaixo.
+
+Mobile:
+
+* filtros em coluna;
+* listas com altura menor;
+* botões full width;
+* resultados em cards ou tabela responsiva;
+* sem overflow horizontal.
+
+==================================================
+PARTE 12 — ACESSIBILIDADE
+=========================
+
+Garantir:
+
+* checkboxes/radios acessíveis;
+* labels associados;
+* foco visível;
+* botões com texto claro;
+* status não depender apenas de cor;
+* erros legíveis;
+* navegação por teclado.
+
+==================================================
+PARTE 13 — SCROLLBARS
+=====================
+
+Corrigir todos os scrollbars internos:
+
+* eventos;
+* status;
+* resultados;
+* painéis de erro, se houver.
+
+Regras:
+
+* scrollbar fino;
+* track transparente;
+* thumb discreto;
+* compatível com dark mode;
+* sem scrollbar branco/cinza padrão.
+
+==================================================
+PARTE 14 — RESTRIÇÕES
+=====================
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* filtros;
+* busca;
+* cards;
+* tabelas;
+* estados vazios;
+* erros;
+* microcopy PT-BR;
+* validações visuais;
+* validações back-end específicas da simulação;
+* mensagens de erro;
+* documentação.
+
+Não alterar sem necessidade:
+
+* schema;
+* migrations;
+* seed;
+* RBAC global;
+* role_permissions;
+* contratos usados por requisições, ordens, estoque e movimentações;
+* lógica central de estoque;
+* regras de alocação;
+* endpoints de outros módulos.
+
+Se alguma melhoria exigir alteração estrutural:
+
+* não implementar automaticamente;
+* registrar a necessidade e explicar impacto.
+
+==================================================
+PARTE 15 — VALIDAÇÕES TÉCNICAS
+==============================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test obrigatório:
+
+Simulação de Estoque:
+
+* abrir tela;
+* selecionar eventos;
+* selecionar status de requisição;
+* gerar simulação;
+* limpar filtros;
+* testar sem seleção;
+* testar lista sem resultado;
+* testar erro;
+* validar responsividade.
+
+Simulação de Posição de Estoque:
+
+* abrir tela;
+* selecionar data início/fim;
+* selecionar eventos;
+* selecionar status das ordens;
+* gerar simulação;
+* limpar filtros;
+* testar início > fim;
+* testar ordem sem período;
+* validar erro acionável;
+* validar resumo;
+* validar responsividade.
+
+Perfis:
+
+* Admin;
+* Logística;
+* Almoxarifado;
+* Supervisor;
+* Usuário comum.
+
+Confirmar:
+
+* regras de acesso preservadas;
+* back-end não aceita payload inválido;
+* mensagens de erro aparecem corretamente;
+* nenhuma integração com requisições, ordens, estoque ou movimentações foi quebrada.
+
+==================================================
+PARTE 16 — ENTREGA FINAL
+========================
+
+Entregar:
+
+* problemas encontrados;
+* melhorias aplicadas na Simulação de Estoque;
+* melhorias aplicadas na Simulação de Posição de Estoque;
+* melhorias de UX aplicadas;
+* melhorias de back-end/validação aplicadas, se houver;
+* arquivos alterados;
+* endpoints revisados;
+* componentes do Design System usados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências ou riscos restantes.
+
+Critério de aceite:
+
+As telas de simulação só serão consideradas 10/10 se:
+
+* filtros forem fáceis de usar;
+* listas longas tiverem busca e scrollbar refinado;
+* erros forem acionáveis;
+* resultados não confundirem o usuário;
+* resumo da simulação for claro;
+* produtos simulados mostrarem status de disponibilidade/alocação;
+* as duas telas forem visualmente consistentes;
+* responsividade estiver boa;
+* validações impedirem simulações inválidas;
+* nenhuma regra de estoque ou integração for quebrada.
