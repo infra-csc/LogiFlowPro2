@@ -6,3 +6,9 @@ id = "ycMDMY6vMX2y_zQJe9InY"
 uri = "file://documentacao_eventflow.pdf"
 type = "pdf"
 title = "Documentação Técnica EventFlow"
+
+[[outputs]]
+id = "HQzOuwPAC5QragAGKKRXY"
+uri = "file://docs/prompt-layout-requisicoes.md"
+type = "text"
+title = "Prompt de Layout — Requisição de Materiais (3 Telas + 3 Modais)"
