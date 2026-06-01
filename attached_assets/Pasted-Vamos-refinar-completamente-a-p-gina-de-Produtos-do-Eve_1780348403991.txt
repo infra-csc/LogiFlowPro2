@@ -1,0 +1,787 @@
+Vamos refinar completamente a página de Produtos do EventFlow, incluindo front-end, UX/design, validações e revisão segura do back-end.
+
+Tela foco:
+
+* Catálogo de Produtos
+* Modal Novo Produto / Editar Produto
+* Upload de imagem do produto
+* Busca/filtros/listagem
+* Endpoints e validações relacionados a produtos
+
+Arquivos prováveis:
+
+* client/src/pages/products.tsx
+* client/src/components/product-dialog.tsx
+* componentes relacionados ao upload de imagem
+* server/routes.ts
+* shared/schema.ts, somente se for realmente necessário
+* storage/repository relacionado a produtos, se existir
+* docs/CHANGELOG-fase3.md
+* replit.md
+
+Objetivo:
+Transformar a tela de Produtos em uma experiência 10/10, profissional, limpa, rápida e confiável.
+
+Produtos são base para:
+
+* Requisições de materiais;
+* Kits;
+* Estoque;
+* Movimentações;
+* Loading Orders;
+* Devoluções;
+* Uploads em lote.
+
+Por isso, a tela precisa ser excelente tanto visualmente quanto em validação de dados.
+
+Usar o Design System atual do EventFlow como fonte única de verdade visual.
+
+Não criar novo Design System.
+Não alterar tokens globais sem necessidade.
+Não inventar padrões paralelos.
+
+==================================================
+PARTE 1 — AUDITORIA ANTES DE ALTERAR
+====================================
+
+Antes de implementar, audite a página atual e liste:
+
+1. Problemas visuais encontrados:
+
+* cards grandes demais;
+* imagens vazias ocupando muito espaço;
+* filtros insuficientes;
+* modal longo demais;
+* upload com texto duplicado;
+* scrollbar fora do padrão dark mode;
+* campos sem agrupamento;
+* responsividade;
+* estados vazios/loading/error.
+
+2. Problemas de UX:
+
+* dificuldade de encontrar produto;
+* ausência de filtros úteis;
+* dificuldade de entender estoque, titularidade e unidade;
+* falta de destaque para estoque baixo;
+* falta de confirmação visual do produto cadastrado;
+* modal cansativo para preencher.
+
+3. Pontos técnicos/back-end:
+
+* validação de SKU;
+* validação de código de barras;
+* validação de imagem;
+* validação de estoque mínimo/atual;
+* busca server-side;
+* paginação;
+* RBAC;
+* payload;
+* erros retornados pela API.
+
+Não implementar mudanças destrutivas sem identificar risco.
+
+==================================================
+PARTE 2 — LISTA / CATÁLOGO DE PRODUTOS
+======================================
+
+Refinar a página principal de Produtos.
+
+1. Header
+
+Usar PageHeader corretamente:
+
+* Título: “Catálogo de Produtos”
+* Descrição: “Gerencie itens de estoque, materiais e produtos utilizados nas operações”
+* Botão principal: “Adicionar Produto”
+* Botão visível apenas para quem já tem permissão atualmente.
+* Não alterar RBAC.
+
+O título não pode ficar cortado na lateral.
+Garantir alinhamento correto com o container global.
+
+2. Barra de busca e filtros
+
+A busca atual é boa, mas precisa evoluir para uma área operacional.
+
+Adicionar/organizar:
+
+* Busca por nome, SKU ou código de barras;
+* Filtro por tipo de produto;
+* Filtro por titularidade: Próprio / Locado / Terceiros, conforme dados existentes;
+* Filtro por unidade;
+* Filtro por status, se existir;
+* Filtro por estoque baixo, se houver estoque mínimo;
+* Botão limpar filtros;
+* badgeCount de filtros ativos.
+
+Usar FilterBar se fizer sentido.
+A busca principal pode ficar sempre visível acima do FilterBar.
+
+Critérios:
+
+* filtros não podem parecer uma linha vazia;
+* campos em grid responsivo;
+* labels text-xs text-muted-foreground;
+* sem overflow em mobile.
+
+3. Stats/Resumo do catálogo
+
+Se os dados estiverem disponíveis sem nova regra complexa, adicionar uma faixa compacta de resumo:
+
+* Total de produtos;
+* Produtos próprios;
+* Produtos locados/terceiros;
+* Produtos com estoque baixo;
+* Produtos sem imagem.
+
+Se isso exigir query complexa ou risco alto, deixar como melhoria futura.
+
+4. Cards de produto
+
+Os cards atuais estão grandes demais, principalmente a área de imagem vazia.
+
+Refinar para cards mais profissionais e compactos.
+
+Estrutura sugerida do card:
+
+Topo/imagem:
+
+* Se houver imagem, mostrar imagem com object-cover.
+* Se não houver imagem, mostrar placeholder menor, elegante, com ícone Package.
+* A área de imagem não deve ocupar altura exagerada.
+* Usar altura consistente, por exemplo h-36 ou h-40, não metade do card.
+* Placeholder deve ter fundo sutil e não parecer bloco vazio.
+
+Conteúdo:
+
+* Nome do produto como título principal.
+* SKU em font-mono text-xs text-muted-foreground.
+* Estoque em destaque moderado.
+* Unidade ao lado da quantidade.
+* Titularidade como badge discreto.
+* Tipo de produto, se existir.
+* Localização, se existir.
+* Estoque mínimo, se existir.
+* Alerta visual se estoque atual <= estoque mínimo.
+
+Rodapé:
+
+* Ações agrupadas:
+
+  * Ver/Detalhes, se existir;
+  * Editar, se permitido;
+  * Excluir, se permitido.
+* Botões size="sm".
+* Não deixar ações soltas.
+
+Aplicar padrão do Design System:
+
+* Card com hover-elevate border-border/60;
+* CardContent p-4;
+* título text-base font-semibold;
+* SKU font-mono text-xs;
+* metadados com border-t border-border/40 quando fizer sentido;
+* badges sem cores hardcoded desnecessárias.
+
+5. Estado de estoque
+
+Melhorar leitura de estoque:
+
+* Estoque normal: visual neutro.
+* Estoque baixo: alerta âmbar discreto.
+* Estoque zerado: alerta vermelho discreto.
+* Estoque alto/ok: não exagerar em cor.
+
+Não alterar cálculo de estoque sem revisar regra existente.
+Se já existir estoque mínimo, usar apenas para apresentação.
+
+6. Empty states
+
+Criar EmptyState adequado para:
+
+* Nenhum produto cadastrado;
+* Nenhum resultado para busca/filtros.
+
+Nenhum produto:
+
+* ícone Package;
+* título “Nenhum produto cadastrado”;
+* descrição clara;
+* ação “Adicionar Produto”, se permitido.
+
+Sem resultado:
+
+* título “Nenhum produto encontrado”;
+* descrição “Tente ajustar a busca ou limpar os filtros”;
+* ação “Limpar filtros”.
+
+7. Responsividade
+
+Validar:
+
+* desktop: grid 3 ou 4 colunas, conforme largura;
+* tablet: 2 colunas;
+* mobile: 1 coluna;
+* busca e filtros em coluna;
+* cards sem overflow;
+* botões acessíveis.
+
+==================================================
+PARTE 3 — MODAL NOVO/EDITAR PRODUTO
+===================================
+
+Refinar completamente o modal de produto.
+
+Problemas atuais:
+
+* Modal muito longo;
+* Scrollbar branco/padrão;
+* Footer não parece fixo o bastante;
+* Campos sem agrupamento claro;
+* Upload de imagem com textos duplicados:
+
+  * aparece “x”
+  * aparece “Drop your files here”
+  * aparece “Drop files here or browse files”
+* Upload ainda está com microcopy em inglês;
+* Campos obrigatórios e opcionais têm o mesmo peso;
+* Imagem fica no final, mas deveria ser mais clara.
+
+1. Estrutura do modal
+
+Transformar o modal em uma experiência mais guiada.
+
+Pode ser em tela única com seções, sem wizard, para acelerar.
+
+Seções sugeridas:
+
+A. Identificação
+
+* SKU *
+* Nome *
+* Descrição
+* Tipo de Produto
+
+B. Controle operacional
+
+* Titularidade
+* Unidade
+* Peso
+* Código de barras / QR code
+* Localização
+
+C. Estoque
+
+* Estoque atual
+* Estoque mínimo
+
+D. Regras operacionais
+
+* Requer registro de fornecedor nas movimentações
+
+E. Imagem do Produto
+
+* Upload/preview/remover imagem
+
+2. Header do modal
+
+Melhorar:
+
+* Título:
+
+  * “Novo Produto” para criação;
+  * “Editar Produto” para edição.
+* Descrição:
+
+  * “Cadastre as informações do item para uso em estoque, requisições e movimentações.”
+* Botão fechar acessível.
+
+3. Scroll e estrutura
+
+Obrigatório:
+
+* Header fixo no topo, se possível;
+* Footer fixo no rodapé;
+* Apenas conteúdo central rola;
+* Scrollbar customizado dark;
+* Sem scrollbar branco/cinza padrão;
+* max-height adequado;
+* sem overflow horizontal.
+
+4. Campos obrigatórios
+
+Melhorar validação visual:
+
+* SKU *
+* Nome *
+* Unidade *
+* Tipo, se for obrigatório no backend.
+
+O botão salvar deve ficar desabilitado quando campos obrigatórios estiverem inválidos.
+
+Mostrar mensagens de erro amigáveis:
+
+* “Informe o SKU do produto.”
+* “Informe o nome do produto.”
+* “SKU já cadastrado.”, se backend retornar conflito.
+* “Código de barras já cadastrado.”, se aplicável.
+
+5. SKU
+
+Melhorar campo SKU:
+
+* Placeholder: “Ex: PROD-001”
+* Transformar visualmente em código operacional.
+* Se já houver regra de uppercase, manter.
+* Se não houver, não alterar sem necessidade.
+
+Back-end:
+
+* Validar duplicidade de SKU.
+* Retornar erro 409 ou mensagem clara se já existir.
+* Não permitir SKU vazio.
+* Não quebrar produtos existentes.
+
+6. Nome e descrição
+
+Melhorar:
+
+* Nome com placeholder “Nome do produto”
+* Descrição com placeholder “Descrição do produto, características ou observações”
+* Textarea com altura confortável, sem exagero.
+
+7. Tipo de Produto
+
+Melhorar select:
+
+* Labels amigáveis em PT-BR.
+* Se os valores internos forem técnicos, mapear só visualmente.
+* Não alterar valor salvo sem necessidade.
+
+8. Titularidade
+
+Melhorar labels:
+
+* Próprio
+* Locado
+* Terceiros
+
+Se titularidade impacta fornecedor, movimentação ou alerta, preservar regra existente.
+
+9. Unidade
+
+Melhorar campo unidade:
+
+* Se houver lista padrão, usar select/combobox.
+* Exemplos:
+
+  * unit
+  * caixa
+  * metro
+  * kg
+  * peça
+  * par
+* Se hoje é input livre, não mudar para enum sem avaliar impacto.
+* Pode melhorar microcopy e placeholder.
+
+10. Peso
+
+Melhorar input:
+
+* Label “Peso (kg)”
+* Valor numérico >= 0
+* Placeholder “0,00”
+* Evitar spinner nativo grosseiro se possível.
+* Validação visual para número inválido.
+
+Back-end:
+
+* Garantir que peso não seja negativo.
+* Normalizar número se necessário.
+* Não alterar schema sem necessidade.
+
+11. Código de barras / QR code
+
+Melhorar:
+
+* Placeholder: “Código de barras ou QR code”
+* Se tiver duplicidade, validar.
+* Se for opcional, deixar claro.
+
+Back-end:
+
+* Validar duplicidade quando preenchido.
+* Permitir vazio/null.
+* Retornar erro claro em conflito.
+
+12. Localização
+
+Melhorar:
+
+* Placeholder: “Ex: Rua A, Prateleira 3, Box 02”
+* Se houver estrutura de locais, não mudar agora.
+* Pode ser melhoria futura virar combobox.
+
+13. Estoque atual e estoque mínimo
+
+Melhorar:
+
+* Inputs numéricos;
+* Estoque atual >= 0;
+* Estoque mínimo >= 0;
+* Se estoque atual <= estoque mínimo, mostrar alerta visual discreto:
+  “Este produto ficará marcado como estoque baixo.”
+* Não alterar regra de estoque sem necessidade.
+
+Back-end:
+
+* Validar valores negativos.
+* Garantir tipos numéricos corretos.
+
+14. Requer fornecedor nas movimentações
+
+Melhorar visual:
+
+* Usar checkbox/switch mais claro.
+* Texto:
+  “Exigir fornecedor ao movimentar este produto”
+* Descrição pequena:
+  “Use para itens locados ou de terceiros que precisam registrar origem/fornecedor.”
+* Não alterar o campo interno sem necessidade.
+
+15. Upload de imagem
+
+Refinar completamente.
+
+Problemas atuais:
+
+* Textos duplicados;
+* Parte em inglês;
+* “x” solto;
+* Área grande, mas pouco refinada.
+
+Novo padrão:
+
+* Título: “Imagem do produto”
+* Subtexto: “PNG, JPG ou WebP — máximo 10 MB”
+* Área drag-and-drop limpa;
+* Botão “Selecionar imagem”;
+* Texto: “Arraste uma imagem aqui ou clique para selecionar”
+* Preview da imagem após selecionar;
+* Botão “Remover imagem”;
+* Estado de erro:
+
+  * arquivo muito grande;
+  * formato inválido;
+  * falha no upload.
+
+Back-end/upload:
+
+* Aceitar apenas PNG/JPG/JPEG/WebP.
+* Limite máximo 10 MB.
+* Sanitizar nome do arquivo.
+* Não permitir path traversal.
+* Se já existir mecanismo de upload, apenas reforçar validação.
+* Não quebrar imagens existentes.
+
+16. Footer
+
+Melhorar:
+
+* Footer fixo;
+* Separador sutil;
+* “Cancelar” como outline;
+* “Salvar Produto” como primary/default;
+* Loading visual ao salvar;
+* Botão desabilitado se inválido;
+* Em mobile, botões podem ficar full width.
+
+==================================================
+PARTE 4 — BACK-END / API / VALIDAÇÕES
+=====================================
+
+Agora revisar o back-end relacionado a produtos, com cuidado.
+
+Objetivo:
+Ajustar validações e confiabilidade sem quebrar contratos existentes.
+
+1. RBAC
+
+Preservar regra atual:
+
+* Criar/editar/excluir produto deve continuar Admin-only, se essa já for a regra atual.
+* Usuários sem permissão não podem criar/editar/excluir.
+* Não confiar no front-end para autorização.
+
+Não alterar permissões sem necessidade.
+
+2. Endpoints
+
+Auditar endpoints de produtos:
+
+* GET /api/products
+* GET /api/products/:id, se existir
+* POST /api/products
+* PATCH /api/products/:id
+* DELETE /api/products/:id
+* endpoint de upload de imagem, se existir
+
+Confirmar:
+
+* autenticação;
+* autorização;
+* validação de payload;
+* tratamento de erro;
+* retorno consistente.
+
+3. Busca e filtros
+
+Se hoje a busca é apenas front-end e a lista for pequena, pode manter.
+
+Se o volume de produtos for grande ou endpoint já suportar query params, melhorar com segurança:
+
+* search por nome/SKU/código de barras;
+* filtro por tipo;
+* filtro por titularidade;
+* filtro por estoque baixo;
+* paginação/limit/offset, se já existir base.
+
+Não implementar paginação complexa se isso exigir mudança grande no front/back. Registrar como melhoria futura se necessário.
+
+4. Validação de criação/edição
+
+Garantir no back-end:
+
+* SKU obrigatório;
+* Nome obrigatório;
+* SKU único;
+* Código de barras único quando preenchido;
+* peso >= 0;
+* estoque atual >= 0;
+* estoque mínimo >= 0;
+* imagem dentro dos formatos permitidos;
+* imagem <= 10 MB;
+* strings com trim;
+* erros claros em PT-BR ou padrão atual da API.
+
+5. Erros
+
+Padronizar retorno para o front conseguir mostrar mensagens amigáveis:
+
+* 400 para payload inválido;
+* 401 não autenticado;
+* 403 sem permissão;
+* 404 produto não encontrado;
+* 409 duplicidade de SKU/código;
+* 413 arquivo grande;
+* 415 formato inválido.
+
+Não precisa mudar todos os endpoints do sistema, apenas produtos/upload se estiverem frágeis.
+
+6. Exclusão
+
+Antes de excluir produto, verificar se há dependências:
+
+* kits;
+* requisições;
+* loading orders;
+* movimentações;
+* estoque;
+* devoluções.
+
+Se já houver regra de bloqueio, manter e melhorar mensagem.
+Se não houver, auditar risco.
+
+Não permitir exclusão que quebre integridade referencial.
+Se a correção exigir mudança grande, registrar como pendência P1.
+
+7. Imagem
+
+Se o produto pode ter imagem:
+
+* salvar URL/caminho seguro;
+* remover imagem antiga apenas se seguro;
+* não deixar arquivo órfão se upload falhar;
+* retornar URL correta para o front;
+* fallback visual se imagem não carregar.
+
+Não quebrar imagens já cadastradas.
+
+==================================================
+PARTE 5 — UX DE SALVAMENTO
+==========================
+
+Melhorar experiência ao salvar:
+
+* Loading no botão;
+* Toast de sucesso:
+
+  * “Produto criado com sucesso.”
+  * “Produto atualizado com sucesso.”
+* Toast de erro com mensagem clara;
+* Fechar modal apenas após sucesso;
+* Invalidar/refazer query da lista;
+* Manter busca/filtros quando possível;
+* Se erro de validação, manter modal aberto.
+
+Não alterar lógica funcional além do necessário.
+
+==================================================
+PARTE 6 — RESPONSIVIDADE
+========================
+
+Validar:
+
+Desktop:
+
+* grid de produtos bem distribuído;
+* modal com duas colunas onde fizer sentido.
+
+Tablet:
+
+* grid 2 colunas;
+* modal ainda confortável.
+
+Mobile:
+
+* grid 1 coluna;
+* modal ocupa quase toda a tela;
+* footer acessível;
+* upload não estoura;
+* sem overflow horizontal;
+* campos em uma coluna.
+
+==================================================
+PARTE 7 — ACESSIBILIDADE
+========================
+
+Garantir:
+
+* labels associados;
+* foco visível;
+* botão fechar acessível;
+* navegação por teclado no modal;
+* combobox/select acessível;
+* aria-invalid em campos inválidos, se já houver padrão;
+* contraste adequado;
+* imagens com alt.
+
+==================================================
+PARTE 8 — RESTRIÇÕES
+====================
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* composição de componentes;
+* cards;
+* filtros;
+* upload;
+* modal;
+* microcopy PT-BR;
+* validações visuais;
+* validações back-end de produtos;
+* mensagens de erro;
+* busca/filtros, se seguro;
+* upload de imagem, se seguro;
+* documentação.
+
+Não alterar sem necessidade:
+
+* schema;
+* migrations;
+* seed;
+* permissões;
+* role_permissions;
+* RBAC global;
+* endpoints de outros módulos;
+* contratos usados por requisições/kits/movimentações/loading orders;
+* regras de negócio fora de produtos;
+* lógica de estoque fora do cadastro do produto.
+
+Se alguma melhoria exigir alteração de schema/migration:
+
+* não implementar automaticamente;
+* primeiro registrar a necessidade e explicar impacto;
+* só implementar se for indispensável e seguro.
+
+==================================================
+PARTE 9 — VALIDAÇÕES TÉCNICAS
+=============================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Se houver testes disponíveis:
+
+* rodar testes relacionados a produtos/upload.
+
+Smoke test obrigatório:
+
+Front-end:
+
+* abrir Catálogo de Produtos;
+* buscar por nome;
+* buscar por SKU;
+* limpar busca/filtros;
+* abrir Novo Produto;
+* tentar salvar sem SKU;
+* tentar salvar sem nome;
+* criar produto válido;
+* editar produto;
+* anexar imagem válida;
+* tentar imagem inválida;
+* tentar imagem grande;
+* remover imagem;
+* validar estoque baixo;
+* validar responsividade desktop/tablet/mobile.
+
+Back-end:
+
+* POST produto válido;
+* POST SKU duplicado;
+* PATCH produto;
+* PATCH código de barras duplicado;
+* upload imagem válida;
+* upload formato inválido;
+* upload acima de 10 MB;
+* usuário sem permissão tentando criar/editar/excluir;
+* exclusão de produto com dependência, se aplicável.
+
+==================================================
+PARTE 10 — ENTREGA FINAL
+========================
+
+Entregar:
+
+* problemas encontrados;
+* melhorias de design aplicadas;
+* melhorias de UX aplicadas;
+* melhorias de back-end/validação aplicadas;
+* arquivos alterados;
+* endpoints revisados;
+* componentes do Design System usados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências ou riscos restantes.
+
+Critério de aceite:
+A tela de Produtos só será considerada 10/10 se:
+
+* a lista estiver profissional, compacta e útil;
+* os cards não parecerem blocos vazios;
+* busca/filtros forem úteis;
+* o modal estiver organizado por seções;
+* upload de imagem estiver limpo e em PT-BR;
+* validações estiverem claras;
+* erros forem amigáveis;
+* back-end não aceitar dados inválidos;
+* RBAC estiver preservado;
+* nenhuma integração com kits, requisições, estoque, movimentações ou loading orders for quebrada.
