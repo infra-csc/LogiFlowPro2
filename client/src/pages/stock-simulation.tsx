@@ -289,9 +289,9 @@ export default function StockSimulation() {
       case 'FALTA':
         return <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" />FALTA</Badge>;
       case 'CRÍTICO':
-        return <Badge className="gap-1 bg-orange-500"><AlertCircle className="w-3 h-3" />CRÍTICO</Badge>;
+        return <Badge className="gap-1 bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"><AlertCircle className="w-3 h-3" />CRÍTICO</Badge>;
       case 'ADEQUADO':
-        return <Badge variant="default" className="gap-1 bg-green-600"><CheckCircle2 className="w-3 h-3" />ADEQUADO</Badge>;
+        return <Badge className="gap-1 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"><CheckCircle2 className="w-3 h-3" />ADEQUADO</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -542,7 +542,7 @@ export default function StockSimulation() {
                   </div>
 
                   {/* Products Table */}
-                  <div className="border rounded-md">
+                  <div className="border border-border/60 rounded-md">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -606,7 +606,6 @@ export default function StockSimulation() {
                                           <div className="text-sm font-medium mb-2">Detalhamento por Evento:</div>
                                           {product.eventBreakdown?.map((event, idx) => (
                                             <div key={idx} className="flex items-center gap-2 text-sm pl-4">
-                                              <span className="text-muted-foreground">📅</span>
                                               <span className="flex-1">{event.eventName}</span>
                                               <span className="text-muted-foreground">
                                                 {new Date(event.eventDate).toLocaleDateString("pt-BR")}
@@ -622,7 +621,6 @@ export default function StockSimulation() {
                                           <div className="text-sm font-medium mb-2">Detalhamento por Requisição:</div>
                                           {product.requestBreakdown?.map((req, idx) => (
                                             <div key={idx} className="flex items-center gap-2 text-sm pl-4">
-                                              <span className="text-muted-foreground">📋</span>
                                               <div className="flex-1">
                                                 <div>{req.requestArea}</div>
                                                 <div className="text-xs text-muted-foreground">{req.eventName}</div>
@@ -653,13 +651,11 @@ export default function StockSimulation() {
           )}
 
           {!simulation && (
-            <Card className="border-border/60">
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <BarChart3 className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                <p>Selecione os eventos e clique em "Simular Estoque"</p>
-                <p className="text-sm mt-2">Os resultados aparecerão aqui</p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={BarChart3}
+              title="Nenhuma simulação executada"
+              description='Selecione os eventos e clique em "Simular Estoque" para ver os resultados'
+            />
           )}
         </div>
       </div>

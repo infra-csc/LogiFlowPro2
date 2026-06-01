@@ -136,11 +136,11 @@ export default function StockPositionSimulation() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'DISPONÍVEL':
-        return <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Disponível</Badge>;
+        return <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">Disponível</Badge>;
       case 'PARCIAL':
-        return <Badge variant="default" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Parcial</Badge>;
+        return <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">Parcial</Badge>;
       case 'TOTALMENTE_ALOCADO':
-        return <Badge variant="default" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Totalmente Alocado</Badge>;
+        return <Badge variant="destructive">Totalmente Alocado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -306,10 +306,18 @@ export default function StockPositionSimulation() {
         </div>
       )}
 
+      {!simulationResult && !isGenerating && (
+        <EmptyState
+          icon={Calendar}
+          title="Nenhuma simulação executada"
+          description="Configure os filtros e clique em Gerar Simulação para ver a posição de estoque projetada"
+        />
+      )}
+
       {/* Summary */}
       {simulationResult && (
         <Card className="border-border/60">
-          <CardContent className="pt-6">
+          <CardContent className="p-4">
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
@@ -536,13 +544,11 @@ export default function StockPositionSimulation() {
       )}
 
       {simulationResult && simulationResult.products.length === 0 && (
-        <Card className="border-border/60">
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              Nenhum produto encontrado para os filtros selecionados.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Calendar}
+          title="Nenhum produto encontrado"
+          description="Tente ajustar os filtros para ver resultados"
+        />
       )}
     </div>
   );

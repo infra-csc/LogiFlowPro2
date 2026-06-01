@@ -15,14 +15,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -173,7 +165,7 @@ export default function LocationsPage() {
               Nova Localização
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl border-border/60">
                 <DialogHeader>
                   <DialogTitle>{editingLocation ? "Editar Localização" : "Nova Localização"}</DialogTitle>
                 </DialogHeader>
@@ -342,7 +334,7 @@ export default function LocationsPage() {
                         Cancelar
                       </Button>
                       <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
-                        {createMutation.isPending ? "Salvando..." : editingLocation ? "Atualizar" : "Criar"}
+                        {createMutation.isPending ? "Salvando..." : editingLocation ? "Salvar Localização" : "Criar Localização"}
                       </Button>
                     </div>
                   </form>
@@ -361,63 +353,56 @@ export default function LocationsPage() {
 
             {isLoading ? (
               <PageLoading message="Carregando localizações..." />
+            ) : filteredLocations.length === 0 ? (
+              <EmptyState
+                icon={MapPin}
+                title={searchQuery ? "Nenhuma localização encontrada" : "Nenhuma localização cadastrada"}
+                description={searchQuery ? "Tente ajustar a busca" : "Adicione a primeira localização clicando no botão acima"}
+              />
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Localização Pai</TableHead>
-                    <TableHead>Capacidade</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLocations.map((location) => (
-                    <TableRow key={location.id}>
-                      <TableCell className="font-mono">{location.code}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-primary" />
-                          {location.name}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredLocations.map((location) => (
+                  <Card key={location.id} className="border-border/60 hover-elevate" data-testid={`card-location-${location.id}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <MapPin className="h-5 w-5 text-primary/70 flex-shrink-0" />
+                          <h3 className="font-semibold text-base truncate">{location.name}</h3>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{typeLabels[location.type]}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {parentLocationName(location.parentLocationId)}
-                      </TableCell>
-                      <TableCell>
+                        <Badge variant="outline" className="flex-shrink-0">{typeLabels[location.type]}</Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-border/40 text-sm text-muted-foreground">
+                        <span className="font-mono text-foreground">{location.code}</span>
                         {location.maxCapacity ? (
                           <span>{location.maxCapacity.toLocaleString()} itens</span>
                         ) : (
-                          <span className="text-muted-foreground">Ilimitada</span>
+                          <span>Capacidade ilimitada</span>
                         )}
-                      </TableCell>
-                      <TableCell>
+                        {location.parentLocationId && (
+                          <span>Pai: {parentLocationName(location.parentLocationId)}</span>
+                        )}
                         {location.active ? (
                           <Badge variant="default">Ativo</Badge>
                         ) : (
                           <Badge variant="secondary">Inativo</Badge>
                         )}
-                      </TableCell>
-                      <TableCell className="text-right">
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-border/40">
                         <Button
                           variant="outline"
                           size="sm"
+                          className="w-full"
                           onClick={() => handleEdit(location)}
                           data-testid={`button-edit-${location.id}`}
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-4 w-4 mr-1" />
+                          Editar
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
           </div>
     </div>

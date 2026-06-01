@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -263,14 +264,11 @@ function InventoryView({ data, isLoading, dimension }: InventoryViewProps) {
 
   if (!data || data.length === 0) {
     return (
-      <Card className="border-border/60">
-        <CardContent className="py-12 text-center">
-          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">
-            Nenhuma movimentação encontrada para os filtros selecionados
-          </p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={Package}
+        title="Nenhuma movimentação encontrada"
+        description="Tente ajustar os filtros para ver resultados"
+      />
     );
   }
 
@@ -351,7 +349,7 @@ function ProductRow({ product }: ProductRowProps) {
   const [showMovements, setShowMovements] = useState(false);
 
   return (
-    <div className="border rounded-lg p-4 hover-elevate">
+    <div className="border border-border/60 rounded-md p-4 hover-elevate">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
           {product.imageUrl ? (

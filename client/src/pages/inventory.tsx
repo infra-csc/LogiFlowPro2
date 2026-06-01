@@ -94,11 +94,11 @@ export default function Inventory() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium truncate">{product.name}</p>
                           {isLowStock && (
-                            <Badge variant="destructive" className="text-xs">Low Stock</Badge>
+                            <Badge variant="destructive" className="text-xs">Estoque Baixo</Badge>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          SKU: {product.sku} | {product.location || "No location"}
+                          SKU: {product.sku} | {product.location || "Sem localização"}
                         </p>
                       </div>
                       <div className="text-right ml-4">

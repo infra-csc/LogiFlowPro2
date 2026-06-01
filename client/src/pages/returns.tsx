@@ -107,10 +107,18 @@ export default function Returns() {
                     </div>
 
                     <div className="ml-4 flex flex-col gap-2">
-                      {hasDamage && <Badge variant="destructive">Avariado</Badge>}
-                      {hasLoss && <Badge variant="destructive">Perdido</Badge>}
+                      {hasDamage && (
+                        <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                          Avariado
+                        </Badge>
+                      )}
+                      {hasLoss && (
+                        <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800">
+                          Perdido
+                        </Badge>
+                      )}
                       {hasDiscrepancy && !hasDamage && !hasLoss && (
-                        <Badge className="bg-chart-5 text-white">Discrepância</Badge>
+                        <Badge variant="outline" className="text-muted-foreground">Discrepância</Badge>
                       )}
                     </div>
                   </div>
