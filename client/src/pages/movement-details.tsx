@@ -798,16 +798,18 @@ export default function MovementDetails() {
 
       {/* Scanner */}
       {!isEditable && movement?.status && (
-        <Alert className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            {movement.status === "pending_approval" && "Movimentação pendente de aprovação. Aguarde a aprovação para registrar produtos."}
-            {movement.status === "paused" && "Movimentação pausada. Clique em 'Retomar Movimentação' para continuar registrando produtos."}
-            {movement.status === "completed" && "Movimentação finalizada. Não é possível adicionar ou modificar produtos."}
-            {movement.status === "cancelled" && "Movimentação cancelada. Não é possível adicionar ou modificar produtos."}
-            {movement.status === "created" && "Clique em 'Iniciar Movimentação' para começar a registrar produtos."}
-          </AlertDescription>
-        </Alert>
+        <PageSection>
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {movement.status === "pending_approval" && "Movimentação pendente de aprovação. Aguarde a aprovação para registrar produtos."}
+              {movement.status === "paused" && "Movimentação pausada. Clique em 'Continuar' para retomar o registro de produtos."}
+              {movement.status === "completed" && "Movimentação finalizada. Não é possível adicionar ou modificar produtos."}
+              {movement.status === "cancelled" && "Movimentação cancelada. Não é possível adicionar ou modificar produtos."}
+              {movement.status === "created" && "Clique em 'Iniciar Movimentação' para começar a registrar produtos."}
+            </AlertDescription>
+          </Alert>
+        </PageSection>
       )}
 
       {isEditable && userCanManageMovementItems(user) && (
@@ -888,7 +890,7 @@ export default function MovementDetails() {
                 className={`border rounded-lg p-4 space-y-4 ${
                   willExceedExpected
                     ? "bg-destructive/10 border-destructive"
-                    : "bg-accent/20"
+                    : "bg-muted/50"
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -934,12 +936,12 @@ export default function MovementDetails() {
                 </div>
 
                 {willExceedExpected && (
-                  <div className="bg-destructive/20 border border-destructive rounded-md p-3">
+                  <div className="bg-destructive/10 border border-destructive/40 rounded-md p-3">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-destructive">
-                          Atenção: Esta quantidade ({quantity}) excederá o esperado!
+                          Quantidade excederá o esperado
                         </p>
                         <p className="text-sm text-destructive/80 mt-1">
                           Total após adicionar:{" "}
@@ -1017,15 +1019,16 @@ export default function MovementDetails() {
       )}
 
       {/* Lista dupla: Esperado vs Carregado */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Itens Esperados (da Ordem) */}
-        {expectedItems.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3 font-semibold text-base">
-                <ClipboardList className="h-5 w-5" />
-                Itens da Ordem ({expectedItems.length})
-              </div>
+      <PageSection title="Itens" description="Acompanhe o progresso de carregamento">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Itens Esperados (da Ordem) */}
+          {expectedItems.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3 font-semibold text-base">
+                  <ClipboardList className="h-5 w-5" />
+                  Itens da Ordem ({expectedItems.length})
+                </div>
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1036,7 +1039,7 @@ export default function MovementDetails() {
                   data-testid="input-search-order-items"
                 />
               </div>
-              <ScrollArea className="h-[500px] pr-4">
+              <ScrollArea className="h-[500px] pr-4" style={{ scrollbarWidth: 'thin' }}>
                 <div className="space-y-3">
                   {filteredExpectedItems.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
@@ -1058,7 +1061,7 @@ export default function MovementDetails() {
                           isExceeded
                             ? "bg-destructive/10 border-destructive"
                             : isComplete
-                            ? "bg-chart-4/10 border-chart-4"
+                            ? "bg-emerald-500/10 border-emerald-500"
                             : ""
                         }`}
                         onClick={() => {
@@ -1076,13 +1079,13 @@ export default function MovementDetails() {
                             </p>
                           </div>
                           {isExceeded && (
-                            <Badge className="bg-destructive text-destructive-foreground">
+                            <Badge className="bg-rose-500 text-white no-default-hover-elevate">
                               <AlertTriangle className="h-3 w-3 mr-1" />
                               Excedido
                             </Badge>
                           )}
                           {isComplete && (
-                            <Badge className="bg-chart-4 text-white">
+                            <Badge className="bg-emerald-500 text-white no-default-hover-elevate">
                               <CheckCircle2 className="h-3 w-3 mr-1" />
                               Completo
                             </Badge>
@@ -1137,7 +1140,7 @@ export default function MovementDetails() {
                 data-testid="input-search-loaded-items"
               />
             </div>
-            <ScrollArea className="h-[500px] pr-4">
+            <ScrollArea className="h-[500px] pr-4" style={{ scrollbarWidth: 'thin' }}>
               {filteredLoadedItems.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   {loadedSearchQuery ? "Nenhum item encontrado" : "Nenhum item carregado ainda"}
@@ -1158,18 +1161,18 @@ export default function MovementDetails() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium">{product?.name || "Produto desconhecido"}</p>
                             {item.isNotInOrder && (
-                              <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-400 dark:border-amber-600">
+                              <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-700">
                                 <AlertTriangle className="h-3 w-3 mr-1" />
-                                Produto não consta na ordem
+                                Fora da ordem
                               </Badge>
                             )}
                             {item.ownerTypes.has("rented") && (
-                              <Badge variant="outline" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500">
+                              <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
                                 LOCADO
                               </Badge>
                             )}
                             {item.ownerTypes.has("third_party") && (
-                              <Badge variant="outline" className="bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500">
+                              <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
                                 TERCEIROS
                               </Badge>
                             )}
@@ -1196,7 +1199,7 @@ export default function MovementDetails() {
                               onClick={() => decrementItemMutation.mutate(item.productId)}
                               disabled={!isEditable || decrementItemMutation.isPending}
                               data-testid={`button-decrement-${item.productId}`}
-                              className="flex-shrink-0 h-8 w-8"
+                              className="flex-shrink-0"
                               title={!isEditable ? "Movimentação precisa estar em andamento" : "Remover 1 unidade"}
                             >
                               <Minus className="h-4 w-4" />
@@ -1207,7 +1210,7 @@ export default function MovementDetails() {
                               onClick={() => removeItemMutation.mutate(item.productId)}
                               disabled={!isEditable || removeItemMutation.isPending}
                               data-testid={`button-remove-${item.productId}`}
-                              className="flex-shrink-0 h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              className="flex-shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                               title={!isEditable ? "Movimentação precisa estar em andamento" : "Remover item completo"}
                             >
                               <X className="h-4 w-4" />
@@ -1223,6 +1226,7 @@ export default function MovementDetails() {
           </CardContent>
         </Card>
       </div>
+      </PageSection>
 
       {/* Modal de Confirmação */}
       <Dialog 
@@ -1265,7 +1269,7 @@ export default function MovementDetails() {
           
           {selectedProduct && (
             <div className="space-y-6 py-4">
-              <div className="space-y-4 p-6 bg-accent/20 rounded-lg border-2">
+              <div className="space-y-4 p-4 bg-muted rounded-lg border">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">PRODUTO</p>
                   <p className="text-4xl font-bold" data-testid="text-confirm-product-name">
@@ -1285,7 +1289,7 @@ export default function MovementDetails() {
                 </div>
               </div>
 
-              <div className="p-6 bg-primary/10 rounded-lg border-2 border-primary">
+              <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                 <p className="text-sm text-muted-foreground mb-1">QUANTIDADE</p>
                 <p className="text-6xl font-bold text-primary" data-testid="text-confirm-quantity">
                   {quantity}
@@ -1310,10 +1314,11 @@ export default function MovementDetails() {
 
               {/* Owner/Supplier fields for rented/consigned products */}
               {selectedProduct.requiresSupplier && (
-                <div className="p-6 bg-yellow-500/10 rounded-lg border-2 border-yellow-500">
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-300 dark:border-yellow-700">
                   <div className="flex items-center gap-2 mb-4">
-                    <Badge variant="outline" className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500">
-                      🟡 {selectedProduct.ownership === 'rented' ? 'LOCADO' : 'CONSIGNADO'}
+                    <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      {selectedProduct.ownership === 'rented' ? 'LOCADO' : 'CONSIGNADO'}
                     </Badge>
                     <p className="text-sm text-muted-foreground">
                       Rastreamento de material de terceiros
@@ -1340,23 +1345,24 @@ export default function MovementDetails() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      ⚠️ Campo obrigatório para rastreamento de material de terceiros
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Campo obrigatório para rastreamento de material de terceiros
                     </p>
                   </div>
                 </div>
               )}
 
               {willExceedExpected && (
-                <div className="p-4 bg-destructive/20 border-2 border-destructive rounded-lg">
+                <div className="p-4 bg-destructive/10 border border-destructive/40 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-6 w-6 text-destructive mt-0.5 flex-shrink-0" />
+                    <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="font-semibold text-destructive text-lg">
-                        ATENÇÃO: Quantidade excederá o esperado!
+                      <p className="font-semibold text-destructive text-sm">
+                        Quantidade excederá o esperado
                       </p>
-                      <p className="text-destructive/80 mt-1">
-                        Você está adicionando {quantity} unidades, mas só faltam {selectedExpectedItem!.remaining}.
+                      <p className="text-sm text-destructive/80 mt-1">
+                        Adicionando {quantity} unidades, mas só faltam {selectedExpectedItem!.remaining}.
                       </p>
                     </div>
                   </div>
@@ -1444,21 +1450,23 @@ export default function MovementDetails() {
 
       {/* Action History Section */}
       {!focusMode && auditLogs.length > 0 && (
-        <Card>
+        <PageSection title="Histórico" description="Registro de ações na movimentação">
+          <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3 font-semibold text-base">
               <Clock className="h-5 w-5" />
               Histórico de Ações
             </div>
-            <ScrollArea className="h-[400px] pr-4">
+            <ScrollArea className="h-[400px] pr-4" style={{ scrollbarWidth: 'thin' }}>
               <div className="space-y-4">
                 {auditLogs.map((log) => {
                   const getActionIcon = () => {
                     switch (log.action) {
-                      case "item_added": return <Plus className="h-4 w-4 text-green-600" />;
-                      case "item_removed": return <Minus className="h-4 w-4 text-red-600" />;
-                      case "status_changed": return <FileText className="h-4 w-4 text-blue-600" />;
-                      default: return <Clock className="h-4 w-4 text-gray-600" />;
+                      case "item_added": return <Plus className="h-4 w-4 text-emerald-500" />;
+                      case "item_removed": return <Minus className="h-4 w-4 text-rose-500" />;
+                      case "status_changed": return <FileText className="h-4 w-4 text-sky-500" />;
+                      case "item_quantity_changed": return <FileText className="h-4 w-4 text-sky-500" />;
+                      default: return <Clock className="h-4 w-4 text-muted-foreground" />;
                     }
                   };
 
@@ -1473,6 +1481,8 @@ export default function MovementDetails() {
                         return `Removeu ${metadata?.quantity}x ${metadata?.productName} (SKU: ${metadata?.sku})${metadata?.ownerName ? ` - ${metadata.ownerName}` : ""}`;
                       case "status_changed":
                         return `Alterou status de ${getStatusLabel(context?.previousStatus)} para ${getStatusLabel(context?.newStatus)}`;
+                      case "item_quantity_changed":
+                        return `Alterou quantidade de ${metadata?.productName} (SKU: ${metadata?.sku}) de ${metadata?.previousQuantity} para ${metadata?.newQuantity} (${metadata?.quantityDecremented > 0 ? 'removidos ' + metadata?.quantityDecremented : 'ajustados ' + Math.abs(metadata?.quantityDecremented || 0)})${metadata?.ownerName ? ` - ${metadata.ownerName}` : ""}`;
                       default:
                         return log.action;
                     }
@@ -1505,6 +1515,7 @@ export default function MovementDetails() {
             </ScrollArea>
           </CardContent>
         </Card>
+        </PageSection>
       )}
     </div>
   );

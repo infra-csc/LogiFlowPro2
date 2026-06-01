@@ -41,7 +41,7 @@ type MovementWithRelations = Movement & {
 };
 
 const formatDuration = (minutes?: number | null) => {
-  if (!minutes) return "\u2014";
+  if (!minutes) return "—";
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (hours > 0) {
@@ -53,27 +53,27 @@ const formatDuration = (minutes?: number | null) => {
 // Movement type label translation (fallback when movementTypeConfig.name is missing)
 function movementTypeLabel(type: string | null): string {
   const labels: Record<string, string> = {
-    outbound_event: "Sa\u00edda para evento",
+    outbound_event: "Saída para evento",
     inbound_return: "Retorno de evento",
     inbound_event: "Entrada de evento",
-    outbound_return: "Sa\u00edda para retorno",
-    transfer: "Transfer\u00eancia",
-    internal_transfer: "Transfer\u00eancia interna",
+    outbound_return: "Saída para retorno",
+    transfer: "Transferência",
+    internal_transfer: "Transferência interna",
     loading: "Carga",
     unloading: "Descarga",
     adjustment: "Ajuste",
-    inventory: "Invent\u00e1rio",
+    inventory: "Inventário",
     other: "Outro",
   };
-  return labels[type || ""] || type || "Movimenta\u00e7\u00e3o";
+  return labels[type || ""] || type || "Movimentação";
 }
 
 // Next action hint based on status
 function statusHint(status: string): string {
   const hints: Record<string, string> = {
     created: "Pronta para iniciar",
-    in_progress: "Em opera\u00e7\u00e3o",
-    paused: "Pausada \u2014 aguardando retomada",
+    in_progress: "Em operação",
+    paused: "Pausada — aguardando retomada",
     completed: "Finalizada",
     cancelled: "Cancelada",
   };
@@ -217,7 +217,7 @@ export default function Movements() {
       chips.push({ label: `De: ${filterStartDate}`, onClear: () => setFilterStartDate("") });
     }
     if (filterEndDate) {
-      chips.push({ label: `At\u00e9: ${filterEndDate}`, onClear: () => setFilterEndDate("") });
+      chips.push({ label: `Até: ${filterEndDate}`, onClear: () => setFilterEndDate("") });
     }
     return chips;
   }, [filterEventId, filterStatus, filterType, filterDockId, filterVehiclePlate, filterStartDate, filterEndDate, events, movementTypes, docks]);
@@ -260,9 +260,9 @@ export default function Movements() {
       <div className="space-y-6">
         <PageHeader
           title="Carga e Descarga"
-          description="Gerencie movimenta\u00e7\u00f5es operacionais do armaz\u00e9m"
+          description="Gerencie movimentações operacionais do armazém"
         />
-        <PageLoading message="Carregando movimenta\u00e7\u00f5es..." />
+        <PageLoading message="Carregando movimentações..." />
       </div>
     );
   }
@@ -271,13 +271,13 @@ export default function Movements() {
     <div className="space-y-4">
       <PageHeader
         title="Carga e Descarga"
-        description="Gerencie movimenta\u00e7\u00f5es operacionais do armaz\u00e9m"
+        description="Gerencie movimentações operacionais do armazém"
       >
         {userCanCreateMovement(user) && (
           <MovementDialog>
             <Button data-testid="button-new-movement">
               <Plus className="h-4 w-4 mr-2" />
-              Nova Movimenta\u00e7\u00e3o
+              Nova Movimentação
             </Button>
           </MovementDialog>
         )}
@@ -401,7 +401,7 @@ export default function Movements() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <label htmlFor="filter-start-date" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Data In\u00edcio</label>
+          <label htmlFor="filter-start-date" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Data Início</label>
           <Input
             id="filter-start-date"
             type="date"
@@ -450,19 +450,19 @@ export default function Movements() {
         .movements-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border) / 0.5); border-radius: 3px; }
       `}</style>
 
-      {/* Lista de Movimenta\u00e7\u00f5es */}
+      {/* Lista de Movimentações */}
       <div className={`space-y-3 ${movements.length > 12 ? 'max-h-[70vh] overflow-y-auto movements-scroll pr-1' : ''}`}>
         {filteredMovements.length === 0 ? (
           <EmptyState
             icon={Truck}
-            title="Nenhuma movimenta\u00e7\u00e3o encontrada"
+            title="Nenhuma movimentação encontrada"
             description={activeFiltersCount > 0
               ? "Tente ajustar os filtros para ver mais resultados"
-              : "Crie uma nova movimenta\u00e7\u00e3o para come\u00e7ar"}
+              : "Crie uma nova movimentação para começar"}
             action={activeFiltersCount > 0
               ? { label: "Limpar Filtros", onClick: clearAllFilters }
               : userCanCreateMovement(user)
-              ? { label: "Nova Movimenta\u00e7\u00e3o", onClick: () => navigate("/movements/new") }
+              ? { label: "Nova Movimentação", onClick: () => navigate("/movements/new") }
               : undefined}
           />
         ) : (
@@ -494,7 +494,7 @@ export default function Movements() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <StatusBadge status={movement.status} />
                           <span className="text-xs text-muted-foreground font-mono">
-                            {movement.movementNumber || "\u2014"}
+                            {movement.movementNumber || "—"}
                           </span>
                           {typeName && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -504,7 +504,7 @@ export default function Movements() {
                           )}
                         </div>
                         <h3 className="font-semibold text-base text-foreground mt-1 truncate" data-testid={`text-movement-name-${movement.id}`}>
-                          {movement.name || "Movimenta\u00e7\u00e3o sem nome"}
+                          {movement.name || "Movimentação sem nome"}
                         </h3>
                         {hint && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>
@@ -545,14 +545,14 @@ export default function Movements() {
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="text-muted-foreground">Evento:</span>
                         <span className="text-foreground font-medium truncate">
-                          {movement.events?.[0]?.name || movement.event?.name || "N\u00e3o vinculado"}
+                          {movement.events?.[0]?.name || movement.event?.name || "Não vinculado"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">Ve\u00edculo:</span>
+                        <span className="text-muted-foreground">Veículo:</span>
                         <span className="text-foreground font-medium">
-                          {movement.vehiclePlate || "N\u00e3o informado"}
+                          {movement.vehiclePlate || "Não informado"}
                         </span>
                       </div>
                       {movement.dock && (
@@ -565,7 +565,7 @@ export default function Movements() {
                       {movement.startedAt && (
                         <div className="flex items-center gap-2">
                           <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="text-muted-foreground">In\u00edcio:</span>
+                          <span className="text-muted-foreground">Início:</span>
                           <span className="text-foreground font-medium">
                             {format(new Date(movement.startedAt), "dd MMM HH:mm", { locale: ptBR })}
                           </span>
@@ -574,7 +574,7 @@ export default function Movements() {
                       {movement.totalDuration && (
                         <div className="flex items-center gap-2">
                           <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="text-muted-foreground">Dura\u00e7\u00e3o:</span>
+                          <span className="text-muted-foreground">Duração:</span>
                           <span className="text-foreground font-medium">{formatDuration(movement.totalDuration)}</span>
                         </div>
                       )}
