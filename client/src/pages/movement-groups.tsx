@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertMovementGroupSchema, type MovementGroup, type InsertMovementGroup } from "@shared/schema";
+import { insertMovementGroupSchema, type MovementGroup, type InsertMovementGroup, type MovementTypeConfig } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { PageHeader } from "@/components/page-header";
@@ -48,6 +49,14 @@ export default function MovementGroupsPage() {
   const { data: groups = [], isLoading } = useQuery<MovementGroup[]>({
     queryKey: ["/api/movement-groups"],
   });
+
+  const { data: allTypes = [] } = useQuery<MovementTypeConfig[]>({
+    queryKey: ["/api/movement-types-config"],
+  });
+
+  const typeCountByGroup = new Map<string, number>(
+    groups.map((g) => [g.id, allTypes.filter((t) => t.groupId === g.id).length])
+  );
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertMovementGroup) => {
@@ -230,9 +239,12 @@ export default function MovementGroupsPage() {
                 <p className="text-sm text-muted-foreground" data-testid={`text-description-${group.id}`}>
                   {group.description || "Sem descrição"}
                 </p>
-                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="mt-3 flex items-center gap-2 flex-wrap border-t border-border/40 pt-3">
+                  <Badge variant="outline" className="text-xs" data-testid={`badge-types-count-${group.id}`}>
+                    {typeCountByGroup.get(group.id) ?? 0} tipo{(typeCountByGroup.get(group.id) ?? 0) !== 1 ? "s" : ""}
+                  </Badge>
                   <span
-                    className="rounded px-2 py-1"
+                    className="rounded px-2 py-1 text-xs"
                     style={{
                       backgroundColor: `${group.color}15`,
                       color: group.color,
@@ -242,7 +254,7 @@ export default function MovementGroupsPage() {
                     {group.purpose}
                   </span>
                   {!group.active && (
-                    <span className="rounded bg-destructive/15 px-2 py-1 text-destructive" data-testid={`badge-inactive-${group.id}`}>
+                    <span className="rounded bg-destructive/15 px-2 py-1 text-xs text-destructive" data-testid={`badge-inactive-${group.id}`}>
                       Inativo
                     </span>
                   )}

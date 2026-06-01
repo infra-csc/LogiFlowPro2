@@ -105,6 +105,32 @@ export default function RolesPage() {
     })),
   });
 
+  // Parallel fetch of permissions for each role to show compact badges on card
+  const rolePermResults = useQueries({
+    queries: roles.map((role) => ({
+      queryKey: ["/api/roles", role.id, "permissions"],
+      enabled: roles.length > 0,
+    })),
+  });
+
+  const rolePermMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    roles.forEach((role, idx) => {
+      const result = rolePermResults[idx];
+      if (result.data && Array.isArray(result.data)) {
+        const pages = (result.data as RolePermission[])
+          .filter((rp) => rp.canView)
+          .map((rp) => {
+            const perm = permissions.find((p) => p.id === rp.permissionId);
+            return perm?.displayName || null;
+          })
+          .filter(Boolean) as string[];
+        map.set(role.id, pages);
+      }
+    });
+    return map;
+  }, [roles, rolePermResults, permissions]);
+
   const roleUserMap = useMemo(() => {
     const map = new Map<string, Omit<User, "password">[]>();
     allUsers.forEach((user, idx) => {
@@ -201,6 +227,9 @@ export default function RolesPage() {
             const roleUsers = roleUserMap.get(role.id) || [];
             const displayUsers = roleUsers.slice(0, 4);
             const overflow = roleUsers.length - displayUsers.length;
+            const rolePerms = rolePermMap.get(role.id) || [];
+            const displayPerms = rolePerms.slice(0, 4);
+            const permOverflow = rolePerms.length - displayPerms.length;
             return (
               <Card
                 key={role.id}
@@ -228,6 +257,26 @@ export default function RolesPage() {
                       {roleUsers.length}
                     </Badge>
                   </div>
+
+                  {/* Permission badges */}
+                  {displayPerms.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {displayPerms.map((name) => (
+                        <Badge
+                          key={name}
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 font-normal"
+                        >
+                          {name}
+                        </Badge>
+                      ))}
+                      {permOverflow > 0 && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground">
+                          +{permOverflow}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
 
                   {/* Users with this role */}
                   {roleUsers.length > 0 && (
