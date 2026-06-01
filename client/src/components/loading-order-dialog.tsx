@@ -7,22 +7,29 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandItem,
+} from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { LoadingOrder, InsertLoadingOrder, Event, MaterialRequest, Trip } from "@shared/schema";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
@@ -30,7 +37,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/status-badge";
 import {
   AlertTriangle, Loader2, Calendar, Package, Truck, FileText,
-  X, ChevronRight, MapPin, Clock, ArrowRight
+  X, MapPin, Clock, User, MessageSquare, Check, Plus, ChevronDown,
+  ArrowRight
 } from "lucide-react";
 
 interface LoadingOrderDialogProps {
@@ -65,6 +73,8 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
+  const [eventOpen, setEventOpen] = useState(false);
+  const [eventSearch, setEventSearch] = useState("");
 
   const { data: events } = useQuery<Event[]>({ queryKey: ["/api/events"] });
   const { data: allRequests } = useQuery<MaterialRequest[]>({ queryKey: ["/api/requests"] });
@@ -90,6 +100,8 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   const availableTrips = allTrips?.filter(
     (trip) => selectedEventId && trip.eventId === selectedEventId
   ) || [];
+
+  const selectedEvent = events?.find(e => e.id === selectedEventId);
 
   const userName = user?.name || "";
   const initializedRef = useRef<string | null>(null);
@@ -128,6 +140,8 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       setSelectedRequestIds([]);
       setSelectedTripIds([]);
       setSelectedEventId("");
+      setEventOpen(false);
+      setEventSearch("");
     }
   }, [open, order, userName, linkedTrips]);
 
@@ -183,6 +197,8 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     setFormData({ ...formData, eventId });
     setSelectedRequestIds([]);
     setSelectedTripIds([]);
+    setEventOpen(false);
+    setEventSearch("");
   };
 
   const toggleRequestSelection = (requestId: string) => {
@@ -205,6 +221,21 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
   const canEdit = canWriteLogistics && (!order || (canEditData?.canEdit !== false));
   const canLinkTrips = canWriteLogistics;
 
+  const isStartValid = !!formData.plannedStartTime;
+  const isEndValid = !!formData.plannedEndTime;
+  const isEndAfterStart = !formData.plannedStartTime || !formData.plannedEndTime ||
+    new Date(formData.plannedEndTime) >= new Date(formData.plannedStartTime);
+
+  const isFormValid =
+    !!formData.eventId &&
+    !!formData.orderNumber &&
+    isStartValid &&
+    isEndValid &&
+    isEndAfterStart &&
+    !!formData.createdBy;
+
+  const isCreateValid = isFormValid && (order || selectedRequestIds.length > 0);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -221,9 +252,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
       return;
     }
 
-    if (!formData.eventId || !formData.orderNumber ||
-        !formData.plannedStartTime || !formData.plannedEndTime ||
-        !formData.createdBy) {
+    if (!isFormValid) {
       toast({ description: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
@@ -252,36 +281,58 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
+  const filteredEvents = events?.filter(e =>
+    e.name.toLowerCase().includes(eventSearch.toLowerCase())
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-        {/* Header */}
-        <DialogHeader className="p-6 pb-4 border-b border-border/40 bg-muted/20">
-          <div className="flex items-start justify-between">
-            <div>
-              <DialogTitle className="text-xl font-semibold tracking-tight">
-                {order ? "Editar Ordem" : "Nova Ordem de Carregamento"}
+      <DialogContent className="max-w-3xl p-0 gap-0 overflow-hidden border-border/60">
+        {/* Header - fixo */}
+        <DialogHeader className="p-5 pb-4 border-b border-border/40 bg-muted/20 flex-shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <DialogTitle className="text-lg font-semibold tracking-tight">
+                {order ? "Editar Ordem de Carregamento" : "Nova Ordem de Carregamento"}
               </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
+              <DialogDescription className="text-sm text-muted-foreground mt-1">
                 {order
-                  ? "Atualize as informações da ordem de carregamento"
-                  : "Crie uma ordem consolidando requisições aprovadas"}
-              </p>
+                  ? "Atualize as informações da ordem de carregamento."
+                  : "Consolide requisições aprovadas e associe viagens para o carregamento."}
+              </DialogDescription>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 -mt-1 -mr-2"
+              className="h-8 w-8 shrink-0"
               onClick={() => onOpenChange(false)}
               data-testid="button-close-dialog"
+              aria-label="Fechar modal"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </DialogHeader>
 
-        {/* Content */}
-        <div className="p-6 pt-4">
+        {/* Content - scrollável */}
+        <div className="overflow-y-auto max-h-[60vh] p-5 space-y-6">
+          {/* Scrollbar customizada */}
+          <style>{`
+            .overflow-y-auto::-webkit-scrollbar {
+              width: 6px;
+            }
+            .overflow-y-auto::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            .overflow-y-auto::-webkit-scrollbar-thumb {
+              background: hsl(var(--border) / 0.6);
+              border-radius: 3px;
+            }
+            .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+              background: hsl(var(--border));
+            }
+          `}</style>
+
           {order && canEditData && !canEditData.canEdit && (
             <Alert variant="destructive" className="mb-4">
               <AlertTriangle className="h-4 w-4" />
@@ -301,29 +352,70 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Evento */}
+          {/* ============== ETAPA 1: DADOS DA ORDEM ============== */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                1
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">Dados da Ordem</h3>
+            </div>
+
+            {/* Evento - Combobox */}
             <div className="space-y-1.5">
-              <Label htmlFor="event" className="text-sm font-semibold flex items-center gap-1.5">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
                 <Package className="h-3.5 w-3.5 text-muted-foreground" />
                 Evento <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={formData.eventId}
-                onValueChange={handleEventChange}
-                disabled={!!order || !canEdit}
-              >
-                <SelectTrigger id="event" className="h-10 bg-card" data-testid="select-event">
-                  <SelectValue placeholder="Selecione o evento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {events?.map((event) => (
-                    <SelectItem key={event.id} value={event.id} data-testid={`option-event-${event.id}`}>
-                      {event.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={eventOpen && canEdit && !order} onOpenChange={setEventOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={eventOpen}
+                    disabled={!!order || !canEdit}
+                    className="w-full justify-between h-10 bg-card font-normal"
+                    data-testid="select-event"
+                  >
+                    <span className="truncate">
+                      {selectedEvent ? selectedEvent.name : "Selecione o evento"}
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Buscar evento..."
+                      value={eventSearch}
+                      onValueChange={setEventSearch}
+                    />
+                    <CommandList className="max-h-[200px]">
+                      <CommandEmpty>Nenhum evento encontrado</CommandEmpty>
+                      {filteredEvents?.map((event) => (
+                        <CommandItem
+                          key={event.id}
+                          value={event.id}
+                          onSelect={() => handleEventChange(event.id)}
+                          data-testid={`option-event-${event.id}`}
+                          className="cursor-pointer"
+                        >
+                          <span className="truncate">{event.name}</span>
+                          {selectedEventId === event.id && (
+                            <Check className="h-4 w-4 ml-auto shrink-0 text-primary" />
+                          )}
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {selectedEvent && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <ArrowRight className="h-3 w-3" />
+                  Evento selecionado: <span className="font-medium text-foreground">{selectedEvent.name}</span>
+                </p>
+              )}
             </div>
 
             {/* Número da Ordem */}
@@ -356,9 +448,12 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   value={formData.plannedStartTime}
                   onChange={(e) => setFormData({ ...formData, plannedStartTime: e.target.value })}
                   disabled={!canEdit}
-                  className="h-10 bg-card"
+                  className={`h-10 bg-card ${!isStartValid ? 'border-destructive' : ''}`}
                   data-testid="input-planned-start"
                 />
+                {!isStartValid && (
+                  <p className="text-xs text-destructive">Informe a data de início</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -372,37 +467,34 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   value={formData.plannedEndTime}
                   onChange={(e) => setFormData({ ...formData, plannedEndTime: e.target.value })}
                   disabled={!canEdit}
-                  className="h-10 bg-card"
+                  className={`h-10 bg-card ${!isEndValid || !isEndAfterStart ? 'border-destructive' : ''}`}
                   data-testid="input-planned-end"
                 />
+                {!isEndValid && (
+                  <p className="text-xs text-destructive">Informe a data de fim</p>
+                )}
+                {isEndValid && !isEndAfterStart && (
+                  <p className="text-xs text-destructive">Fim deve ser igual ou posterior ao início</p>
+                )}
               </div>
             </div>
 
-            {/* Criado por */}
+            {/* Criado por - readonly visual */}
             <div className="space-y-1.5">
               <Label htmlFor="createdBy" className="text-sm font-semibold flex items-center gap-1.5">
-                <span className="text-muted-foreground">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                </span>
-                Criado por <span className="text-destructive">*</span>
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                Criado por
               </Label>
-              <Input
-                id="createdBy"
-                value={formData.createdBy}
-                onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
-                placeholder="Nome do responsável"
-                disabled={!canEdit}
-                className="h-10 bg-card"
-                data-testid="input-created-by"
-              />
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md bg-muted/50 border border-border/40 text-sm text-muted-foreground">
+                <User className="h-3.5 w-3.5" />
+                <span>{formData.createdBy || "-"}</span>
+              </div>
             </div>
 
             {/* Observações */}
             <div className="space-y-1.5">
               <Label htmlFor="notes" className="text-sm font-semibold flex items-center gap-1.5">
-                <span className="text-muted-foreground">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                </span>
+                <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
                 Observações
               </Label>
               <Textarea
@@ -412,152 +504,284 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 placeholder="Observações adicionais sobre a ordem..."
                 disabled={!canEdit}
                 rows={3}
-                className="bg-card"
+                className="bg-card resize-none"
                 data-testid="textarea-notes"
               />
             </div>
+          </div>
 
-            {/* Seleção de Requisições */}
-            {!order && selectedEventId && (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                    Requisições Aprovadas ({approvedRequests.length})
-                  </Label>
+          {/* Separador */}
+          <div className="border-t border-border/40" />
+
+          {/* ============== ETAPA 2: REQUISIÇÕES APROVADAS ============== */}
+          {!order && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                  2
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Requisições Aprovadas</h3>
                   <p className="text-xs text-muted-foreground">
                     Selecione as requisições para consolidar nesta ordem
                   </p>
                 </div>
-
-                {approvedRequests.length === 0 ? (
-                  <Card className="border-border/60">
-                    <CardContent className="py-6">
-                      <p className="text-center text-sm text-muted-foreground">
-                        Nenhuma requisição aprovada encontrada para este evento
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="border rounded-lg overflow-hidden bg-card/50">
-                    {/* Header */}
-                    <div className="grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2 bg-muted/50 border-b border-border/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      <span></span>
-                      <span>ID</span>
-                      <span>Área</span>
-                      <span className="text-right">Status</span>
-                    </div>
-                    <div className="max-h-60 overflow-y-auto">
-                      {approvedRequests.map((request, index) => (
-                        <div
-                          key={request.id}
-                          className={`grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2.5 border-b border-border/20 items-center transition-colors cursor-pointer ${
-                            selectedRequestIds.includes(request.id)
-                              ? "bg-primary/5"
-                              : "hover:bg-muted/30"
-                          }`}
-                          onClick={() => toggleRequestSelection(request.id)}
-                          data-testid={`request-item-${request.id}`}
-                        >
-                          <Checkbox
-                            id={`req-${request.id}`}
-                            checked={selectedRequestIds.includes(request.id)}
-                            onCheckedChange={() => toggleRequestSelection(request.id)}
-                            data-testid={`checkbox-request-${request.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
-                          <span className="text-sm font-medium truncate">{request.area}</span>
-                          <span className="text-xs text-muted-foreground text-right">
-                            <StatusBadge status={request.status} />
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {selectedEventId && (
+                  <span className="ml-auto text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                    {selectedRequestIds.length} de {approvedRequests.length} selecionadas
+                  </span>
                 )}
               </div>
-            )}
 
-            {/* Seleção de Viagens */}
-            {selectedEventId && availableTrips.length > 0 && canLinkTrips && (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold flex items-center gap-1.5">
-                    <Truck className="h-3.5 w-3.5 text-muted-foreground" />
-                    Viagens ({availableTrips.length})
-                  </Label>
+              {!selectedEventId ? (
+                <Card className="border-border/60 bg-muted/20">
+                  <CardContent className="py-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Selecione um evento para visualizar as requisições aprovadas
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : approvedRequests.length === 0 ? (
+                <Card className="border-border/60">
+                  <CardContent className="py-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma requisição aprovada encontrada para este evento
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="border rounded-lg overflow-hidden bg-card/50">
+                  {/* Header */}
+                  <div className="grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2 bg-muted/50 border-b border-border/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <span></span>
+                    <span>ID</span>
+                    <span>Área</span>
+                    <span className="text-right">Status</span>
+                  </div>
+                  <div className="max-h-[180px] overflow-y-auto">
+                    {approvedRequests.map((request, index) => (
+                      <div
+                        key={request.id}
+                        className={`grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2.5 border-b border-border/20 items-center transition-colors cursor-pointer ${
+                          selectedRequestIds.includes(request.id)
+                            ? "bg-primary/5"
+                            : "hover:bg-muted/30"
+                        }`}
+                        onClick={() => toggleRequestSelection(request.id)}
+                        data-testid={`request-item-${request.id}`}
+                        role="button"
+                        aria-pressed={selectedRequestIds.includes(request.id)}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleRequestSelection(request.id);
+                          }
+                        }}
+                      >
+                        <Checkbox
+                          id={`req-${request.id}`}
+                          checked={selectedRequestIds.includes(request.id)}
+                          onCheckedChange={() => toggleRequestSelection(request.id)}
+                          data-testid={`checkbox-request-${request.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Selecionar requisição ${request.area}`}
+                        />
+                        <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
+                        <span className="text-sm font-medium truncate">{request.area}</span>
+                        <span className="text-xs text-muted-foreground text-right flex justify-end">
+                          <StatusBadge status={request.status} />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Separador */}
+          {(!order && selectedEventId) && <div className="border-t border-border/40" />}
+
+          {/* ============== ETAPA 3: VIAGENS ============== */}
+          {selectedEventId && availableTrips.length > 0 && canLinkTrips && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                  {order ? "2" : "3"}
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Viagens</h3>
                   <p className="text-xs text-muted-foreground">
-                    Selecione as viagens associadas a esta ordem (opcional)
+                    Selecione as viagens associadas (opcional)
                   </p>
                 </div>
+                <span className="ml-auto text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                  {selectedTripIds.length} de {availableTrips.length} selecionadas
+                </span>
+              </div>
 
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {availableTrips.map((trip, index) => (
-                    <Card
-                      key={trip.id}
-                      className={`cursor-pointer transition-colors border ${
-                        selectedTripIds.includes(trip.id)
-                          ? "border-primary/40 bg-primary/5"
-                          : "border-border/60 hover:bg-muted/50"
-                      }`}
-                      onClick={() => canEdit && toggleTripSelection(trip.id)}
-                      data-testid={`trip-item-${trip.id}`}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            id={`trip-${trip.id}`}
-                            checked={selectedTripIds.includes(trip.id)}
-                            onCheckedChange={() => canEdit && toggleTripSelection(trip.id)}
-                            disabled={!canEdit}
-                            data-testid={`checkbox-trip-${trip.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="font-medium text-sm">{trip.description || 'Sem descrição'}</span>
-                              <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {trip.loadingLocation || 'Local não definido'}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {trip.scheduledStart ? format(new Date(trip.scheduledStart), "dd MMM, HH:mm") : "N/A"}
-                              </span>
-                            </div>
+              <div className="space-y-2 max-h-[180px] overflow-y-auto">
+                {availableTrips.map((trip, index) => (
+                  <Card
+                    key={trip.id}
+                    className={`cursor-pointer transition-colors border ${
+                      selectedTripIds.includes(trip.id)
+                        ? "border-primary/40 bg-primary/5"
+                        : "border-border/60 hover:bg-muted/50"
+                    }`}
+                    onClick={() => canEdit && toggleTripSelection(trip.id)}
+                    data-testid={`trip-item-${trip.id}`}
+                    role="button"
+                    aria-pressed={selectedTripIds.includes(trip.id)}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        canEdit && toggleTripSelection(trip.id);
+                      }
+                    }}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          id={`trip-${trip.id}`}
+                          checked={selectedTripIds.includes(trip.id)}
+                          onCheckedChange={() => canEdit && toggleTripSelection(trip.id)}
+                          disabled={!canEdit}
+                          data-testid={`checkbox-trip-${trip.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Selecionar viagem ${trip.description || trip.id}`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-medium text-sm truncate">
+                              {trip.description || 'Sem descrição'}
+                            </span>
+                            <span className="text-xs font-mono text-muted-foreground shrink-0">#{index + 1}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {trip.loadingLocation || 'Local não definido'}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {trip.scheduledStart ? format(new Date(trip.scheduledStart), "dd MMM, HH:mm") : "N/A"}
+                            </span>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Separador */}
+          {(selectedEventId && availableTrips.length > 0 && canLinkTrips) && <div className="border-t border-border/40" />}
+
+          {/* ============== RESUMO FINAL ============== */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                <Check className="h-3.5 w-3.5" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">Resumo</h3>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-xs text-muted-foreground block">Evento</span>
+                  <span className="font-medium text-foreground">
+                    {selectedEvent?.name || <span className="text-muted-foreground">-</span>}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Número</span>
+                  <span className="font-medium text-foreground">
+                    {formData.orderNumber || <span className="text-muted-foreground">-</span>}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Período</span>
+                  <span className="font-medium text-foreground">
+                    {formData.plannedStartTime && formData.plannedEndTime ? (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                        {format(new Date(formData.plannedStartTime), "dd MMM HH:mm", { locale: ptBR })} -
+                        {format(new Date(formData.plannedEndTime), "dd MMM HH:mm", { locale: ptBR })}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Criado por</span>
+                  <span className="font-medium text-foreground">{formData.createdBy || "-"}</span>
                 </div>
               </div>
-            )}
-          </form>
+
+              {!order && (
+                <div className="border-t border-border/40 pt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Requisições</span>
+                    <span className="font-medium text-foreground">
+                      {selectedRequestIds.length > 0 ? (
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3 w-3 text-muted-foreground" />
+                          {selectedRequestIds.length} selecionada{selectedRequestIds.length !== 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Viagens</span>
+                    <span className="font-medium text-foreground">
+                      {selectedTripIds.length > 0 ? (
+                        <span className="flex items-center gap-1">
+                          <Truck className="h-3 w-3 text-muted-foreground" />
+                          {selectedTripIds.length} selecionada{selectedTripIds.length !== 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Nenhuma (opcional)</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {formData.notes && (
+                <div className="border-t border-border/40 pt-3">
+                  <span className="text-xs text-muted-foreground block">Observações</span>
+                  <span className="text-sm text-foreground">{formData.notes}</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
-        <DialogFooter className="p-6 pt-4 border-t border-border/40 bg-muted/20 flex items-center gap-3">
+        {/* Footer - fixo */}
+        <DialogFooter className="p-5 pt-4 border-t border-border/40 bg-muted/20 flex items-center gap-3 flex-shrink-0">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
             data-testid="button-cancel"
-            className="shadow-sm"
           >
             Cancelar
           </Button>
           <Button
             type="submit"
             onClick={handleSubmit}
-            disabled={isLoading || !canEdit}
+            disabled={isLoading || !canEdit || !isCreateValid}
             data-testid="button-submit"
-            className="shadow-sm"
           >
             {isLoading ? (
               <span className="inline-flex items-center gap-2">
@@ -566,12 +790,12 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
               </span>
             ) : order ? (
               <span className="inline-flex items-center gap-2">
-                <CheckIcon className="h-4 w-4" />
+                <Check className="h-4 w-4" />
                 Atualizar Ordem
               </span>
             ) : (
               <span className="inline-flex items-center gap-2">
-                <PlusIcon className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 Criar Ordem
               </span>
             )}
@@ -579,21 +803,5 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5"/>
-    </svg>
-  );
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14"/><path d="M12 5v14"/>
-    </svg>
   );
 }
