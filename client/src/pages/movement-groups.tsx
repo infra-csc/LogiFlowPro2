@@ -16,6 +16,9 @@ import { insertMovementGroupSchema, type MovementGroup, type InsertMovementGroup
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
+import { Layers } from "lucide-react";
 
 const formSchema = insertMovementGroupSchema.extend({
   id: z.string().optional(),
@@ -173,19 +176,13 @@ export default function MovementGroupsPage() {
       </PageHeader>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-6 w-32 bg-muted rounded" />
-                <div className="h-4 w-48 bg-muted rounded" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-20 bg-muted rounded" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <PageLoading message="Carregando grupos..." />
+      ) : sortedGroups.length === 0 ? (
+        <EmptyState
+          icon={Layers}
+          title="Nenhum grupo encontrado"
+          description="Crie um grupo para organizar os tipos de movimentação."
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sortedGroups.map((group) => (
@@ -213,20 +210,18 @@ export default function MovementGroupsPage() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7"
                       onClick={() => handleEdit(group)}
                       data-testid={`button-edit-${group.id}`}
                     >
-                      <Pencil className="h-3 w-3" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7"
                       onClick={() => handleDelete(group.id)}
                       data-testid={`button-delete-${group.id}`}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -259,7 +254,7 @@ export default function MovementGroupsPage() {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-group-form">
+        <DialogContent className="max-w-2xl border-border/60" data-testid="dialog-group-form">
           <DialogHeader>
             <DialogTitle>
               {editingGroup ? "Editar Grupo" : "Novo Grupo"}

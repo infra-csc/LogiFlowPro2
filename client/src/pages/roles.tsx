@@ -33,13 +33,12 @@ import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Shield, Settings } from "lucide-react";
+import { Plus, Shield, Settings, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 
 const roleSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -173,67 +172,65 @@ export default function RolesPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Todos os papéis cadastrados no sistema
           </p>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center">
-                    <PageLoading message="Carregando papéis..." />
-                  </TableCell>
-                </TableRow>
-              ) : roles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    Nenhum papel encontrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                roles.map((role) => (
-                  <TableRow key={role.id} data-testid={`row-role-${role.id}`}>
-                    <TableCell className="font-medium">{role.name}</TableCell>
-                    <TableCell>{role.description || "-"}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedRole(role);
-                            setIsPermissionsDialogOpen(true);
-                          }}
-                          data-testid={`button-manage-permissions-${role.id}`}
-                        >
-                          <Settings className="mr-2 h-3 w-3" />
-                          Permissões
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(role)}
-                          data-testid={`button-delete-role-${role.id}`}
-                        >
-                          Excluir
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+
+          {isLoading ? (
+            <PageLoading message="Carregando papéis..." />
+          ) : roles.length === 0 ? (
+            <EmptyState
+              icon={Shield}
+              title="Nenhum papel encontrado"
+              description="Crie um papel para começar a gerenciar permissões do sistema."
+            />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {roles.map((role) => (
+                <div
+                  key={role.id}
+                  className="flex items-center justify-between rounded-lg border border-border/60 p-3 hover-elevate"
+                  data-testid={`row-role-${role.id}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm" data-testid={`text-name-${role.id}`}>
+                      {role.name}
+                    </p>
+                    {role.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {role.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1 ml-3 flex-shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedRole(role);
+                        setIsPermissionsDialogOpen(true);
+                      }}
+                      data-testid={`button-manage-permissions-${role.id}`}
+                    >
+                      <Settings className="mr-1 h-3 w-3" />
+                      Permissões
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(role)}
+                      data-testid={`button-delete-role-${role.id}`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Create Role Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="border-border/60">
           <DialogHeader>
             <DialogTitle>Novo Papel</DialogTitle>
             <DialogDescription>
@@ -331,7 +328,6 @@ function RolePermissionsDialog({
     enabled: isOpen,
   });
 
-  // Local state to track changes before saving
   const [localChanges, setLocalChanges] = useState<Record<string, {
     canView: boolean;
     canCreate: boolean;
@@ -339,7 +335,6 @@ function RolePermissionsDialog({
     canDelete: boolean;
   }>>({});
 
-  // Reset local changes when modal opens or rolePermissions change
   useEffect(() => {
     if (isOpen && rolePermissions.length > 0) {
       const initial: typeof localChanges = {};
@@ -357,7 +352,6 @@ function RolePermissionsDialog({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Batch all updates together
       const updates = await Promise.all(
         permissions.map(async (permission) => {
           const localValue = localChanges[permission.id];
@@ -366,11 +360,9 @@ function RolePermissionsDialog({
           const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permission.id);
 
           if (existing) {
-            // Update existing
             const res = await apiRequest("PATCH", `/api/role-permissions/${existing.id}`, localValue);
             return await res.json();
           } else {
-            // Create new
             const res = await apiRequest("POST", `/api/roles/${role.id}/permissions`, {
               permissionId: permission.id,
               ...localValue,
@@ -421,25 +413,21 @@ function RolePermissionsDialog({
     permissionId: string,
     field: "canView" | "canCreate" | "canEdit" | "canDelete"
   ): boolean => {
-    // Check local changes first, then fall back to server data
     const local = localChanges[permissionId];
     if (local) return local[field];
-    
     const existing = rolePermissions.find((rp: RolePermission) => rp.permissionId === permissionId);
     return existing ? existing[field] : false;
   };
 
-  // Check if all permissions have a specific field enabled
   const areAllChecked = (field: "canView" | "canCreate" | "canEdit" | "canDelete"): boolean => {
     if (permissions.length === 0) return false;
     return permissions.every((permission) => getPermissionValue(permission.id, field));
   };
 
-  // Toggle all permissions for a specific field
   const handleToggleAll = (field: "canView" | "canCreate" | "canEdit" | "canDelete") => {
     const newValue = !areAllChecked(field);
     const updates: typeof localChanges = {};
-    
+
     permissions.forEach((permission) => {
       const current = localChanges[permission.id] || {
         canView: false,
@@ -447,11 +435,7 @@ function RolePermissionsDialog({
         canEdit: false,
         canDelete: false,
       };
-
-      updates[permission.id] = {
-        ...current,
-        [field]: newValue,
-      };
+      updates[permission.id] = { ...current, [field]: newValue };
     });
 
     setLocalChanges(prev => ({ ...prev, ...updates }));
@@ -459,9 +443,9 @@ function RolePermissionsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl border-border/60">
         <DialogHeader>
-          <DialogTitle>Gerenciar Permissões - {role.name}</DialogTitle>
+          <DialogTitle>Gerenciar Permissões — {role.name}</DialogTitle>
           <DialogDescription>
             Configure as permissões para cada página do sistema
           </DialogDescription>

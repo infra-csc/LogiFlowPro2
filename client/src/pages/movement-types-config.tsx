@@ -19,7 +19,10 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CardContent } from "@/components/ui/card";
 
 const formSchema = insertMovementTypeConfigSchema.extend({
   id: z.string().optional(),
@@ -262,7 +265,8 @@ export default function MovementTypesConfigPage() {
         </Button>
       </PageHeader>
 
-      <Card className="p-4 mb-4 border-border/60">
+      <Card className="mb-4 border-border/60">
+        <CardContent className="p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -302,8 +306,26 @@ export default function MovementTypesConfigPage() {
             </SelectContent>
           </Select>
         </div>
+        </CardContent>
       </Card>
 
+      {isLoading ? (
+        <Card className="border-border/60">
+          <CardContent className="p-8">
+            <PageLoading message="Carregando tipos de movimentação..." />
+          </CardContent>
+        </Card>
+      ) : filteredTypes.length === 0 ? (
+        <Card className="border-border/60">
+          <CardContent className="p-8">
+            <EmptyState
+              icon={Filter}
+              title="Nenhum tipo encontrado"
+              description="Crie um tipo de movimentação ou ajuste os filtros."
+            />
+          </CardContent>
+        </Card>
+      ) : (
       <Card className="border-border/60">
         <Table>
           <TableHeader>
@@ -321,87 +343,72 @@ export default function MovementTypesConfigPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                  Carregando...
-                </TableCell>
-              </TableRow>
-            ) : filteredTypes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                  Nenhum tipo encontrado
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredTypes.map((type) => {
-                const group = groupMap.get(type.groupId);
-                return (
-                  <TableRow key={type.id} data-testid={`row-type-${type.id}`}>
-                    <TableCell className="font-mono text-sm" data-testid={`text-code-${type.id}`}>
-                      {type.code}
-                    </TableCell>
-                    <TableCell data-testid={`text-name-${type.id}`}>{type.name}</TableCell>
-                    <TableCell>
-                      {group && (
-                        <div className="flex items-center gap-2">
-                          <span>{group.icon}</span>
-                          <span className="text-sm">{group.name}</span>
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>{getNatureBadge(type.nature)}</TableCell>
-                    <TableCell className="text-center">
-                      {type.affectsPhysicalInventory ? "✓" : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {type.affectsOperationalInventory ? "✓" : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {(type as any).affectsPatrimonialInventory ? "✓" : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {type.requiresApproval ? "✓" : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {type.active ? (
-                        <Badge variant="secondary">Ativo</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => handleEdit(type)}
-                          data-testid={`button-edit-${type.id}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => handleDelete(type.id)}
-                          data-testid={`button-delete-${type.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+            {filteredTypes.map((type) => {
+              const group = groupMap.get(type.groupId);
+              return (
+                <TableRow key={type.id} data-testid={`row-type-${type.id}`}>
+                  <TableCell className="font-mono text-sm" data-testid={`text-code-${type.id}`}>
+                    {type.code}
+                  </TableCell>
+                  <TableCell data-testid={`text-name-${type.id}`}>{type.name}</TableCell>
+                  <TableCell>
+                    {group && (
+                      <div className="flex items-center gap-2">
+                        <span>{group.icon}</span>
+                        <span className="text-sm">{group.name}</span>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
+                    )}
+                  </TableCell>
+                  <TableCell>{getNatureBadge(type.nature)}</TableCell>
+                  <TableCell className="text-center">
+                    {type.affectsPhysicalInventory ? "✓" : "—"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {type.affectsOperationalInventory ? "✓" : "—"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {(type as any).affectsPatrimonialInventory ? "✓" : "—"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {type.requiresApproval ? "✓" : "—"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {type.active ? (
+                      <Badge variant="secondary">Ativo</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEdit(type)}
+                        data-testid={`button-edit-${type.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDelete(type.id)}
+                        data-testid={`button-delete-${type.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </Card>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-type-form">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-border/60" data-testid="dialog-type-form">
           <DialogHeader>
             <DialogTitle>
               {editingType ? "Editar Tipo" : "Novo Tipo"}

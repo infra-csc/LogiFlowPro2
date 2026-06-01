@@ -188,7 +188,7 @@ export default function NotificationSettingsPage() {
       </Card>
 
       <Card className="bg-muted/50 border-border/60">
-        <CardContent className="pt-6">
+        <CardContent className="p-4">
           <p className="text-sm text-muted-foreground">
             <strong>Nota:</strong> As notificações por email estão em preparação e serão ativadas em breve.
             Por enquanto, você pode configurar suas preferências para quando a funcionalidade estiver disponível.
