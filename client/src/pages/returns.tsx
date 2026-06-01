@@ -120,6 +120,9 @@ export default function Returns() {
                       {hasDiscrepancy && !hasDamage && !hasLoss && (
                         <Badge variant="outline" className="text-muted-foreground">Discrepância</Badge>
                       )}
+                      {!hasDamage && !hasLoss && !hasDiscrepancy && (
+                        <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">OK</Badge>
+                      )}
                     </div>
                   </div>
                 </CardContent>

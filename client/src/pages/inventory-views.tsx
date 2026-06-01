@@ -369,6 +369,13 @@ function ProductRow({ product }: ProductRowProps) {
               {product.category && (
                 <Badge variant="outline">{product.category}</Badge>
               )}
+              {product.balance < 0 ? (
+                <Badge variant="destructive" className="gap-1">FALTA</Badge>
+              ) : product.balance === 0 ? (
+                <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">CRÍTICO</Badge>
+              ) : (
+                <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">ADEQUADO</Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
           </div>

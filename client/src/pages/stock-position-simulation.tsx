@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Calendar, Download, AlertTriangle, Info, ChevronDown, ChevronRight } from "lucide-react";
+import { Calendar, FileSpreadsheet, AlertTriangle, Info, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import * as XLSX from "xlsx";
 
 interface StockPositionFilters {
   startDate: string;
@@ -144,6 +145,43 @@ export default function StockPositionSimulation() {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const exportToExcel = () => {
+    if (!simulationResult) return;
+    const wb = XLSX.utils.book_new();
+
+    const summaryData = [
+      ["RELATÓRIO DE POSIÇÃO DE ESTOQUE"],
+      [""],
+      ["Gerado em:", new Date(simulationResult.generatedAt).toLocaleString("pt-BR")],
+      [""],
+      ["RESUMO"],
+      ["Total de Produtos:", simulationResult.summary.totalProducts],
+      ["Disponíveis:", simulationResult.summary.availableProducts],
+      ["Parcialmente Alocados:", simulationResult.summary.partialProducts],
+      ["Totalmente Alocados:", simulationResult.summary.fullyAllocatedProducts],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "Resumo");
+
+    const productsData = [
+      ["Código/SKU", "Produto", "Estoque Atual", "Qtd Alocada", "Saldo Disponível", "% Utilização", "Status"],
+    ];
+    simulationResult.products.forEach(p => {
+      productsData.push([
+        p.productSku,
+        p.productName,
+        p.currentStock.toString(),
+        p.allocatedQuantity.toString(),
+        p.availableStock.toString(),
+        `${p.utilization.toFixed(1)}%`,
+        p.status,
+      ]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(productsData), "Posição de Estoque");
+
+    const fileName = `Posicao_Estoque_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   return (
@@ -351,6 +389,20 @@ export default function StockPositionSimulation() {
       {/* Products Table */}
       {simulationResult && simulationResult.products.length > 0 && (
         <Card className="border-border/60">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="font-semibold text-base">Detalhamento por Produto</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToExcel}
+                data-testid="button-export-excel"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Exportar Excel
+              </Button>
+            </div>
+          </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
