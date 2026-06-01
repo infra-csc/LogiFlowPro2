@@ -124,6 +124,325 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard summary — operational control tower aggregation
+  app.get("/api/dashboard/summary", requireAuth, async (req, res) => {
+    try {
+      const now = new Date();
+      const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const in15days = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+      const in3days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+      const [allEvents, allTrips, allProducts, allRequests, allLoadingOrders, allMovements] =
+        await Promise.all([
+          storage.getEvents(),
+          storage.getTrips(),
+          storage.getProducts(),
+          storage.getMaterialRequests(),
+          storage.getLoadingOrders(),
+          storage.getMovements(),
+        ]);
+
+      // ── KPIs ──
+      const upcomingEvents = allEvents.filter((e) => {
+        if (!e.eventDate) return false;
+        const d = new Date(e.eventDate);
+        return d >= now && d <= in15days;
+      }).length;
+
+      const pendingRequests = allRequests.filter(
+        (r) => r.status === "pending_approval"
+      ).length;
+
+      const actionableOrders = allLoadingOrders.filter((lo) =>
+        ["draft", "ready", "approved", "in_progress"].includes(lo.status)
+      ).length;
+
+      const activeMovements = allMovements.filter((m) =>
+        ["in_progress", "paused"].includes(m.status)
+      ).length;
+
+      const lowStockItems = allProducts.filter(
+        (p) =>
+          p.minimumStock != null &&
+          p.currentStock != null &&
+          p.currentStock < p.minimumStock
+      ).length;
+
+      const upcomingTrips = allTrips.filter((t) => {
+        if (!t.loadingStartTime) return false;
+        const d = new Date(t.loadingStartTime);
+        return (
+          d >= now &&
+          d <= in7days &&
+          ["planned", "loading"].includes(t.status)
+        );
+      }).length;
+
+      // ── Alerts ──
+      const alerts: any[] = [];
+
+      const zeroStock = allProducts.filter(
+        (p) =>
+          (p.currentStock ?? 0) === 0 &&
+          p.minimumStock != null &&
+          p.minimumStock > 0
+      );
+      if (zeroStock.length > 0) {
+        alerts.push({
+          id: "zero-stock",
+          type: "stock",
+          severity: "critical",
+          message: `${zeroStock.length} produto${zeroStock.length > 1 ? "s" : ""} com estoque zerado`,
+          href: "/stock-simulation",
+        });
+      }
+
+      const lowStockList = allProducts.filter(
+        (p) =>
+          p.minimumStock != null &&
+          p.currentStock != null &&
+          p.currentStock > 0 &&
+          p.currentStock < p.minimumStock
+      );
+      if (lowStockList.length > 0) {
+        alerts.push({
+          id: "low-stock",
+          type: "stock",
+          severity: "warning",
+          message: `${lowStockList.length} produto${lowStockList.length > 1 ? "s" : ""} abaixo do estoque mínimo`,
+          href: "/stock-simulation",
+        });
+      }
+
+      const readyOrders = allLoadingOrders.filter((lo) => lo.status === "ready");
+      if (readyOrders.length > 0) {
+        alerts.push({
+          id: "ready-orders",
+          type: "loading",
+          severity: "info",
+          message: `${readyOrders.length} ordem${readyOrders.length > 1 ? "ns" : ""} de carregamento aguardando aprovação`,
+          href: "/loading-orders",
+        });
+      }
+
+      const pausedMovements = allMovements.filter((m) => m.status === "paused");
+      if (pausedMovements.length > 0) {
+        alerts.push({
+          id: "paused-movements",
+          type: "movement",
+          severity: "warning",
+          message: `${pausedMovements.length} movimentação${pausedMovements.length > 1 ? "ões" : ""} pausada${pausedMovements.length > 1 ? "s" : ""}`,
+          href: "/movements",
+        });
+      }
+
+      const tripsNoDriver = allTrips.filter(
+        (t) => !t.driverId && ["planned", "loading"].includes(t.status)
+      );
+      if (tripsNoDriver.length > 0) {
+        alerts.push({
+          id: "trips-no-driver",
+          type: "trips",
+          severity: "warning",
+          message: `${tripsNoDriver.length} viagem${tripsNoDriver.length > 1 ? "ns" : ""} planejada${tripsNoDriver.length > 1 ? "s" : ""} sem motorista`,
+          href: "/trips",
+        });
+      }
+
+      const urgentEvents = allEvents.filter((e) => {
+        if (!e.eventDate) return false;
+        const d = new Date(e.eventDate);
+        return d >= now && d <= in3days;
+      });
+      for (const ev of urgentEvents.slice(0, 3)) {
+        const daysLeft = Math.max(
+          1,
+          Math.ceil(
+            (new Date(ev.eventDate!).getTime() - now.getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        );
+        alerts.push({
+          id: `event-urgent-${ev.id}`,
+          type: "event",
+          severity: daysLeft <= 1 ? "critical" : "warning",
+          message: `${ev.name} ocorre em ${daysLeft} dia${daysLeft !== 1 ? "s" : ""}`,
+          entityName: ev.name,
+          href: "/events",
+        });
+      }
+
+      // ── Pending approvals ──
+      const pendingApprovals = [
+        ...(allRequests as any[])
+          .filter((r) => r.status === "pending_approval")
+          .slice(0, 5)
+          .map((r) => ({
+            id: r.id,
+            type: "request" as const,
+            name: r.area ? `${r.area}` : `Requisição #${String(r.id).slice(0, 6)}`,
+            eventName: r.event?.name ?? undefined,
+            requesterName: r.requestedByUser?.name ?? undefined,
+            createdAt: r.createdAt,
+            href: `/approvals`,
+          })),
+        ...(allMovements as any[])
+          .filter((m) => m.status === "pending_approval")
+          .slice(0, 3)
+          .map((m) => ({
+            id: m.id,
+            type: "movement" as const,
+            name: m.name || `Movimentação #${String(m.id).slice(0, 6)}`,
+            eventName: m.events?.[0]?.name ?? undefined,
+            requesterName: undefined,
+            createdAt: m.createdAt,
+            href: `/movements/${m.id}`,
+          })),
+      ].slice(0, 6);
+
+      // ── Active operations ──
+      const activeMovementsList = (allMovements as any[])
+        .filter((m) => ["in_progress", "paused"].includes(m.status))
+        .slice(0, 5)
+        .map((m) => ({
+          id: m.id,
+          name: m.name || `Movimentação #${String(m.id).slice(0, 6)}`,
+          status: m.status,
+          eventName: m.events?.[0]?.name ?? undefined,
+          href: `/movements/${m.id}`,
+        }));
+
+      const activeLoadingOrdersList = (allLoadingOrders as any[])
+        .filter((lo) =>
+          ["in_progress", "approved", "ready"].includes(lo.status)
+        )
+        .slice(0, 5)
+        .map((lo) => ({
+          id: lo.id,
+          name: lo.orderNumber || `Ordem #${String(lo.id).slice(0, 6)}`,
+          status: lo.status,
+          eventName: lo.event?.name ?? undefined,
+          loadedItems: lo.loadedItems ?? 0,
+          totalItems: lo.totalItems ?? 0,
+          href: `/loading-orders/${lo.id}`,
+        }));
+
+      const inProgressTrips = (allTrips as any[])
+        .filter((t) =>
+          ["loading", "loaded", "in_transit", "at_destination", "unloading"].includes(
+            t.status
+          )
+        )
+        .concat(
+          (allTrips as any[]).filter(
+            (t) =>
+              t.status === "planned" &&
+              t.loadingStartTime &&
+              new Date(t.loadingStartTime) <= in7days
+          )
+        )
+        .slice(0, 5)
+        .map((t) => ({
+          id: t.id,
+          description: t.description ?? "",
+          status: t.status,
+          eventName: t.event?.name ?? undefined,
+          driverName: t.driver?.name ?? undefined,
+          vehicleTypeName: t.vehicleType?.name ?? undefined,
+          loadingStartTime: t.loadingStartTime ?? undefined,
+          href: "/trips",
+        }));
+
+      // ── Upcoming schedule (next 7 days) ──
+      const schedule: any[] = [];
+      for (const ev of allEvents) {
+        if (ev.eventDate) {
+          const d = new Date(ev.eventDate);
+          if (d >= now && d <= in7days) {
+            schedule.push({
+              date: ev.eventDate,
+              type: "event",
+              name: ev.name,
+              status: ev.status,
+              href: "/events",
+            });
+          }
+        }
+      }
+      for (const t of allTrips as any[]) {
+        if (t.loadingStartTime) {
+          const d = new Date(t.loadingStartTime);
+          if (d >= now && d <= in7days) {
+            schedule.push({
+              date: t.loadingStartTime,
+              type: "trip_loading",
+              name: t.description || t.event?.name || "Carregamento",
+              status: t.status,
+              href: "/trips",
+            });
+          }
+        }
+        if (t.unloadingStartTime) {
+          const d = new Date(t.unloadingStartTime);
+          if (d >= now && d <= in7days) {
+            schedule.push({
+              date: t.unloadingStartTime,
+              type: "trip_unloading",
+              name: t.description || t.event?.name || "Descarregamento",
+              status: t.status,
+              href: "/trips",
+            });
+          }
+        }
+      }
+      schedule.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
+      // ── Critical stock ──
+      const criticalStock = allProducts
+        .filter(
+          (p) =>
+            p.minimumStock != null &&
+            p.currentStock != null &&
+            p.currentStock < p.minimumStock
+        )
+        .slice(0, 8)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          sku: p.sku,
+          currentStock: p.currentStock ?? 0,
+          minimumStock: p.minimumStock ?? 0,
+          unit: p.unit || "un",
+          href: "/products",
+        }));
+
+      res.json({
+        kpis: {
+          upcomingEvents,
+          pendingRequests,
+          actionableOrders,
+          activeMovements,
+          lowStockItems,
+          upcomingTrips,
+        },
+        alerts,
+        pendingApprovals,
+        activeOperations: {
+          movements: activeMovementsList,
+          loadingOrders: activeLoadingOrdersList,
+          trips: inProgressTrips,
+        },
+        upcomingSchedule: schedule.slice(0, 20),
+        criticalStock,
+      });
+    } catch (error) {
+      console.error("Dashboard summary error:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard summary" });
+    }
+  });
+
   // Events
   app.get("/api/events", requireAuth, async (req, res) => {
     try {
