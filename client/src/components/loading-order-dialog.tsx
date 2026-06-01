@@ -587,7 +587,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                           onClick={(e) => e.stopPropagation()}
                           aria-label={`Selecionar requisição ${request.area}`}
                         />
-                        <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
+                        <span className="text-xs font-mono text-muted-foreground">#{request.id.slice(0, 8).toUpperCase()}</span>
                         <span className="text-sm font-medium truncate">{request.area}</span>
                         <span className="text-xs text-muted-foreground text-right flex justify-end">
                           <StatusBadge status={request.status} />
@@ -658,7 +658,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                             <span className="font-medium text-sm truncate">
                               {trip.description || 'Sem descrição'}
                             </span>
-                            <span className="text-xs font-mono text-muted-foreground shrink-0">#{index + 1}</span>
+                            <span className="text-xs font-mono text-muted-foreground shrink-0">#{trip.id.slice(0, 8).toUpperCase()}</span>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-1">
