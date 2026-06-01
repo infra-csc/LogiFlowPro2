@@ -90,6 +90,8 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
     (trip) => selectedEventId && trip.eventId === selectedEventId
   ) || [];
 
+  const userName = user?.name || "";
+
   useEffect(() => {
     if (open && order) {
       setFormData({
@@ -98,7 +100,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
         plannedStartTime: order.plannedStartTime ? format(new Date(order.plannedStartTime), "yyyy-MM-dd'T'HH:mm") : "",
         plannedEndTime: order.plannedEndTime ? format(new Date(order.plannedEndTime), "yyyy-MM-dd'T'HH:mm") : "",
         status: order.status || "draft",
-        createdBy: order.createdBy || user?.name || "",
+        createdBy: order.createdBy || userName,
         notes: order.notes || "",
       });
       setSelectedEventId(order.eventId || "");
@@ -113,14 +115,14 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
         plannedStartTime: "",
         plannedEndTime: "",
         status: "draft",
-        createdBy: user?.name || "",
+        createdBy: userName,
         notes: "",
       });
       setSelectedRequestIds([]);
       setSelectedTripIds([]);
       setSelectedEventId("");
     }
-  }, [open, order, user, linkedTrips]);
+  }, [open, order, userName, linkedTrips]);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertLoadingOrder & { requestIds: string[]; tripIds: string[] }) => {
