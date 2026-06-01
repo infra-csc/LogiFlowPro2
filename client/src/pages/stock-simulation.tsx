@@ -306,7 +306,7 @@ export default function StockSimulation() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Filters Panel */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 border-border/60">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Filter className="w-5 h-5" />
@@ -426,25 +426,25 @@ export default function StockSimulation() {
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-4 gap-4">
-                <Card>
+                <Card className="border-border/60">
                   <CardHeader className="pb-3">
                     <CardDescription>Total Analisado</CardDescription>
                     <CardTitle className="text-3xl">{simulation.summary?.totalProducts || 0}</CardTitle>
                   </CardHeader>
                 </Card>
-                <Card className="border-red-200 dark:border-red-900">
+                <Card className="border-red-200/60 dark:border-red-900/60">
                   <CardHeader className="pb-3">
                     <CardDescription>Em Falta</CardDescription>
                     <CardTitle className="text-3xl text-red-600">{simulation.summary?.productsShortage || 0}</CardTitle>
                   </CardHeader>
                 </Card>
-                <Card className="border-orange-200 dark:border-orange-900">
+                <Card className="border-orange-200/60 dark:border-orange-900/60">
                   <CardHeader className="pb-3">
                     <CardDescription>Crítico</CardDescription>
                     <CardTitle className="text-3xl text-orange-600">{simulation.summary?.productsCritical || 0}</CardTitle>
                   </CardHeader>
                 </Card>
-                <Card className="border-green-200 dark:border-green-900">
+                <Card className="border-green-200/60 dark:border-green-900/60">
                   <CardHeader className="pb-3">
                     <CardDescription>Adequado</CardDescription>
                     <CardTitle className="text-3xl text-green-600">{simulation.summary?.productsAdequate || 0}</CardTitle>
@@ -454,7 +454,7 @@ export default function StockSimulation() {
 
               {/* Considered Requests */}
               {simulation.consideredRequests && simulation.consideredRequests.length > 0 && (
-                <Card>
+                <Card className="border-border/60">
                   <CardHeader>
                     <CardTitle className="text-lg">Requisições Consideradas</CardTitle>
                     <CardDescription>
@@ -479,7 +479,7 @@ export default function StockSimulation() {
               )}
 
               {/* Report Details */}
-              <Card>
+              <Card className="border-border/60">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -653,7 +653,7 @@ export default function StockSimulation() {
           )}
 
           {!simulation && (
-            <Card>
+            <Card className="border-border/60">
               <CardContent className="py-12 text-center text-muted-foreground">
                 <BarChart3 className="w-16 h-16 mx-auto mb-4 opacity-30" />
                 <p>Selecione os eventos e clique em "Simular Estoque"</p>

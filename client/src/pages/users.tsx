@@ -289,7 +289,7 @@ export default function UsersPage() {
         </div>
       </PageHeader>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="font-semibold text-base mb-1">Lista de Usuários</div>
           <p className="text-sm text-muted-foreground mb-4">
@@ -393,7 +393,7 @@ export default function UsersPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                                className="text-green-600"
                                 onClick={() => handleApprove(user)}
                                 data-testid={`button-approve-${user.id}`}
                               >
@@ -403,7 +403,7 @@ export default function UsersPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                className="text-red-600"
                                 onClick={() => handleReject(user)}
                                 data-testid={`button-reject-${user.id}`}
                               >

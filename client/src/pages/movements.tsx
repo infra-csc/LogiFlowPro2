@@ -100,7 +100,7 @@ function StatCounter({
       className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-colors ${
         active
           ? "bg-primary/10 border-primary/30"
-          : "bg-card border-border/60 hover:bg-muted/50"
+          : "bg-card border-border/60"
       } ${onClick ? "cursor-pointer" : "cursor-default"}`}
     >
       <div className={`h-2 w-2 rounded-full ${colorClass || "bg-muted-foreground"}`} />
@@ -432,7 +432,7 @@ export default function Movements() {
             <Badge
               key={idx}
               variant="secondary"
-              className="text-xs font-normal cursor-pointer hover:bg-muted"
+              className="text-xs font-normal cursor-pointer"
               onClick={chip.onClear}
               data-testid={`filter-chip-${idx}`}
             >

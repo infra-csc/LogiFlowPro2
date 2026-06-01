@@ -74,7 +74,7 @@ export default function NotificationSettingsPage() {
         description="Gerencie como você deseja receber notificações"
       />
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center gap-2 font-semibold text-base">
             <Bell className="h-5 w-5" />
@@ -87,7 +87,7 @@ export default function NotificationSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center gap-2 font-semibold text-base">
             <Mail className="h-5 w-5" />
@@ -187,7 +187,7 @@ export default function NotificationSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="bg-muted/50">
+      <Card className="bg-muted/50 border-border/60">
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">
             <strong>Nota:</strong> As notificações por email estão em preparação e serão ativadas em breve.

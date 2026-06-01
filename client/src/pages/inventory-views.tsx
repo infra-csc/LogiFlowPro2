@@ -97,7 +97,7 @@ export default function InventoryViews() {
       <div className="flex-1 overflow-auto">
         <div className="space-y-6">
           {/* Filter Bar */}
-          <Card>
+          <Card className="border-border/60">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -248,7 +248,7 @@ function InventoryView({ data, isLoading, dimension }: InventoryViewProps) {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <Card key={i}>
+          <Card key={i} className="border-border/60">
             <CardHeader>
               <Skeleton className="h-6 w-48" />
             </CardHeader>
@@ -263,7 +263,7 @@ function InventoryView({ data, isLoading, dimension }: InventoryViewProps) {
 
   if (!data || data.length === 0) {
     return (
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="py-12 text-center">
           <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground">
@@ -292,13 +292,13 @@ function InventoryGroupCard({ group, dimension }: InventoryGroupCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <Card>
+    <Card className="border-border/60">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="p-0 hover:bg-transparent h-auto font-semibold text-xl hover-elevate" data-testid={`group-${group.groupKey}`}>
+                <Button variant="ghost" className="p-0 h-auto font-semibold text-xl hover-elevate" data-testid={`group-${group.groupKey}`}>
                   <div className="flex items-center gap-2">
                     {isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                     {group.groupLabel}

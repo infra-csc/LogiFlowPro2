@@ -59,7 +59,7 @@ export default function Events() {
           {events.map((event) => (
             <Card
               key={event.id}
-              className="hover-elevate cursor-pointer"
+              className="hover-elevate border-border/60 cursor-pointer"
               onClick={() => handleEdit(event)}
               data-testid={`card-event-${event.id}`}
             >

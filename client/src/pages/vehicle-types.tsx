@@ -14,6 +14,9 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { VehicleType } from "@shared/schema";
 import { insertVehicleTypeSchema } from "@shared/schema";
 import type { z } from "zod";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/page-loading";
+import { EmptyState } from "@/components/empty-state";
 
 type InsertVehicleType = z.infer<typeof insertVehicleTypeSchema>;
 
@@ -94,16 +97,10 @@ export default function VehicleTypes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
-            <Truck className="h-6 w-6" />
-            Tipos de Veículos
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gerencie os tipos de veículos e suas capacidades
-          </p>
-        </div>
+      <PageHeader
+        title="Tipos de Veículos"
+        description="Gerencie os tipos de veículos e suas capacidades"
+      >
         <Dialog open={isCreateOpen} onOpenChange={handleCloseDialog}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-vehicle-type">
@@ -359,17 +356,17 @@ export default function VehicleTypes() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+        <PageLoading message="Carregando tipos de veículos..." />
       ) : vehicleTypes && vehicleTypes.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {vehicleTypes.map((type) => (
             <Card 
               key={type.id} 
               data-testid={`vehicle-type-card-${type.id}`}
-              className="hover-elevate cursor-pointer"
+              className="hover-elevate border-border/60 cursor-pointer"
               onClick={() => handleEdit(type)}
             >
               <CardContent className="p-4 space-y-3">
@@ -433,7 +430,7 @@ export default function VehicleTypes() {
           ))}
         </div>
       ) : (
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Truck className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">

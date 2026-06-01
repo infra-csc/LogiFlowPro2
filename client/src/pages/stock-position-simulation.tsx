@@ -154,7 +154,7 @@ export default function StockPositionSimulation() {
       />
 
       {/* Filters */}
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center gap-2 font-semibold text-base">
             <Calendar className="w-5 h-5" />
@@ -308,7 +308,7 @@ export default function StockPositionSimulation() {
 
       {/* Summary */}
       {simulationResult && (
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="pt-6">
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center">
@@ -342,7 +342,7 @@ export default function StockPositionSimulation() {
 
       {/* Products Table */}
       {simulationResult && simulationResult.products.length > 0 && (
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -494,7 +494,7 @@ export default function StockPositionSimulation() {
                                 <h4 className="font-medium mb-3">Ordens que Utilizam este Produto:</h4>
                                 <div className="space-y-2">
                                   {product.ordersDetails.map((order, idx) => (
-                                    <Card key={idx}>
+                                    <Card key={idx} className="border-border/60">
                                       <CardContent className="p-3">
                                         <div className="flex justify-between items-start">
                                           <div className="space-y-1">
@@ -536,7 +536,7 @@ export default function StockPositionSimulation() {
       )}
 
       {simulationResult && simulationResult.products.length === 0 && (
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">
               Nenhum produto encontrado para os filtros selecionados.

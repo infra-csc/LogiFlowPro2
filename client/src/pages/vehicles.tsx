@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Truck, Edit, Trash2, Ruler, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -460,7 +461,7 @@ export default function Vehicles() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {vehicles?.map((vehicle) => (
-          <Card key={vehicle.id} className="hover-elevate">
+          <Card key={vehicle.id} className="hover-elevate border-border/60">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
@@ -576,13 +577,9 @@ export default function Vehicles() {
                 )}
 
                 <div className="pt-2 border-t border-border/40">
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs ${
-                    vehicle.active
-                      ? "bg-green-500/10 text-green-700 dark:text-green-400"
-                      : "bg-gray-500/10 text-gray-700 dark:text-gray-400"
-                  }`}>
+                  <Badge variant={vehicle.active ? "secondary" : "outline"} className={!vehicle.active ? "text-muted-foreground" : ""}>
                     {vehicle.active ? "Ativo" : "Inativo"}
-                  </span>
+                  </Badge>
                 </div>
               </div>
             </CardContent>

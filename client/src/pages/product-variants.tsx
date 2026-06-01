@@ -53,7 +53,7 @@ export default function ProductVariantsPage() {
         description="Consulta de variantes de produtos (locados, terceiros) vinculadas aos produtos principais"
       />
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent>
           <div className="space-y-4">
             <Input
@@ -73,7 +73,7 @@ export default function ProductVariantsPage() {
                   </p>
                 ) : (
                   variantsByPrincipal.map((group) => (
-                    <Card key={group.principal.id} className="border-2">
+                    <Card key={group.principal.id} className="border-border/60">
                       <CardHeader className="bg-accent/20">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">

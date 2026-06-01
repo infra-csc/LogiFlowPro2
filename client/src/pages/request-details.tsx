@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, Send, Calendar, AlertCircle, Copy, Save, ClipboardList, Package, User, CheckCircle2, XCircle, Clock, Pencil, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
@@ -26,34 +26,8 @@ import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { ActionBar } from "@/components/action-bar";
+import { StatusBadge } from "@/components/status-badge";
 
-// Status strip colors for detail cards
-const statusStripColor: Record<string, string> = {
-  draft: "bg-primary",
-  pending_approval: "bg-chart-5",
-  approved: "bg-chart-4",
-  rejected: "bg-destructive",
-  cutoff_locked: "bg-chart-3",
-};
-
-// Status dot for badge
-const statusDotColor: Record<string, string> = {
-  draft: "bg-primary",
-  pending_approval: "bg-chart-5",
-  approved: "bg-chart-4",
-  rejected: "bg-destructive",
-  cutoff_locked: "bg-chart-3",
-};
-
-const statusLabel: Record<string, string> = {
-  draft: "Rascunho",
-  pending_approval: "Pendente",
-  approved: "Aprovado",
-  rejected: "Rejeitado",
-  cutoff_locked: "Bloqueado",
-};
-
-// Item approval status mapping
 const itemStatusIcon: Record<string, typeof CheckCircle2> = {
   approved: CheckCircle2,
   rejected: XCircle,
@@ -177,11 +151,11 @@ export default function RequestDetails() {
       await apiRequest("DELETE", `/api/requests/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Requisicao excluida", description: "A requisicao foi excluida com sucesso" });
+      toast({ title: "Requisição excluída", description: "A requisição foi excluída com sucesso" });
       navigate("/requests");
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Erro ao excluir", description: "Nao foi possivel excluir a requisicao" });
+      toast({ variant: "destructive", title: "Erro ao excluir", description: "Não foi possível excluir a requisição" });
     },
   });
 
@@ -196,14 +170,14 @@ export default function RequestDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests", id] });
-      toast({ title: "Enviado para aprovacao", description: "A requisicao foi submetida para aprovacao" });
+      toast({ title: "Enviado para aprovação", description: "A requisição foi submetida para aprovação" });
     },
     onError: (error: any) => {
-      let description = "Nao foi possivel submeter a requisicao";
+      let description = "Não foi possível submeter a requisição";
       if (error?.windowStart && error?.windowEnd) {
         const start = new Date(error.windowStart);
         const end = new Date(error.windowEnd);
-        description = `${error.error}\n\nPeriodo permitido: ${start.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })} ate ${end.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`;
+        description = `${error.error}\n\nPeríodo permitido: ${start.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })} até ${end.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`;
       } else if (error?.error) {
         description = error.error;
       }
@@ -221,10 +195,10 @@ export default function RequestDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests", id, "items"] });
-      toast({ title: "Item removido", description: "O item foi removido da requisicao" });
+      toast({ title: "Item removido", description: "O item foi removido da requisição" });
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Erro ao remover", description: "Nao foi possivel remover o item" });
+      toast({ variant: "destructive", title: "Erro ao remover", description: "Não foi possível remover o item" });
     },
   });
 
@@ -234,11 +208,11 @@ export default function RequestDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests", id, "items"] });
-      toast({ title: "Item atualizado", description: "Quantidade e observacoes atualizadas" });
+      toast({ title: "Item atualizado", description: "Quantidade e observações atualizadas" });
       setEditingItemId(null);
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Erro ao atualizar", description: "Nao foi possivel atualizar o item" });
+      toast({ variant: "destructive", title: "Erro ao atualizar", description: "Não foi possível atualizar o item" });
     },
   });
 
@@ -248,10 +222,10 @@ export default function RequestDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests", id] });
-      toast({ title: "Observacoes atualizadas", description: "As observacoes foram salvas com sucesso" });
+      toast({ title: "Observações atualizadas", description: "As observações foram salvas com sucesso" });
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Erro ao salvar", description: "Nao foi possivel salvar as observacoes" });
+      toast({ variant: "destructive", title: "Erro ao salvar", description: "Não foi possível salvar as observações" });
     },
   });
 
@@ -262,15 +236,15 @@ export default function RequestDetails() {
   }, [request]);
 
   if (isLoading) {
-    return <PageLoading message="Carregando requisicao..." />;
+    return <PageLoading message="Carregando requisição..." />;
   }
 
   if (!request) {
     return (
       <EmptyState
         icon={ClipboardList}
-        title="Requisicao nao encontrada"
-        description="A requisicao solicitada nao existe ou voce nao tem acesso."
+        title="Requisição não encontrada"
+        description="A requisição solicitada não existe ou você não tem acesso."
       />
     );
   }
@@ -299,7 +273,7 @@ export default function RequestDetails() {
     const deleteNext = (index: number) => {
       if (index >= ids.length) {
         if (failed === 0) {
-          toast({ title: "Itens excluidos", description: `${completed} item(s) removido(s) com sucesso` });
+          toast({ title: "Itens excluídos", description: `${completed} item(s) removido(s) com sucesso` });
         } else {
           toast({ variant: "destructive", title: "Erro parcial", description: `${completed} removido(s), ${failed} falha(s)` });
         }
@@ -352,10 +326,6 @@ export default function RequestDetails() {
     return new Date(date).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
-  const sLabel = statusLabel[request.status] || request.status;
-  const dotColor = statusDotColor[request.status] || "bg-muted";
-  const stripColor = statusStripColor[request.status] || "bg-muted";
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -386,21 +356,13 @@ export default function RequestDetails() {
         </ActionBar>
       </PageHeader>
 
-      {/* Status badge row */}
-      <div className="flex items-center gap-4">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border"
-          style={{
-            backgroundColor: "hsl(var(--muted) / 0.5)",
-            borderColor: "hsl(var(--border) / 0.5)",
-          }}
-        >
-          <span className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`} />
-          {sLabel}
-        </span>
-        <span className="text-xs text-muted-foreground font-mono tracking-widest">ID: {request.id.slice(0, 8).toUpperCase()}</span>
+      {/* Status + ID row */}
+      <div className="flex items-center gap-3">
+        <StatusBadge status={request.status} />
+        <span className="text-xs text-muted-foreground font-mono tracking-widest">#{request.id.slice(0, 8).toUpperCase()}</span>
       </div>
 
-      {/* Alerta de janela */}
+      {/* Request window alert */}
       {canEdit && requestWindowInfo && !requestWindowInfo.isWithinWindow && (
         <Alert variant="destructive" data-testid="alert-requisition-window">
           <div className="flex items-start gap-2">
@@ -408,16 +370,16 @@ export default function RequestDetails() {
             <AlertDescription className="text-sm">
               {requestWindowInfo.isBeforeWindow && (
                 <span>
-                  <strong>Atencao:</strong> Requisicoes para este evento ainda nao estao permitidas.
+                  <strong>Atenção:</strong> Requisições para este evento ainda não estão permitidas.
                   <br />
-                  <span className="text-xs">Periodo: {requestWindowInfo.start} ate {requestWindowInfo.end}</span>
+                  <span className="text-xs">Período: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
                 </span>
               )}
               {requestWindowInfo.isAfterWindow && (
                 <span>
-                  <strong>Atencao:</strong> O periodo de requisicao para este evento ja foi encerrado.
+                  <strong>Atenção:</strong> O período de requisição para este evento já foi encerrado.
                   <br />
-                  <span className="text-xs">Periodo permitido era: {requestWindowInfo.start} ate {requestWindowInfo.end}</span>
+                  <span className="text-xs">Período permitido era: {requestWindowInfo.start} até {requestWindowInfo.end}</span>
                 </span>
               )}
             </AlertDescription>
@@ -425,73 +387,66 @@ export default function RequestDetails() {
         </Alert>
       )}
 
-      {/* Summary Grid — Glass cards with status strips */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="relative overflow-hidden border-border/60">
-          <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
-          <CardContent className="p-4 pl-5">
+      {/* Summary Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        <Card className="border-border/60">
+          <CardContent className="p-4">
             <p className="text-xs text-muted-foreground font-medium mb-1">Solicitante</p>
-            <p className="font-semibold text-base text-foreground">{request.requestedByUser?.name || "Usuario"}</p>
+            <p className="font-semibold text-base text-foreground">{request.requestedByUser?.name || "Usuário"}</p>
           </CardContent>
         </Card>
-        <Card className="relative overflow-hidden border-border/60">
-          <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
-          <CardContent className="p-4 pl-5">
-            <p className="text-xs text-muted-foreground font-medium mb-1">Status</p>
-            <p className={`font-semibold text-base ${request.status === "rejected" ? "text-destructive" : request.status === "approved" ? "text-chart-4" : "text-foreground"}`}>
-              {sLabel}
-            </p>
+        <Card className="border-border/60">
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground font-medium mb-2">Status</p>
+            <StatusBadge status={request.status} />
           </CardContent>
         </Card>
-        <Card className="relative overflow-hidden border-border/60">
-          <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
-          <CardContent className="p-4 pl-5">
-            <p className="text-xs text-muted-foreground font-medium mb-1">Criacao</p>
+        <Card className="border-border/60">
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground font-medium mb-1">Criação</p>
             <p className="font-semibold text-base text-foreground">{formatDate(request.createdAt)}</p>
           </CardContent>
         </Card>
-        <Card className="relative overflow-hidden border-border/60">
-          <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
-          <CardContent className="p-4 pl-5">
+        <Card className="border-border/60">
+          <CardContent className="p-4">
             <p className="text-xs text-muted-foreground font-medium mb-1">Evento</p>
             <p className="font-semibold text-base text-foreground">{request.event?.name || "—"}</p>
           </CardContent>
         </Card>
         {request.submittedAt && (
-          <Card className="relative overflow-hidden border-border/60">
-            <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
-            <CardContent className="p-4 pl-5">
-              <p className="text-xs text-muted-foreground font-medium mb-1">Submissao</p>
+          <Card className="border-border/60">
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground font-medium mb-1">Submissão</p>
               <p className="font-semibold text-base text-foreground">{formatDate(request.submittedAt)}</p>
             </CardContent>
           </Card>
         )}
         {request.approvedAt && (
-          <Card className="relative overflow-hidden border-border/60">
-            <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripColor}`} />
-            <CardContent className="p-4 pl-5">
-              <p className="text-xs text-muted-foreground font-medium mb-1">{request.status === "rejected" ? "Rejeicao" : "Aprovacao"}</p>
+          <Card className="border-border/60">
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground font-medium mb-1">
+                {request.status === "rejected" ? "Rejeição" : "Aprovação"}
+              </p>
               <p className="font-semibold text-base text-foreground">{formatDate(request.approvedAt)}</p>
             </CardContent>
           </Card>
         )}
       </div>
 
-      {/* Observacoes */}
-      <Card className="relative overflow-hidden border-border/60">
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary" />
-        <CardContent className="p-4 pl-5 space-y-3">
+      {/* Observações */}
+      <Card className="border-border/60">
+        <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            <div className="font-semibold text-base">Observacoes</div>
+            <div className="font-semibold text-base">Observações</div>
           </div>
-          <div className="mt-3 pt-3 border-t border-border/40">
+          <div className="pt-3 border-t border-border/40">
             {canEdit ? (
               <div className="space-y-3">
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Adicione observacoes sobre a requisicao (opcional)"
+                  placeholder="Adicione observações sobre a requisição (opcional)"
                   data-testid="input-edit-notes"
                   rows={3}
                 />
@@ -506,7 +461,7 @@ export default function RequestDetails() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground" data-testid="text-notes">
-                {request.notes || "Nenhuma observacao"}
+                {request.notes || "Nenhuma observação"}
               </p>
             )}
           </div>
@@ -514,7 +469,7 @@ export default function RequestDetails() {
       </Card>
 
       {/* Materiais */}
-      <Card className="border-t-4 border-t-primary border-border/60">
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -523,7 +478,7 @@ export default function RequestDetails() {
                 Materiais Requisitados
               </div>
               {items.length > 0 && (
-                <span className="text-sm font-medium px-3 py-1 bg-muted rounded-full text-foreground">
+                <span className="text-sm font-medium px-2.5 py-0.5 bg-muted rounded-full text-foreground">
                   {items.length} item{items.length > 1 ? "s" : ""}
                 </span>
               )}
@@ -561,12 +516,12 @@ export default function RequestDetails() {
               </div>
             )}
           </div>
-          <div className="mt-3 pt-3 border-t border-border/40">
+          <div className="pt-3 border-t border-border/40">
             {items.length === 0 ? (
               <EmptyState
                 icon={Package}
                 title="Nenhum material adicionado"
-                description={canEdit ? "Clique em \"Adicionar\" para incluir produtos ou kits." : "Esta requisicao nao possui materiais."}
+                description={canEdit ? "Clique em \"Adicionar\" para incluir produtos ou kits." : "Esta requisição não possui materiais."}
                 action={
                   canEdit
                     ? { label: "Adicionar Material", onClick: () => setShowAddItem(true) }
@@ -595,7 +550,7 @@ export default function RequestDetails() {
                             <div className="flex items-center pt-1">
                               <button
                                 onClick={() => toggleItemSelection(item.id)}
-                                className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedItems.has(item.id) ? "bg-primary border-primary" : "border-border hover:border-primary"}`}
+                                className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedItems.has(item.id) ? "bg-primary border-primary" : "border-border"}`}
                                 data-testid={`checkbox-item-${item.id}`}
                               >
                                 {selectedItems.has(item.id) && <Check className="h-3 w-3 text-primary-foreground" />}
@@ -610,7 +565,7 @@ export default function RequestDetails() {
                               {item.kit ? item.kit.name : item.product?.name}
                             </p>
                             <div className="flex items-center gap-3 mt-1">
-                              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                              <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
                                 {item.kit ? "Kit" : item.product?.sku}
                               </span>
                               {!canEdit && item.approvalStatus && (
@@ -724,7 +679,7 @@ export default function RequestDetails() {
                         <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-2">
                           <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                           <div className="text-sm">
-                            <p className="font-medium text-destructive">Motivo da rejeicao:</p>
+                            <p className="font-medium text-destructive">Motivo da rejeição:</p>
                             <p className="text-destructive/90 mt-1">{item.rejectionReason}</p>
                           </div>
                         </div>
@@ -733,7 +688,7 @@ export default function RequestDetails() {
                       {/* Item notes */}
                       {item.notes && (
                         <div className="mt-3 p-3 bg-muted/50 rounded text-sm">
-                          <p className="font-medium text-muted-foreground">Observacoes:</p>
+                          <p className="font-medium text-muted-foreground">Observações:</p>
                           <p className="mt-1" data-testid={`text-item-notes-${item.id}`}>{item.notes}</p>
                         </div>
                       )}
@@ -751,9 +706,9 @@ export default function RequestDetails() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Requisicao</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Requisição</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta requisicao? Esta acao nao pode ser desfeita.
+              Tem certeza que deseja excluir esta requisição? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -785,7 +740,7 @@ export default function RequestDetails() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover Item</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover este item da requisicao? Esta acao nao pode ser desfeita.
+              Tem certeza que deseja remover este item da requisição? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -803,7 +758,7 @@ export default function RequestDetails() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover Itens</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover {selectedItems.size} item(s) da requisicao? Esta acao nao pode ser desfeita.
+              Tem certeza que deseja remover {selectedItems.size} item(s) da requisição? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

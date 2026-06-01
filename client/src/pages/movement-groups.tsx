@@ -191,10 +191,7 @@ export default function MovementGroupsPage() {
           {sortedGroups.map((group) => (
             <Card
               key={group.id}
-              className="hover-elevate relative overflow-hidden"
-              style={{
-                borderLeft: `4px solid ${group.color}`,
-              }}
+              className="hover-elevate border-border/60 relative"
               data-testid={`card-group-${group.id}`}
             >
               <CardHeader className="pb-3">

@@ -167,7 +167,7 @@ export default function RolesPage() {
         </div>
       </PageHeader>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="font-semibold text-base mb-1">Lista de Papéis</div>
           <p className="text-sm text-muted-foreground mb-4">

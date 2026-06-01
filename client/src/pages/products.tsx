@@ -49,12 +49,12 @@ export default function Products() {
     setShowDialog(false);
   };
 
-  const getOwnershipColor = (ownership: string) => {
+  const getOwnershipLabel = (ownership: string) => {
     switch(ownership) {
-      case "owned": return "bg-chart-4 text-white";
-      case "rented": return "bg-chart-5 text-white";
-      case "third_party": return "bg-chart-2 text-white";
-      default: return "bg-muted text-muted-foreground";
+      case "owned": return "Proprietário";
+      case "rented": return "Alugado";
+      case "third_party": return "Terceiro";
+      default: return ownership;
     }
   };
 
@@ -101,7 +101,7 @@ export default function Products() {
           {filteredProducts.map((product) => (
             <Card 
               key={product.id}
-              className={`overflow-hidden ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
+              className={`overflow-hidden border-border/60 ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
               onClick={canWrite ? () => handleEdit(product) : undefined}
               data-testid={`card-product-${product.id}`}
             >
@@ -147,8 +147,8 @@ export default function Products() {
                   )}
 
                   <div className="pt-2">
-                    <Badge className={getOwnershipColor(product.ownership)}>
-                      {product.ownership === "owned" ? "Proprietário" : product.ownership === "rented" ? "Alugado" : "Terceiro"}
+                    <Badge variant="secondary">
+                      {getOwnershipLabel(product.ownership)}
                     </Badge>
                   </div>
                 </div>

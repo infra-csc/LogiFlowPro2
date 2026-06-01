@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, User, CalendarDays, Layers, ClipboardList, CheckCircle2, Clock, XCircle, Lock } from "lucide-react";
+import { Plus, Eye, User, CalendarDays, ClipboardList, CheckCircle2, Clock, XCircle, Lock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -20,26 +20,8 @@ import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar } from "@/components/filter-bar";
+import { StatusBadge } from "@/components/status-badge";
 
-// Status color mapping for left border strips
-const statusStripColor: Record<string, string> = {
-  draft: "border-l-primary",
-  pending_approval: "border-l-chart-5",
-  approved: "border-l-chart-4",
-  rejected: "border-l-destructive",
-  cutoff_locked: "border-l-chart-3",
-};
-
-// Status dot color
-const statusDotColor: Record<string, string> = {
-  draft: "bg-primary",
-  pending_approval: "bg-chart-5",
-  approved: "bg-chart-4",
-  rejected: "bg-destructive",
-  cutoff_locked: "bg-chart-3",
-};
-
-// Status label
 const statusLabel: Record<string, string> = {
   draft: "Rascunho",
   pending_approval: "Pendente",
@@ -48,16 +30,6 @@ const statusLabel: Record<string, string> = {
   cutoff_locked: "Bloqueado",
 };
 
-// Operational status hint
-const statusHint: Record<string, string> = {
-  draft: "Pronta para editar e enviar",
-  pending_approval: "Aguardando decisão do aprovador",
-  approved: "Aprovada — pode gerar ordem de carregamento",
-  rejected: "Rejeitada — revise e reenvie",
-  cutoff_locked: "Bloqueada pelo prazo de corte",
-};
-
-// Status icon for filter chips
 const statusFilterIcon: Record<string, React.ElementType> = {
   draft: Clock,
   pending_approval: Clock,
@@ -101,8 +73,6 @@ export default function Requests() {
     setShowDialog(false);
   };
 
-  // Backend agora filtra por usuario; o front filtra apenas por status/evento
-  // Ordenado por mais recente primeiro
   const filteredRequests = useMemo(() => {
     if (!requests) return [];
     const filtered = requests.filter((request) => {
@@ -113,7 +83,6 @@ export default function Requests() {
     return [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [requests, statusFilter, eventFilter]);
 
-  // Stats counts
   const stats = useMemo(() => {
     if (!requests) return { draft: 0, pending: 0, approved: 0, rejected: 0, total: 0 };
     return {
@@ -163,7 +132,6 @@ export default function Requests() {
     }
   };
 
-  // Generate numeric display IDs
   const numericIdMap = useMemo(() => {
     const map = new Map<string, string>();
     if (!requests) return map;
@@ -195,10 +163,10 @@ export default function Requests() {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setStatusFilter("all")}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
               statusFilter === "all"
                 ? "bg-primary/10 border-primary/30 text-primary"
-                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+                : "bg-card border-border/60 text-muted-foreground"
             }`}
             data-testid="stat-all"
           >
@@ -208,10 +176,10 @@ export default function Requests() {
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "draft" ? "all" : "draft")}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
               statusFilter === "draft"
                 ? "bg-primary/10 border-primary/30 text-primary"
-                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+                : "bg-card border-border/60 text-muted-foreground"
             }`}
             data-testid="stat-draft"
           >
@@ -221,10 +189,10 @@ export default function Requests() {
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "pending_approval" ? "all" : "pending_approval")}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
               statusFilter === "pending_approval"
                 ? "bg-chart-5/10 border-chart-5/30 text-chart-5"
-                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+                : "bg-card border-border/60 text-muted-foreground"
             }`}
             data-testid="stat-pending"
           >
@@ -234,10 +202,10 @@ export default function Requests() {
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
               statusFilter === "approved"
                 ? "bg-chart-4/10 border-chart-4/30 text-chart-4"
-                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+                : "bg-card border-border/60 text-muted-foreground"
             }`}
             data-testid="stat-approved"
           >
@@ -247,10 +215,10 @@ export default function Requests() {
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === "rejected" ? "all" : "rejected")}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
               statusFilter === "rejected"
                 ? "bg-destructive/10 border-destructive/30 text-destructive"
-                : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50"
+                : "bg-card border-border/60 text-muted-foreground"
             }`}
             data-testid="stat-rejected"
           >
@@ -305,7 +273,7 @@ export default function Requests() {
           {statusFilter !== "all" && (
             <Badge
               variant="secondary"
-              className="cursor-pointer hover:bg-muted transition-colors"
+              className="cursor-pointer"
               onClick={() => setStatusFilter("all")}
               data-testid="filter-chip-status"
             >
@@ -315,7 +283,7 @@ export default function Requests() {
           {eventFilter !== "all" && (
             <Badge
               variant="secondary"
-              className="cursor-pointer hover:bg-muted transition-colors"
+              className="cursor-pointer"
               onClick={() => setEventFilter("all")}
               data-testid="filter-chip-event"
             >
@@ -350,42 +318,25 @@ export default function Requests() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredRequests.map((request) => {
-            const stripColor = statusStripColor[request.status] || "border-l-muted";
-            const dotColor = statusDotColor[request.status] || "bg-muted";
-            const sLabel = statusLabel[request.status] || request.status;
-            const hint = statusHint[request.status] || "";
-            const StatusIcon = statusFilterIcon[request.status] || Clock;
-
             return (
               <Card
                 key={request.id}
-                className={`group border-border/60 overflow-hidden relative hover-elevate border-l-3 ${stripColor}`}
+                className="hover-elevate border-border/60"
                 data-testid={`card-request-${request.id}`}
               >
                 <CardContent className="p-4">
                   {/* Header: ID + Area + Status */}
-                  <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-start justify-between gap-3 mb-1">
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-[10px] font-medium text-primary font-mono mb-0.5">
                         REQ-{numericIdMap.get(request.id) || request.id.slice(0, 8).toUpperCase()}
                       </span>
-                      <h3 className="font-semibold text-sm text-foreground truncate leading-tight">
+                      <h3 className="font-semibold text-base text-foreground leading-tight">
                         {request.area}
                       </h3>
                     </div>
-                    <div className="shrink-0 flex flex-col items-end gap-1">
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] font-medium px-2 py-0 h-5 border-border/50"
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dotColor}`} />
-                        {sLabel}
-                      </Badge>
-                      {hint && (
-                        <span className="text-[10px] text-muted-foreground text-right leading-tight">
-                          {hint}
-                        </span>
-                      )}
+                    <div className="shrink-0">
+                      <StatusBadge status={request.status} />
                     </div>
                   </div>
 
@@ -394,24 +345,16 @@ export default function Requests() {
                     {request.event?.name || "Evento não vinculado"}
                   </p>
 
-                  {/* Compact metadata grid */}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-3">
+                  {/* Compact metadata */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-xs">
                     <div className="flex items-center gap-1.5">
                       <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground">{request.requestedByUser?.name || "Usuário"}</span>
+                      <span className="text-muted-foreground">{request.requestedByUser?.name || "Usuário"}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground">{getDateLabel(request.status)}</span>
-                      <span className="text-xs text-foreground">{formatDate(getDateValue(request))}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground">{request.event?.name || "—"}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <StatusIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground">{sLabel}</span>
+                      <span className="text-muted-foreground">{getDateLabel(request.status)}:</span>
+                      <span className="text-foreground">{formatDate(getDateValue(request))}</span>
                     </div>
                   </div>
 
@@ -422,7 +365,7 @@ export default function Requests() {
                         {request.requestedByUser?.name?.charAt(0) || "U"}
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {request.requestedByUser?.name || "Usuário"}
+                        {request.event?.client || request.requestedByUser?.name || "—"}
                       </span>
                     </div>
                     <Button

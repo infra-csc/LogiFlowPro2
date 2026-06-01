@@ -4,10 +4,10 @@ import { Plus, Package, Edit, Eye, ArrowRight, ClipboardList, CheckCircle2, Circ
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
 import { FilterBar } from "@/components/filter-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { LoadingOrder, Event } from "@shared/schema";
@@ -23,14 +23,6 @@ interface LoadingOrderWithRelations extends LoadingOrder {
   loadedItems?: number;
 }
 
-const statusBarColors: Record<string, string> = {
-  draft: "border-l-muted-foreground",
-  ready: "border-l-chart-4",
-  in_progress: "border-l-chart-5",
-  completed: "border-l-chart-4",
-  cancelled: "border-l-destructive",
-};
-
 const statusHint: Record<string, string> = {
   draft: "Preparar ordem",
   ready: "Aguardando aprovação",
@@ -41,11 +33,11 @@ const statusHint: Record<string, string> = {
 };
 
 const statConfig = [
-  { key: "total", label: "Total", icon: ClipboardList, color: "text-primary", bgColor: "bg-primary/10", borderColor: "border-l-primary" },
-  { key: "draft", label: "Rascunhos", icon: CircleDot, color: "text-muted-foreground", bgColor: "bg-muted", borderColor: "border-l-muted-foreground" },
-  { key: "ready", label: "Prontas", icon: CheckCircle2, color: "text-chart-4", bgColor: "bg-chart-4/10", borderColor: "border-l-chart-4" },
-  { key: "inProgress", label: "Em Andamento", icon: Truck, color: "text-chart-5", bgColor: "bg-chart-5/10", borderColor: "border-l-chart-5" },
-  { key: "completed", label: "Finalizadas", icon: Clock, color: "text-chart-4", bgColor: "bg-chart-4/10", borderColor: "border-l-chart-4" },
+  { key: "total", label: "Total", icon: ClipboardList, statusVal: "", color: "text-primary", activeColor: "bg-primary/10 border-primary/30 text-primary" },
+  { key: "draft", label: "Rascunhos", icon: CircleDot, statusVal: "draft", color: "text-muted-foreground", activeColor: "bg-muted border-border text-foreground" },
+  { key: "ready", label: "Prontas", icon: CheckCircle2, statusVal: "ready", color: "text-chart-4", activeColor: "bg-chart-4/10 border-chart-4/30 text-chart-4" },
+  { key: "inProgress", label: "Em Andamento", icon: Truck, statusVal: "in_progress", color: "text-chart-5", activeColor: "bg-chart-5/10 border-chart-5/30 text-chart-5" },
+  { key: "completed", label: "Finalizadas", icon: CheckCircle, statusVal: "completed", color: "text-chart-4", activeColor: "bg-chart-4/10 border-chart-4/30 text-chart-4" },
 ] as const;
 
 export default function LoadingOrders() {
@@ -75,7 +67,6 @@ export default function LoadingOrders() {
     setShowDialog(false);
   };
 
-  // Stats
   const stats = useMemo(() => {
     const total = orders.length;
     const draft = orders.filter(o => o.status === "draft").length;
@@ -85,7 +76,6 @@ export default function LoadingOrders() {
     return { total, draft, ready, inProgress, completed };
   }, [orders]);
 
-  // Apply filters
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       if (filterStatus && order.status !== filterStatus) return false;
@@ -110,11 +100,8 @@ export default function LoadingOrders() {
     const chips: Array<{ label: string; onClear: () => void }> = [];
     if (filterStatus) {
       const statusLabels: Record<string, string> = {
-        draft: "Rascunho",
-        ready: "Pronta",
-        in_progress: "Em Andamento",
-        completed: "Finalizada",
-        cancelled: "Cancelada",
+        draft: "Rascunho", ready: "Pronta", in_progress: "Em Andamento",
+        completed: "Finalizada", cancelled: "Cancelada",
       };
       chips.push({ label: `Status: ${statusLabels[filterStatus] || filterStatus}`, onClear: () => setFilterStatus("") });
     }
@@ -126,15 +113,7 @@ export default function LoadingOrders() {
   }, [filterStatus, filterEventId, events]);
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Ordens de Carregamento"
-          description="Gerencie listas consolidadas para picking e carregamento"
-        />
-        <PageLoading message="Carregando ordens..." />
-      </div>
-    );
+    return <PageLoading message="Carregando ordens..." />;
   }
 
   return (
@@ -153,28 +132,33 @@ export default function LoadingOrders() {
         </ActionBar>
       </PageHeader>
 
-      {/* Stats Bar — compacto */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {statConfig.map(({ key, label, icon: Icon, color, bgColor, borderColor }) => (
-          <div
-            key={key}
-            className={`bg-card border border-border/60 rounded-lg p-4 ${borderColor} border-l-3 hover-elevate cursor-default`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-md ${bgColor} ${color}`}>
-                <Icon className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                  {label}
-                </p>
-                <p className="text-xl font-bold text-foreground">
-                  {stats[key as keyof typeof stats]}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* Stats Bar — clickable filters */}
+      <div className="flex flex-wrap gap-3">
+        {statConfig.map(({ key, label, icon: Icon, statusVal, color, activeColor }) => {
+          const isActive = statusVal === "" ? filterStatus === "" && filterEventId === "" : filterStatus === statusVal;
+          return (
+            <button
+              key={key}
+              onClick={() => {
+                if (statusVal === "") {
+                  clearFilters();
+                } else {
+                  setFilterStatus(filterStatus === statusVal ? "" : statusVal);
+                }
+              }}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
+                isActive
+                  ? activeColor
+                  : "bg-card border-border/60 text-muted-foreground"
+              }`}
+              data-testid={`stat-${key}`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span className="font-medium">{stats[key as keyof typeof stats]}</span>
+              <span className="text-xs">{label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters */}
@@ -211,19 +195,18 @@ export default function LoadingOrders() {
         </div>
       </FilterBar>
 
-      {/* Active filter chips when bar is closed */}
+      {/* Active filter chips */}
       {activeFilterChips.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {activeFilterChips.map((chip, idx) => (
             <Badge
               key={idx}
               variant="secondary"
-              className="text-xs font-normal cursor-pointer hover:bg-muted"
+              className="cursor-pointer"
               onClick={chip.onClear}
               data-testid={`filter-chip-${idx}`}
             >
-              {chip.label}
-              <XCircle className="h-3 w-3 ml-1 inline" />
+              {chip.label} ×
             </Badge>
           ))}
         </div>
@@ -255,7 +238,7 @@ export default function LoadingOrders() {
             return (
               <Card
                 key={order.id}
-                className={`hover-elevate border-border/60 cursor-pointer overflow-hidden relative ${statusBarColors[order.status] || "border-l-muted-foreground"} border-l-3`}
+                className="hover-elevate border-border/60 cursor-pointer"
                 onClick={() => navigate(`/loading-orders/${order.id}`)}
                 data-testid={`card-loading-order-${order.id}`}
                 role="button"
@@ -281,7 +264,7 @@ export default function LoadingOrders() {
                     <StatusBadge status={order.status} />
                   </div>
 
-                  {/* Metadata — compact */}
+                  {/* Metadata */}
                   <div className="space-y-1.5 mb-3">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
@@ -290,7 +273,7 @@ export default function LoadingOrders() {
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                       <span className="text-xs truncate">
-                        {format(new Date(order.plannedStartTime), "dd MMM HH:mm", { locale: ptBR })} -
+                        {format(new Date(order.plannedStartTime), "dd MMM HH:mm", { locale: ptBR })} –{" "}
                         {format(new Date(order.plannedEndTime), "dd MMM HH:mm", { locale: ptBR })}
                       </span>
                     </div>
@@ -325,13 +308,7 @@ export default function LoadingOrders() {
                     <div className="w-full bg-muted rounded-full h-1.5">
                       <div
                         className={`h-full rounded-full transition-all ${
-                          isExceeded
-                            ? "bg-destructive"
-                            : isComplete
-                            ? "bg-chart-4"
-                            : progressPercent > 0
-                            ? "bg-primary"
-                            : "bg-muted-foreground/30"
+                          isExceeded ? "bg-destructive" : isComplete ? "bg-chart-4" : progressPercent > 0 ? "bg-primary" : "bg-muted-foreground/30"
                         }`}
                         style={{ width: `${Math.min(progressPercent, 100)}%` }}
                       />
@@ -345,10 +322,7 @@ export default function LoadingOrders() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(order);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); handleEdit(order); }}
                           data-testid={`button-edit-${order.id}`}
                           title="Editar"
                         >
@@ -359,10 +333,7 @@ export default function LoadingOrders() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/loading-orders/${order.id}`);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/loading-orders/${order.id}`); }}
                       data-testid={`button-details-${order.id}`}
                     >
                       <Eye className="h-3.5 w-3.5 mr-1.5" />

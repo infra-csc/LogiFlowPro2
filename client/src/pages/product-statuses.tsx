@@ -410,7 +410,7 @@ export default function ProductStatusesPage() {
                         </TableCell>
                         <TableCell>
                           {status.allowsMovement ? (
-                            <Badge variant="default" className="bg-green-600">Sim</Badge>
+                            <Badge variant="secondary">Sim</Badge>
                           ) : (
                             <Badge variant="secondary">Não</Badge>
                           )}

@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
 
-          <Card>
+          <Card className="border-border/60">
             <CardHeader>
               <CardTitle>Esqueceu sua senha?</CardTitle>
               <CardDescription>

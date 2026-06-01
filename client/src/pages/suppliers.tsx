@@ -323,7 +323,7 @@ export default function SuppliersPage() {
             </Dialog>
       </PageHeader>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="font-semibold text-base mb-1">Lista de Fornecedores</div>
           <p className="text-sm text-muted-foreground mb-4">
@@ -392,13 +392,9 @@ export default function SuppliersPage() {
                         </TableCell>
                         <TableCell>
                           {supplier.active ? (
-                            <Badge variant="outline" className="bg-green-500/20 text-green-700 dark:text-green-300 border-green-500">
-                              Ativo
-                            </Badge>
+                            <Badge variant="secondary">Ativo</Badge>
                           ) : (
-                            <Badge variant="outline" className="bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500">
-                              Inativo
-                            </Badge>
+                            <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">

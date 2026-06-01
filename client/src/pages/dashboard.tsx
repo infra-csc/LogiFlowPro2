@@ -128,7 +128,7 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className="hover-elevate overflow-hidden">
+          <Card key={stat.title} className="hover-elevate border-border/60 overflow-hidden">
             <CardContent className="p-4">
               <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
@@ -144,7 +144,7 @@ export default function Dashboard() {
       </div>
       
       {/* Notifications Section */}
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -235,7 +235,7 @@ export default function Dashboard() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 font-semibold text-base mb-1">
               <Calendar className="h-5 w-5" />
@@ -272,7 +272,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2 font-semibold text-base text-foreground mb-1">
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">

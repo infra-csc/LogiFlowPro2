@@ -780,7 +780,7 @@ export default function MovementDetails() {
       {!focusMode && (
         <PageSection>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <Card>
+            <Card className="border-border/60">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <BarChart3 className="h-4 w-4" />
@@ -791,7 +791,7 @@ export default function MovementDetails() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-border/60">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ClipboardList className="h-4 w-4" />
@@ -800,7 +800,7 @@ export default function MovementDetails() {
                 <div className="mt-1 text-xl font-semibold">{totalExpected}</div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-border/60">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <PackageCheck className="h-4 w-4" />
@@ -809,7 +809,7 @@ export default function MovementDetails() {
                 <div className="mt-1 text-xl font-semibold">{totalLoaded}</div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-border/60">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <AlertTriangle className="h-4 w-4" />
@@ -818,7 +818,7 @@ export default function MovementDetails() {
                 <div className="mt-1 text-xl font-semibold">{totalPending}</div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-border/60">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Plus className="h-4 w-4" />
@@ -829,7 +829,7 @@ export default function MovementDetails() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-border/60">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <BarChart3 className="h-4 w-4" />
@@ -890,7 +890,7 @@ export default function MovementDetails() {
 
       {isEditable && userCanManageMovementItems(user) && (
         <PageSection title="Scanner de Produtos" description="Registre produtos via SKU, código de barras ou nome">
-          <Card>
+          <Card className="border-border/60">
             <CardContent className="space-y-4 p-4">
             <div className="relative">
               <label className="block mb-2 font-medium flex items-center gap-2">
@@ -925,7 +925,7 @@ export default function MovementDetails() {
                     autoFocus
                   />
                   {showSuggestions && filteredProducts.length > 0 && !selectedProduct && (
-                    <Card className="absolute top-full left-0 right-0 mt-1 z-50 max-h-80 overflow-auto">
+                    <Card className="absolute top-full left-0 right-0 mt-1 z-50 max-h-80 overflow-auto border-border/60">
                       <CardContent className="p-0">
                         {filteredProducts.map((product) => (
                           <button
@@ -1099,7 +1099,7 @@ export default function MovementDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Itens Esperados (da Ordem) */}
           {expectedItems.length > 0 && (
-            <Card>
+            <Card className="border-border/60">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3 font-semibold text-base">
                   <ClipboardList className="h-5 w-5" />
@@ -1224,7 +1224,7 @@ export default function MovementDetails() {
         )}
 
         {/* Itens Carregados */}
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3 font-semibold text-base">
               <PackageCheck className="h-5 w-5" />
@@ -1567,7 +1567,7 @@ export default function MovementDetails() {
       {/* Action History Section */}
       {!focusMode && auditLogs.length > 0 && (
         <PageSection title="Histórico" description="Registro de ações na movimentação">
-          <Card>
+          <Card className="border-border/60">
             <CardContent className="p-4">
               <ScrollArea className="h-[320px] pr-4" style={{ scrollbarWidth: 'thin' }}>
                 <div className="space-y-2">

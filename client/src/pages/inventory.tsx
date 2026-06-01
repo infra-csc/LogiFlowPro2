@@ -54,7 +54,7 @@ export default function Inventory() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title} className="hover-elevate overflow-hidden">
+          <Card key={stat.title} className="hover-elevate border-border/60 overflow-hidden">
             <CardContent className="p-4">
               <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
@@ -70,7 +70,7 @@ export default function Inventory() {
         ))}
       </div>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           {!products || products.length === 0 ? (
             <EmptyState

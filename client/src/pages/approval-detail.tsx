@@ -286,7 +286,7 @@ export default function ApprovalDetail() {
         </div>
       </PageHeader>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4 space-y-3">
           <div className="font-semibold text-base">Detalhes da Requisição</div>
           <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1 text-sm">
@@ -333,7 +333,7 @@ export default function ApprovalDetail() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-base">Itens da Requisição ({items.length})</div>
@@ -499,7 +499,7 @@ export default function ApprovalDetail() {
       </Card>
 
       {canApprove && items.length > 0 && (
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="p-4 space-y-4">
             <div className="font-semibold text-base">Comentários</div>
             <Textarea

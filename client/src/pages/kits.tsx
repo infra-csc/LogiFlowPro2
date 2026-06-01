@@ -74,7 +74,7 @@ export default function Kits() {
           {kits.map((kit) => (
             <Card 
               key={kit.id}
-              className={`overflow-hidden ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
+              className={`overflow-hidden border-border/60 ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
               onClick={canWrite ? () => handleEdit(kit) : undefined}
               data-testid={`card-kit-${kit.id}`}
             >

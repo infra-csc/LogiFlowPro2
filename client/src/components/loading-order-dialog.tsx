@@ -562,10 +562,10 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                     {approvedRequests.map((request, index) => (
                       <div
                         key={request.id}
-                        className={`grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2.5 border-b border-border/20 items-center transition-colors cursor-pointer ${
+                        className={`grid grid-cols-[40px_1fr_1fr_80px] gap-2 px-3 py-2.5 border-b border-border/20 items-center transition-colors cursor-pointer hover-elevate ${
                           selectedRequestIds.includes(request.id)
                             ? "bg-primary/5"
-                            : "hover:bg-muted/30"
+                            : ""
                         }`}
                         onClick={() => toggleRequestSelection(request.id)}
                         data-testid={`request-item-${request.id}`}
@@ -625,10 +625,10 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                 {availableTrips.map((trip, index) => (
                   <Card
                     key={trip.id}
-                    className={`cursor-pointer transition-colors border ${
+                    className={`cursor-pointer transition-colors border hover-elevate ${
                       selectedTripIds.includes(trip.id)
                         ? "border-primary/40 bg-primary/5"
-                        : "border-border/60 hover:bg-muted/50"
+                        : "border-border/60"
                     }`}
                     onClick={() => canEdit && toggleTripSelection(trip.id)}
                     data-testid={`trip-item-${trip.id}`}

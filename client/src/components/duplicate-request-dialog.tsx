@@ -101,25 +101,25 @@ export function DuplicateRequestDialog({
     },
     onSuccess: (data) => {
       toast({ 
-        title: "Requisicao duplicada",
-        description: "A requisicao foi duplicada com sucesso" 
+        title: "Requisição duplicada",
+        description: "A requisição foi duplicada com sucesso" 
       });
       onOpenChange(false);
       navigate(`/requests/${data.id}`);
     },
     onError: (error: any) => {
-      let description = "Nao foi possivel duplicar a requisicao";
+      let description = "Não foi possível duplicar a requisição";
       
       if (error?.windowStart && error?.windowEnd) {
         const start = new Date(error.windowStart);
         const end = new Date(error.windowEnd);
-        description = `${error.error}\n\nPeriodo permitido: ${start.toLocaleString('pt-BR', { 
+        description = `${error.error}\n\nPeríodo permitido: ${start.toLocaleString('pt-BR', { 
           day: '2-digit', 
           month: '2-digit', 
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
-        })} ate ${end.toLocaleString('pt-BR', { 
+        })} até ${end.toLocaleString('pt-BR', { 
           day: '2-digit', 
           month: '2-digit', 
           year: 'numeric',

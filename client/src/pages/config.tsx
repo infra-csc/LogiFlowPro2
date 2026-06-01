@@ -44,7 +44,7 @@ export default function Config() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {sections.map((section) => (
-          <Card key={section.title} className="hover-elevate overflow-hidden" data-testid={section.testId}>
+          <Card key={section.title} className="hover-elevate border-border/60 overflow-hidden" data-testid={section.testId}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="font-semibold text-base text-foreground flex items-center gap-2">
@@ -64,7 +64,7 @@ export default function Config() {
         ))}
       </div>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="font-semibold text-base text-foreground flex items-center gap-2 mb-3">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">

@@ -262,7 +262,7 @@ export default function MovementTypesConfigPage() {
         </Button>
       </PageHeader>
 
-      <Card className="p-4 mb-4">
+      <Card className="p-4 mb-4 border-border/60">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -304,7 +304,7 @@ export default function MovementTypesConfigPage() {
         </div>
       </Card>
 
-      <Card>
+      <Card className="border-border/60">
         <Table>
           <TableHeader>
             <TableRow>
@@ -365,13 +365,9 @@ export default function MovementTypesConfigPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {type.active ? (
-                        <Badge variant="outline" className="bg-green-500/15 text-green-700 dark:text-green-400">
-                          Ativo
-                        </Badge>
+                        <Badge variant="secondary">Ativo</Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-red-500/15 text-red-700 dark:text-red-400">
-                          Inativo
-                        </Badge>
+                        <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">

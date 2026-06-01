@@ -47,7 +47,7 @@ export default function Returns() {
             return (
               <Card 
                 key={returnItem.id}
-                className="hover-elevate"
+                className="hover-elevate border-border/60"
                 data-testid={`card-return-${returnItem.id}`}
               >
                 <CardContent className="p-4">

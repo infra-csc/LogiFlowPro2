@@ -71,7 +71,7 @@ export function AddItemDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/requests", requestId, "items"] });
       toast({
         title: "Item adicionado",
-        description: "O item foi adicionado a requisicao com sucesso",
+        description: "O item foi adicionado à requisição com sucesso",
       });
       onOpenChange(false);
       resetForm();
@@ -80,7 +80,7 @@ export function AddItemDialog({
       toast({
         variant: "destructive",
         title: "Erro ao adicionar item",
-        description: "Nao foi possivel adicionar o item a requisicao",
+        description: "Não foi possível adicionar o item à requisição",
       });
     },
   });

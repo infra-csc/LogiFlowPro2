@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Plus, UserCog, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -249,7 +250,7 @@ export default function DriversPage() {
         )}
       </PageHeader>
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="font-semibold text-base mb-1">Lista de Motoristas</div>
           <p className="text-sm text-muted-foreground mb-4">
@@ -287,13 +288,9 @@ export default function DriversPage() {
                     <TableCell>{driver.license}</TableCell>
                     <TableCell>{driver.phone}</TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          driver.available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                        }`}
-                      >
+                      <Badge variant={driver.available ? "secondary" : "outline"} className={!driver.available ? "text-muted-foreground" : ""}>
                         {driver.available ? "Disponível" : "Indisponível"}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

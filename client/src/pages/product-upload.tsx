@@ -148,7 +148,7 @@ export default function ProductUpload() {
         description="Faça upload de uma planilha Excel para importar produtos em lote"
       />
 
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4 space-y-4">
           <div className="font-semibold text-base flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
@@ -202,7 +202,7 @@ export default function ProductUpload() {
       </Card>
 
       {uploadResult && (
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="p-4 space-y-4">
             <div className="font-semibold text-base">Resultado da Importação</div>
             <div className="flex gap-4">
@@ -242,7 +242,7 @@ export default function ProductUpload() {
       )}
 
       {parsedData.length > 0 && (
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="p-4">
             <div className="font-semibold text-base mb-4">Preview dos Dados ({parsedData.length} produtos)</div>
             <div className="border rounded-md max-h-96 overflow-auto">

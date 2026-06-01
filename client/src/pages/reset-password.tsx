@@ -117,7 +117,7 @@ export default function ResetPasswordPage() {
             </p>
           </div>
 
-          <Card>
+          <Card className="border-border/60">
             <CardHeader>
               <CardTitle>Definir nova senha</CardTitle>
               <CardDescription>

@@ -172,7 +172,7 @@ export default function Docks() {
       ) : docks && docks.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {docks.map((dock) => (
-            <Card key={dock.id} data-testid={`dock-card-${dock.id}`}>
+            <Card key={dock.id} className="border-border/60 hover-elevate" data-testid={`dock-card-${dock.id}`}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">

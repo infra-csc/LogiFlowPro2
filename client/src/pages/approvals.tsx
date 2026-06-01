@@ -47,7 +47,6 @@ export default function Approvals() {
     queryKey: ["/api/requests"],
   });
 
-  // Extract unique values for filters
   const uniqueEvents = useMemo(() => {
     const events = requests
       .map(r => r.event)
@@ -64,7 +63,6 @@ export default function Approvals() {
     return Array.from(uniqueMap.values());
   }, [requests]);
 
-  // Apply filters
   const filteredRequests = useMemo(() => {
     return requests.filter(r => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
@@ -88,7 +86,6 @@ export default function Approvals() {
     setRequesterFilter("all");
   };
 
-  // Filter only pending approval requests
   const pendingRequests = filteredRequests.filter(r => r.status === "pending_approval");
   const processedRequests = filteredRequests
     .filter(r => r.status === "approved" || r.status === "rejected")
@@ -98,21 +95,12 @@ export default function Approvals() {
       return dateB - dateA;
     });
 
-  // Stats
   const totalPending = requests.filter(r => r.status === "pending_approval").length;
   const totalApproved = requests.filter(r => r.status === "approved").length;
   const totalRejected = requests.filter(r => r.status === "rejected").length;
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Aprovação de Requisições"
-          description="Gerencie aprovações de requisições de materiais"
-        />
-        <PageLoading message="Carregando requisições..." />
-      </div>
-    );
+    return <PageLoading message="Carregando requisições..." />;
   }
 
   return (
@@ -122,29 +110,60 @@ export default function Approvals() {
         description="Gerencie aprovações de requisições de materiais"
       />
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
-          <div className="h-2 w-2 rounded-full bg-chart-3" />
-          <div>
-            <div className="text-lg font-semibold leading-none text-foreground">{totalPending}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Pendentes</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
-          <div className="h-2 w-2 rounded-full bg-chart-4" />
-          <div>
-            <div className="text-lg font-semibold leading-none text-foreground">{totalApproved}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Aprovados</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card border-border/60">
-          <div className="h-2 w-2 rounded-full bg-destructive" />
-          <div>
-            <div className="text-lg font-semibold leading-none text-foreground">{totalRejected}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Rejeitados</div>
-          </div>
-        </div>
+      {/* Stats Bar — clickable filters */}
+      <div className="flex flex-wrap gap-3">
+        <button
+          onClick={() => setStatusFilter("all")}
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
+            statusFilter === "all"
+              ? "bg-primary/10 border-primary/30 text-primary"
+              : "bg-card border-border/60 text-muted-foreground"
+          }`}
+          data-testid="stat-all"
+        >
+          <Clock className="h-3.5 w-3.5" />
+          <span className="font-medium">{requests.length}</span>
+          <span className="text-xs">Total</span>
+        </button>
+        <button
+          onClick={() => setStatusFilter(statusFilter === "pending_approval" ? "all" : "pending_approval")}
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
+            statusFilter === "pending_approval"
+              ? "bg-chart-3/10 border-chart-3/30 text-chart-3"
+              : "bg-card border-border/60 text-muted-foreground"
+          }`}
+          data-testid="stat-pending"
+        >
+          <Clock className="h-3.5 w-3.5" />
+          <span className="font-medium">{totalPending}</span>
+          <span className="text-xs">Pendentes</span>
+        </button>
+        <button
+          onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
+            statusFilter === "approved"
+              ? "bg-chart-4/10 border-chart-4/30 text-chart-4"
+              : "bg-card border-border/60 text-muted-foreground"
+          }`}
+          data-testid="stat-approved"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          <span className="font-medium">{totalApproved}</span>
+          <span className="text-xs">Aprovados</span>
+        </button>
+        <button
+          onClick={() => setStatusFilter(statusFilter === "rejected" ? "all" : "rejected")}
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm transition-colors hover-elevate ${
+            statusFilter === "rejected"
+              ? "bg-destructive/10 border-destructive/30 text-destructive"
+              : "bg-card border-border/60 text-muted-foreground"
+          }`}
+          data-testid="stat-rejected"
+        >
+          <XCircle className="h-3.5 w-3.5" />
+          <span className="font-medium">{totalRejected}</span>
+          <span className="text-xs">Rejeitados</span>
+        </button>
       </div>
 
       {/* Filters */}
@@ -152,7 +171,7 @@ export default function Approvals() {
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Status</label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger data-testid="select-status-filter" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+            <SelectTrigger data-testid="select-status-filter" className="h-9 bg-card border-border/60 rounded-md text-sm">
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
@@ -167,7 +186,7 @@ export default function Approvals() {
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Evento</label>
           <Select value={eventFilter} onValueChange={setEventFilter}>
-            <SelectTrigger data-testid="select-event-filter" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+            <SelectTrigger data-testid="select-event-filter" className="h-9 bg-card border-border/60 rounded-md text-sm">
               <SelectValue placeholder="Todos os eventos" />
             </SelectTrigger>
             <SelectContent>
@@ -184,7 +203,7 @@ export default function Approvals() {
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Solicitante</label>
           <Select value={requesterFilter} onValueChange={setRequesterFilter}>
-            <SelectTrigger data-testid="select-requester-filter" className="h-10 bg-card border-border/60 rounded-lg text-sm">
+            <SelectTrigger data-testid="select-requester-filter" className="h-9 bg-card border-border/60 rounded-md text-sm">
               <SelectValue placeholder="Todos os solicitantes" />
             </SelectTrigger>
             <SelectContent>
@@ -254,7 +273,7 @@ export default function Approvals() {
                     )}
                     {request.event?.eventDate && (
                       <div className="text-xs">
-                        <span className="text-muted-foreground">Evento:</span>{" "}
+                        <span className="text-muted-foreground">Data do evento:</span>{" "}
                         <span className="text-foreground font-medium">{format(new Date(request.event.eventDate), "dd/MM/yyyy", { locale: ptBR })}</span>
                       </div>
                     )}

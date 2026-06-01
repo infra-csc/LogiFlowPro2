@@ -245,7 +245,7 @@ export default function Trips() {
       </PageHeader>
 
       {/* View Controls */}
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
@@ -294,7 +294,7 @@ export default function Trips() {
 
       {/* Filters Panel */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <Card>
+        <Card className="border-border/60">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -439,7 +439,7 @@ export default function Trips() {
               {sortedTrips.map((trip) => (
                 <Card
                   key={trip.id}
-                  className={canWrite ? "hover-elevate cursor-pointer" : ""}
+                  className={`border-border/60 ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
                   onClick={canWrite ? () => handleEdit(trip) : undefined}
                   data-testid={`card-trip-${trip.id}`}
                 >
@@ -520,7 +520,7 @@ export default function Trips() {
       {viewMode === "calendar" && (
         <div className="space-y-4">
           {/* Calendar Navigation */}
-          <Card>
+          <Card className="border-border/60">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <Button
@@ -567,7 +567,7 @@ export default function Trips() {
               return (
                 <Card 
                   key={dayKey} 
-                  className={isToday ? "border-primary" : ""}
+                  className={isToday ? "border-primary" : "border-border/60"}
                   data-testid={`calendar-day-${dayKey}`}
                 >
                   <CardHeader className="pb-3">
