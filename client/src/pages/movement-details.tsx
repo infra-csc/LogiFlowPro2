@@ -1198,10 +1198,27 @@ export default function MovementDetails() {
                               {item.loadedQuantity} / {item.expectedQuantity} ({percentComplete}%)
                             </span>
                           </div>
-                          <Progress
-                            value={Math.min(percentComplete, 100)}
-                            className={`h-2 ${isExceeded ? "[&>div]:bg-destructive" : ""}`}
-                          />
+                          {isExceeded ? (
+                            <div className="w-full bg-muted rounded-full h-2 flex overflow-hidden">
+                              <div className="h-full bg-emerald-500" style={{ width: `${(item.expectedQuantity / item.loadedQuantity) * 100}%` }} />
+                              <div className="h-full bg-destructive" style={{ width: `${((item.loadedQuantity - item.expectedQuantity) / item.loadedQuantity) * 100}%` }} />
+                            </div>
+                          ) : (
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  isComplete
+                                    ? "bg-emerald-500"
+                                    : percentComplete >= 50
+                                    ? "bg-amber-500"
+                                    : percentComplete > 0
+                                    ? "bg-destructive"
+                                    : ""
+                                }`}
+                                style={{ width: `${percentComplete}%` }}
+                              />
+                            </div>
+                          )}
                           {item.remaining > 0 && (
                             <p className="text-sm text-muted-foreground">
                               Faltam: {item.remaining} unidades
