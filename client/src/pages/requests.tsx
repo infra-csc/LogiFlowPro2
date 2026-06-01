@@ -132,11 +132,7 @@ export default function Requests() {
     }
   };
 
-  if (isLoading) {
-    return <PageLoading message="Carregando requisicoes..." />;
-  }
-
-  // Generate numeric display IDs
+  // Generate numeric display IDs — must be called BEFORE any conditional returns
   const numericIdMap = useMemo(() => {
     const map = new Map<string, string>();
     if (!requests) return map;
@@ -147,6 +143,10 @@ export default function Requests() {
     });
     return map;
   }, [requests]);
+
+  if (isLoading) {
+    return <PageLoading message="Carregando requisicoes..." />;
+  }
 
   return (
     <div className="space-y-6">
