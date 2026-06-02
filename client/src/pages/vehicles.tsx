@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Truck, Edit, Trash2, Ruler, Tag } from "lucide-react";
+import { Plus, Truck, Edit, Trash2, Ruler, Tag, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Vehicle, VehicleType } from "@shared/schema";
@@ -20,6 +20,7 @@ import type { z } from "zod";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { FilterBar } from "@/components/filter-bar";
 
 type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 
@@ -29,6 +30,7 @@ export default function Vehicles() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [search, setSearch] = useState("");
   const { toast } = useToast();
   const { data: vehicles, isLoading } = useQuery<Vehicle[]>({ queryKey: ["/api/vehicles"] });
   const { data: vehicleTypes } = useQuery<VehicleType[]>({ queryKey: ["/api/vehicle-types"] });
@@ -143,6 +145,16 @@ export default function Vehicles() {
     const type = vehicleTypes.find(vt => vt.id === vehicleTypeId);
     return type?.name || "-";
   };
+
+  const filteredVehicles = (vehicles ?? []).filter((v) => {
+    const q = search.toLowerCase();
+    return (
+      v.plate.toLowerCase().includes(q) ||
+      (v.type && v.type.toLowerCase().includes(q)) ||
+      (v.model && v.model.toLowerCase().includes(q)) ||
+      getVehicleTypeName(v.vehicleTypeId).toLowerCase().includes(q)
+    );
+  });
 
   if (isLoading) {
     return (
@@ -459,8 +471,38 @@ export default function Vehicles() {
         </Dialog>
       </PageHeader>
 
+      {(vehicles?.length ?? 0) > 0 && (
+        <FilterBar
+          badgeCount={search ? 1 : 0}
+          onClear={search ? () => setSearch("") : undefined}
+          defaultOpen
+        >
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Busca</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Placa, modelo, tipo..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 bg-card border-border/60 rounded-md text-sm"
+                data-testid="input-search-vehicles"
+              />
+            </div>
+          </div>
+        </FilterBar>
+      )}
+
+      {filteredVehicles.length === 0 ? (
+        <EmptyState
+          icon={Truck}
+          title={search ? "Nenhum veículo encontrado" : "Nenhum veículo cadastrado"}
+          description={search ? "Tente ajustar a busca." : "Clique em 'Adicionar Veículo' para começar."}
+          action={!search && canWrite ? { label: "Adicionar Veículo", onClick: () => setIsCreateOpen(true) } : undefined}
+        />
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {vehicles?.map((vehicle) => (
+        {filteredVehicles.map((vehicle) => (
           <Card key={vehicle.id} className="hover-elevate border-border/60">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-3">
@@ -586,13 +628,6 @@ export default function Vehicles() {
           </Card>
         ))}
       </div>
-
-      {vehicles?.length === 0 && (
-        <EmptyState
-          icon={Truck}
-          title="Nenhum veículo cadastrado"
-          description="Clique em 'Novo Veículo' para começar."
-        />
       )}
     </div>
   );

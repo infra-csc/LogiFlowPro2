@@ -195,24 +195,6 @@ export default function LoadingOrders() {
         </div>
       </FilterBar>
 
-      {/* Active filter chips */}
-      {activeFilterChips.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeFilterChips.map((chip, idx) => (
-            <Badge
-              key={idx}
-              variant="secondary"
-              className="cursor-pointer flex items-center gap-1"
-              onClick={chip.onClear}
-              data-testid={`filter-chip-${idx}`}
-            >
-              {chip.label}
-              <X className="h-3 w-3 ml-0.5" />
-            </Badge>
-          ))}
-        </div>
-      )}
-
       {!filteredOrders || filteredOrders.length === 0 ? (
         <EmptyState
           icon={Package}

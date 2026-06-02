@@ -314,7 +314,7 @@ function DayPanel({
                             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                               <Badge
                                 variant="outline"
-                                className="text-[10px] px-1 h-4"
+                                className="text-[10px] px-1 h-4 no-default-hover-elevate"
                               >
                                 {cfg.label}
                               </Badge>
@@ -323,6 +323,63 @@ function DayPanel({
                                 <AlertTriangle className="h-3 w-3 text-amber-400" />
                               )}
                             </div>
+                            {/* Trip: show departure and return times */}
+                            {(item.type === "trip_loading" || item.type === "trip_unloading") && (() => {
+                              const m = item.metadata ?? {};
+                              const departure = m.departureDateTime ? String(m.departureDateTime) : null;
+                              const arrivalStart = m.unloadingStartTime ? String(m.unloadingStartTime) : null;
+                              const arrivalEnd = m.unloadingEndTime ? String(m.unloadingEndTime) : null;
+                              const driver = m.driver ? String(m.driver) : null;
+                              const plate = m.plate ? String(m.plate) : null;
+                              return (
+                                <div className="mt-2 pt-2 border-t border-border/30 space-y-1">
+                                  {departure && (
+                                    <div className="flex items-center gap-1.5 text-[11px] text-amber-400">
+                                      <Truck className="h-3 w-3 shrink-0" />
+                                      <span className="font-medium">Saída:</span>
+                                      <span className="text-muted-foreground">
+                                        {format(new Date(departure), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {arrivalStart && (
+                                    <div className="flex items-center gap-1.5 text-[11px] text-blue-400">
+                                      <Clock className="h-3 w-3 shrink-0" />
+                                      <span className="font-medium">Chegada/Volta:</span>
+                                      <span className="text-muted-foreground">
+                                        {format(new Date(arrivalStart), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {arrivalEnd && (
+                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                      <Clock className="h-3 w-3 shrink-0" />
+                                      <span className="font-medium">Fim descarreg.:</span>
+                                      <span>
+                                        {format(new Date(arrivalEnd), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {driver && (
+                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                      <span className="font-medium">Motorista:</span>
+                                      <span>{driver}</span>
+                                    </div>
+                                  )}
+                                  {plate && (
+                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                      <span className="font-medium">Placa:</span>
+                                      <span className="font-mono">{plate}</span>
+                                    </div>
+                                  )}
+                                  {!departure && !arrivalStart && (
+                                    <p className="text-[11px] text-muted-foreground/60 italic">
+                                      Horários ainda não definidos
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </CardContent>

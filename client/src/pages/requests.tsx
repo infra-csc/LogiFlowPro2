@@ -267,32 +267,6 @@ export default function Requests() {
         </FilterBar>
       )}
 
-      {/* Active filter chips */}
-      {activeFiltersCount > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {statusFilter !== "all" && (
-            <Badge
-              variant="secondary"
-              className="cursor-pointer"
-              onClick={() => setStatusFilter("all")}
-              data-testid="filter-chip-status"
-            >
-              Status: {statusLabel[statusFilter]} ×
-            </Badge>
-          )}
-          {eventFilter !== "all" && (
-            <Badge
-              variant="secondary"
-              className="cursor-pointer"
-              onClick={() => setEventFilter("all")}
-              data-testid="filter-chip-event"
-            >
-              Evento: {events?.find((e) => e.id === eventFilter)?.name || eventFilter} ×
-            </Badge>
-          )}
-        </div>
-      )}
-
       {/* Contador */}
       {filteredRequests.length > 0 && (
         <p className="text-xs text-muted-foreground">

@@ -578,21 +578,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const trip of allTrips as any[]) {
           if (eventFilter && trip.eventId !== eventFilter) continue;
           if (!wantStatus(trip.status)) continue;
-          const loadDate = trip.loadingDate ? new Date(trip.loadingDate) : null;
-          const unloadDate = trip.unloadingDate ? new Date(trip.unloadingDate) : null;
+          // Use correct Drizzle camelCase field names (loadingDate does not exist)
+          const loadDate = trip.loadingStartTime ? new Date(trip.loadingStartTime) : null;
+          const unloadDate = trip.unloadingStartTime ? new Date(trip.unloadingStartTime) : null;
           const label = trip.description || trip.event?.name || "Viagem";
-          const route = [trip.loadingLocation, trip.unloadingLocation].filter(Boolean).join(" → ");
+          const routeLabel = [trip.loadingLocation, trip.unloadingLocation].filter(Boolean).join(" → ");
           const meta = {
             driver: trip.driver?.name,
             vehicleType: trip.vehicleType?.name,
             plate: trip.vehicle?.plate,
+            // All key timestamps so the client can show saída/chegada
+            loadingStartTime: trip.loadingStartTime ?? null,
+            loadingEndTime: trip.loadingEndTime ?? null,
+            departureDateTime: trip.departureDateTime ?? null,
+            unloadingStartTime: trip.unloadingStartTime ?? null,
+            unloadingEndTime: trip.unloadingEndTime ?? null,
+            loadingLocation: trip.loadingLocation ?? null,
+            unloadingLocation: trip.unloadingLocation ?? null,
           };
           if (inRange(loadDate)) {
             items.push({
               id: `trip_loading-${trip.id}`,
               type: "trip_loading",
               title: `Carregamento: ${label}`,
-              subtitle: route || trip.vehicleType?.name,
+              subtitle: routeLabel || trip.vehicleType?.name,
               start: loadDate!.toISOString(),
               status: trip.status,
               entityId: trip.id,
@@ -605,13 +614,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: `trip_unloading-${trip.id}`,
               type: "trip_unloading",
               title: `Descarregamento: ${label}`,
-              subtitle: route || trip.vehicleType?.name,
+              subtitle: routeLabel || trip.vehicleType?.name,
               start: unloadDate!.toISOString(),
               status: trip.status,
               entityId: trip.id,
               route: `/trips`,
               metadata: meta,
             });
+          }
+          // Also show trip by departureDateTime if it falls in range and was not already covered
+          if (trip.departureDateTime) {
+            const depDate = new Date(trip.departureDateTime);
+            const depDateStr = depDate.toISOString().slice(0, 10);
+            const loadDateStr = loadDate ? loadDate.toISOString().slice(0, 10) : null;
+            if (inRange(depDate) && depDateStr !== loadDateStr) {
+              items.push({
+                id: `trip_departure-${trip.id}`,
+                type: "trip_loading",
+                title: `Saída: ${label}`,
+                subtitle: routeLabel || trip.vehicleType?.name,
+                start: depDate.toISOString(),
+                status: trip.status,
+                entityId: trip.id,
+                route: `/trips`,
+                metadata: meta,
+              });
+            }
           }
         }
       }

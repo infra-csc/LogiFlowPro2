@@ -36,7 +36,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, UserCog, Upload, Download, Trash2, Phone } from "lucide-react";
+import { Plus, UserCog, Upload, Download, Trash2, Phone, Search } from "lucide-react";
+import { FilterBar } from "@/components/filter-bar";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -61,6 +62,7 @@ export default function DriversPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [cnhFile, setCnhFile] = useState<File | null>(null);
+  const [search, setSearch] = useState("");
   const { toast } = useToast();
 
   const { data: drivers = [], isLoading } = useQuery<Driver[]>({
@@ -220,6 +222,16 @@ export default function DriversPage() {
     }
   };
 
+  const filteredDrivers = drivers.filter((d) => {
+    const q = search.toLowerCase();
+    return (
+      d.name.toLowerCase().includes(q) ||
+      d.cpf.includes(q) ||
+      d.license.toLowerCase().includes(q) ||
+      d.phone.includes(q)
+    );
+  });
+
   if (isLoading) {
     return <PageLoading message="Carregando motoristas..." />;
   }
@@ -246,16 +258,38 @@ export default function DriversPage() {
         )}
       </PageHeader>
 
-      {drivers.length === 0 ? (
+      {drivers.length > 0 && (
+        <FilterBar
+          badgeCount={search ? 1 : 0}
+          onClear={search ? () => setSearch("") : undefined}
+          defaultOpen
+        >
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Busca</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Nome, CPF, CNH ou telefone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 bg-card border-border/60 rounded-md text-sm"
+                data-testid="input-search-drivers"
+              />
+            </div>
+          </div>
+        </FilterBar>
+      )}
+
+      {filteredDrivers.length === 0 ? (
         <EmptyState
           icon={UserCog}
-          title="Nenhum motorista cadastrado"
-          description="Adicione motoristas para vinculá-los às viagens"
-          action={canWrite ? { label: "Adicionar Motorista", onClick: () => setIsDialogOpen(true) } : undefined}
+          title={search ? "Nenhum motorista encontrado" : "Nenhum motorista cadastrado"}
+          description={search ? "Tente ajustar a busca." : "Adicione motoristas para vinculá-los às viagens"}
+          action={!search && canWrite ? { label: "Adicionar Motorista", onClick: () => setIsDialogOpen(true) } : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {drivers.map((driver) => (
+          {filteredDrivers.map((driver) => (
             <Card key={driver.id} className="hover-elevate border-border/60" data-testid={`card-driver-${driver.id}`}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2 mb-3">

@@ -22,6 +22,7 @@ import { Plus, Pencil, Trash2, UserCircle, Phone, Mail, Search } from "lucide-re
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { FilterBar } from "@/components/filter-bar";
 import {
   Form,
   FormControl,
@@ -313,17 +314,27 @@ export default function SuppliersPage() {
             </Dialog>
       </PageHeader>
 
-      <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar fornecedor por nome, contato ou e-mail..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-            data-testid="input-search"
-          />
+      <FilterBar
+        badgeCount={searchQuery ? 1 : 0}
+        onClear={searchQuery ? () => setSearchQuery("") : undefined}
+        defaultOpen
+      >
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Busca</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome, contato ou e-mail..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 bg-card border-border/60 rounded-md text-sm"
+              data-testid="input-search"
+            />
+          </div>
         </div>
+      </FilterBar>
+
+      <div className="space-y-4">
 
         {filteredSuppliers.length === 0 ? (
           <EmptyState
