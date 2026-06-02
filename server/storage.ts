@@ -1902,7 +1902,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Build SQL query for inventory aggregation
+    // Build SQL query for inventory aggregation (with enriched movement details)
     const groupByField = filters.groupBy === 'product' ? 'p.id' :
                         filters.groupBy === 'location' ? 'mi.location' :
                         filters.groupBy === 'owner' ? `COALESCE(mi.owner_type || ' - ' || mi.owner_name, mi.owner_type, 'Não especificado')` :
@@ -1970,10 +1970,14 @@ export class DatabaseStorage implements IStorage {
           mi.location,
           mi.owner_type,
           mi.owner_name,
-          m.status,
+          m.status as movement_status,
           m.id as movement_id,
           m.started_at as movement_date,
+          m.vehicle_plate,
+          m.notes as movement_notes,
           mtc.nature as movement_nature,
+          mtc.name as type_name,
+          evt.event_name,
           mi.quantity,
           CASE 
             WHEN mtc.nature = 'inbound' THEN mi.quantity
@@ -1989,6 +1993,14 @@ export class DatabaseStorage implements IStorage {
         INNER JOIN products p ON mi.product_id = p.id
         INNER JOIN movements m ON mi.movement_id = m.id
         LEFT JOIN movement_types_config mtc ON m.movement_type_config_id = mtc.id
+        LEFT JOIN LATERAL (
+          SELECT e.name as event_name
+          FROM movement_events me2
+          JOIN events e ON e.id = me2.event_id
+          WHERE me2.movement_id = m.id
+          ORDER BY me2.created_at ASC
+          LIMIT 1
+        ) evt ON true
         ${whereClause}
       )
       SELECT 
@@ -2008,11 +2020,16 @@ export class DatabaseStorage implements IStorage {
             'id', movement_id,
             'date', movement_date,
             'nature', movement_nature,
+            'typeName', type_name,
             'quantity', quantity,
             'direction', CASE WHEN movement_nature = 'inbound' THEN 'in' ELSE 'out' END,
             'location', location,
             'ownerType', owner_type,
-            'ownerName', owner_name
+            'ownerName', owner_name,
+            'status', movement_status,
+            'vehiclePlate', vehicle_plate,
+            'notes', movement_notes,
+            'eventName', event_name
           ) ORDER BY movement_date DESC
         ) as movements
       FROM movement_directions
