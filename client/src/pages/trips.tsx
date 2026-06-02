@@ -736,6 +736,40 @@ export default function Trips() {
                           <p className="text-xs font-medium leading-tight line-clamp-2">
                             {entry.trip.description || entry.trip.event?.name || "Viagem"}
                           </p>
+                          {(() => {
+                            const t = entry.trip;
+                            const saida = t.departureDateTime ?? t.loadingStartTime ?? null;
+                            const volta = t.unloadingStartTime ?? t.unloadingEndTime ?? null;
+                            if (!saida && !volta) return null;
+                            return (
+                              <div className="mt-1.5 space-y-0.5">
+                                {saida && (
+                                  <div
+                                    className="flex items-center gap-1 text-[10px] text-muted-foreground"
+                                    data-testid={`text-trip-departure-${entry.trip.id}-${entry.type}`}
+                                  >
+                                    <Truck className="h-2.5 w-2.5 shrink-0 text-chart-5" />
+                                    <span className="font-semibold text-foreground">Saída</span>
+                                    <span>
+                                      {format(new Date(saida), "dd/MM HH:mm", { locale: ptBR })}
+                                    </span>
+                                  </div>
+                                )}
+                                {volta && (
+                                  <div
+                                    className="flex items-center gap-1 text-[10px] text-muted-foreground"
+                                    data-testid={`text-trip-return-${entry.trip.id}-${entry.type}`}
+                                  >
+                                    <Clock className="h-2.5 w-2.5 shrink-0 text-chart-2" />
+                                    <span className="font-semibold text-foreground">Volta</span>
+                                    <span>
+                                      {format(new Date(volta), "dd/MM HH:mm", { locale: ptBR })}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           <StatusBadge
                             status={entry.trip.status}
                             className="mt-1 text-[10px] px-1.5 py-0.5 h-auto"
