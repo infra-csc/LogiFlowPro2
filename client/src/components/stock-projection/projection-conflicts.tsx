@@ -2,12 +2,13 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Info, CheckCircle2, Lightbulb, ExternalLink } from "lucide-react";
+import { AlertTriangle, Info, CheckCircle2, Lightbulb, ExternalLink, PanelRightOpen } from "lucide-react";
 import type { ProjectionConflict, ProjectionLink, StockProjectionResult } from "@shared/stock-projection";
 import { sourceLabel } from "./projection-utils";
 
 interface Props {
   result: StockProjectionResult;
+  onOpenDetail?: (conflict: ProjectionConflict) => void;
 }
 
 const KIND_LABEL: Record<ProjectionConflict["kind"], string> = {
@@ -38,7 +39,17 @@ function LinkButtons({ links }: { links?: ProjectionLink[] }) {
   );
 }
 
-function ConflictRow({ c, idx, tone }: { c: ProjectionConflict; idx: number; tone: "error" | "warning" }) {
+function ConflictRow({
+  c,
+  idx,
+  tone,
+  onOpenDetail,
+}: {
+  c: ProjectionConflict;
+  idx: number;
+  tone: "error" | "warning";
+  onOpenDetail?: (conflict: ProjectionConflict) => void;
+}) {
   const Icon = tone === "error" ? AlertTriangle : Info;
   const color = tone === "error" ? "text-destructive" : "text-chart-5";
   const border = tone === "error" ? "border-destructive/20 bg-destructive/5" : "border-chart-5/20 bg-chart-5/5";
@@ -52,9 +63,22 @@ function ConflictRow({ c, idx, tone }: { c: ProjectionConflict; idx: number; ton
               {c.productName ? c.productName : `${sourceLabel(c.source)}: ${c.sourceLabel}`}
               {c.sku && <span className="text-muted-foreground font-normal"> · {c.sku}</span>}
             </div>
-            <Badge variant="secondary" className="text-xs">
-              {KIND_LABEL[c.kind]}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge variant="secondary" className="text-xs">
+                {KIND_LABEL[c.kind]}
+              </Badge>
+              {onOpenDetail && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => onOpenDetail(c)}
+                  data-testid={`button-conflict-detail-${tone}-${idx}`}
+                  aria-label="Ver detalhes do conflito"
+                >
+                  <PanelRightOpen className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">{c.message}</div>
 
@@ -92,7 +116,7 @@ function ConflictRow({ c, idx, tone }: { c: ProjectionConflict; idx: number; ton
   );
 }
 
-export function ProjectionConflicts({ result }: Props) {
+export function ProjectionConflicts({ result, onOpenDetail }: Props) {
   const errors = result.conflicts.filter((c) => c.severity === "error");
   const warnings = result.conflicts.filter((c) => c.severity === "warning");
 
@@ -123,7 +147,7 @@ export function ProjectionConflicts({ result }: Props) {
             </div>
             <div className="space-y-2">
               {errors.map((c, idx) => (
-                <ConflictRow key={idx} c={c} idx={idx} tone="error" />
+                <ConflictRow key={idx} c={c} idx={idx} tone="error" onOpenDetail={onOpenDetail} />
               ))}
             </div>
           </CardContent>
@@ -139,7 +163,7 @@ export function ProjectionConflicts({ result }: Props) {
             </div>
             <div className="space-y-2">
               {warnings.map((c, idx) => (
-                <ConflictRow key={idx} c={c} idx={idx} tone="warning" />
+                <ConflictRow key={idx} c={c} idx={idx} tone="warning" onOpenDetail={onOpenDetail} />
               ))}
             </div>
           </CardContent>

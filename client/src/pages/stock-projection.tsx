@@ -14,6 +14,12 @@ import {
   X,
   ChevronLeft,
   Info,
+  CheckCircle2,
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Lock,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest } from "@/lib/queryClient";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
@@ -29,12 +36,92 @@ import type {
   StockProjectionResult,
   StockProjectionParams,
   ProjectionDayStatus,
+  ProjectionDayCell,
+  ProjectionProduct,
+  ProjectionConflict,
 } from "@shared/stock-projection";
 import { ProjectionMatrix } from "@/components/stock-projection/projection-matrix";
 import { ProjectionDayView } from "@/components/stock-projection/projection-day-view";
 import { ProjectionConflicts } from "@/components/stock-projection/projection-conflicts";
 import { ProjectionMovements } from "@/components/stock-projection/projection-movements";
 import { ProjectionByProduct } from "@/components/stock-projection/projection-by-product";
+import {
+  ProjectionDetailDrawer,
+  type DetailTarget,
+} from "@/components/stock-projection/projection-detail-drawer";
+import { KPI_TOOLTIPS } from "@/components/stock-projection/projection-utils";
+
+const SOURCE_SHORT: Record<keyof SourceFlags, string> = {
+  loadingOrders: "Ordens",
+  requests: "Requisições",
+  movements: "Movimentações",
+  trips: "Viagens",
+};
+
+function fmtChipDate(d: string): string {
+  const parts = d.split("-");
+  return parts.length === 3 ? `${parts[2]}/${parts[1]}` : d;
+}
+
+type KpiAccent = "primary" | "destructive" | "warn" | "success" | "neutral";
+
+const ACCENT: Record<KpiAccent, { border: string; bg: string; icon: string; value: string; ring: string }> = {
+  primary: { border: "border-primary/40", bg: "bg-primary/10", icon: "text-primary", value: "text-foreground", ring: "ring-primary/40" },
+  destructive: { border: "border-destructive/40", bg: "bg-destructive/10", icon: "text-destructive", value: "text-destructive", ring: "ring-destructive/50" },
+  warn: { border: "border-chart-5/40", bg: "bg-chart-5/10", icon: "text-chart-5", value: "text-chart-5", ring: "ring-chart-5/50" },
+  success: { border: "border-chart-4/40", bg: "bg-chart-4/10", icon: "text-chart-4", value: "text-chart-4", ring: "ring-chart-4/50" },
+  neutral: { border: "border-border/60", bg: "bg-muted", icon: "text-muted-foreground", value: "text-foreground", ring: "ring-primary/40" },
+};
+
+function KpiCard({
+  icon: Icon,
+  value,
+  label,
+  tooltip,
+  accent,
+  active,
+  onClick,
+  testId,
+}: {
+  icon: typeof Package;
+  value: number;
+  label: string;
+  tooltip: string;
+  accent: KpiAccent;
+  active?: boolean;
+  onClick?: () => void;
+  testId: string;
+}) {
+  const a = ACCENT[accent];
+  const inner = (
+    <Card className={`${a.border} h-full ${onClick ? "hover-elevate" : ""} ${active ? `ring-1 ${a.ring}` : ""}`}>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2.5">
+          <span className={`flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0 ${a.bg}`}>
+            <Icon className={`w-4 h-4 ${a.icon}`} />
+          </span>
+          <div className="min-w-0">
+            <div className={`text-xl font-bold tabular-nums leading-none ${a.value}`}>{value}</div>
+            <div className="text-xs text-muted-foreground mt-1 truncate">{label}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+  const trigger = onClick ? (
+    <button onClick={onClick} className="text-left w-full" data-testid={testId}>
+      {inner}
+    </button>
+  ) : (
+    <div data-testid={testId}>{inner}</div>
+  );
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+      <TooltipContent className="max-w-[220px] text-xs">{tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 const DEFAULT_START = format(new Date(), "yyyy-MM-dd");
 const DEFAULT_END = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
@@ -74,6 +161,7 @@ export default function StockProjection() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
   const [activeTab, setActiveTab] = useState("matrix");
   const [focusProductId, setFocusProductId] = useState<string | undefined>(undefined);
+  const [detail, setDetail] = useState<DetailTarget | null>(null);
 
   const { data: events } = useQuery<any[]>({ queryKey: ["/api/events"] });
   const { data: products } = useQuery<any[]>({ queryKey: ["/api/products"] });
@@ -108,6 +196,14 @@ export default function StockProjection() {
     if (!statusFilter) return result;
     return { ...result, products: result.products.filter((p) => p.worstStatus === statusFilter) };
   }, [result, statusFilter]);
+
+  const activeSourceLabels = useMemo(() => {
+    const inc = result?.filters.include;
+    if (!inc) return [] as string[];
+    return (["loadingOrders", "requests", "movements", "trips"] as (keyof SourceFlags)[])
+      .filter((k) => inc[k])
+      .map((k) => SOURCE_SHORT[k]);
+  }, [result]);
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
@@ -169,7 +265,13 @@ export default function StockProjection() {
   const openProduct = (id: string) => {
     setFocusProductId(id);
     setActiveTab("by-product");
+    setDetail(null);
   };
+
+  const openCellDetail = (product: ProjectionProduct, cell: ProjectionDayCell) =>
+    setDetail({ kind: "cell", product, cell });
+  const openProductDetail = (product: ProjectionProduct) => setDetail({ kind: "product", product });
+  const openConflictDetail = (conflict: ProjectionConflict) => setDetail({ kind: "conflict", conflict });
 
   return (
     <div className="space-y-6">
@@ -188,7 +290,7 @@ export default function StockProjection() {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* ── Filtros ── */}
         {filtersOpen ? (
-          <div className="w-full lg:w-[340px] lg:flex-shrink-0 lg:sticky lg:top-4 space-y-4">
+          <div className="w-full lg:w-[300px] lg:flex-shrink-0 lg:sticky lg:top-4 space-y-4">
             <Card className="border-border/60">
               <CardContent className="p-4 space-y-5">
                 <div className="flex items-start justify-between gap-2">
@@ -491,83 +593,89 @@ export default function StockProjection() {
 
           {result && (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <button
-                  onClick={() => setStatusFilter(null)}
-                  className="text-left"
-                  data-testid="kpi-total"
-                >
-                  <Card className={`border-border/60 hover-elevate ${statusFilter === null ? "ring-1 ring-primary/40" : ""}`}>
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold">{result.summary.totalProducts}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Produtos</div>
-                    </CardContent>
-                  </Card>
-                </button>
-                <button
-                  onClick={() => toggleStatusFilter("shortage")}
-                  className="text-left"
-                  data-testid="kpi-shortage"
-                >
-                  <Card className={`border-destructive/40 hover-elevate ${statusFilter === "shortage" ? "ring-1 ring-destructive/50" : ""}`}>
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-destructive">{result.summary.productsShortage}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Em falta</div>
-                    </CardContent>
-                  </Card>
-                </button>
-                <button
-                  onClick={() => toggleStatusFilter("low")}
-                  className="text-left"
-                  data-testid="kpi-low"
-                >
-                  <Card className={`border-chart-5/40 hover-elevate ${statusFilter === "low" ? "ring-1 ring-chart-5/50" : ""}`}>
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-chart-5">{result.summary.productsLow}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Abaixo do mínimo</div>
-                    </CardContent>
-                  </Card>
-                </button>
-                <button
-                  onClick={() => toggleStatusFilter("ok")}
-                  className="text-left"
-                  data-testid="kpi-ok"
-                >
-                  <Card className={`border-chart-4/40 hover-elevate ${statusFilter === "ok" ? "ring-1 ring-chart-4/50" : ""}`}>
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-chart-4">{result.summary.productsOk}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Adequados</div>
-                    </CardContent>
-                  </Card>
-                </button>
-              </div>
-
-              {/* Secondary KPIs */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Card className="border-border/60">
-                  <CardContent className="p-3">
-                    <div className="text-lg font-semibold text-destructive tabular-nums">{result.summary.totalOutbound}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Total saídas</div>
-                  </CardContent>
-                </Card>
-                <Card className="border-border/60">
-                  <CardContent className="p-3">
-                    <div className="text-lg font-semibold text-chart-4 tabular-nums">{result.summary.totalInbound}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Total entradas</div>
-                  </CardContent>
-                </Card>
-                <Card className="border-border/60">
-                  <CardContent className="p-3">
-                    <div className="text-lg font-semibold tabular-nums">{result.summary.totalReserved}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Pico reservado</div>
-                  </CardContent>
-                </Card>
-                <Card className="border-border/60">
-                  <CardContent className="p-3">
-                    <div className="text-lg font-semibold tabular-nums">{result.summary.totalInEvent}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Pico em evento</div>
-                  </CardContent>
-                </Card>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Resumo da Projeção
+                  </h2>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    Clique num card de status para filtrar a análise
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                  <KpiCard
+                    icon={Package}
+                    value={result.summary.totalProducts}
+                    label="Produtos"
+                    tooltip={KPI_TOOLTIPS.totalProducts}
+                    accent="primary"
+                    active={statusFilter === null}
+                    onClick={() => setStatusFilter(null)}
+                    testId="kpi-total"
+                  />
+                  <KpiCard
+                    icon={AlertTriangle}
+                    value={result.summary.productsShortage}
+                    label="Em falta"
+                    tooltip={KPI_TOOLTIPS.productsShortage}
+                    accent="destructive"
+                    active={statusFilter === "shortage"}
+                    onClick={() => toggleStatusFilter("shortage")}
+                    testId="kpi-shortage"
+                  />
+                  <KpiCard
+                    icon={TrendingDown}
+                    value={result.summary.productsLow}
+                    label="Abaixo do mín."
+                    tooltip={KPI_TOOLTIPS.productsLow}
+                    accent="warn"
+                    active={statusFilter === "low"}
+                    onClick={() => toggleStatusFilter("low")}
+                    testId="kpi-low"
+                  />
+                  <KpiCard
+                    icon={CheckCircle2}
+                    value={result.summary.productsOk}
+                    label="Adequados"
+                    tooltip={KPI_TOOLTIPS.productsOk}
+                    accent="success"
+                    active={statusFilter === "ok"}
+                    onClick={() => toggleStatusFilter("ok")}
+                    testId="kpi-ok"
+                  />
+                  <KpiCard
+                    icon={ArrowUpRight}
+                    value={result.summary.totalOutbound}
+                    label="Total saídas"
+                    tooltip={KPI_TOOLTIPS.totalOutbound}
+                    accent="destructive"
+                    testId="kpi-outbound"
+                  />
+                  <KpiCard
+                    icon={ArrowDownLeft}
+                    value={result.summary.totalInbound}
+                    label="Total entradas"
+                    tooltip={KPI_TOOLTIPS.totalInbound}
+                    accent="success"
+                    testId="kpi-inbound"
+                  />
+                  <KpiCard
+                    icon={Lock}
+                    value={result.summary.totalReserved}
+                    label="Pico reservado"
+                    tooltip={KPI_TOOLTIPS.totalReserved}
+                    accent="neutral"
+                    testId="kpi-reserved"
+                  />
+                  <KpiCard
+                    icon={MapPin}
+                    value={result.summary.totalInEvent}
+                    label="Pico em evento"
+                    tooltip={KPI_TOOLTIPS.totalInEvent}
+                    accent="neutral"
+                    testId="kpi-inevent"
+                  />
+                </div>
               </div>
 
               {result.warnings.length > 0 && (
@@ -587,19 +695,56 @@ export default function StockProjection() {
                 </Card>
               )}
 
-              {statusFilter && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    Filtrando: {statusFilter === "shortage" ? "Em falta" : statusFilter === "low" ? "Abaixo do mínimo" : "Adequados"}
+              {/* Active filter chips */}
+              <div className="flex flex-wrap items-center gap-1.5" data-testid="active-filter-chips">
+                <span className="text-xs text-muted-foreground mr-0.5">Filtros:</span>
+                <Badge variant="outline" className="text-xs gap-1">
+                  <CalendarRange className="w-3 h-3" />
+                  {fmtChipDate(result.filters.startDate)} – {fmtChipDate(result.filters.endDate)}
+                </Badge>
+                {activeSourceLabels.length > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {activeSourceLabels.length === 4 ? "Todas as fontes" : activeSourceLabels.join(" · ")}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Aplica-se a Matriz, Visão por Dia e Por Produto (não afeta Conflitos e Movimentações).
-                  </span>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setStatusFilter(null)} data-testid="button-clear-status-filter">
-                    <X className="w-3 h-3 mr-1" />
-                    Limpar
-                  </Button>
-                </div>
+                )}
+                {(result.filters.eventIds?.length ?? 0) > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {result.filters.eventIds!.length} evento(s)
+                  </Badge>
+                )}
+                {(result.filters.productIds?.length ?? 0) > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {result.filters.productIds!.length} produto(s)
+                  </Badge>
+                )}
+                {result.filters.onlyShortages && (
+                  <Badge variant="outline" className="text-xs">
+                    Apenas em falta
+                  </Badge>
+                )}
+                {result.filters.onlyImpacted && (
+                  <Badge variant="outline" className="text-xs">
+                    Apenas impactados
+                  </Badge>
+                )}
+                {statusFilter && (
+                  <Badge variant="secondary" className="text-xs gap-1" data-testid="chip-status-filter">
+                    {statusFilter === "shortage" ? "Em falta" : statusFilter === "low" ? "Abaixo do mínimo" : "Adequados"}
+                    <button
+                      onClick={() => setStatusFilter(null)}
+                      className="hover-elevate rounded-sm"
+                      data-testid="button-clear-status-filter"
+                      aria-label="Limpar filtro de status"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+              </div>
+              {statusFilter && (
+                <p className="text-xs text-muted-foreground -mt-2">
+                  O filtro de status aplica-se a Matriz, Visão por Dia e Por Produto (não afeta Conflitos e Movimentações).
+                </p>
               )}
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -632,7 +777,11 @@ export default function StockProjection() {
                 </TabsList>
 
                 <TabsContent value="matrix" className="mt-4">
-                  <ProjectionMatrix result={displayResult!} />
+                  <ProjectionMatrix
+                    result={displayResult!}
+                    onOpenCell={openCellDetail}
+                    onOpenProduct={openProductDetail}
+                  />
                 </TabsContent>
                 <TabsContent value="day" className="mt-4">
                   <ProjectionDayView result={displayResult!} onSelectProduct={openProduct} />
@@ -645,7 +794,7 @@ export default function StockProjection() {
                   />
                 </TabsContent>
                 <TabsContent value="conflicts" className="mt-4">
-                  <ProjectionConflicts result={result} />
+                  <ProjectionConflicts result={result} onOpenDetail={openConflictDetail} />
                 </TabsContent>
                 <TabsContent value="movements" className="mt-4">
                   <ProjectionMovements result={result} />
@@ -659,6 +808,8 @@ export default function StockProjection() {
           )}
         </div>
       </div>
+
+      <ProjectionDetailDrawer target={detail} onClose={() => setDetail(null)} onGoToProduct={openProduct} />
     </div>
   );
 }

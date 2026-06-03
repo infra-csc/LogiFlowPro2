@@ -1,0 +1,597 @@
+Vamos fazer uma nova rodada de refinamento visual 10/10 na tela Projeção de Estoque.
+
+Tela foco:
+
+* client/src/pages/stock-position-simulation.tsx
+* componentes relacionados à projeção de estoque
+* componentes de tabela/matriz/tabs/filtros dessa tela
+
+Objetivo:
+A tela já melhorou funcionalmente, mas ainda não está visualmente no nível esperado para ser o coração do EventFlow.
+
+Ela precisa deixar de parecer uma tabela técnica e passar a parecer uma Central de Controle de Estoque, com leitura visual clara, hierarquia forte, matriz mais bonita, filtros menos pesados e melhor experiência de investigação.
+
+Conceito visual:
+Stock Projection Command Center
+
+A tela precisa responder visualmente, em poucos segundos:
+
+* quais produtos estão seguros;
+* quais dias terão risco;
+* quais eventos impactam o estoque;
+* quais entradas e saídas estão previstas;
+* qual produto pode faltar;
+* em qual dia pode faltar;
+* qual movimentação/requisição/ordem causou impacto;
+* se a projeção está confiável.
+
+==================================================
+
+1. PROBLEMAS VISUAIS ATUAIS
+   ==================================================
+
+Corrigir os seguintes pontos:
+
+1. A lateral de filtros ainda domina demais a tela.
+2. O conteúdo principal parece espremido.
+3. Os KPIs parecem soltos, sem hierarquia de painel operacional.
+4. A matriz ainda está simples, parecendo planilha.
+5. As células não comunicam risco visualmente.
+6. O scroll horizontal ainda aparece branco/padrão.
+7. As abas estão funcionais, mas pouco marcantes.
+8. A aba Movimentações parece uma tabela comum, não uma auditoria da projeção.
+9. Falta uma visão visual forte por dia.
+10. Falta um painel de detalhe quando seleciono um dia/produto/célula.
+11. Falta sensação de “cockpit” operacional.
+12. O layout ainda não parece uma tela principal premium do app.
+
+==================================================
+2. NOVO LAYOUT GERAL
+====================
+
+Reorganizar a tela em 4 áreas principais:
+
+A. Header operacional
+B. Filtros compactos/recolhíveis
+C. Resumo executivo da projeção
+D. Área principal de análise
+
+Layout desktop ideal:
+
+* Topo: PageHeader + ações.
+* Abaixo: barra de filtros resumida ou painel lateral recolhível.
+* Área principal: KPIs + tabs + matriz/tabelas.
+* Filtros não devem ocupar mais de 300px quando abertos.
+* Quando recolhidos, a análise deve ocupar quase toda a largura.
+
+Regras:
+
+* Sem corte horizontal da página.
+* Sem scroll branco.
+* Sem aparência de planilha bruta.
+* Usar dark mode refinado.
+* Usar espaçamento consistente.
+* Usar cards com bordas sutis e contraste melhor.
+
+==================================================
+3. FILTROS COMO PAINEL OPERACIONAL
+==================================
+
+A lateral de filtros deve ficar mais compacta e elegante.
+
+Melhorias:
+
+* largura entre 280px e 320px;
+* botão claro para recolher/expandir;
+* quando recolhido, mostrar apenas ícone vertical “Filtros” ou botão flutuante;
+* listas internas com altura menor;
+* scroll dark customizado;
+* botões “Todos” e “Limpar” menores;
+* “Gerar Projeção” sticky no rodapé do painel;
+* mostrar chips de filtros ativos acima da matriz;
+* não deixar os filtros parecerem o conteúdo principal da tela.
+
+Filtros visuais:
+
+* Período
+* Fontes consideradas
+* Eventos
+* Produtos
+* Mostrar apenas em falta
+* Mostrar apenas impactados
+
+Melhorar microcopy:
+
+* “Eventos vazios = todos do período”
+* “Produtos vazios = todos os produtos impactados”
+
+==================================================
+4. RESUMO EXECUTIVO MAIS FORTE
+==============================
+
+Os KPIs atuais são úteis, mas precisam parecer parte de um painel executivo.
+
+Criar uma seção visual chamada:
+
+Resumo da Projeção
+
+Cards:
+
+* Produtos analisados
+* Em falta
+* Abaixo do mínimo
+* Adequados
+* Total de saídas
+* Total de entradas
+* Pico reservado
+* Pico em evento
+
+Melhorias visuais:
+
+* ícone em container;
+* cor de severidade na borda ou faixa lateral;
+* cards menores e mais consistentes;
+* número grande;
+* label curta;
+* tooltip explicando o cálculo;
+* card clicável para filtrar quando fizer sentido.
+
+Exemplo:
+Clicar em “Em falta” filtra a matriz para produtos com déficit.
+
+==================================================
+5. MATRIZ POR DIA COMO HEATMAP OPERACIONAL
+==========================================
+
+A aba Matriz por Dia deve ser o destaque da tela.
+
+Transformar a matriz em um heatmap operacional.
+
+Melhorias obrigatórias:
+
+* primeira coluna Produto fixa/sticky;
+* coluna Atual fixa ou bem destacada;
+* cabeçalho dos dias sticky;
+* destacar hoje;
+* destacar finais de semana de forma sutil;
+* cada célula deve ter cor de fundo por status;
+* status visual não deve depender apenas do texto;
+* tooltip ou popover ao passar/clicar na célula;
+* células com entrada/saída devem ter indicador pequeno.
+
+Cores de célula:
+
+* Adequado: fundo verde muito sutil;
+* Abaixo do mínimo: fundo âmbar sutil;
+* Em falta: fundo vermelho sutil;
+* Sem impacto: fundo neutro;
+* Entrada prevista: pequeno indicador verde ↑;
+* Saída prevista: pequeno indicador vermelho ↓;
+* Retorno previsto: pequeno indicador azul ↩;
+* Reservado/em evento: pequeno indicador roxo/âmbar.
+
+A célula deve mostrar:
+
+* saldo projetado;
+* se houver impacto, mostrar ícone pequeno;
+* se houver déficit, mostrar negativo em vermelho.
+
+Exemplo visual de célula:
+100
+ou
+92 ↓
+ou
+-4 crítico
+
+Tooltip/popover da célula:
+
+* Produto
+* Dia
+* Abertura
+* Saídas
+* Entradas
+* Reservado
+* Em evento
+* Saldo final
+* Fontes do impacto
+
+==================================================
+6. VISÃO POR DIA MAIS VISUAL
+============================
+
+A aba Visão por Dia deve parecer uma agenda operacional do estoque no dia selecionado.
+
+Melhorias:
+
+* seletor de dia mais bonito;
+* botões anterior/próximo;
+* cards de resumo do dia;
+* linha do tempo do dia;
+* tabela/lista dos produtos impactados.
+
+Criar uma mini timeline do dia com blocos:
+
+* Entradas
+* Saídas
+* Reservas
+* Em evento
+* Retornos
+* Conflitos
+
+Cada bloco deve mostrar:
+
+* quantidade;
+* origem;
+* horário/data, se houver;
+* evento relacionado.
+
+A tabela do dia deve destacar:
+
+* produtos em falta no topo;
+* produtos abaixo do mínimo depois;
+* produtos adequados por último.
+
+==================================================
+7. ABA POR PRODUTO MAIS PREMIUM
+===============================
+
+A aba Por Produto está boa como ideia, mas visualmente precisa ser mais forte.
+
+Melhorias:
+
+* seletor de produto com busca;
+* card de resumo do produto;
+* mini gráfico/linha visual de saldo por dia, sem depender de biblioteca pesada;
+* pior dia destacado;
+* maior déficit destacado;
+* lista de origens que impactam o produto.
+
+Estrutura:
+
+Topo:
+
+* Produto selecionado
+* SKU
+* Estoque atual
+* Mínimo
+* Pior saldo
+* Déficit máximo
+* Total de saídas
+* Total de entradas
+
+Depois:
+
+* Linha do tempo do saldo
+* Origens que impactam este produto
+
+A linha do tempo não deve parecer uma tabela comum.
+Pode ser uma sequência horizontal de pequenos cards por dia com saldo e cor de risco.
+
+==================================================
+8. ABA CONFLITOS MAIS ACIONÁVEL
+===============================
+
+Quando não houver conflito:
+
+* mostrar estado positivo compacto, não um card gigante.
+
+Quando houver conflito:
+cada conflito deve ser um card rico.
+
+Cada card deve mostrar:
+
+* Produto
+* SKU
+* Dia do conflito
+* Saldo projetado
+* Mínimo
+* Déficit
+* Causa principal
+* Evento/ordem/movimentação relacionada
+* Sugestão operacional
+
+Sugestões:
+
+* comprar/alugar X unidades;
+* antecipar retorno;
+* revisar aprovação;
+* revisar ordem;
+* ajustar viagem;
+* verificar movimentação.
+
+Ações:
+
+* Abrir produto
+* Abrir evento
+* Abrir ordem
+* Abrir movimentação
+
+Não executar ação automática.
+
+==================================================
+9. ABA MOVIMENTAÇÕES COMO AUDITORIA VISUAL
+==========================================
+
+A aba Movimentações precisa deixar claro o que foi considerado no cálculo.
+
+Hoje parece uma tabela simples. Melhorar para auditoria operacional.
+
+Cada linha deve virar uma linha expansível/collapsible.
+
+Linha fechada:
+
+* tipo de origem;
+* referência;
+* evento;
+* sentido;
+* saída;
+* retorno;
+* quantidade;
+* situação.
+
+Ao expandir:
+
+* produtos impactados;
+* quantidade por produto;
+* data usada no cálculo;
+* motivo de ter sido considerado ou ignorado;
+* link para entidade.
+
+Situações:
+
+* Considerado
+* Ignorado
+* Parcial
+* Sem data
+* Fora do período
+
+Visual:
+
+* “Considerado” verde;
+* “Ignorado” cinza;
+* “Sem data” âmbar;
+* “Parcial” azul/âmbar.
+
+Essa aba precisa transmitir confiança:
+“Foi isso que entrou no cálculo.”
+
+==================================================
+10. DRAWER DE DETALHE
+=====================
+
+Adicionar drawer lateral ao clicar em:
+
+* célula da matriz;
+* produto;
+* conflito;
+* movimentação.
+
+Drawer deve mostrar:
+
+Para célula:
+
+* Produto
+* Dia
+* saldo inicial
+* entradas
+* saídas
+* reservado
+* em evento
+* saldo final
+* drivers/fontes do impacto
+
+Para produto:
+
+* dados do produto
+* saldo por dia
+* eventos relacionados
+* movimentações relacionadas
+
+Para conflito:
+
+* causa do conflito
+* sugestão
+* links
+
+O drawer deve ser bonito, compacto e não bloquear totalmente a análise.
+
+==================================================
+11. MELHORAR SCROLLBARS
+=======================
+
+Corrigir todos os scrolls internos:
+
+* lista de eventos;
+* lista de produtos;
+* matriz horizontal;
+* tabelas;
+* drawer.
+
+Regras:
+
+* scrollbar fina;
+* thumb discreto;
+* track transparente;
+* nunca branca;
+* compatível com dark mode.
+
+==================================================
+12. MELHORAR DENSIDADE E ESPAÇAMENTO
+====================================
+
+A tela precisa ser densa, mas elegante.
+
+Ajustar:
+
+* reduzir altura excessiva dos cards;
+* alinhar melhor os KPIs;
+* limitar largura das tabs;
+* melhorar respiro entre header, KPIs e matriz;
+* evitar blocos grandes vazios;
+* usar `text-muted-foreground` para dados secundários;
+* destacar apenas o que exige ação.
+
+==================================================
+13. ESTADO COM POUCOS DADOS
+===========================
+
+Mesmo quando houver poucos produtos, a tela não deve parecer vazia ou pobre.
+
+Se só houver 3 produtos:
+
+* matriz ainda deve parecer bem construída;
+* mostrar explicação da base;
+* mostrar fontes consideradas;
+* mostrar resumo por dia;
+* mostrar card “Nenhum conflito” menor;
+* não deixar grandes áreas vazias.
+
+==================================================
+14. RESPONSIVIDADE
+==================
+
+Desktop:
+
+* filtros laterais compactos;
+* matriz ampla;
+* drawer lateral.
+
+Notebook:
+
+* filtros recolhíveis por padrão, se necessário;
+* matriz sem cortar.
+
+Tablet:
+
+* filtros viram painel superior/drawer;
+* matriz com scroll interno.
+
+Mobile:
+
+* priorizar Visão por Dia e Por Produto;
+* matriz pode ficar como visualização secundária;
+* cards empilhados;
+* sem overflow horizontal quebrado.
+
+==================================================
+15. NÃO ALTERAR REGRAS SEM NECESSIDADE
+======================================
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* composição de componentes;
+* classes;
+* tabs;
+* matriz;
+* cards;
+* drawer;
+* tooltips;
+* popovers;
+* filtros visuais;
+* microcopy PT-BR.
+
+Não alterar sem necessidade:
+
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* role_permissions;
+* regras de negócio;
+* contratos de endpoints existentes;
+* cálculo já implementado, exceto se houver bug claro;
+* payloads usados por outras telas.
+
+Se for necessário ajustar endpoint apenas para fornecer detalhes visuais:
+
+* manter compatibilidade;
+* adicionar campos sem quebrar consumidores existentes.
+
+==================================================
+16. VALIDAÇÕES
+==============
+
+Rodar:
+
+npm run check
+npm run build
+
+Smoke test:
+
+1. Abrir Projeção de Estoque.
+2. Recolher e expandir filtros.
+3. Gerar projeção.
+4. Validar KPIs.
+5. Abrir Matriz por Dia.
+6. Clicar em célula.
+7. Ver drawer da célula.
+8. Trocar para Visão por Dia.
+9. Trocar dia.
+10. Abrir Por Produto.
+11. Selecionar produto.
+12. Validar linha do tempo do produto.
+13. Abrir Conflitos.
+14. Validar estado sem conflito.
+15. Abrir Movimentações.
+16. Expandir movimentação.
+17. Validar scrollbars dark.
+18. Testar notebook/desktop.
+19. Testar mobile básico.
+20. Confirmar ausência de overflow horizontal.
+
+Perfis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Confirmar:
+
+* RBAC preservado.
+* links preservados.
+* endpoints preservados.
+* cálculo preservado.
+* sem regressão visual.
+
+==================================================
+17. ENTREGA FINAL
+=================
+
+Entregar:
+
+* problemas visuais encontrados;
+* melhorias aplicadas no layout;
+* melhorias aplicadas nos filtros;
+* melhorias aplicadas nos KPIs;
+* melhorias aplicadas na matriz/heatmap;
+* melhorias aplicadas na visão por dia;
+* melhorias aplicadas na aba por produto;
+* melhorias aplicadas em conflitos;
+* melhorias aplicadas em movimentações;
+* drawer criado;
+* arquivos alterados;
+* confirmação de RBAC preservado;
+* confirmação de cálculo preservado;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências restantes.
+
+Critério de aceite:
+
+A tela só será considerada visualmente 10/10 se:
+
+* parecer uma Central de Controle de Estoque;
+* a matriz parecer um heatmap operacional, não uma planilha comum;
+* filtros não dominarem a tela;
+* cada célula importante puder ser explicada;
+* conflitos forem acionáveis;
+* movimentações consideradas transmitirem confiança;
+* o usuário conseguir identificar risco visualmente;
+* a tela continuar densa, mas elegante;
+* não houver scroll branco;
+* não houver corte horizontal;
+* o visual for compatível com a importância da tela no app.

@@ -129,3 +129,46 @@ export function dayTrend(outbound: number, inbound: number): DayTrend {
   if (net > 0) return "up";
   return "flat";
 }
+
+// Heatmap background for a matrix cell. Neutral when the day has no flow and is
+// healthy; otherwise a subtle severity wash so risk reads at a glance.
+export function cellHeatClass(status: ProjectionDayStatus, hasImpact: boolean): string {
+  switch (status) {
+    case "shortage":
+      return "bg-destructive/20 text-destructive font-semibold";
+    case "low":
+      return "bg-chart-5/15 text-chart-5";
+    default:
+      return hasImpact ? "bg-chart-4/10 text-foreground" : "text-muted-foreground";
+  }
+}
+
+// Small status dot used in legends / headers.
+export function statusDotClass(status: ProjectionDayStatus): string {
+  switch (status) {
+    case "shortage":
+      return "bg-destructive";
+    case "low":
+      return "bg-chart-5";
+    default:
+      return "bg-chart-4";
+  }
+}
+
+export interface KpiMeta {
+  key: string;
+  label: string;
+  tooltip: string;
+}
+
+// Tooltips that explain how each executive KPI is computed.
+export const KPI_TOOLTIPS: Record<string, string> = {
+  totalProducts: "Produtos com pelo menos um movimento (entrada/saída) no período.",
+  productsShortage: "Produtos cujo saldo projetado fica negativo em algum dia.",
+  productsLow: "Produtos que ficam abaixo do estoque mínimo em algum dia.",
+  productsOk: "Produtos que permanecem acima do mínimo em todo o período.",
+  totalOutbound: "Soma de todas as saídas previstas no período.",
+  totalInbound: "Soma de todas as entradas/retornos previstos no período.",
+  totalReserved: "Soma, por produto, do pico de quantidade reservada no período.",
+  totalInEvent: "Soma, por produto, do pico de quantidade em evento no período.",
+};
