@@ -92,8 +92,7 @@ const productItems: ProductItem[] = [
 ];
 
 const reportItems = [
-  { title: "Simulação de Estoque", url: "/reports/stock-simulation", icon: BarChart3 },
-  { title: "Posição de Estoque por Período", url: "/reports/stock-position-simulation", icon: BarChart3 },
+  { title: "Projeção de Estoque", url: "/reports/stock-projection", icon: BarChart3 },
 ];
 
 const movementTypeItems = [

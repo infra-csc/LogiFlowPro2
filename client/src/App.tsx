@@ -46,8 +46,7 @@ import Drivers from "@/pages/drivers";
 import Vehicles from "@/pages/vehicles";
 import VehicleTypes from "@/pages/vehicle-types";
 import NotificationSettingsPage from "@/pages/notification-settings";
-import StockSimulation from "@/pages/stock-simulation";
-import StockPositionSimulation from "@/pages/stock-position-simulation";
+import StockProjection from "@/pages/stock-projection";
 import MovementGroups from "@/pages/movement-groups";
 import MovementTypesConfig from "@/pages/movement-types-config";
 import MovementApprovals from "@/pages/movement-approvals";
@@ -66,6 +65,14 @@ function DashboardRedirect() {
     setLocation("/");
   }, [setLocation]);
   return null;
+}
+
+function StockProjectionRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation("/reports/stock-projection");
+  }, [setLocation]);
+  return <></>;
 }
 
 function Router() {
@@ -106,8 +113,9 @@ function Router() {
       <ProtectedRoute path="/config/drivers" component={Drivers} />
       <ProtectedRoute path="/config/docks" component={Docks} />
       <ProtectedRoute path="/notification-settings" component={NotificationSettingsPage} />
-      <ProtectedRoute path="/reports/stock-simulation" component={StockSimulation} />
-      <ProtectedRoute path="/reports/stock-position-simulation" component={StockPositionSimulation} />
+      <ProtectedRoute path="/reports/stock-projection" component={StockProjection} />
+      <ProtectedRoute path="/reports/stock-simulation" component={StockProjectionRedirect} />
+      <ProtectedRoute path="/reports/stock-position-simulation" component={StockProjectionRedirect} />
       <ProtectedRoute path="/config/movement-groups" component={MovementGroups} requireAdmin />
       <ProtectedRoute path="/config/movement-types" component={MovementTypesConfig} requireAdmin />
       <ProtectedRoute path="/config/product-statuses" component={ProductStatuses} requireAdmin />

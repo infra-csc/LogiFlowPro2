@@ -228,7 +228,7 @@ export default function Dashboard() {
       desc: "Abaixo do mínimo",
       color: kpis?.lowStockItems ? "text-destructive" : "text-muted-foreground",
       bg: kpis?.lowStockItems ? "bg-destructive/10" : "bg-muted",
-      href: "/stock-simulation",
+      href: "/reports/stock-projection",
       testId: "kpi-low-stock",
     },
     {
@@ -257,8 +257,7 @@ export default function Dashboard() {
     { label: "Ordem de Carregamento", icon: Layers, href: "/loading-orders", show: canWriteLogistics, testId: "qa-loading-order" },
     { label: "Nova Movimentação", icon: Warehouse, href: "/movements", show: canCreateMovement || isAlmox, testId: "qa-movement" },
     { label: "Ver Aprovações", icon: CheckCheck, href: "/approvals", show: canSeeApprovals, testId: "qa-approvals" },
-    { label: "Estoque Crítico", icon: PackageSearch, href: "/stock-simulation", show: true, testId: "qa-stock" },
-    { label: "Simular Estoque", icon: BarChart3, href: "/stock-position-simulation", show: true, testId: "qa-simulate" },
+    { label: "Projeção de Estoque", icon: BarChart3, href: "/reports/stock-projection", show: true, testId: "qa-stock" },
   ].filter((a) => a.show);
 
   return (
@@ -674,7 +673,7 @@ export default function Dashboard() {
               label="Estoque Crítico"
               action={
                 <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-                  <Link href="/stock-simulation">Ver simulação</Link>
+                  <Link href="/reports/stock-projection">Ver projeção</Link>
                 </Button>
               }
             />

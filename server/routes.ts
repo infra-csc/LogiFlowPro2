@@ -8,6 +8,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { registerOptimizationRoutes } from "./routes-optimization";
 import { registerReportsRoutes } from "./routes-reports";
+import { registerStockProjectionRoutes } from "./routes-stock-projection";
 import {
   insertEventSchema,
   insertKitSchema,
@@ -193,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "stock",
           severity: "critical",
           message: `${zeroStock.length} produto${zeroStock.length > 1 ? "s" : ""} com estoque zerado`,
-          href: "/stock-simulation",
+          href: "/reports/stock-projection",
         });
       }
 
@@ -210,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "stock",
           severity: "warning",
           message: `${lowStockList.length} produto${lowStockList.length > 1 ? "s" : ""} abaixo do estoque mínimo`,
-          href: "/stock-simulation",
+          href: "/reports/stock-projection",
         });
       }
 
@@ -3069,8 +3070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { page: 'movement-approvals', displayName: 'Aprovações de Movimentações', category: 'Aprovações' },
         
         // Relatórios
-        { page: 'stock-simulation', displayName: 'Simulação de Estoque', category: 'Relatórios' },
-        { page: 'stock-position-simulation', displayName: 'Simulação de Posição', category: 'Relatórios' },
+        { page: 'stock-projection', displayName: 'Projeção de Estoque', category: 'Relatórios' },
         { page: 'returns', displayName: 'Devoluções e Avarias', category: 'Relatórios' },
         
         // Uploads e Importações
@@ -3736,6 +3736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Reports routes
   registerReportsRoutes(app);
+  registerStockProjectionRoutes(app);
 
   // ===== PROTOTYPES: Product Statuses & Locations =====
 
