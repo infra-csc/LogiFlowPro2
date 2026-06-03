@@ -8,7 +8,8 @@ import {
   decimal, 
   jsonb,
   pgEnum,
-  boolean
+  boolean,
+  index
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -333,7 +334,9 @@ export const materialRequests = pgTable("material_requests", {
   cutoffTime: timestamp("cutoff_time"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
-});
+}, (table) => ({
+  eventIdIdx: index("idx_material_requests_event_id").on(table.eventId),
+}));
 
 // Request Items table
 export const requestItems = pgTable("request_items", {
@@ -520,7 +523,9 @@ export const trips = pgTable("trips", {
   createdBy: varchar("created_by").notNull().references(() => users.id),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
-});
+}, (table) => ({
+  eventIdIdx: index("idx_trips_event_id").on(table.eventId),
+}));
 
 // Trip Events table (Many-to-Many)
 export const tripEvents = pgTable("trip_events", {
@@ -567,7 +572,9 @@ export const loadingOrders = pgTable("loading_orders", {
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
-});
+}, (table) => ({
+  eventIdIdx: index("idx_loading_orders_event_id").on(table.eventId),
+}));
 
 // Loading Order - Material Request relationship (Many-to-Many)
 export const loadingOrderRequests = pgTable("loading_order_requests", {
@@ -596,7 +603,9 @@ export const loadingOrderItems = pgTable("loading_order_items", {
     };
   }>>().notNull(),
   notes: text("notes")
-});
+}, (table) => ({
+  loadingOrderIdIdx: index("idx_loading_order_items_loading_order_id").on(table.loadingOrderId),
+}));
 
 // Loading Order Trips junction table (many-to-many)
 export const loadingOrderTrips = pgTable("loading_order_trips", {
@@ -633,7 +642,10 @@ export const movements = pgTable("movements", {
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
-});
+}, (table) => ({
+  loadingOrderIdIdx: index("idx_movements_loading_order_id").on(table.loadingOrderId),
+  eventIdIdx: index("idx_movements_event_id").on(table.eventId),
+}));
 
 // Movement Events junction table (many-to-many)
 export const movementEvents = pgTable("movement_events", {
@@ -641,7 +653,10 @@ export const movementEvents = pgTable("movement_events", {
   movementId: varchar("movement_id").notNull().references(() => movements.id, { onDelete: "cascade" }),
   eventId: varchar("event_id").notNull().references(() => events.id),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
-});
+}, (table) => ({
+  movementIdIdx: index("idx_movement_events_movement_id").on(table.movementId),
+  eventIdIdx: index("idx_movement_events_event_id").on(table.eventId),
+}));
 
 // Movement Trips junction table (many-to-many)
 export const movementTrips = pgTable("movement_trips", {
@@ -649,7 +664,10 @@ export const movementTrips = pgTable("movement_trips", {
   movementId: varchar("movement_id").notNull().references(() => movements.id, { onDelete: "cascade" }),
   tripId: varchar("trip_id").notNull().references(() => trips.id),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
-});
+}, (table) => ({
+  movementIdIdx: index("idx_movement_trips_movement_id").on(table.movementId),
+  tripIdIdx: index("idx_movement_trips_trip_id").on(table.tripId),
+}));
 
 // Movement Items table
 export const movementItems = pgTable("movement_items", {

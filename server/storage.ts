@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import {
@@ -1077,41 +1077,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Movements
+  // Batch-load event and trip relations for a list of movements in a fixed
+  // number of queries (avoids the N+1 pattern of one query per movement).
+  private async attachMovementRelations<T extends { id: string }>(
+    movementsData: T[]
+  ): Promise<(T & { events: any[]; trips: any[] })[]> {
+    if (movementsData.length === 0) return movementsData as any;
+
+    const ids = movementsData.map((m) => m.id);
+
+    const eventRelations = await db
+      .select({
+        movementId: movementEvents.movementId,
+        event: events,
+      })
+      .from(movementEvents)
+      .leftJoin(events, eq(movementEvents.eventId, events.id))
+      .where(inArray(movementEvents.movementId, ids));
+
+    const tripRelations = await db
+      .select({
+        movementId: movementTrips.movementId,
+        trip: trips,
+      })
+      .from(movementTrips)
+      .leftJoin(trips, eq(movementTrips.tripId, trips.id))
+      .where(inArray(movementTrips.movementId, ids));
+
+    const eventsByMovement = new Map<string, any[]>();
+    for (const r of eventRelations) {
+      if (!r.event) continue;
+      const arr = eventsByMovement.get(r.movementId) ?? [];
+      arr.push(r.event);
+      eventsByMovement.set(r.movementId, arr);
+    }
+
+    const tripsByMovement = new Map<string, any[]>();
+    for (const r of tripRelations) {
+      if (!r.trip) continue;
+      const arr = tripsByMovement.get(r.movementId) ?? [];
+      arr.push(r.trip);
+      tripsByMovement.set(r.movementId, arr);
+    }
+
+    return movementsData.map((m) => ({
+      ...m,
+      events: eventsByMovement.get(m.id) ?? [],
+      trips: tripsByMovement.get(m.id) ?? [],
+    }));
+  }
+
   async getMovements(): Promise<Movement[]> {
-    // Get all movements with their relations
+    // Get all movements, then batch-load their relations (3 queries total)
     const movementsData = await db
       .select()
       .from(movements)
       .orderBy(desc(movements.createdAt));
-    
-    // For each movement, get its associated events and trips
-    const movementsWithRelations = await Promise.all(
-      movementsData.map(async (movement) => {
-        const eventRelations = await db
-          .select({
-            event: events,
-          })
-          .from(movementEvents)
-          .leftJoin(events, eq(movementEvents.eventId, events.id))
-          .where(eq(movementEvents.movementId, movement.id));
-        
-        const tripRelations = await db
-          .select({
-            trip: trips,
-          })
-          .from(movementTrips)
-          .leftJoin(trips, eq(movementTrips.tripId, trips.id))
-          .where(eq(movementTrips.movementId, movement.id));
-        
-        return {
-          ...movement,
-          events: eventRelations.map(r => r.event).filter(Boolean),
-          trips: tripRelations.map(r => r.trip).filter(Boolean),
-        };
-      })
-    );
-    
-    return movementsWithRelations as any;
+
+    return (await this.attachMovementRelations(movementsData)) as any;
   }
 
   async getMovement(id: string): Promise<Movement | undefined> {
@@ -1160,35 +1183,8 @@ export class DatabaseStorage implements IStorage {
       .from(movements)
       .where(eq(movements.loadingOrderId, loadingOrderId))
       .orderBy(desc(movements.createdAt));
-    
-    // For each movement, get its associated events and trips
-    const movementsWithRelations = await Promise.all(
-      movementsData.map(async (movement) => {
-        const eventRelations = await db
-          .select({
-            event: events,
-          })
-          .from(movementEvents)
-          .leftJoin(events, eq(movementEvents.eventId, events.id))
-          .where(eq(movementEvents.movementId, movement.id));
-        
-        const tripRelations = await db
-          .select({
-            trip: trips,
-          })
-          .from(movementTrips)
-          .leftJoin(trips, eq(movementTrips.tripId, trips.id))
-          .where(eq(movementTrips.movementId, movement.id));
-        
-        return {
-          ...movement,
-          events: eventRelations.map(r => r.event).filter(Boolean),
-          trips: tripRelations.map(r => r.trip).filter(Boolean),
-        };
-      })
-    );
-    
-    return movementsWithRelations as any;
+
+    return (await this.attachMovementRelations(movementsData)) as any;
   }
 
   async createMovement(movement: InsertMovement): Promise<Movement> {
@@ -1260,33 +1256,7 @@ export class DatabaseStorage implements IStorage {
       orderBy: [desc(movements.createdAt)]
     });
 
-    const movementsWithRelations = await Promise.all(
-      movementsData.map(async (movement) => {
-        const eventRelations = await db
-          .select({
-            event: events,
-          })
-          .from(movementEvents)
-          .leftJoin(events, eq(movementEvents.eventId, events.id))
-          .where(eq(movementEvents.movementId, movement.id));
-        
-        const tripRelations = await db
-          .select({
-            trip: trips,
-          })
-          .from(movementTrips)
-          .leftJoin(trips, eq(movementTrips.tripId, trips.id))
-          .where(eq(movementTrips.movementId, movement.id));
-        
-        return {
-          ...movement,
-          events: eventRelations.map(r => r.event).filter(Boolean),
-          trips: tripRelations.map(r => r.trip).filter(Boolean),
-        };
-      })
-    );
-    
-    return movementsWithRelations as any;
+    return (await this.attachMovementRelations(movementsData)) as any;
   }
 
   async approveMovement(id: string, approvedBy: string): Promise<Movement> {
