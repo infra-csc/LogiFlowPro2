@@ -99,7 +99,6 @@ export function ProductList({
                 <SortHeader label="Produto" column="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
                 <SortHeader label="SKU" column="sku" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="hidden md:table-cell" />
                 <SortHeader label="Titularidade" column="ownership" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="hidden lg:table-cell" />
-                <TableHead className="hidden xl:table-cell text-xs font-medium text-muted-foreground">Categoria</TableHead>
                 <TableHead className="hidden lg:table-cell text-xs font-medium text-muted-foreground">Unidade</TableHead>
                 <SortHeader label="Estoque" column="currentStock" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="text-right" align="right" />
                 <SortHeader label="Mínimo" column="minimumStock" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="hidden md:table-cell text-right" align="right" />
@@ -160,11 +159,6 @@ export function ProductList({
                     {/* Ownership */}
                     <TableCell className={`${cellPad} hidden lg:table-cell`}>
                       <Badge variant="outline" className={`text-[10px] ${ob.className}`}>{ob.label}</Badge>
-                    </TableCell>
-
-                    {/* Category */}
-                    <TableCell className={`${cellPad} hidden xl:table-cell`}>
-                      <span className="text-xs text-muted-foreground truncate block max-w-[140px]">{product.category || "—"}</span>
                     </TableCell>
 
                     {/* Unit */}

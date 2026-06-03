@@ -1,0 +1,340 @@
+Ajustar a tela Catálogo de Produtos após a criação da visualização em lista.
+
+Arquivo foco:
+
+* client/src/pages/products.tsx
+* componentes relacionados à listagem de produtos
+
+Objetivo:
+Deixar a visualização em lista como padrão principal do módulo de Produtos, remover campos que não existem no sistema e manter a visualização em cards apenas como opção secundária quando o usuário selecionar.
+
+Contexto:
+A tela ficou melhor com o modo lista, mas ainda existem ajustes importantes:
+
+1. Não temos categoria de produto no sistema.
+2. A coluna “Categoria” está vazia.
+3. O modo principal deve ser Lista, não Grade.
+4. O modo Grade/Cards deve existir apenas como alternativa visual quando o usuário selecionar.
+5. A lista deve ser tratada como a visualização operacional principal.
+
+==================================================
+
+1. LISTA COMO VISUALIZAÇÃO PADRÃO
+   ==================================================
+
+Alterar o comportamento da tela:
+
+* Ao abrir Catálogo de Produtos, o modo padrão deve ser “Lista”.
+* O usuário ainda pode alternar para “Grade”.
+* Se houver preferência salva no localStorage, avaliar:
+
+Opção preferida:
+
+* usar Lista como padrão inicial;
+* depois respeitar a última preferência do usuário.
+
+Se já existir localStorage:
+
+* garantir que usuários novos abram em Lista.
+* usuários que escolherem Grade continuam vendo Grade depois.
+
+Critério:
+Produtos é um módulo operacional. A visão principal precisa ser tabular/lista.
+
+==================================================
+2. GRADE APENAS COMO OPÇÃO SECUNDÁRIA
+=====================================
+
+Manter o botão/toggle:
+
+* Lista
+* Grade
+
+Mas:
+
+* Lista deve aparecer primeiro ou como ativa por padrão.
+* Grade deve ser alternativa visual.
+* Cards só aparecem quando o usuário clicar em Grade.
+* Não deixar cards como layout principal.
+
+Texto sugerido:
+
+* “Lista”
+* “Grade”
+
+==================================================
+3. REMOVER CATEGORIA
+====================
+
+Como não existe categoria no sistema, remover completamente:
+
+* coluna Categoria da tabela/lista;
+* filtro Categoria;
+* qualquer placeholder de categoria;
+* qualquer lógica visual que mostre “—” para categoria;
+* qualquer ordenação por categoria;
+* qualquer chip ou contador relacionado à categoria.
+
+Importante:
+Não criar campo categoria no banco.
+Não alterar schema.
+Não criar migration.
+Apenas remover da interface porque esse dado não existe.
+
+==================================================
+4. COLUNAS DA LISTA
+===================
+
+A lista principal deve ficar com colunas úteis e reais.
+
+Colunas sugeridas:
+
+1. Produto
+
+* imagem/placeholder pequeno;
+* nome do produto;
+* badge Variante quando aplicável.
+
+2. SKU
+
+* font-mono;
+* compacto.
+
+3. Titularidade
+
+* Próprio;
+* Alugado;
+* Terceiro.
+
+4. Tipo
+
+* Principal;
+* Variante.
+* Se já estiver como badge no nome, pode remover essa coluna e manter só o badge.
+
+5. Unidade
+
+6. Estoque
+
+* quantidade atual;
+* destacar 0 em vermelho.
+
+7. Mínimo
+
+* estoque mínimo.
+
+8. Status
+
+* OK;
+* Estoque baixo;
+* Sem estoque.
+
+9. Local
+
+* localização;
+* se não existir, mostrar “Sem localização” ou “—”, conforme padrão visual.
+
+10. Ações
+
+* editar;
+* detalhes, se existir;
+* menu de ações, se houver.
+
+Não exibir coluna sem dado real.
+
+==================================================
+5. MELHORAR DENSIDADE DA LISTA
+==============================
+
+A lista ficou boa, mas pode ficar mais operacional.
+
+Ajustar:
+
+* altura das linhas em modo compacto;
+* melhor alinhamento vertical;
+* header sticky, se fizer sentido;
+* hover de linha mais claro;
+* linha clicável para abrir detalhes/editar;
+* ícone de editar alinhado;
+* badges com tamanho consistente;
+* estoque e mínimo alinhados à direita;
+* SKU com largura controlada.
+
+Densidades:
+
+* Compacta
+* Confortável
+
+Se já existe esse controle, manter.
+Se não estiver funcionando bem, ajustar.
+
+==================================================
+6. ORDENAÇÃO
+============
+
+Manter ordenação, mas remover opções inválidas.
+
+Ordenações úteis:
+
+* Nome A-Z
+* Nome Z-A
+* SKU A-Z
+* Estoque menor primeiro
+* Estoque maior primeiro
+* Titularidade A-Z
+* Status
+
+Remover:
+
+* Categoria
+* qualquer campo inexistente.
+
+==================================================
+7. FILTROS
+==========
+
+Ajustar filtros para refletir apenas dados reais.
+
+Filtros úteis:
+
+* Busca por nome, SKU ou código de barras;
+* Titularidade:
+
+  * Próprio
+  * Alugado
+  * Terceiro
+* Tipo:
+
+  * Principal
+  * Variante
+* Status de estoque:
+
+  * OK
+  * Estoque baixo
+  * Sem estoque
+* Com imagem / Sem imagem
+* Unidade
+* Localização
+* Fornecedor, se o dado existir
+
+Remover:
+
+* Categoria
+
+Se algum filtro não tiver dado real, não exibir.
+
+==================================================
+8. KPIs DO TOPO
+===============
+
+Manter os KPIs atuais:
+
+* Total
+* Próprios
+* Locado/Terceiro
+* Estoque baixo
+* Sem imagem
+
+Melhorar se necessário:
+
+* KPIs clicáveis como filtros rápidos;
+* estado ativo quando clicado;
+* não criar KPI de categoria.
+
+==================================================
+9. CARDS / GRADE
+================
+
+Quando o usuário selecionar Grade:
+
+* mostrar cards atuais refinados;
+* cards podem ser mais visuais;
+* manter imagem/placeholder;
+* nome;
+* SKU;
+* estoque;
+* titularidade;
+* status;
+* sem categoria.
+
+Cards não devem ser a visão padrão.
+
+==================================================
+10. RESPONSIVIDADE
+==================
+
+Desktop:
+
+* lista tabular completa.
+
+Tablet:
+
+* ocultar colunas secundárias se necessário.
+
+Mobile:
+
+* transformar lista em cards compactos horizontais ou linhas empilhadas.
+* não criar tabela impossível de usar no celular.
+* manter busca, filtros e alternância visíveis.
+
+Nunca permitir overflow horizontal quebrado.
+
+==================================================
+11. NÃO ALTERAR BACK-END SEM NECESSIDADE
+========================================
+
+Não alterar:
+
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* endpoints;
+* payloads;
+* regras de negócio;
+* integração com estoque, kits, requisições, movimentações e loading orders.
+
+Só ajustar front-end visual/comportamental.
+
+Se o backend estiver retornando category/categoryId mas o sistema não usa:
+
+* simplesmente ignorar no front.
+* não criar dependência.
+
+==================================================
+12. VALIDAÇÕES
+==============
+
+Rodar:
+
+npm run check
+npm run build
+
+Smoke test:
+
+* abrir Catálogo de Produtos;
+* confirmar que abre em Lista por padrão;
+* alternar para Grade;
+* voltar para Lista;
+* confirmar que Categoria não aparece;
+* buscar produto;
+* filtrar por titularidade;
+* filtrar por status de estoque;
+* ordenar por estoque;
+* ordenar por nome;
+* editar produto pela lista;
+* validar produto sem estoque;
+* validar produto variante;
+* validar produto sem imagem;
+* testar responsividade.
+
+Entrega final:
+
+* arquivos alterados;
+* confirmação de Lista como padrão;
+* confirmação de Grade apenas como opção;
+* confirmação de Categoria removida;
+* filtros ajustados;
+* ordenação ajustada;
+* resultado do npm run check;
+* resultado do npm run build.

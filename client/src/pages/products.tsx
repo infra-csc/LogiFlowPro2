@@ -51,7 +51,6 @@ export default function Products() {
   const [filterType, setFilterType] = useState("all");
   const [filterStock, setFilterStock] = useState("all");
   const [filterImage, setFilterImage] = useState("all");
-  const [filterCategory, setFilterCategory] = useState("all");
   const [filterUnit, setFilterUnit] = useState("all");
   const [filterLocation, setFilterLocation] = useState("all");
 
@@ -59,8 +58,9 @@ export default function Products() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  // View mode + density (persisted)
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  // View mode + density (persisted). List is the default operational view;
+  // a saved preference (e.g. user switched to grid) is respected afterwards.
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [density, setDensity] = useState<Density>("comfortable");
 
   useEffect(() => {
@@ -85,18 +85,15 @@ export default function Products() {
   });
 
   // Dynamic filter option lists
-  const { categories, units, locations } = useMemo(() => {
-    const cat = new Set<string>();
+  const { units, locations } = useMemo(() => {
     const uni = new Set<string>();
     const loc = new Set<string>();
     (products ?? []).forEach((p) => {
-      if (p.category) cat.add(p.category);
       if (p.unit) uni.add(p.unit);
       if (p.location) loc.add(p.location);
     });
     const sorter = (a: string, b: string) => a.localeCompare(b, "pt-BR", { sensitivity: "base" });
     return {
-      categories: Array.from(cat).sort(sorter),
       units: Array.from(uni).sort(sorter),
       locations: Array.from(loc).sort(sorter),
     };
@@ -128,7 +125,6 @@ export default function Products() {
         (filterImage === "with" && !!p.imageUrl) ||
         (filterImage === "without" && !p.imageUrl);
 
-      const matchesCategory = filterCategory === "all" || p.category === filterCategory;
       const matchesUnit = filterUnit === "all" || p.unit === filterUnit;
       const matchesLocation = filterLocation === "all" || p.location === filterLocation;
 
@@ -138,7 +134,6 @@ export default function Products() {
         matchesType &&
         matchesStock &&
         matchesImage &&
-        matchesCategory &&
         matchesUnit &&
         matchesLocation
       );
@@ -151,7 +146,6 @@ export default function Products() {
     filterType,
     filterStock,
     filterImage,
-    filterCategory,
     filterUnit,
     filterLocation,
     sortKey,
@@ -163,7 +157,6 @@ export default function Products() {
     filterType !== "all",
     filterStock !== "all",
     filterImage !== "all",
-    filterCategory !== "all",
     filterUnit !== "all",
     filterLocation !== "all",
   ].filter(Boolean).length;
@@ -173,7 +166,6 @@ export default function Products() {
     setFilterType("all");
     setFilterStock("all");
     setFilterImage("all");
-    setFilterCategory("all");
     setFilterUnit("all");
     setFilterLocation("all");
   };
@@ -214,7 +206,6 @@ export default function Products() {
   if (filterType !== "all") chips.push({ label: filterType === "principal" ? "Principal" : "Variante", onRemove: () => setFilterType("all") });
   if (filterStock !== "all") chips.push({ label: STOCK_CHIP[filterStock] ?? filterStock, onRemove: () => setFilterStock("all") });
   if (filterImage !== "all") chips.push({ label: filterImage === "with" ? "Com imagem" : "Sem imagem", onRemove: () => setFilterImage("all") });
-  if (filterCategory !== "all") chips.push({ label: filterCategory, onRemove: () => setFilterCategory("all") });
   if (filterUnit !== "all") chips.push({ label: filterUnit, onRemove: () => setFilterUnit("all") });
   if (filterLocation !== "all") chips.push({ label: filterLocation, onRemove: () => setFilterLocation("all") });
 
@@ -249,17 +240,20 @@ export default function Products() {
       {stats && stats.total > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
-            { label: "Total", value: stats.total, onClick: () => { handleClearFilters(); setSearch(""); } },
-            { label: "Próprios", value: stats.owned, onClick: () => { handleClearFilters(); setFilterOwnership("owned"); } },
-            { label: "Locado/Terceiro", value: stats.external, onClick: () => { handleClearFilters(); setFilterOwnership("external"); } },
-            { label: "Estoque baixo", value: stats.lowStock, onClick: () => { handleClearFilters(); setFilterStock("low"); }, warn: stats.lowStock > 0 },
-            { label: "Sem imagem", value: stats.noImage, onClick: () => { handleClearFilters(); setFilterImage("without"); } },
+            { label: "Total", value: stats.total, onClick: () => { handleClearFilters(); setSearch(""); }, active: activeFilterCount === 0 && !search },
+            { label: "Próprios", value: stats.owned, onClick: () => { handleClearFilters(); setFilterOwnership("owned"); }, active: filterOwnership === "owned" },
+            { label: "Locado/Terceiro", value: stats.external, onClick: () => { handleClearFilters(); setFilterOwnership("external"); }, active: filterOwnership === "external" },
+            { label: "Estoque baixo", value: stats.lowStock, onClick: () => { handleClearFilters(); setFilterStock("low"); }, warn: stats.lowStock > 0, active: filterStock === "low" },
+            { label: "Sem imagem", value: stats.noImage, onClick: () => { handleClearFilters(); setFilterImage("without"); }, active: filterImage === "without" },
           ].map((s) => (
             <button
               key={s.label}
               type="button"
               onClick={s.onClick}
-              className="rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover-elevate cursor-pointer"
+              aria-pressed={s.active}
+              className={`rounded-lg border bg-card p-3 text-left transition-colors hover-elevate cursor-pointer ${
+                s.active ? "border-primary ring-1 ring-primary/40" : "border-border/60"
+              }`}
               data-testid={`stat-${s.label.toLowerCase().replace(/[^a-z]/g, "-")}`}
             >
               <p className={`text-xl font-bold ${s.warn ? "text-amber-500" : "text-foreground"}`}>{s.value}</p>
@@ -352,21 +346,6 @@ export default function Products() {
               <SelectItem value="all">Todas</SelectItem>
               <SelectItem value="with">Com imagem</SelectItem>
               <SelectItem value="without">Sem imagem</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Categoria</Label>
-          <Select value={filterCategory} onValueChange={setFilterCategory} disabled={categories.length === 0}>
-            <SelectTrigger data-testid="filter-category">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
             </SelectContent>
           </Select>
         </div>

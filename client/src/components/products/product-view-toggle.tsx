@@ -17,13 +17,13 @@ export function ProductViewToggle({ value, onChange }: ProductViewToggleProps) {
       }}
       className="gap-1"
     >
-      <ToggleGroupItem value="grid" aria-label="Visualização em grade" data-testid="toggle-view-grid">
-        <LayoutGrid className="h-4 w-4 mr-2" />
-        Grade
-      </ToggleGroupItem>
       <ToggleGroupItem value="list" aria-label="Visualização em lista" data-testid="toggle-view-list">
         <List className="h-4 w-4 mr-2" />
         Lista
+      </ToggleGroupItem>
+      <ToggleGroupItem value="grid" aria-label="Visualização em grade" data-testid="toggle-view-grid">
+        <LayoutGrid className="h-4 w-4 mr-2" />
+        Grade
       </ToggleGroupItem>
     </ToggleGroup>
   );

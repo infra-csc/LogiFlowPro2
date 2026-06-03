@@ -63,7 +63,7 @@ export function ProductGrid({ products, canWrite, onEdit }: ProductGridProps) {
             )}
 
             <CardContent className="p-4 flex flex-col flex-1">
-              {/* Name + SKU + category */}
+              {/* Name + SKU */}
               <div className="mb-3">
                 <h3 className="font-semibold text-base text-foreground leading-snug line-clamp-2">
                   {product.name}
@@ -71,9 +71,6 @@ export function ProductGrid({ products, canWrite, onEdit }: ProductGridProps) {
                 <p className="font-mono text-xs text-muted-foreground mt-0.5">
                   SKU: {product.sku}
                 </p>
-                {product.category && (
-                  <p className="text-xs text-muted-foreground/80 mt-1 truncate">{product.category}</p>
-                )}
               </div>
 
               {/* Metadata */}
