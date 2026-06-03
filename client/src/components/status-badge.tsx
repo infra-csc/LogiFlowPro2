@@ -56,6 +56,10 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   return_ok: { color: "bg-chart-4 text-white", label: "OK" },
   return_damaged: { color: "bg-chart-5 text-white", label: "Com Avaria" },
   return_lost: { color: "bg-destructive text-destructive-foreground", label: "Com Perda" },
+
+  // Operational calendar — request window markers
+  opening: { color: "bg-chart-2 text-white", label: "Abertura" },
+  closing: { color: "bg-chart-5 text-white", label: "Encerramento" },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
