@@ -24,10 +24,13 @@ producing optimistic stock and missed shortages.
   non-physical). Physical (`in_progress/paused/completed`) → `alreadyPhysical=true`
   (already in `currentStock`, only its return adds inbound; never re-subtract).
   Non-physical → future outbound flow.
-- Loading orders: net each item against a consumable clone of `movementOutboundQty`;
-  only the uncovered remainder becomes a flow. Still record the FULL item qty into
-  `loadingTotalQty[key]` so requests below are netted by it.
-- Requests: net against `max(movementOutboundQty[key], loadingTotalQty[key])`,
+- Loading orders AND standalone trips: net each item against a consumable clone of
+  `movementOutboundQty`; only the uncovered remainder becomes a flow. Still record the
+  FULL item qty into the committed-quantity tally per key (loading orders + standalone
+  trips) so requests below are netted by it.
+- Standalone trips are opt-in (default off) and exclude trips already tied to a loading
+  order, so they never double-count what an order already represents.
+- Requests: net against `max(movementOutboundQty[key], committedQty[key])`,
   consumed sequentially; only the uncovered remainder becomes a flow.
 - Net effect: counted demand per key converges to
   `max(movementQty, loadingQty, requestQty)` — additive within a level, max-merge

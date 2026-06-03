@@ -1,4 +1,8 @@
-import type { ProjectionDayStatus } from "@shared/stock-projection";
+import type {
+  ProjectionDayStatus,
+  ProjectionSource,
+  ConsideredSituation,
+} from "@shared/stock-projection";
 
 export function statusLabel(status: ProjectionDayStatus): string {
   switch (status) {
@@ -36,13 +40,92 @@ export function cellToneClass(status: ProjectionDayStatus): string {
   }
 }
 
+// Background tint for day-view rows.
+export function rowToneClass(status: ProjectionDayStatus): string {
+  switch (status) {
+    case "shortage":
+      return "bg-destructive/5";
+    case "low":
+      return "bg-chart-5/5";
+    default:
+      return "";
+  }
+}
+
 export function formatDay(dayKey: string): string {
   // dayKey is yyyy-MM-dd (UTC day). Render as dd/MM without TZ drift.
-  const [y, m, d] = dayKey.split("-");
+  const [, m, d] = dayKey.split("-");
   return `${d}/${m}`;
 }
 
 export function formatDayFull(dayKey: string): string {
   const [y, m, d] = dayKey.split("-");
   return `${d}/${m}/${y}`;
+}
+
+const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+export function weekdayShort(dayKey: string): string {
+  const d = new Date(`${dayKey}T00:00:00.000Z`);
+  return WEEKDAYS[d.getUTCDay()] || "";
+}
+
+export function isWeekend(dayKey: string): boolean {
+  const day = new Date(`${dayKey}T00:00:00.000Z`).getUTCDay();
+  return day === 0 || day === 6;
+}
+
+export function isToday(dayKey: string): boolean {
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate(),
+  ).padStart(2, "0")}`;
+  return dayKey === todayKey;
+}
+
+export const SOURCE_LABEL: Record<ProjectionSource, string> = {
+  request: "Requisição",
+  loading_order: "Ordem de carregamento",
+  movement: "Movimentação",
+  trip: "Viagem",
+};
+
+export function sourceLabel(source: string): string {
+  return SOURCE_LABEL[source as ProjectionSource] || source;
+}
+
+export function situationLabel(s: ConsideredSituation): string {
+  switch (s) {
+    case "considered":
+      return "Considerado";
+    case "partial":
+      return "Parcial";
+    case "ignored":
+      return "Ignorado";
+    case "no_date":
+      return "Sem data";
+  }
+}
+
+export function situationBadgeClass(s: ConsideredSituation): string {
+  switch (s) {
+    case "considered":
+      return "bg-chart-4/20 text-chart-4 border border-chart-4/30";
+    case "partial":
+      return "bg-chart-5/20 text-chart-5 border border-chart-5/30";
+    case "ignored":
+      return "bg-muted text-muted-foreground border border-border/60";
+    case "no_date":
+      return "bg-destructive/15 text-destructive border border-destructive/30";
+  }
+}
+
+// Net day direction used to render ↓ / ↑ / ↔ trend glyphs in the matrix.
+export type DayTrend = "down" | "up" | "flat";
+
+export function dayTrend(outbound: number, inbound: number): DayTrend {
+  const net = inbound - outbound;
+  if (net < 0) return "down";
+  if (net > 0) return "up";
+  return "flat";
 }

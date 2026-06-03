@@ -10,22 +10,31 @@ import {
   ListChecks,
   AlertCircle,
   Truck,
+  Package,
   X,
+  ChevronLeft,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
-import type { StockProjectionResult, StockProjectionParams } from "@shared/stock-projection";
+import type {
+  StockProjectionResult,
+  StockProjectionParams,
+  ProjectionDayStatus,
+} from "@shared/stock-projection";
 import { ProjectionMatrix } from "@/components/stock-projection/projection-matrix";
 import { ProjectionDayView } from "@/components/stock-projection/projection-day-view";
 import { ProjectionConflicts } from "@/components/stock-projection/projection-conflicts";
 import { ProjectionMovements } from "@/components/stock-projection/projection-movements";
+import { ProjectionByProduct } from "@/components/stock-projection/projection-by-product";
 
 const DEFAULT_START = format(new Date(), "yyyy-MM-dd");
 const DEFAULT_END = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
@@ -34,30 +43,43 @@ interface SourceFlags {
   loadingOrders: boolean;
   requests: boolean;
   movements: boolean;
+  trips: boolean;
 }
 
 const DEFAULT_SOURCES: SourceFlags = {
   loadingOrders: true,
   requests: true,
   movements: true,
+  trips: false,
 };
+
+type StatusFilter = ProjectionDayStatus | null;
 
 export default function StockProjection() {
   const [startDate, setStartDate] = useState(DEFAULT_START);
   const [endDate, setEndDate] = useState(DEFAULT_END);
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   const [eventSearch, setEventSearch] = useState("");
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [productSearch, setProductSearch] = useState("");
   const [sources, setSources] = useState<SourceFlags>(DEFAULT_SOURCES);
   const [onlyShortages, setOnlyShortages] = useState(false);
+  const [onlyImpacted, setOnlyImpacted] = useState(false);
 
   const [result, setResult] = useState<StockProjectionResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
+  const [activeTab, setActiveTab] = useState("matrix");
+  const [focusProductId, setFocusProductId] = useState<string | undefined>(undefined);
+
   const { data: events } = useQuery<any[]>({ queryKey: ["/api/events"] });
+  const { data: products } = useQuery<any[]>({ queryKey: ["/api/products"] });
 
   const dateError = startDate && endDate && startDate > endDate;
-  const anySource = sources.loadingOrders || sources.requests || sources.movements;
+  const anySource = sources.loadingOrders || sources.requests || sources.movements || sources.trips;
   const canGenerate = !dateError && !!startDate && !!endDate && anySource;
 
   const filteredEvents = useMemo(() => {
@@ -72,6 +94,21 @@ export default function StockProjection() {
     );
   }, [events, eventSearch]);
 
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    if (!productSearch.trim()) return products;
+    const q = productSearch.toLowerCase();
+    return products.filter(
+      (p: any) => p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q),
+    );
+  }, [products, productSearch]);
+
+  const displayResult = useMemo(() => {
+    if (!result) return null;
+    if (!statusFilter) return result;
+    return { ...result, products: result.products.filter((p) => p.worstStatus === statusFilter) };
+  }, [result, statusFilter]);
+
   const handleGenerate = async () => {
     if (!canGenerate) return;
     try {
@@ -81,16 +118,21 @@ export default function StockProjection() {
         startDate,
         endDate,
         eventIds: selectedEventIds,
+        productIds: selectedProductIds,
         include: {
           loadingOrders: sources.loadingOrders,
           requests: sources.requests,
           movements: sources.movements,
+          trips: sources.trips,
         },
         onlyShortages,
+        onlyImpacted,
       };
       const response = await apiRequest("POST", "/api/reports/stock-projection", payload);
       const data = (await response.json()) as StockProjectionResult;
       setResult(data);
+      setStatusFilter(null);
+      setFocusProductId(undefined);
     } catch (err: any) {
       console.error("Error generating projection:", err);
       setError(err?.message || "Erro ao gerar projeção");
@@ -101,25 +143,39 @@ export default function StockProjection() {
 
   const handleClear = () => {
     setSelectedEventIds([]);
+    setSelectedProductIds([]);
     setStartDate(DEFAULT_START);
     setEndDate(DEFAULT_END);
     setSources(DEFAULT_SOURCES);
     setOnlyShortages(false);
+    setOnlyImpacted(false);
     setEventSearch("");
+    setProductSearch("");
     setResult(null);
     setError(null);
+    setStatusFilter(null);
+    setFocusProductId(undefined);
+    setActiveTab("matrix");
   };
 
   const toggleEvent = (id: string) =>
     setSelectedEventIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  const selectAllEvents = () => setSelectedEventIds((events || []).map((e: any) => e.id));
-  const clearEvents = () => setSelectedEventIds([]);
+  const toggleProduct = (id: string) =>
+    setSelectedProductIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  const toggleStatusFilter = (s: ProjectionDayStatus) =>
+    setStatusFilter((prev) => (prev === s ? null : s));
+
+  const openProduct = (id: string) => {
+    setFocusProductId(id);
+    setActiveTab("by-product");
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Projeção de Estoque"
-        description="Saldo projetado dia a dia, considerando requisições aprovadas, ordens de carregamento e movimentações."
+        description="Saldo projetado dia a dia, considerando requisições, ordens de carregamento, movimentações e viagens."
       >
         {result && (
           <Button variant="outline" size="sm" onClick={handleClear} data-testid="button-clear-projection">
@@ -129,222 +185,293 @@ export default function StockProjection() {
         )}
       </PageHeader>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* ── Filtros ── */}
-        <div className="lg:sticky lg:top-4 space-y-4">
-          <Card className="border-border/60">
-            <CardContent className="p-4 space-y-5">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Filter className="w-4 h-4 text-primary/70" />
-                  <p className="font-semibold text-base">Filtros</p>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Defina o período e as fontes da projeção
-                </p>
-              </div>
-
-              {/* Datas */}
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="startDate">Data Início</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className={dateError ? "border-destructive" : ""}
-                    data-testid="input-start-date"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="endDate">Data Fim</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className={dateError ? "border-destructive" : ""}
-                    data-testid="input-end-date"
-                  />
-                </div>
-                {dateError && (
-                  <div className="flex items-center gap-1.5 text-xs text-destructive">
-                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                    Data de início deve ser anterior à data fim
+        {filtersOpen ? (
+          <div className="w-full lg:w-[340px] lg:flex-shrink-0 lg:sticky lg:top-4 space-y-4">
+            <Card className="border-border/60">
+              <CardContent className="p-4 space-y-5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Filter className="w-4 h-4 text-primary/70" />
+                      <p className="font-semibold text-base">Filtros</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Defina o período e as fontes da projeção</p>
                   </div>
-                )}
-              </div>
-
-              {/* Fontes */}
-              <div className="space-y-2">
-                <Label>
-                  Fontes consideradas
-                  {!anySource && <span className="ml-1.5 text-xs text-destructive">(selecione 1)</span>}
-                </Label>
-                <div className="border border-border/60 rounded-md p-2 space-y-0.5">
-                  <label
-                    htmlFor="src-loading"
-                    className="flex items-center gap-2.5 rounded px-2 py-1.5 cursor-pointer hover:bg-muted/50"
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="hidden lg:flex"
+                    onClick={() => setFiltersOpen(false)}
+                    data-testid="button-collapse-filters"
                   >
-                    <Checkbox
-                      id="src-loading"
-                      checked={sources.loadingOrders}
-                      onCheckedChange={(v) => setSources((s) => ({ ...s, loadingOrders: !!v }))}
-                      data-testid="checkbox-source-loading"
-                    />
-                    <span className="text-sm">Ordens de carregamento</span>
-                  </label>
-                  <label
-                    htmlFor="src-requests"
-                    className="flex items-center gap-2.5 rounded px-2 py-1.5 cursor-pointer hover:bg-muted/50"
-                  >
-                    <Checkbox
-                      id="src-requests"
-                      checked={sources.requests}
-                      onCheckedChange={(v) => setSources((s) => ({ ...s, requests: !!v }))}
-                      data-testid="checkbox-source-requests"
-                    />
-                    <span className="text-sm">Requisições aprovadas</span>
-                  </label>
-                  <label
-                    htmlFor="src-movements"
-                    className="flex items-center gap-2.5 rounded px-2 py-1.5 cursor-pointer hover:bg-muted/50"
-                  >
-                    <Checkbox
-                      id="src-movements"
-                      checked={sources.movements}
-                      onCheckedChange={(v) => setSources((s) => ({ ...s, movements: !!v }))}
-                      data-testid="checkbox-source-movements"
-                    />
-                    <span className="text-sm">Movimentações</span>
-                  </label>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
                 </div>
-              </div>
 
-              {/* Eventos */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
+                {/* Datas */}
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="startDate">Data Início</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className={dateError ? "border-destructive" : ""}
+                      data-testid="input-start-date"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="endDate">Data Fim</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className={dateError ? "border-destructive" : ""}
+                      data-testid="input-end-date"
+                    />
+                  </div>
+                  {dateError && (
+                    <div className="flex items-center gap-1.5 text-xs text-destructive">
+                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                      Data de início deve ser anterior à data fim
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">Período máximo: 90 dias.</p>
+                </div>
+
+                {/* Fontes */}
+                <div className="space-y-2">
                   <Label>
-                    Eventos
-                    {selectedEventIds.length > 0 && (
-                      <span className="ml-1.5 text-muted-foreground font-normal">
-                        ({selectedEventIds.length})
-                      </span>
-                    )}
+                    Fontes consideradas
+                    {!anySource && <span className="ml-1.5 text-xs text-destructive">(selecione 1)</span>}
                   </Label>
-                  <div className="flex gap-1">
+                  <div className="border border-border/60 rounded-md p-2 space-y-0.5">
+                    {[
+                      { key: "loadingOrders" as const, label: "Ordens de carregamento", id: "src-loading" },
+                      { key: "requests" as const, label: "Requisições aprovadas", id: "src-requests" },
+                      { key: "movements" as const, label: "Movimentações", id: "src-movements" },
+                      { key: "trips" as const, label: "Viagens avulsas", id: "src-trips" },
+                    ].map((s) => (
+                      <label
+                        key={s.key}
+                        htmlFor={s.id}
+                        className="flex items-center gap-2.5 rounded px-2 py-1.5 cursor-pointer hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          id={s.id}
+                          checked={sources[s.key]}
+                          onCheckedChange={(v) => setSources((prev) => ({ ...prev, [s.key]: !!v }))}
+                          data-testid={`checkbox-source-${s.key}`}
+                        />
+                        <span className="text-sm">{s.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Eventos */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>
+                      Eventos
+                      {selectedEventIds.length > 0 && (
+                        <span className="ml-1.5 text-muted-foreground font-normal">({selectedEventIds.length})</span>
+                      )}
+                    </Label>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedEventIds((events || []).map((e: any) => e.id))}
+                        className="h-6 text-xs px-2"
+                        data-testid="button-select-all-events"
+                      >
+                        Todos
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedEventIds([])}
+                        disabled={selectedEventIds.length === 0}
+                        className="h-6 text-xs px-2"
+                        data-testid="button-clear-events"
+                      >
+                        Limpar
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Vazio = todos os eventos do período.</p>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar evento..."
+                      value={eventSearch}
+                      onChange={(e) => setEventSearch(e.target.value)}
+                      className="pl-8 h-8 text-sm"
+                      data-testid="input-event-search"
+                    />
+                  </div>
+                  <div
+                    className="border border-border/60 rounded-md p-2 max-h-44 overflow-y-auto space-y-0.5 projection-scroll"
+                    style={{ scrollbarWidth: "thin" }}
+                  >
+                    {filteredEvents.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">
+                        {!events?.length ? "Nenhum evento disponível" : "Nenhum resultado"}
+                      </p>
+                    ) : (
+                      filteredEvents.map((event: any) => (
+                        <label
+                          key={event.id}
+                          htmlFor={`ev-${event.id}`}
+                          className={`flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors ${
+                            selectedEventIds.includes(event.id) ? "bg-primary/10" : "hover:bg-muted/50"
+                          }`}
+                        >
+                          <Checkbox
+                            id={`ev-${event.id}`}
+                            checked={selectedEventIds.includes(event.id)}
+                            onCheckedChange={() => toggleEvent(event.id)}
+                            className="mt-0.5"
+                            data-testid={`checkbox-event-${event.id}`}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm leading-tight truncate">{event.name}</div>
+                            {event.eventDate && (
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(event.eventDate).toLocaleDateString("pt-BR")}
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Produtos */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>
+                      Produtos
+                      {selectedProductIds.length > 0 && (
+                        <span className="ml-1.5 text-muted-foreground font-normal">({selectedProductIds.length})</span>
+                      )}
+                    </Label>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={selectAllEvents}
+                      onClick={() => setSelectedProductIds([])}
+                      disabled={selectedProductIds.length === 0}
                       className="h-6 text-xs px-2"
-                      data-testid="button-select-all-events"
-                    >
-                      Todos
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearEvents}
-                      disabled={selectedEventIds.length === 0}
-                      className="h-6 text-xs px-2"
-                      data-testid="button-clear-events"
+                      data-testid="button-clear-products"
                     >
                       Limpar
                     </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">Vazio = todos os produtos envolvidos.</p>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar produto..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="pl-8 h-8 text-sm"
+                      data-testid="input-product-search"
+                    />
+                  </div>
+                  <div
+                    className="border border-border/60 rounded-md p-2 max-h-44 overflow-y-auto space-y-0.5 projection-scroll"
+                    style={{ scrollbarWidth: "thin" }}
+                  >
+                    {filteredProducts.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">
+                        {!products?.length ? "Nenhum produto disponível" : "Nenhum resultado"}
+                      </p>
+                    ) : (
+                      filteredProducts.slice(0, 200).map((product: any) => (
+                        <label
+                          key={product.id}
+                          htmlFor={`pr-${product.id}`}
+                          className={`flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors ${
+                            selectedProductIds.includes(product.id) ? "bg-primary/10" : "hover:bg-muted/50"
+                          }`}
+                        >
+                          <Checkbox
+                            id={`pr-${product.id}`}
+                            checked={selectedProductIds.includes(product.id)}
+                            onCheckedChange={() => toggleProduct(product.id)}
+                            className="mt-0.5"
+                            data-testid={`checkbox-product-${product.id}`}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm leading-tight truncate">{product.name}</div>
+                            <div className="text-xs text-muted-foreground">{product.sku}</div>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Vazio = todos os eventos do período.
-                </p>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar evento..."
-                    value={eventSearch}
-                    onChange={(e) => setEventSearch(e.target.value)}
-                    className="pl-8 h-8 text-sm"
-                    data-testid="input-event-search"
-                  />
-                </div>
-                <div
-                  className="border border-border/60 rounded-md p-2 max-h-52 overflow-y-auto space-y-0.5"
-                  style={{ scrollbarWidth: "thin" }}
-                >
-                  {filteredEvents.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      {!events?.length ? "Nenhum evento disponível" : "Nenhum resultado"}
-                    </p>
-                  ) : (
-                    filteredEvents.map((event: any) => (
-                      <label
-                        key={event.id}
-                        htmlFor={`ev-${event.id}`}
-                        className={`flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors ${
-                          selectedEventIds.includes(event.id) ? "bg-primary/8" : "hover:bg-muted/50"
-                        }`}
-                      >
-                        <Checkbox
-                          id={`ev-${event.id}`}
-                          checked={selectedEventIds.includes(event.id)}
-                          onCheckedChange={() => toggleEvent(event.id)}
-                          className="mt-0.5"
-                          data-testid={`checkbox-event-${event.id}`}
-                        />
-                        <div className="min-w-0">
-                          <div className="text-sm leading-tight truncate">{event.name}</div>
-                          {event.eventDate && (
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(event.eventDate).toLocaleDateString("pt-BR")}
-                            </div>
-                          )}
-                        </div>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </div>
 
-              {/* Opções */}
-              <label
-                htmlFor="only-shortages"
-                className="flex items-center gap-2.5 rounded px-1 py-1 cursor-pointer"
-              >
-                <Checkbox
-                  id="only-shortages"
-                  checked={onlyShortages}
-                  onCheckedChange={(v) => setOnlyShortages(!!v)}
-                  data-testid="checkbox-only-shortages"
-                />
-                <span className="text-sm">Mostrar apenas produtos em falta</span>
-              </label>
+                {/* Opções */}
+                <div className="space-y-1">
+                  <label htmlFor="only-shortages" className="flex items-center gap-2.5 rounded px-1 py-1 cursor-pointer">
+                    <Checkbox
+                      id="only-shortages"
+                      checked={onlyShortages}
+                      onCheckedChange={(v) => setOnlyShortages(!!v)}
+                      data-testid="checkbox-only-shortages"
+                    />
+                    <span className="text-sm">Mostrar apenas produtos em falta</span>
+                  </label>
+                  <label htmlFor="only-impacted" className="flex items-center gap-2.5 rounded px-1 py-1 cursor-pointer">
+                    <Checkbox
+                      id="only-impacted"
+                      checked={onlyImpacted}
+                      onCheckedChange={(v) => setOnlyImpacted(!!v)}
+                      data-testid="checkbox-only-impacted"
+                    />
+                    <span className="text-sm">Mostrar apenas produtos impactados</span>
+                  </label>
+                </div>
 
-              {/* Ações */}
-              <div className="space-y-2">
-                <Button
-                  className="w-full"
-                  onClick={handleGenerate}
-                  disabled={!canGenerate || isGenerating}
-                  data-testid="button-generate"
-                >
-                  {isGenerating ? "Gerando..." : "Gerar Projeção"}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleClear}
-                  data-testid="button-clear-filters"
-                >
-                  Limpar Filtros
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                {/* Ações */}
+                <div className="space-y-2 sticky bottom-0 bg-card pt-2">
+                  <Button
+                    className="w-full"
+                    onClick={handleGenerate}
+                    disabled={!canGenerate || isGenerating}
+                    data-testid="button-generate"
+                  >
+                    {isGenerating ? "Gerando..." : "Gerar Projeção"}
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={handleClear} data-testid="button-clear-filters">
+                    Limpar Filtros
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden lg:flex lg:sticky lg:top-4"
+            onClick={() => setFiltersOpen(true)}
+            data-testid="button-expand-filters"
+          >
+            <Filter className="w-4 h-4 mr-1.5" />
+            Filtros
+          </Button>
+        )}
 
         {/* ── Resultados ── */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="flex-1 min-w-0 space-y-4">
           {error && (
             <Card className="border-destructive/40">
               <CardContent className="p-4 flex items-center gap-2 text-sm text-destructive">
@@ -365,35 +492,117 @@ export default function StockProjection() {
           {result && (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <button
+                  onClick={() => setStatusFilter(null)}
+                  className="text-left"
+                  data-testid="kpi-total"
+                >
+                  <Card className={`border-border/60 hover-elevate ${statusFilter === null ? "ring-1 ring-primary/40" : ""}`}>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{result.summary.totalProducts}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Produtos</div>
+                    </CardContent>
+                  </Card>
+                </button>
+                <button
+                  onClick={() => toggleStatusFilter("shortage")}
+                  className="text-left"
+                  data-testid="kpi-shortage"
+                >
+                  <Card className={`border-destructive/40 hover-elevate ${statusFilter === "shortage" ? "ring-1 ring-destructive/50" : ""}`}>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-destructive">{result.summary.productsShortage}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Em falta</div>
+                    </CardContent>
+                  </Card>
+                </button>
+                <button
+                  onClick={() => toggleStatusFilter("low")}
+                  className="text-left"
+                  data-testid="kpi-low"
+                >
+                  <Card className={`border-chart-5/40 hover-elevate ${statusFilter === "low" ? "ring-1 ring-chart-5/50" : ""}`}>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-chart-5">{result.summary.productsLow}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Abaixo do mínimo</div>
+                    </CardContent>
+                  </Card>
+                </button>
+                <button
+                  onClick={() => toggleStatusFilter("ok")}
+                  className="text-left"
+                  data-testid="kpi-ok"
+                >
+                  <Card className={`border-chart-4/40 hover-elevate ${statusFilter === "ok" ? "ring-1 ring-chart-4/50" : ""}`}>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-chart-4">{result.summary.productsOk}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Adequados</div>
+                    </CardContent>
+                  </Card>
+                </button>
+              </div>
+
+              {/* Secondary KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <Card className="border-border/60">
-                  <CardContent className="p-4">
-                    <div className="text-2xl font-bold">{result.summary.totalProducts}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Produtos</div>
+                  <CardContent className="p-3">
+                    <div className="text-lg font-semibold text-destructive tabular-nums">{result.summary.totalOutbound}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Total saídas</div>
                   </CardContent>
                 </Card>
-                <Card className="border-destructive/40">
-                  <CardContent className="p-4">
-                    <div className="text-2xl font-bold text-destructive">
-                      {result.summary.productsShortage}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Em falta</div>
+                <Card className="border-border/60">
+                  <CardContent className="p-3">
+                    <div className="text-lg font-semibold text-chart-4 tabular-nums">{result.summary.totalInbound}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Total entradas</div>
                   </CardContent>
                 </Card>
-                <Card className="border-chart-5/40">
-                  <CardContent className="p-4">
-                    <div className="text-2xl font-bold text-chart-5">{result.summary.productsLow}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Abaixo do mínimo</div>
+                <Card className="border-border/60">
+                  <CardContent className="p-3">
+                    <div className="text-lg font-semibold tabular-nums">{result.summary.totalReserved}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Pico reservado</div>
                   </CardContent>
                 </Card>
-                <Card className="border-chart-4/40">
-                  <CardContent className="p-4">
-                    <div className="text-2xl font-bold text-chart-4">{result.summary.productsOk}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Adequados</div>
+                <Card className="border-border/60">
+                  <CardContent className="p-3">
+                    <div className="text-lg font-semibold tabular-nums">{result.summary.totalInEvent}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Pico em evento</div>
                   </CardContent>
                 </Card>
               </div>
 
-              <Tabs defaultValue="matrix">
+              {result.warnings.length > 0 && (
+                <Card className="border-chart-5/40">
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-chart-5 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        {result.warnings.map((w, i) => (
+                          <p key={i} className="text-xs text-muted-foreground" data-testid={`warning-${i}`}>
+                            {w}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {statusFilter && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    Filtrando: {statusFilter === "shortage" ? "Em falta" : statusFilter === "low" ? "Abaixo do mínimo" : "Adequados"}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Aplica-se a Matriz, Visão por Dia e Por Produto (não afeta Conflitos e Movimentações).
+                  </span>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setStatusFilter(null)} data-testid="button-clear-status-filter">
+                    <X className="w-3 h-3 mr-1" />
+                    Limpar
+                  </Button>
+                </div>
+              )}
+
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="flex-wrap h-auto">
                   <TabsTrigger value="matrix" data-testid="tab-matrix">
                     <LayoutGrid className="w-4 h-4 mr-1.5" />
@@ -402,6 +611,10 @@ export default function StockProjection() {
                   <TabsTrigger value="day" data-testid="tab-day">
                     <ListChecks className="w-4 h-4 mr-1.5" />
                     Visão por Dia
+                  </TabsTrigger>
+                  <TabsTrigger value="by-product" data-testid="tab-by-product">
+                    <Package className="w-4 h-4 mr-1.5" />
+                    Por Produto
                   </TabsTrigger>
                   <TabsTrigger value="conflicts" data-testid="tab-conflicts">
                     <AlertCircle className="w-4 h-4 mr-1.5" />
@@ -419,10 +632,17 @@ export default function StockProjection() {
                 </TabsList>
 
                 <TabsContent value="matrix" className="mt-4">
-                  <ProjectionMatrix result={result} />
+                  <ProjectionMatrix result={displayResult!} />
                 </TabsContent>
                 <TabsContent value="day" className="mt-4">
-                  <ProjectionDayView result={result} />
+                  <ProjectionDayView result={displayResult!} onSelectProduct={openProduct} />
+                </TabsContent>
+                <TabsContent value="by-product" className="mt-4">
+                  <ProjectionByProduct
+                    result={displayResult!}
+                    selectedProductId={focusProductId}
+                    onSelectProduct={setFocusProductId}
+                  />
                 </TabsContent>
                 <TabsContent value="conflicts" className="mt-4">
                   <ProjectionConflicts result={result} />
@@ -433,8 +653,7 @@ export default function StockProjection() {
               </Tabs>
 
               <p className="text-xs text-muted-foreground">
-                Base: estoque atual de cada produto. Gerado em{" "}
-                {new Date(result.generatedAt).toLocaleString("pt-BR")}.
+                {result.calculationBase} Gerado em {new Date(result.generatedAt).toLocaleString("pt-BR")}.
               </p>
             </>
           )}

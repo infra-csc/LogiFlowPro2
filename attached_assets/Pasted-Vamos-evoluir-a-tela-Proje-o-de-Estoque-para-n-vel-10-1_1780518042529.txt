@@ -1,0 +1,691 @@
+Vamos evoluir a tela Projeção de Estoque para nível 10/10 em lógica, UX e visual.
+
+Tela foco:
+
+* client/src/pages/stock-position-simulation.tsx
+* client/src/pages/stock-simulation.tsx, se compartilhar lógica
+* componentes relacionados à projeção de estoque
+* endpoint de projeção de estoque
+* server/routes.ts
+* repositories/storage relacionados a produtos, estoque, eventos, requisições, ordens, viagens e movimentações
+
+Objetivo:
+A tela Projeção de Estoque precisa ser o coração do app.
+
+Ela deve responder com clareza:
+
+* Quanto estoque terei em cada dia?
+* Qual produto vai faltar?
+* Em qual dia vai faltar?
+* Qual evento/ordem/viagem/movimentação causou a falta?
+* O que está reservado?
+* O que saiu?
+* O que volta?
+* O que está em trânsito?
+* O que está em evento?
+* Qual ação operacional devo tomar?
+
+Hoje a tela melhorou visualmente, mas ainda parece uma tabela simples. Precisamos transformar em uma ferramenta real de decisão.
+
+==================================================
+
+1. CORRIGIR LAYOUT GERAL
+   ==================================================
+
+Problemas atuais:
+
+* A lateral de filtros está muito larga.
+* A área principal fica espremida/cortada em algumas resoluções.
+* A matriz tem scroll horizontal branco/padrão.
+* O conteúdo principal não aproveita bem a tela.
+* Os filtros são importantes, mas não podem dominar a página.
+
+Ajustes obrigatórios:
+
+Desktop:
+
+* layout em duas colunas:
+
+  * filtros com largura fixa menor: 320px a 360px
+  * resultados ocupando todo o restante
+* permitir recolher/expandir filtros.
+* quando filtros estiverem recolhidos, resultado ocupa 100% da largura.
+* não pode haver corte horizontal da tela inteira.
+* apenas a matriz pode ter scroll horizontal interno, com scrollbar dark customizada.
+
+Mobile/tablet:
+
+* filtros acima ou em drawer.
+* resultados abaixo.
+* sem overflow quebrado.
+
+==================================================
+2. FILTROS MAIS COMPACTOS E ÚTEIS
+=================================
+
+Refinar card de filtros.
+
+Campos:
+
+* Data início
+* Data fim
+* Eventos
+* Produtos
+* Fontes consideradas:
+
+  * Requisições aprovadas
+  * Ordens de carregamento
+  * Viagens
+  * Movimentações
+  * Retornos/Devoluções, se existirem
+
+Melhorias:
+
+* botões “Todos” e “Limpar” devem ser pequenos e alinhados.
+* lista de eventos deve ter busca.
+* lista de produtos também deve existir, se os dados estiverem disponíveis.
+* checkbox “Mostrar apenas produtos em falta”.
+* checkbox “Mostrar apenas produtos impactados”.
+* contador de selecionados.
+* filtros ativos em chips no topo do resultado.
+* botão “Gerar Projeção” sticky no rodapé do card de filtros.
+* botão “Limpar Filtros” secundário.
+
+Importante:
+Se nenhum evento for selecionado, interpretar como “todos os eventos no período”, mas deixar isso visualmente claro.
+
+Texto:
+“Vazio = todos os eventos do período” está bom, mas deve ficar discreto.
+
+==================================================
+3. MELHORAR A LÓGICA DE CÁLCULO
+===============================
+
+A projeção precisa ser calculada por produto e por dia.
+
+Para cada produto/dia:
+
+Estoque inicial do dia
+
+* Entradas previstas
+
+- Saídas previstas
+- Reservas do dia
+
+* Retornos previstos
+  = Saldo projetado
+
+Separar conceitos:
+
+1. Estoque físico
+   Quantidade atual no armazém.
+
+2. Reservado
+   Quantidade comprometida por requisições aprovadas/ordens planejadas, mas ainda não saiu fisicamente.
+
+3. Saída prevista
+   Quantidade que deve sair por ordem, viagem, movimentação ou carregamento.
+
+4. Entrada prevista
+   Quantidade que deve retornar por viagem, movimentação de retorno ou devolução.
+
+5. Em trânsito
+   Quantidade que saiu do armazém e ainda não chegou ao destino/retornou.
+
+6. Em evento
+   Quantidade alocada entre montagem/evento/desmontagem.
+
+7. Saldo projetado
+   Quantidade final disponível naquele dia.
+
+8. Déficit
+   Quando saldo projetado ficar abaixo de zero ou abaixo do mínimo configurado.
+
+Cada número da matriz precisa ter explicação de origem.
+
+==================================================
+4. DATAS QUE DEVEM IMPACTAR O ESTOQUE
+=====================================
+
+Usar as melhores datas disponíveis, nesta ordem:
+
+Para saída:
+
+* data/hora da movimentação de saída, se existir;
+* data de carregamento da ordem;
+* data de carregamento da viagem;
+* data de saída da viagem;
+* data de montagem do evento;
+* data do evento como fallback, se não houver outra data.
+
+Para retorno:
+
+* data de descarregamento/retorno da viagem;
+* data de movimentação de retorno;
+* data de desmontagem do evento;
+* data de fim da ordem, se existir;
+* data do evento como fallback, se não houver outra data.
+
+Se uma entidade não tiver data suficiente:
+
+* não ignorar silenciosamente;
+* criar alerta em “Movimentações consideradas” ou “Conflitos”:
+  “Ordem X não possui período definido e não foi considerada na projeção.”
+
+Se possível:
+
+* considerar parcialmente os dados válidos;
+* não zerar toda a simulação por causa de um item ruim.
+
+==================================================
+5. CRIAR EXPLICAÇÃO DE CÁLCULO POR CÉLULA
+=========================================
+
+Na matriz Produto x Dia, cada célula deve ser clicável ou ter hover/popover.
+
+Ao clicar/hover, mostrar:
+
+* produto;
+* dia;
+* saldo inicial;
+* entradas;
+* saídas;
+* reservas;
+* retornos;
+* saldo final;
+* déficit;
+* fontes que impactaram o cálculo.
+
+Exemplo:
+
+Produto: Tenda 5x5
+Dia: 05/06/2026
+
+Abertura: 20
+Saídas: -12
+Entradas: +4
+Reservado: -6
+Saldo projetado: 6
+
+Impactos:
+
+* Requisição Night Run BH: -6
+* Ordem LO-2026-001: -6
+* Retorno Viagem Carreta 1: +4
+
+Isso é essencial para o usuário confiar na simulação.
+
+==================================================
+6. MATRIZ POR DIA MAIS FORTE
+============================
+
+A aba “Matriz por Dia” deve ser a principal.
+
+Melhorias visuais:
+
+* primeira coluna Produto fixa/sticky.
+* header de dias fixo/sticky.
+* destacar hoje.
+* destacar fim de semana com visual discreto.
+* células coloridas por status:
+
+  * verde: adequado;
+  * amarelo: abaixo do mínimo;
+  * vermelho: em falta;
+  * azul/ciano: em trânsito;
+  * roxo/âmbar: reservado/em evento, se necessário.
+* mostrar saldo projetado dentro da célula.
+* se tiver saída/entrada no dia, mostrar indicador pequeno:
+
+  * ↓ saída
+  * ↑ entrada
+  * ↔ movimentação
+* se houver déficit, mostrar número negativo em destaque.
+* scroll horizontal interno com scrollbar dark, nunca branca.
+
+Colunas:
+
+* Produto
+* Atual
+* dias do período
+
+Linhas:
+
+* todos os produtos impactados ou todos os produtos, conforme filtro.
+
+Critério:
+A matriz precisa responder visualmente “qual dia vai faltar”.
+
+==================================================
+7. VISÃO POR DIA
+================
+
+A aba “Visão por Dia” deve mostrar um dia selecionado com detalhe operacional.
+
+Topo:
+
+* seletor de dia.
+* resumo do dia:
+
+  * produtos analisados;
+  * produtos em falta;
+  * abaixo do mínimo;
+  * adequados;
+  * saídas previstas;
+  * entradas previstas.
+
+Tabela do dia:
+
+* Produto
+* SKU
+* Abertura
+* Saída
+* Entrada
+* Reservado
+* Em evento
+* Saldo
+* Mínimo
+* Status
+* Ações/Detalhe
+
+Melhorias:
+
+* estoque/saldo alinhado à direita.
+* status com StatusBadge.
+* linha em vermelho se faltar.
+* linha em amarelo se abaixo do mínimo.
+* linha clicável para abrir detalhe do produto naquele dia.
+
+==================================================
+8. CONFLITOS
+============
+
+A aba “Conflitos” precisa ser mais acionável.
+
+Quando não houver conflito:
+
+* manter estado positivo, mas menor e mais elegante.
+
+Quando houver conflito, cada conflito deve mostrar:
+
+* produto;
+* SKU;
+* dia do conflito;
+* saldo projetado;
+* mínimo;
+* déficit;
+* evento/ordem/viagem causadora;
+* sugestão de ação.
+
+Sugestões:
+
+* comprar/alugar X unidades;
+* antecipar retorno;
+* revisar quantidade aprovada;
+* ajustar ordem de carregamento;
+* vincular retorno/viagem;
+* revisar movimentação.
+
+Exemplo:
+“Box Truss Q30 ficará com déficit de 8 unidades em 05/06 causado por Night Run BH e LO-2026-001.”
+
+Ação:
+
+* Abrir evento
+* Abrir ordem
+* Abrir movimentação
+* Abrir produto
+
+Não executar ação automática.
+
+==================================================
+9. MOVIMENTAÇÕES CONSIDERADAS
+=============================
+
+A aba “Movimentações” não deve ser só uma tabela simples.
+
+Ela deve ser uma auditoria do cálculo.
+
+Mostrar todas as fontes consideradas:
+
+Tipos:
+
+* Requisição aprovada
+* Ordem de carregamento
+* Viagem
+* Movimentação
+* Retorno/devolução
+
+Colunas:
+
+* Origem
+* Referência
+* Evento
+* Produto(s)
+* Sentido
+
+  * Saída
+  * Entrada
+  * Reserva
+  * Retorno
+* Data de saída
+* Data de retorno
+* Quantidade
+* Situação
+* Link
+
+Melhorias:
+
+* mostrar múltiplos produtos de forma resumida com “+N produtos”.
+* permitir expandir linha para ver produtos.
+* status “Considerado”, “Parcial”, “Ignorado”, “Sem data”.
+* itens ignorados devem aparecer com motivo.
+
+Essa aba precisa responder:
+“Por que a projeção calculou isso?”
+
+==================================================
+10. NOVA ABA: VISÃO POR PRODUTO
+===============================
+
+Adicionar aba “Por Produto”.
+
+Ao selecionar um produto, mostrar:
+
+* saldo atual;
+* estoque mínimo;
+* saldo projetado dia a dia;
+* pior dia;
+* maior déficit;
+* eventos que consomem;
+* retornos previstos;
+* movimentações relacionadas.
+
+Layout:
+
+* seletor/busca de produto;
+* cards de resumo;
+* mini timeline por dia;
+* tabela de impactos.
+
+Essa aba ajuda o usuário a investigar um produto específico.
+
+==================================================
+11. RESUMO EXECUTIVO
+====================
+
+Os cards atuais estão bons, mas podem ser melhores.
+
+Adicionar/ajustar KPIs:
+
+* Produtos analisados
+* Em falta
+* Abaixo do mínimo
+* Adequados
+* Saídas previstas
+* Entradas previstas
+* Reservado
+* Em evento
+
+Os cards devem ser clicáveis como filtro rápido, se simples.
+
+Exemplo:
+Clicar em “Em falta” filtra matriz/listas para produtos em falta.
+
+==================================================
+12. ENDPOINT DE PROJEÇÃO MAIS ROBUSTO
+=====================================
+
+Criar ou ajustar endpoint:
+
+GET /api/stock/projection
+
+Query params:
+
+* startDate
+* endDate
+* eventIds
+* productIds
+* includeRequests
+* includeLoadingOrders
+* includeTrips
+* includeMovements
+* onlyShortage
+* onlyImpacted
+
+Retorno precisa conter:
+
+summary
+days
+products
+matrix
+conflicts
+movementsConsidered
+warnings
+generatedAt
+calculationBase
+
+Estrutura esperada:
+
+{
+summary: {
+totalProducts,
+missingProducts,
+belowMinimumProducts,
+adequateProducts,
+totalOutbound,
+totalInbound,
+totalReserved,
+totalInEvent
+},
+matrix: [
+{
+productId,
+productName,
+sku,
+unit,
+currentStock,
+minimumStock,
+days: [
+{
+date,
+opening,
+outbound,
+inbound,
+reserved,
+inEvent,
+projectedBalance,
+shortage,
+status,
+drivers
+}
+]
+}
+],
+days: [],
+conflicts: [],
+movementsConsidered: [],
+warnings: []
+}
+
+Importante:
+
+* endpoint apenas leitura.
+* respeitar RBAC.
+* não alterar schema sem necessidade.
+* não quebrar endpoints existentes.
+* limitar período máximo, por exemplo 90 dias.
+* evitar N+1 queries.
+
+==================================================
+13. NÃO CRIAR CÁLCULO FALSO
+===========================
+
+Se algum dado não existir, não inventar.
+
+Exemplo:
+Se uma ordem não tem data:
+
+* marcar como “sem período definido”.
+* listar em warnings.
+* não impactar cálculo até ter data confiável.
+
+Se uma viagem não tem retorno:
+
+* marcar como retorno não definido.
+* considerar saída, mas alertar que retorno não foi projetado, se essa regra fizer sentido.
+
+Se uma movimentação está em andamento:
+
+* considerar saída já efetivada.
+* retorno só se houver data prevista.
+
+==================================================
+14. MELHORAR VISUAL DARK
+========================
+
+Ajustes visuais obrigatórios:
+
+* scrollbar interna dark.
+* sem scrollbar branca.
+* tabelas com header mais destacado.
+* linhas com hover.
+* células da matriz com cores sutis.
+* cards com altura consistente.
+* abas mais claras.
+* filtros com melhor proporção.
+* conteúdo principal sem corte lateral.
+* usar StatusBadge.
+* usar PageSection/DataCard quando fizer sentido.
+
+==================================================
+15. RESPONSIVIDADE
+==================
+
+Desktop:
+
+* filtros laterais recolhíveis.
+* matriz ampla.
+
+Notebook:
+
+* filtros podem recolher automaticamente.
+* matriz deve continuar legível.
+
+Tablet:
+
+* filtros acima.
+* matriz com scroll horizontal controlado.
+
+Mobile:
+
+* usar visão por dia/produto em cards.
+* não tentar mostrar matriz gigante como principal.
+* sem overflow quebrado.
+
+==================================================
+16. VALIDAÇÕES
+==============
+
+Front:
+
+* data início obrigatória.
+* data fim obrigatória.
+* início <= fim.
+* período máximo permitido.
+* botão gerar desabilitado se inválido.
+
+Back:
+
+* validar datas.
+* validar IDs.
+* validar permissões.
+* retornar erro claro.
+
+Mensagens:
+
+* “A data inicial não pode ser maior que a data final.”
+* “O período máximo permitido é de 90 dias.”
+* “Algumas entidades não foram consideradas por falta de data.”
+
+==================================================
+17. SMOKE TEST
+==============
+
+Rodar:
+
+npm run check
+npm run build
+
+Testar:
+
+1. Abrir Projeção de Estoque.
+2. Gerar projeção de 7 dias.
+3. Gerar projeção de 30 dias.
+4. Selecionar um evento.
+5. Selecionar vários eventos.
+6. Gerar sem evento selecionado.
+7. Ativar/desativar fontes consideradas.
+8. Ver Matriz por Dia.
+9. Clicar em célula da matriz.
+10. Ver Visão por Dia.
+11. Trocar dia.
+12. Ver Conflitos.
+13. Ver Movimentações consideradas.
+14. Ver Produto específico.
+15. Testar entidade sem data.
+16. Testar produto em falta.
+17. Testar produto abaixo do mínimo.
+18. Testar produto adequado.
+19. Testar mobile/tablet.
+20. Confirmar ausência de overflow horizontal.
+
+Perfis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Confirmar:
+
+* RBAC preservado.
+* endpoint protegido.
+* nenhuma regra existente quebrada.
+* contratos preservados.
+
+==================================================
+18. ENTREGA FINAL
+=================
+
+Entregar:
+
+* problemas encontrados na lógica atual;
+* melhorias aplicadas na lógica de projeção;
+* melhorias aplicadas no visual;
+* endpoint criado/ajustado;
+* estrutura de cálculo;
+* fontes consideradas;
+* warnings/erros tratados;
+* abas criadas/ajustadas;
+* arquivos alterados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências restantes.
+
+Critério de aceite:
+
+A tela só será considerada 10/10 se:
+
+* a matriz Produto x Dia mostrar claramente o saldo diário;
+* células explicarem de onde veio cada número;
+* conflitos forem acionáveis;
+* movimentações consideradas auditarem o cálculo;
+* filtros não ocuparem espaço excessivo;
+* visual não cortar nem gerar overflow ruim;
+* usuário conseguir identificar o dia exato da falta;
+* usuário conseguir entender qual evento/ordem/movimentação causou o impacto;
+* a tela servir para tomada de decisão real.

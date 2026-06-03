@@ -1,0 +1,113 @@
+
+
+
+
+/
+
+
+Introduce a new stock projection report with quantity-aware precedence logic
+
+
+
+Show previous messages
+
+3 messages & 12 actions
+
+Proposed plan
+
+33 messages & 97 actions
+
+Checkpoint made
+11 minutes ago
+
+Worked for 19 minutes
+
+Pasted-Vamos-evoluir-a-tela-Proje-o-de-Estoque-para-n-vel-10-1_1780518042529.txt
+8 minutes ago
+
+Planning stock projection screen enhancements (15 seconds)
+Let me read the rest of the spec before planning the approach.
+
+
+3 actions
+This is a large, well-specified evolution (18 sections spanning calculation logic, a richer endpoint contract with per-cell drivers, several new UX behaviors, and a new "Por Produto" tab). Before writing this much code, I want to ground a phased plan in the current implementation and get your sign-off on sequencing. Let me switch to planning.
+
+Entered plan mode
+
+2 actions
+Let me read the current implementation in parallel to ground the plan.
+
+
+5 actions
+Let me read the engine and remaining components to complete my understanding.
+
+
+5 actions
+Let me read the remaining engine portion (the projection math).
+
+
+2 actions
+I've now fully reviewed the current implementation. The unified screen already has the 4-tab skeleton, the quantity-aware engine, reserved/in-event overlays, conflicts and a "considered sources" list. Your spec pushes it from "working" to "decision tool" — the big gaps are per-cell explanation (drivers), actionable conflicts, a "Por Produto" tab, collapsible/compact filters, and a richer matrix (sticky header, today/weekend, in/out indicators, clickable cells).
+
+Here's my proposed plan.
+
+Diagnóstico do que já existe vs. o que falta
+Já temos: as 4 abas, motor dia-a-dia com precedência por quantidade (movimentação > ordem > requisição), conceitos de reservado e em evento, conflitos básicos, lista de fontes consideradas, coluna de produto fixa na matriz.
+
+Falta (o coração do 10/10): explicação por célula, conflitos acionáveis com sugestão+links, aba "Por Produto", filtros compactos/recolhíveis, e os refinamentos visuais da matriz.
+
+Plano em 3 fases
+Fase A — Motor e contrato (backend routes-stock-projection.ts + shared/stock-projection.ts)
+
+Drivers por célula: cada dia de cada produto passa a carregar a lista de fontes que o impactaram (ex.: "Requisição Night Run BH: −6", "Retorno Viagem Carreta 1: +4"). É o que faz o usuário confiar no número.
+KPIs ampliados (saídas, entradas, reservado, em evento), warnings[], calculationBase, e conflitos enriquecidos (déficit, produto, código de ação sugerida).
+Novos parâmetros: filtro por produto, incluir viagens, apenas impactados, e limite de 90 dias com mensagem clara.
+Fontes consideradas com múltiplos produtos e situação (Considerado / Parcial / Sem data / Ignorado).
+Fase B — Matriz, Visão por Dia e explicação por célula (frontend)
+
+Filtros recolhíveis de largura fixa (~340px), scrollbar dark, resultado em 100% quando recolhido, chips de filtros ativos, botão "Gerar" fixo no rodapé do card, filtro de produtos.
+Matriz: cabeçalho de dias fixo, destaque de hoje/fim de semana, indicadores ↓ saída / ↑ entrada / ↔, ênfase no déficit, e célula clicável → popover com a abertura/saídas/entradas/saldo + drivers.
+Visão por Dia: resumo do dia, colunas SKU e mínimo, linha colorida por status, clique abre o produto.
+Cards de KPI clicáveis como filtro rápido.
+Fase C — Conflitos, auditoria de Movimentações e aba "Por Produto"
+
+Conflitos acionáveis: déficit, causa (evento/ordem/movimentação), sugestão e botões para abrir cada origem.
+Movimentações: linhas expansíveis com lista de produtos ("+N") e badges de situação.
+Nova aba Por Produto: seletor, cards de resumo (pior dia, maior déficit), mini-linha do tempo e tabela de impactos.
+Três decisões técnicas que quero confirmar
+Endpoint: você descreveu GET /api/stock/projection. Hoje uso POST /api/reports/stock-projection (melhor para listas de IDs e já integrado). Pretendo manter o POST e apenas enriquecer a resposta (drivers/warnings/base), sem quebrar nada — em vez de criar uma rota GET nova.
+"Em trânsito" vs "em evento": separar os dois exige uma data de chegada ao destino que hoje não temos de forma confiável. Vou manter "em evento" robusto e tratar "em trânsito" de forma aproximada (ou omitir) em vez de inventar datas.
+Viagens como fonte: para não contar em dobro com as ordens de carregamento, viagens já vinculadas a uma ordem continuam embutidas na ordem; só projeto viagens avulsas separadamente.
+Como você quer que eu conduza essa evolução da Projeção de Estoque?
+
+Fazer as 3 fases em sequência (A→B→C), entregando tudo
+Concorda com as 3 decisões técnicas acima (manter POST e enriquecer; 'em trânsito' aproximado; viagens avulsas para evitar contagem dupla)?
+
+Sim, pode seguir assim
+6 minutes ago
+
+Worked for 2 minutes
+
+Planning build mode transition (25 seconds)
+The user approved all 3 phases and the technical decisions. The user's response moves us forward — I'll proceed to build. Let me set up a session plan and check a couple of schema details (trips/returns tables) that affect the engine before writing Phase A.
+
+
+5 actions
+Now I have the schema. Two quick enum checks (trip status, to decide which trips are already-shipped), then I'll write Phase A.
+
+
+4 actions
+I have everything needed. Let me create the session plan and write the new shared contract (Phase A, part 1).
+
+
+Proposed plan
+
+Requesting user exit plan mode
+The plan is locked in and I've got everything I need to build (engine math, schema for trips/returns, routes, components). One thing: I'm currently in Plan mode, which blocks me from editing files — so I can't start implementing yet.
+
+Please switch me to Build mode (the toggle near the chat input) and I'll execute Phases A → B → C in sequence:
+
+A — backend engine + shared contract (per-cell drivers, trips source, richer conflicts/KPIs/warnings, 90-day cap)
+B — collapsible compact filters, stronger matrix with clickable cells, upgraded Visão por Dia, clickable KPIs
+C — actionable conflicts, auditable movements, new "Por Produto" tab
+As soon as you flip to Build mode, I'll start with Phase A.

@@ -1,6 +1,9 @@
+import { useState, Fragment } from "react";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -10,20 +13,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { StockProjectionResult } from "@shared/stock-projection";
-import { formatDayFull } from "./projection-utils";
+import { formatDayFull, situationBadgeClass, situationLabel, sourceLabel } from "./projection-utils";
 
 interface Props {
   result: StockProjectionResult;
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  request: "Requisição",
-  loading_order: "Ordem",
-  movement: "Movimentação",
-};
-
 export function ProjectionMovements({ result }: Props) {
   const rows = result.consideredMovements;
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggle = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   if (rows.length === 0) {
     return (
@@ -40,6 +46,7 @@ export function ProjectionMovements({ result }: Props) {
           <Table data-testid="table-considered-movements">
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8" />
                 <TableHead>Origem</TableHead>
                 <TableHead>Referência</TableHead>
                 <TableHead>Evento</TableHead>
@@ -52,41 +59,85 @@ export function ProjectionMovements({ result }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((m, idx) => (
-                <TableRow key={`${m.source}-${m.sourceId}-${idx}`} data-testid={`row-movement-${idx}`}>
-                  <TableCell className="text-muted-foreground">
-                    {SOURCE_LABEL[m.source] || m.source}
-                  </TableCell>
-                  <TableCell className="font-medium">{m.label}</TableCell>
-                  <TableCell className="text-muted-foreground">{m.eventName || "—"}</TableCell>
-                  <TableCell>
-                    {m.direction === "outbound" ? (
-                      <span className="inline-flex items-center gap-1 text-destructive text-sm">
-                        <ArrowUpRight className="w-3.5 h-3.5" /> Saída
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-chart-4 text-sm">
-                        <ArrowDownLeft className="w-3.5 h-3.5" /> Entrada
-                      </span>
+              {rows.map((m, idx) => {
+                const key = `${m.source}-${m.sourceId}-${idx}`;
+                const isOpen = expanded.has(key);
+                return (
+                  <Fragment key={key}>
+                    <TableRow
+                      className="cursor-pointer"
+                      onClick={() => toggle(key)}
+                      data-testid={`row-movement-${idx}`}
+                    >
+                      <TableCell className="w-8">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" data-testid={`button-expand-${idx}`}>
+                          {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{sourceLabel(m.source)}</TableCell>
+                      <TableCell className="font-medium">{m.label}</TableCell>
+                      <TableCell className="text-muted-foreground">{m.eventName || "—"}</TableCell>
+                      <TableCell>
+                        {m.direction === "outbound" ? (
+                          <span className="inline-flex items-center gap-1 text-destructive text-sm">
+                            <ArrowUpRight className="w-3.5 h-3.5" /> Saída
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-chart-4 text-sm">
+                            <ArrowDownLeft className="w-3.5 h-3.5" /> Entrada
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">{m.outDate ? formatDayFull(m.outDate) : "—"}</TableCell>
+                      <TableCell className="text-sm">{m.inDate ? formatDayFull(m.inDate) : "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.productCount}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.totalQuantity}</TableCell>
+                      <TableCell>
+                        <Badge className={`${situationBadgeClass(m.situation)} text-xs`}>
+                          {situationLabel(m.situation)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                    {isOpen && (
+                      <TableRow data-testid={`row-movement-detail-${idx}`}>
+                        <TableCell colSpan={10} className="bg-muted/30">
+                          <div className="py-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {m.alreadyPhysical ? "Já movimentado" : "Previsto"}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">Status: {m.status}</span>
+                              {m.href && (
+                                <Link href={m.href}>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs" data-testid={`link-movement-${idx}`}>
+                                    <ExternalLink className="w-3 h-3 mr-1" />
+                                    Abrir origem
+                                  </Button>
+                                </Link>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+                              {m.products.map((p) => (
+                                <div
+                                  key={p.productId}
+                                  className="flex items-center justify-between gap-2 text-sm"
+                                  data-testid={`movement-product-${idx}-${p.productId}`}
+                                >
+                                  <div className="min-w-0">
+                                    <span className="truncate block">{p.name}</span>
+                                    <span className="text-xs text-muted-foreground">{p.sku}</span>
+                                  </div>
+                                  <span className="tabular-nums font-medium flex-shrink-0">{p.qty}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm">{m.outDate ? formatDayFull(m.outDate) : "—"}</TableCell>
-                  <TableCell className="text-sm">{m.inDate ? formatDayFull(m.inDate) : "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{m.productCount}</TableCell>
-                  <TableCell className="text-right tabular-nums">{m.totalQuantity}</TableCell>
-                  <TableCell>
-                    {m.alreadyPhysical ? (
-                      <Badge className="bg-chart-4/20 text-chart-4 border border-chart-4/30 text-xs">
-                        Já movimentado
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">
-                        Previsto
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

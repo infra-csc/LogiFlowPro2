@@ -11,6 +11,9 @@ import {
   loadingOrderItems,
   loadingOrderTrips,
   trips,
+  tripItems,
+  tripEvents,
+  tripDestinations,
   movements,
   movementItems,
   movementEvents,
@@ -23,7 +26,12 @@ import type {
   ProjectionProduct,
   ProjectionDayCell,
   ProjectionConflict,
+  ProjectionDriver,
+  ProjectionLink,
+  ProjectionSource,
   ConsideredMovement,
+  ConsideredMovementProduct,
+  ConsideredSituation,
 } from "@shared/stock-projection";
 
 // --- Date helpers (bucket everything by UTC calendar day) ---------------------
@@ -47,14 +55,17 @@ function buildRange(start: string, end: string): string[] {
   return out;
 }
 
+const MAX_RANGE_DAYS = 90;
+
 // A normalized stock movement contribution for a single (product) within a flow.
 interface Flow {
   productId: string;
   qty: number;
   outDate: Date | null;
+  arriveDate: Date | null; // when goods reach the destination (transit → in event)
   inDate: Date | null;
   alreadyPhysical: boolean; // already reflected in currentStock
-  source: "request" | "loading_order" | "movement";
+  source: ProjectionSource;
   sourceId: string;
   label: string;
   eventId: string | null;
@@ -62,8 +73,27 @@ interface Flow {
   status: string;
 }
 
+// Mutable accumulator for a "considered source" before product names are resolved.
+interface ConsideredAcc {
+  source: ProjectionSource;
+  sourceId: string;
+  label: string;
+  eventId: string | null;
+  eventName: string | null;
+  direction: "outbound" | "inbound";
+  outDate: string | null;
+  inDate: string | null;
+  status: string;
+  alreadyPhysical: boolean;
+  situation: ConsideredSituation;
+  grossByProduct: Map<string, number>; // what the source carries (pre-netting)
+  netQuantity: number; // what was actually counted (post-netting)
+  href?: string;
+}
+
 const COMMITTED_ORDER_STATUS = new Set(["ready", "approved", "in_progress"]);
 const PHYSICAL_MOVEMENT_STATUS = new Set(["in_progress", "paused", "completed"]);
+const PHYSICAL_TRIP_STATUS = new Set(["in_transit", "at_destination", "unloading", "completed"]);
 
 export function registerStockProjectionRoutes(app: Express) {
   app.post("/api/reports/stock-projection", requireAuth, async (req: Request, res: Response) => {
@@ -77,21 +107,29 @@ export function registerStockProjectionRoutes(app: Express) {
         return res.status(400).json({ error: "startDate deve ser anterior ou igual a endDate" });
       }
 
+      const rangeDays = buildRange(startDate, endDate);
+      if (rangeDays.length > MAX_RANGE_DAYS) {
+        return res.status(400).json({
+          error: `O período máximo é de ${MAX_RANGE_DAYS} dias. Selecione um intervalo menor.`,
+        });
+      }
+
       const include = {
         requests: params.include?.requests !== false,
         loadingOrders: params.include?.loadingOrders !== false,
         movements: params.include?.movements !== false,
+        trips: params.include?.trips === true, // opt-in (avoids double count by default)
       };
       const eventFilter = params.eventIds && params.eventIds.length > 0 ? params.eventIds : null;
       const productFilter =
         params.productIds && params.productIds.length > 0 ? new Set(params.productIds) : null;
 
-      const rangeDays = buildRange(startDate, endDate);
       const rangeStart = parseDayKey(startDate);
       const rangeEnd = parseDayKey(endDate);
 
       const conflicts: ProjectionConflict[] = [];
-      const consideredMovements: ConsideredMovement[] = [];
+      const warnings: string[] = [];
+      const considered: ConsideredAcc[] = [];
       const flows: Flow[] = [];
 
       // ── Events in scope ────────────────────────────────────────────────────
@@ -108,14 +146,32 @@ export function registerStockProjectionRoutes(app: Express) {
       const scopeEventIds = eventRows.map((e) => e.id);
 
       // Quantity-aware precedence keyed by `${eventId}::${productId}`.
-      // Higher-precedence sources (outbound movements > loading orders > requests)
-      // cover demand so lower sources only add the *remaining* uncovered quantity.
-      // This avoids double counting while never discarding quantity a lower source
-      // claims beyond what higher sources already account for.
+      // Higher-precedence sources (outbound movements > committed transport
+      // {loading orders, trips} > requests) cover demand so lower sources only add
+      // the *remaining* uncovered quantity. Avoids double counting without ever
+      // discarding quantity a lower source claims beyond higher coverage.
       const movementOutboundQty = new Map<string, number>();
-      const loadingTotalQty = new Map<string, number>();
+      const committedTotalQty = new Map<string, number>();
       const addQty = (map: Map<string, number>, key: string, qty: number) =>
         map.set(key, (map.get(key) || 0) + qty);
+
+      // Helper: turn a flow into a per-cell driver entry.
+      const driverOf = (f: Flow, direction: "outbound" | "inbound", qty: number): ProjectionDriver => ({
+        source: f.source,
+        sourceId: f.sourceId,
+        label: f.label,
+        eventId: f.eventId,
+        eventName: f.eventName,
+        direction,
+        qty,
+      });
+
+      const situationOf = (gross: number, net: number, hasDate: boolean): ConsideredSituation => {
+        if (!hasDate) return "no_date";
+        if (gross > 0 && net <= 0) return "ignored";
+        if (net < gross) return "partial";
+        return "considered";
+      };
 
       // ── Movements (outbound realizations + inbound supply) ─────────────────
       if (include.movements) {
@@ -188,98 +244,111 @@ export function registerStockProjectionRoutes(app: Express) {
           if (inScopeEventIds.length > 1) {
             conflicts.push({
               severity: "warning",
+              kind: "ambiguous",
               source: "movement",
               sourceId: m.id,
               sourceLabel: `${m.number} — ${m.name}`,
+              eventId: primaryEventId,
+              eventName: ev?.name || null,
               message: `Movimentação vinculada a ${inScopeEventIds.length} eventos; precedência aplicada ao evento "${ev?.name || primaryEventId}".`,
+              suggestedAction: "Revise o vínculo de eventos da movimentação para evitar dupla contagem.",
+              links: [{ type: "movement", id: m.id, label: `${m.number}`, href: `/movements/${m.id}` }],
             });
           }
 
           const isPhysical = PHYSICAL_MOVEMENT_STATUS.has(m.status);
           const baseDate = m.startedAt || m.completedAt || m.createdAt;
+          const label = `${m.number} — ${m.name}`;
 
           if (nature === "outbound") {
             // Outbound realization: if physical it is already in currentStock; its
             // return comes back via the event teardown date.
             const outDate = baseDate;
             const inDate = ev?.teardownDate || null;
-            let totalQty = 0;
+            const acc: ConsideredAcc = {
+              source: "movement",
+              sourceId: m.id,
+              label,
+              eventId: primaryEventId,
+              eventName: ev?.name || null,
+              direction: "outbound",
+              outDate: outDate ? toDayKey(outDate) : null,
+              inDate: inDate ? toDayKey(inDate) : null,
+              status: m.status,
+              alreadyPhysical: isPhysical,
+              situation: "considered",
+              grossByProduct: new Map(),
+              netQuantity: 0,
+              href: `/movements/${m.id}`,
+            };
             for (const it of items) {
               if (productFilter && !productFilter.has(it.productId)) continue;
+              addQty(acc.grossByProduct, it.productId, it.quantity);
               if (primaryEventId) addQty(movementOutboundQty, `${primaryEventId}::${it.productId}`, it.quantity);
               flows.push({
                 productId: it.productId,
                 qty: it.quantity,
                 outDate,
+                arriveDate: outDate,
                 inDate,
                 alreadyPhysical: isPhysical,
                 source: "movement",
                 sourceId: m.id,
-                label: `${m.number} — ${m.name}`,
+                label,
                 eventId: primaryEventId,
                 eventName: ev?.name || null,
                 status: m.status,
               });
-              totalQty += it.quantity;
+              acc.netQuantity += it.quantity;
             }
-            if (totalQty > 0) {
-              consideredMovements.push({
-                source: "movement",
-                sourceId: m.id,
-                label: `${m.number} — ${m.name}`,
-                eventId: primaryEventId,
-                eventName: ev?.name || null,
-                direction: "outbound",
-                outDate: outDate ? toDayKey(outDate) : null,
-                inDate: inDate ? toDayKey(inDate) : null,
-                productCount: items.length,
-                totalQuantity: totalQty,
-                status: m.status,
-                alreadyPhysical: isPhysical,
-              });
-            }
+            if (acc.grossByProduct.size > 0) considered.push(acc);
           } else {
             // Inbound supply: arrives (adds stock) on its date; nothing leaves.
             // Completed inbound is already in currentStock → skip from math.
             if (isPhysical && m.status === "completed") continue;
             const inDate = baseDate;
-            let totalQty = 0;
+            const acc: ConsideredAcc = {
+              source: "movement",
+              sourceId: m.id,
+              label,
+              eventId: primaryEventId,
+              eventName: ev?.name || null,
+              direction: "inbound",
+              outDate: null,
+              inDate: inDate ? toDayKey(inDate) : null,
+              status: m.status,
+              alreadyPhysical: false,
+              situation: "considered",
+              grossByProduct: new Map(),
+              netQuantity: 0,
+              href: `/movements/${m.id}`,
+            };
             for (const it of items) {
               if (productFilter && !productFilter.has(it.productId)) continue;
+              addQty(acc.grossByProduct, it.productId, it.quantity);
               flows.push({
                 productId: it.productId,
                 qty: it.quantity,
                 outDate: null,
+                arriveDate: null,
                 inDate,
                 alreadyPhysical: false,
                 source: "movement",
                 sourceId: m.id,
-                label: `${m.number} — ${m.name}`,
+                label,
                 eventId: primaryEventId,
                 eventName: ev?.name || null,
                 status: m.status,
               });
-              totalQty += it.quantity;
+              acc.netQuantity += it.quantity;
             }
-            if (totalQty > 0) {
-              consideredMovements.push({
-                source: "movement",
-                sourceId: m.id,
-                label: `${m.number} — ${m.name}`,
-                eventId: primaryEventId,
-                eventName: ev?.name || null,
-                direction: "inbound",
-                outDate: null,
-                inDate: inDate ? toDayKey(inDate) : null,
-                productCount: items.length,
-                totalQuantity: totalQty,
-                status: m.status,
-                alreadyPhysical: false,
-              });
-            }
+            if (acc.grossByProduct.size > 0) considered.push(acc);
           }
         }
       }
+
+      // Remaining movement coverage to net committed transport (orders + trips).
+      const movementCoverRemaining = new Map(movementOutboundQty);
 
       // ── Loading orders (committed reservations) ────────────────────────────
       if (include.loadingOrders) {
@@ -334,9 +403,6 @@ export function registerStockProjectionRoutes(app: Express) {
           tripsByOrder.get(t.orderId)!.push(t);
         }
 
-        // Remaining movement coverage to net against loading orders.
-        const movementCoverRemaining = new Map(movementOutboundQty);
-
         for (const o of orderRows) {
           const ev = eventMap.get(o.eventId);
           const orderTrips = tripsByOrder.get(o.id) || [];
@@ -353,33 +419,64 @@ export function registerStockProjectionRoutes(app: Express) {
           const items = itemsByOrder.get(o.id) || [];
           if (items.length === 0) continue;
 
+          const acc: ConsideredAcc = {
+            source: "loading_order",
+            sourceId: o.id,
+            label: o.number,
+            eventId: o.eventId,
+            eventName: ev?.name || null,
+            direction: "outbound",
+            outDate: outDate ? toDayKey(outDate) : null,
+            inDate: inDate ? toDayKey(inDate) : null,
+            status: o.status,
+            alreadyPhysical: false,
+            situation: "considered",
+            grossByProduct: new Map(),
+            netQuantity: 0,
+            href: `/loading-orders/${o.id}`,
+          };
+          for (const it of items) {
+            if (productFilter && !productFilter.has(it.productId)) continue;
+            addQty(acc.grossByProduct, it.productId, it.quantity);
+          }
+          const grossTotal = Array.from(acc.grossByProduct.values()).reduce((a, b) => a + b, 0);
+
           if (!outDate) {
+            acc.situation = situationOf(grossTotal, 0, false);
             conflicts.push({
-              severity: "error",
+              severity: "warning",
+              kind: "missing_data",
               source: "loading_order",
               sourceId: o.id,
               sourceLabel: o.number,
+              eventId: o.eventId,
+              eventName: ev?.name || null,
               message: "Ordem de carregamento sem data de saída (sem viagem nem datas próprias). Ignorada no cálculo.",
+              suggestedAction: "Defina datas de carregamento/viagem para incluir esta ordem na projeção.",
+              links: [{ type: "loading_order", id: o.id, label: o.number, href: `/loading-orders/${o.id}` }],
             });
+            if (acc.grossByProduct.size > 0) considered.push(acc);
             continue;
           }
           if (orderTrips.length > 1) {
             conflicts.push({
               severity: "warning",
+              kind: "ambiguous",
               source: "loading_order",
               sourceId: o.id,
               sourceLabel: o.number,
+              eventId: o.eventId,
+              eventName: ev?.name || null,
               message: `Ordem com ${orderTrips.length} viagens — período consolidado (saída mais cedo, retorno mais tarde).`,
+              links: [{ type: "loading_order", id: o.id, label: o.number, href: `/loading-orders/${o.id}` }],
             });
           }
 
-          let totalQty = 0;
           for (const it of items) {
             if (productFilter && !productFilter.has(it.productId)) continue;
             const key = `${o.eventId}::${it.productId}`;
-            // Track full loading demand so requests below are netted by the larger
-            // of movement/loading coverage.
-            addQty(loadingTotalQty, key, it.quantity);
+            // Track committed transport demand so requests below are netted.
+            addQty(committedTotalQty, key, it.quantity);
             // Net against outbound movements already accounting for this demand.
             const remain = movementCoverRemaining.get(key) || 0;
             const take = Math.min(remain, it.quantity);
@@ -390,6 +487,7 @@ export function registerStockProjectionRoutes(app: Express) {
               productId: it.productId,
               qty: eff,
               outDate,
+              arriveDate: outDate,
               inDate,
               alreadyPhysical: false,
               source: "loading_order",
@@ -399,24 +497,145 @@ export function registerStockProjectionRoutes(app: Express) {
               eventName: ev?.name || null,
               status: o.status,
             });
-            totalQty += eff;
+            acc.netQuantity += eff;
           }
-          if (totalQty > 0) {
-            consideredMovements.push({
-              source: "loading_order",
-              sourceId: o.id,
-              label: o.number,
-              eventId: o.eventId,
+          acc.situation = situationOf(grossTotal, acc.netQuantity, true);
+          if (acc.grossByProduct.size > 0) considered.push(acc);
+        }
+      }
+
+      // ── Standalone trips (committed transport not linked to an order) ───────
+      if (include.trips) {
+        const linkedTripRows = await db
+          .select({ tripId: loadingOrderTrips.tripId })
+          .from(loadingOrderTrips);
+        const linkedTripIds = new Set(linkedTripRows.map((r) => r.tripId));
+
+        const tripConds: any[] = [];
+        if (eventFilter) tripConds.push(inArray(trips.eventId, eventFilter));
+        const tripRows = await db
+          .select({
+            id: trips.id,
+            description: trips.description,
+            eventId: trips.eventId,
+            status: trips.status,
+            loadingStart: trips.loadingStartTime,
+            departure: trips.departureDateTime,
+            unloadingStart: trips.unloadingStartTime,
+            unloadingEnd: trips.unloadingEndTime,
+            scheduledStart: trips.scheduledStart,
+            scheduledEnd: trips.scheduledEnd,
+          })
+          .from(trips)
+          .where(tripConds.length ? and(...tripConds) : undefined);
+        const standalone = tripRows.filter((t) => !linkedTripIds.has(t.id));
+        const standaloneIds = standalone.map((t) => t.id);
+
+        const tripItemRows = standaloneIds.length
+          ? await db
+              .select({
+                tripId: tripItems.tripId,
+                productId: tripItems.productId,
+                quantity: tripItems.plannedQuantity,
+              })
+              .from(tripItems)
+              .where(inArray(tripItems.tripId, standaloneIds))
+          : [];
+        const tripDestRows = standaloneIds.length
+          ? await db
+              .select({ tripId: tripDestinations.tripId, arrival: tripDestinations.arrivalDateTime })
+              .from(tripDestinations)
+              .where(inArray(tripDestinations.tripId, standaloneIds))
+          : [];
+        const itemsByTrip = new Map<string, { productId: string; quantity: number }[]>();
+        for (const it of tripItemRows) {
+          if (!itemsByTrip.has(it.tripId)) itemsByTrip.set(it.tripId, []);
+          itemsByTrip.get(it.tripId)!.push({ productId: it.productId, quantity: it.quantity });
+        }
+        const firstArrivalByTrip = new Map<string, Date>();
+        for (const d of tripDestRows) {
+          if (!d.arrival) continue;
+          const cur = firstArrivalByTrip.get(d.tripId);
+          if (!cur || d.arrival < cur) firstArrivalByTrip.set(d.tripId, d.arrival);
+        }
+
+        for (const t of standalone) {
+          const items = itemsByTrip.get(t.id) || [];
+          if (items.length === 0) continue;
+          const ev = eventMap.get(t.eventId);
+          const isPhysical = PHYSICAL_TRIP_STATUS.has(t.status);
+          const outDate = t.loadingStart || t.departure || t.scheduledStart || ev?.setupDate || null;
+          const arriveDate = firstArrivalByTrip.get(t.id) || outDate;
+          const inDate = t.unloadingEnd || t.unloadingStart || t.scheduledEnd || ev?.teardownDate || null;
+          const label = t.description ? `Viagem — ${t.description}` : `Viagem ${t.id.slice(0, 8)}`;
+
+          const acc: ConsideredAcc = {
+            source: "trip",
+            sourceId: t.id,
+            label,
+            eventId: t.eventId,
+            eventName: ev?.name || null,
+            direction: "outbound",
+            outDate: outDate ? toDayKey(outDate) : null,
+            inDate: inDate ? toDayKey(inDate) : null,
+            status: t.status,
+            alreadyPhysical: isPhysical,
+            situation: "considered",
+            grossByProduct: new Map(),
+            netQuantity: 0,
+            href: `/trips`,
+          };
+          for (const it of items) {
+            if (productFilter && !productFilter.has(it.productId)) continue;
+            addQty(acc.grossByProduct, it.productId, it.quantity);
+          }
+          const grossTotal = Array.from(acc.grossByProduct.values()).reduce((a, b) => a + b, 0);
+
+          if (!outDate) {
+            acc.situation = situationOf(grossTotal, 0, false);
+            conflicts.push({
+              severity: "warning",
+              kind: "missing_data",
+              source: "trip",
+              sourceId: t.id,
+              sourceLabel: label,
+              eventId: t.eventId,
               eventName: ev?.name || null,
-              direction: "outbound",
-              outDate: toDayKey(outDate),
-              inDate: inDate ? toDayKey(inDate) : null,
-              productCount: items.length,
-              totalQuantity: totalQty,
-              status: o.status,
-              alreadyPhysical: false,
+              message: "Viagem sem data de carregamento/saída. Ignorada no cálculo.",
+              suggestedAction: "Defina a data de carregamento ou saída da viagem.",
+              links: [{ type: "trip", id: t.id, label, href: `/trips` }],
             });
+            if (acc.grossByProduct.size > 0) considered.push(acc);
+            continue;
           }
+
+          for (const it of items) {
+            if (productFilter && !productFilter.has(it.productId)) continue;
+            const key = `${t.eventId}::${it.productId}`;
+            addQty(committedTotalQty, key, it.quantity);
+            const remain = movementCoverRemaining.get(key) || 0;
+            const take = Math.min(remain, it.quantity);
+            if (take > 0) movementCoverRemaining.set(key, remain - take);
+            const eff = it.quantity - take;
+            if (eff <= 0) continue;
+            flows.push({
+              productId: it.productId,
+              qty: eff,
+              outDate,
+              arriveDate,
+              inDate,
+              alreadyPhysical: isPhysical,
+              source: "trip",
+              sourceId: t.id,
+              label,
+              eventId: t.eventId,
+              eventName: ev?.name || null,
+              status: t.status,
+            });
+            acc.netQuantity += eff;
+          }
+          acc.situation = situationOf(grossTotal, acc.netQuantity, true);
+          if (acc.grossByProduct.size > 0) considered.push(acc);
         }
       }
 
@@ -455,7 +674,7 @@ export function registerStockProjectionRoutes(app: Express) {
           itemsByRequest.get(it.requestId)!.push(it);
         }
 
-        // Requests are netted by the larger of movement/loading coverage already
+        // Requests are netted by the larger of movement/committed coverage already
         // counted for the same (event, product).
         const reqCoverRemaining = new Map<string, number>();
 
@@ -465,81 +684,160 @@ export function registerStockProjectionRoutes(app: Express) {
           if (items.length === 0) continue;
           const outDate = ev?.setupDate || null;
           const inDate = ev?.teardownDate || null;
-          if (!outDate) {
-            conflicts.push({
-              severity: "error",
-              source: "request",
-              sourceId: r.id,
-              sourceLabel: `${r.area}`,
-              message: "Requisição sem data de montagem do evento. Ignorada no cálculo.",
-            });
-            continue;
-          }
-          let totalQty = 0;
-          let countedProducts = 0;
+          const label = `${ev?.name || "Evento"} · ${r.area}`;
+
+          const acc: ConsideredAcc = {
+            source: "request",
+            sourceId: r.id,
+            label,
+            eventId: r.eventId,
+            eventName: ev?.name || null,
+            direction: "outbound",
+            outDate: outDate ? toDayKey(outDate) : null,
+            inDate: inDate ? toDayKey(inDate) : null,
+            status: r.status,
+            alreadyPhysical: false,
+            situation: "considered",
+            grossByProduct: new Map(),
+            netQuantity: 0,
+            href: `/requests/${r.id}`,
+          };
           for (const it of items) {
             if (it.approvalStatus === "rejected") continue;
             const productId = it.productId!;
             if (productFilter && !productFilter.has(productId)) continue;
-            const key = `${r.eventId}::${productId}`;
             const baseQty =
               it.approvalStatus === "approved" && it.approvedQuantity != null
                 ? it.approvedQuantity
                 : it.quantity;
             if (baseQty <= 0) continue;
+            addQty(acc.grossByProduct, productId, baseQty);
+          }
+          const grossTotal = Array.from(acc.grossByProduct.values()).reduce((a, b) => a + b, 0);
+
+          if (!outDate) {
+            acc.situation = situationOf(grossTotal, 0, false);
+            conflicts.push({
+              severity: "warning",
+              kind: "missing_data",
+              source: "request",
+              sourceId: r.id,
+              sourceLabel: label,
+              eventId: r.eventId,
+              eventName: ev?.name || null,
+              message: "Requisição sem data de montagem do evento. Ignorada no cálculo.",
+              suggestedAction: "Defina a data de montagem do evento para incluir esta requisição.",
+              links: [
+                { type: "request", id: r.id, label: r.area, href: `/requests/${r.id}` },
+                ...(r.eventId
+                  ? [{ type: "event" as const, id: r.eventId, label: ev?.name || "Evento", href: `/events/${r.eventId}` }]
+                  : []),
+              ],
+            });
+            if (acc.grossByProduct.size > 0) considered.push(acc);
+            continue;
+          }
+
+          for (const [productId, baseQty] of Array.from(acc.grossByProduct.entries())) {
+            const key = `${r.eventId}::${productId}`;
             if (!reqCoverRemaining.has(key)) {
               reqCoverRemaining.set(
                 key,
-                Math.max(movementOutboundQty.get(key) || 0, loadingTotalQty.get(key) || 0),
+                Math.max(movementOutboundQty.get(key) || 0, committedTotalQty.get(key) || 0),
               );
             }
             const remain = reqCoverRemaining.get(key)!;
             const take = Math.min(remain, baseQty);
             if (take > 0) reqCoverRemaining.set(key, remain - take);
             const eff = baseQty - take;
-            if (eff <= 0) continue; // demand already covered by loading orders / movements
+            if (eff <= 0) continue; // demand already covered by committed transport / movements
             flows.push({
               productId,
               qty: eff,
               outDate,
+              arriveDate: outDate,
               inDate,
               alreadyPhysical: false,
               source: "request",
               sourceId: r.id,
-              label: `${ev?.name || "Evento"} · ${r.area}`,
+              label,
               eventId: r.eventId,
               eventName: ev?.name || null,
               status: r.status,
             });
-            totalQty += eff;
-            countedProducts++;
+            acc.netQuantity += eff;
           }
-          if (totalQty > 0) {
-            consideredMovements.push({
-              source: "request",
-              sourceId: r.id,
-              label: `${ev?.name || "Evento"} · ${r.area}`,
-              eventId: r.eventId,
-              eventName: ev?.name || null,
-              direction: "outbound",
-              outDate: toDayKey(outDate),
-              inDate: inDate ? toDayKey(inDate) : null,
-              productCount: countedProducts,
-              totalQuantity: totalQty,
-              status: r.status,
-              alreadyPhysical: false,
-            });
-          }
+          acc.situation = situationOf(grossTotal, acc.netQuantity, true);
+          if (acc.grossByProduct.size > 0) considered.push(acc);
         }
       }
 
-      // ── Resolve product universe ───────────────────────────────────────────
-      const productIdSet = new Set<string>();
-      for (const f of flows) productIdSet.add(f.productId);
-      const productIds = Array.from(productIdSet);
-      if (productIds.length === 0) {
+      // ── Resolve product universe (flows + considered, for names) ────────────
+      const flowProductIdSet = new Set<string>();
+      for (const f of flows) flowProductIdSet.add(f.productId);
+      const allProductIdSet = new Set<string>(flowProductIdSet);
+      for (const acc of considered)
+        for (const pid of Array.from(acc.grossByProduct.keys())) allProductIdSet.add(pid);
+
+      const allProductIds = Array.from(allProductIdSet);
+      const productRows = allProductIds.length
+        ? await db
+            .select({
+              id: products.id,
+              sku: products.sku,
+              name: products.name,
+              unit: products.unit,
+              currentStock: products.currentStock,
+              minimumStock: products.minimumStock,
+            })
+            .from(products)
+            .where(inArray(products.id, allProductIds))
+        : [];
+      const productMap = new Map(productRows.map((p) => [p.id, p]));
+
+      // Materialize considered movements (resolve product names + situation).
+      const finalizeConsidered = (acc: ConsideredAcc): ConsideredMovement => {
+        const productsList: ConsideredMovementProduct[] = Array.from(acc.grossByProduct.entries()).map(
+          ([pid, qty]) => {
+            const p = productMap.get(pid);
+            return { productId: pid, name: p?.name || "Produto", sku: p?.sku || "—", qty };
+          },
+        );
+        const grossTotal = productsList.reduce((a, b) => a + b.qty, 0);
+        return {
+          source: acc.source,
+          sourceId: acc.sourceId,
+          label: acc.label,
+          eventId: acc.eventId,
+          eventName: acc.eventName,
+          direction: acc.direction,
+          outDate: acc.outDate,
+          inDate: acc.inDate,
+          productCount: productsList.length,
+          totalQuantity: acc.situation === "no_date" || acc.situation === "ignored" ? 0 : acc.netQuantity || grossTotal,
+          status: acc.status,
+          alreadyPhysical: acc.alreadyPhysical,
+          situation: acc.situation,
+          products: productsList,
+          href: acc.href,
+        };
+      };
+      const consideredMovements: ConsideredMovement[] = considered.map(finalizeConsidered);
+
+      // Build a human description of what fed the projection.
+      const baseSources: string[] = [];
+      if (include.movements) baseSources.push("movimentações");
+      if (include.loadingOrders) baseSources.push("ordens de carregamento");
+      if (include.trips) baseSources.push("viagens avulsas");
+      if (include.requests) baseSources.push("requisições aprovadas");
+      const calculationBase = `Saldo atual dos produtos + ${baseSources.join(", ") || "nenhuma fonte"} no período de ${startDate} a ${endDate}.`;
+
+      if (flowProductIdSet.size === 0) {
+        const missingCount = conflicts.filter((c) => c.kind === "missing_data").length;
+        if (missingCount > 0) warnings.push(`${missingCount} origem(ns) ignorada(s) por falta de data.`);
         const empty: StockProjectionResult = {
           generatedAt: new Date().toISOString(),
+          calculationBase,
           filters: params,
           rangeDays,
           summary: {
@@ -548,26 +846,18 @@ export function registerStockProjectionRoutes(app: Express) {
             productsLow: 0,
             productsOk: 0,
             peakShortageDate: null,
+            totalOutbound: 0,
+            totalInbound: 0,
+            totalReserved: 0,
+            totalInEvent: 0,
           },
           products: [],
           conflicts,
           consideredMovements,
+          warnings,
         };
         return res.json(empty);
       }
-
-      const productRows = await db
-        .select({
-          id: products.id,
-          sku: products.sku,
-          name: products.name,
-          unit: products.unit,
-          currentStock: products.currentStock,
-          minimumStock: products.minimumStock,
-        })
-        .from(products)
-        .where(inArray(products.id, productIds));
-      const productMap = new Map(productRows.map((p) => [p.id, p]));
 
       const flowsByProduct = new Map<string, Flow[]>();
       for (const f of flows) {
@@ -581,8 +871,26 @@ export function registerStockProjectionRoutes(app: Express) {
       const projProducts: ProjectionProduct[] = [];
       let peakShortageDate: string | null = null;
       let peakShortageDeficit = 0;
+      let sumOutbound = 0;
+      let sumInbound = 0;
+      let sumPeakReserved = 0;
+      let sumPeakInEvent = 0;
 
-      for (const productId of productIds) {
+      const driverToLink = (d: ProjectionDriver): ProjectionLink => {
+        switch (d.source) {
+          case "loading_order":
+            return { type: "loading_order", id: d.sourceId, label: d.label, href: `/loading-orders/${d.sourceId}` };
+          case "movement":
+            return { type: "movement", id: d.sourceId, label: d.label, href: `/movements/${d.sourceId}` };
+          case "request":
+            return { type: "request", id: d.sourceId, label: d.label, href: `/requests/${d.sourceId}` };
+          case "trip":
+          default:
+            return { type: "trip", id: d.sourceId, label: d.label, href: `/trips` };
+        }
+      };
+
+      for (const productId of Array.from(flowProductIdSet)) {
         const p = productMap.get(productId);
         if (!p) continue;
         const productFlows = flowsByProduct.get(productId) || [];
@@ -590,11 +898,14 @@ export function registerStockProjectionRoutes(app: Express) {
         const outboundByDay = new Array(rangeDays.length).fill(0);
         const inboundByDay = new Array(rangeDays.length).fill(0);
         const reservedByDay = new Array(rangeDays.length).fill(0);
+        const inTransitByDay = new Array(rangeDays.length).fill(0);
         const inEventByDay = new Array(rangeDays.length).fill(0);
+        const driversByDay: ProjectionDriver[][] = rangeDays.map(() => []);
 
         for (const f of productFlows) {
           const effOut = f.outDate;
           const effIn = f.inDate;
+          const effArrive = f.arriveDate || f.outDate;
           // Fully returned before window → no effect on this window.
           if (effIn && effIn.getTime() < rangeStart.getTime() && (!effOut || effOut.getTime() < rangeStart.getTime())) {
             continue;
@@ -605,29 +916,39 @@ export function registerStockProjectionRoutes(app: Express) {
             if (effOut.getTime() <= rangeEnd.getTime()) {
               const applyKey = effOut.getTime() < rangeStart.getTime() ? rangeDays[0] : toDayKey(effOut);
               const idx = dayIndex.get(applyKey);
-              if (idx !== undefined) outboundByDay[idx] += f.qty;
+              if (idx !== undefined) {
+                outboundByDay[idx] += f.qty;
+                driversByDay[idx].push(driverOf(f, "outbound", f.qty));
+              }
             }
           }
 
           // Inbound (returns of any flow, including physical ones).
           if (effIn && effIn.getTime() >= rangeStart.getTime() && effIn.getTime() <= rangeEnd.getTime()) {
             const idx = dayIndex.get(toDayKey(effIn));
-            if (idx !== undefined) inboundByDay[idx] += f.qty;
+            if (idx !== undefined) {
+              inboundByDay[idx] += f.qty;
+              driversByDay[idx].push(driverOf(f, "inbound", f.qty));
+            }
           }
 
           // Overlays per day.
           for (let i = 0; i < rangeDays.length; i++) {
             const dTime = parseDayKey(rangeDays[i]).getTime();
             const outTime = effOut ? effOut.getTime() : null;
+            const arriveTime = effArrive ? effArrive.getTime() : outTime;
             const inTime = effIn ? effIn.getTime() : null;
             // Reserved: committed, not yet shipped (only non-physical).
             if (!f.alreadyPhysical && outTime !== null && dTime < outTime) {
               reservedByDay[i] += f.qty;
             }
-            // In event: shipped and not yet returned.
             const shipped = outTime === null ? false : dTime >= outTime;
+            const arrived = arriveTime === null ? shipped : dTime >= arriveTime;
             const returned = inTime !== null && dTime >= inTime;
-            if (shipped && !returned) inEventByDay[i] += f.qty;
+            // In transit: shipped but not yet arrived.
+            if (shipped && !arrived && !returned) inTransitByDay[i] += f.qty;
+            // In event: arrived and not yet returned.
+            if (arrived && !returned) inEventByDay[i] += f.qty;
           }
         }
 
@@ -638,6 +959,8 @@ export function registerStockProjectionRoutes(app: Express) {
         let worstStatus: ProjectionDayStatus = "ok";
         let totalOutbound = 0;
         let totalInbound = 0;
+        let peakReserved = 0;
+        let peakInEvent = 0;
         const minimumStock = p.minimumStock || 0;
 
         for (let i = 0; i < rangeDays.length; i++) {
@@ -646,6 +969,8 @@ export function registerStockProjectionRoutes(app: Express) {
           const available = opening - outbound + inbound;
           totalOutbound += outbound;
           totalInbound += inbound;
+          if (reservedByDay[i] > peakReserved) peakReserved = reservedByDay[i];
+          if (inEventByDay[i] > peakInEvent) peakInEvent = inEventByDay[i];
 
           let status: ProjectionDayStatus = "ok";
           if (available < 0) status = "shortage";
@@ -670,8 +995,10 @@ export function registerStockProjectionRoutes(app: Express) {
             outbound,
             available,
             reserved: reservedByDay[i],
+            inTransit: inTransitByDay[i],
             inEvent: inEventByDay[i],
             status,
+            drivers: driversByDay[i],
           });
           opening = available;
         }
@@ -679,6 +1006,18 @@ export function registerStockProjectionRoutes(app: Express) {
         if (minAvailable === Infinity) minAvailable = p.currentStock || 0;
 
         if (params.onlyShortages && worstStatus !== "shortage") continue;
+        if (params.onlyImpacted) {
+          const impacted = cells.some(
+            (c) => c.outbound !== 0 || c.inbound !== 0 || c.reserved !== 0 || c.inTransit !== 0 || c.inEvent !== 0,
+          );
+          if (!impacted) continue;
+        }
+
+        const maxDeficit = Math.max(0, -minAvailable);
+        sumOutbound += totalOutbound;
+        sumInbound += totalInbound;
+        sumPeakReserved += peakReserved;
+        sumPeakInEvent += peakInEvent;
 
         projProducts.push({
           productId: p.id,
@@ -693,18 +1032,62 @@ export function registerStockProjectionRoutes(app: Express) {
           worstStatus,
           totalOutbound,
           totalInbound,
+          maxDeficit,
         });
 
-        if (worstStatus === "shortage") {
+        // Build an actionable conflict for shortage / low products.
+        if (worstStatus === "shortage" || worstStatus === "low") {
+          const worstIdx = minAvailableDate ? dayIndex.get(minAvailableDate) : undefined;
+          const links: ProjectionLink[] = [];
+          const seen = new Set<string>();
+          const pushLink = (l: ProjectionLink) => {
+            const k = `${l.type}:${l.id}`;
+            if (!seen.has(k)) {
+              seen.add(k);
+              links.push(l);
+            }
+          };
+          pushLink({ type: "product", id: p.id, label: p.sku, href: `/products` });
+          const collectFrom = (cell?: ProjectionDayCell) => {
+            if (!cell) return;
+            for (const d of cell.drivers) {
+              if (d.direction !== "outbound") continue;
+              pushLink(driverToLink(d));
+              if (d.eventId) {
+                pushLink({ type: "event", id: d.eventId, label: d.eventName || "Evento", href: `/events/${d.eventId}` });
+              }
+            }
+          };
+          if (worstIdx !== undefined) collectFrom(cells[worstIdx]);
+          if (links.length <= 1 && worstIdx !== undefined) {
+            for (let i = 0; i <= worstIdx; i++) collectFrom(cells[i]);
+          }
+
+          const isShortage = worstStatus === "shortage";
+          const deficit = isShortage ? maxDeficit : Math.max(0, minimumStock - minAvailable);
+          const dominantEvent = links.find((l) => l.type === "event");
           conflicts.push({
-            severity: "error",
-            source: "loading_order",
+            severity: isShortage ? "error" : "warning",
+            kind: "shortage",
+            source: (cells[worstIdx ?? 0]?.drivers.find((d) => d.direction === "outbound")?.source as ProjectionSource) || "loading_order",
             sourceId: p.id,
             sourceLabel: p.name,
             productId: p.id,
             productName: p.name,
             sku: p.sku,
-            message: `Saldo negativo (${minAvailable}) previsto em ${minAvailableDate}.`,
+            date: minAvailableDate,
+            projectedBalance: minAvailable,
+            minimumStock,
+            deficit,
+            eventId: dominantEvent ? dominantEvent.id : null,
+            eventName: dominantEvent ? dominantEvent.label : null,
+            message: isShortage
+              ? `Saldo negativo (${minAvailable} ${p.unit}) previsto em ${minAvailableDate}.`
+              : `Saldo (${minAvailable} ${p.unit}) abaixo do mínimo (${minimumStock}) em ${minAvailableDate}.`,
+            suggestedAction: isShortage
+              ? `Comprar/alugar ${deficit} ${p.unit} ou antecipar retornos antes de ${minAvailableDate}.`
+              : `Repor ${deficit} ${p.unit} para manter o estoque mínimo.`,
+            links,
           });
         }
       }
@@ -718,8 +1101,15 @@ export function registerStockProjectionRoutes(app: Express) {
         return a.name.localeCompare(b.name);
       });
 
+      // Aggregate warnings.
+      const missingCount = conflicts.filter((c) => c.kind === "missing_data").length;
+      if (missingCount > 0) warnings.push(`${missingCount} origem(ns) ignorada(s) por falta de data.`);
+      const ambiguousCount = conflicts.filter((c) => c.kind === "ambiguous").length;
+      if (ambiguousCount > 0) warnings.push(`${ambiguousCount} origem(ns) com vínculo de múltiplos eventos/viagens.`);
+
       const result: StockProjectionResult = {
         generatedAt: new Date().toISOString(),
+        calculationBase,
         filters: params,
         rangeDays,
         summary: {
@@ -728,10 +1118,15 @@ export function registerStockProjectionRoutes(app: Express) {
           productsLow: projProducts.filter((p) => p.worstStatus === "low").length,
           productsOk: projProducts.filter((p) => p.worstStatus === "ok").length,
           peakShortageDate,
+          totalOutbound: sumOutbound,
+          totalInbound: sumInbound,
+          totalReserved: sumPeakReserved,
+          totalInEvent: sumPeakInEvent,
         },
         products: projProducts,
         conflicts,
         consideredMovements,
+        warnings,
       };
 
       res.json(result);
