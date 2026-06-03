@@ -1,0 +1,841 @@
+Vamos refazer conceitualmente as telas de Simulação de Estoque para que elas realmente cumpram o objetivo principal do app.
+
+Objetivo real:
+Criar uma tela detalhada de projeção de estoque por período, mostrando quanto estoque teremos em cada dia, considerando eventos, requisições, ordens de carregamento, viagens, carregamentos, descarregamentos, saídas, retornos de caminhão, movimentações e itens reservados.
+
+Hoje a tela está muito simples e não responde à pergunta principal:
+
+“Quanto estoque eu vou ter disponível em cada dia da semana/mês, considerando tudo que está planejado?”
+
+Essa tela precisa ser tratada como o coração do sistema.
+
+Telas foco:
+
+* client/src/pages/stock-simulation.tsx
+* client/src/pages/stock-position-simulation.tsx
+* componentes relacionados a simulação de estoque
+* endpoints relacionados à simulação/projeção
+* criar endpoint agregado se necessário
+
+Objetivo final:
+Transformar a simulação em uma Central de Projeção de Estoque.
+
+O usuário precisa conseguir responder:
+
+* Qual meu estoque disponível hoje?
+* Quanto vou ter amanhã?
+* Quanto vou ter em cada dia da semana?
+* Quais eventos vão consumir estoque?
+* Quais caminhões vão retirar material?
+* Quais caminhões vão devolver material?
+* O que está reservado?
+* O que está em trânsito?
+* O que está no evento?
+* O que vai faltar?
+* Em qual dia vai faltar?
+* Qual evento está causando conflito?
+* Qual produto precisa ser comprado, alugado ou remanejado?
+
+Não quero apenas uma tela de filtros.
+Quero uma ferramenta de decisão operacional.
+
+==================================================
+
+1. REDEFINIR O CONCEITO DAS TELAS
+   ==================================================
+
+Hoje existem duas telas:
+
+1. Simulação de Estoque
+2. Simulação de Posição de Estoque
+
+Reavaliar se faz sentido manter as duas separadas.
+
+Sugestão:
+
+Tela principal:
+
+* Projeção de Estoque
+
+Abas internas:
+
+1. Visão por Dia
+2. Visão por Produto
+3. Visão por Evento
+4. Conflitos
+5. Movimentações Consideradas
+
+Ou, se for melhor manter as duas rotas:
+
+* Simulação de Estoque = disponibilidade para eventos/requisições
+* Posição de Estoque por Período = projeção diária detalhada
+
+Mas a tela “Posição de Estoque por Período” precisa ser a principal para responder ao objetivo.
+
+==================================================
+2. LÓGICA DE PROJEÇÃO DE ESTOQUE
+================================
+
+A simulação precisa calcular o estoque projetado por produto e por dia.
+
+Para cada produto, em cada dia do período selecionado, calcular:
+
+Estoque inicial do dia
+
+* Entradas previstas
+
+- Saídas previstas
+- Reservas/alocações do dia
+
+* Retornos previstos
+  = Estoque projetado final do dia
+
+Considerar como ENTRADAS:
+
+* retorno de viagens;
+* descarregamentos;
+* movimentações de retorno;
+* devoluções;
+* ajustes de entrada, se existirem;
+* itens retornando de evento;
+* caminhões chegando ao armazém.
+
+Considerar como SAÍDAS:
+
+* carregamentos;
+* viagens saindo;
+* movimentações de saída para evento;
+* ordens de carregamento aprovadas/em andamento;
+* requisições aprovadas vinculadas a eventos;
+* itens enviados para montagem/evento.
+
+Considerar como RESERVADO/ALOCADO:
+
+* itens aprovados para eventos futuros;
+* itens em ordens de carregamento ainda não carregadas;
+* itens em viagens planejadas;
+* itens separados para evento;
+* itens que ainda não saíram fisicamente, mas já estão comprometidos.
+
+Considerar como EM TRÂNSITO:
+
+* itens carregados em caminhão;
+* itens saindo para evento;
+* itens retornando ao estoque;
+* viagens em andamento.
+
+Considerar como EM EVENTO:
+
+* itens que já saíram do estoque e ainda não retornaram;
+* itens entre montagem, evento e desmontagem;
+* itens aguardando retorno.
+
+Resultado diário por produto:
+
+* estoque físico;
+* estoque disponível;
+* reservado;
+* em trânsito;
+* em evento;
+* retorno previsto;
+* saída prevista;
+* saldo projetado;
+* déficit, se houver.
+
+==================================================
+3. ENDPOINT AGREGADO DE SIMULAÇÃO
+=================================
+
+Criar um endpoint específico de leitura para a projeção.
+
+Sugestão:
+
+GET /api/stock/projection
+
+Query params:
+
+* startDate
+* endDate
+* eventIds
+* productIds
+* includeRequests
+* includeLoadingOrders
+* includeTrips
+* includeMovements
+* includeReturns
+* statuses
+
+Retorno sugerido:
+
+{
+period: {
+startDate,
+endDate
+},
+summary: {
+totalProducts,
+productsOk,
+productsWarning,
+productsCritical,
+totalShortage,
+totalReserved,
+totalInTransit,
+totalInEvent
+},
+days: [
+{
+date,
+summary: {
+available,
+reserved,
+inTransit,
+inEvent,
+shortage
+},
+products: [
+{
+productId,
+productName,
+sku,
+unit,
+openingStock,
+inbound,
+outbound,
+reserved,
+inTransit,
+inEvent,
+returnsExpected,
+projectedAvailable,
+shortage,
+status,
+drivers: [
+{
+type,
+entityId,
+entityName,
+quantity,
+date,
+direction
+}
+]
+}
+],
+events: [],
+trips: [],
+movements: [],
+alerts: []
+}
+],
+conflicts: [],
+movementsConsidered: []
+}
+
+O endpoint deve ser apenas leitura.
+
+Não alterar regras existentes.
+Não quebrar endpoints atuais.
+Não alterar schema sem necessidade.
+Não alterar RBAC global.
+
+==================================================
+4. STATUS OPERACIONAIS DA PROJEÇÃO
+==================================
+
+Cada produto/dia deve receber um status visual:
+
+OK:
+
+* estoque disponível suficiente.
+
+Atenção:
+
+* estoque ficará baixo ou próximo do mínimo.
+
+Crítico:
+
+* estoque projetado abaixo de zero ou insuficiente.
+
+Reservado:
+
+* produto disponível fisicamente, mas já comprometido.
+
+Em trânsito:
+
+* produto em caminhão/viagem/movimentação.
+
+Em evento:
+
+* produto fora do armazém, alocado em evento.
+
+Excedente:
+
+* quantidade carregada maior que planejada.
+
+==================================================
+5. INTERFACE PRINCIPAL DA TELA
+==============================
+
+Criar uma tela mais detalhada e operacional.
+
+Layout recomendado:
+
+Topo:
+
+* PageHeader
+* descrição clara:
+  “Projete o saldo diário do estoque considerando eventos, viagens, carregamentos, retornos e movimentações.”
+
+Filtros:
+
+* período de análise;
+* eventos;
+* produtos;
+* status;
+* incluir/excluir:
+
+  * requisições;
+  * ordens de carregamento;
+  * viagens;
+  * movimentações;
+  * retornos;
+* botão Gerar Projeção;
+* botão Limpar;
+* botão Exportar, se já existir infraestrutura.
+
+Área de resultado:
+
+1. Resumo geral
+2. Linha do tempo diária
+3. Tabela detalhada por produto/dia
+4. Conflitos
+5. Movimentações consideradas
+
+==================================================
+6. FILTROS DEVEM SER MELHORES
+=============================
+
+A tela atual tem filtros muito grandes e pouco úteis.
+
+Melhorar:
+
+* card de filtros mais compacto;
+* busca dentro de eventos;
+* busca dentro de produtos;
+* botão selecionar todos;
+* botão limpar;
+* contador de selecionados;
+* filtros recolhíveis;
+* scroll dark discreto;
+* sem scrollbar branco;
+* não ocupar metade da tela sem necessidade.
+
+Campos obrigatórios:
+
+* Data início
+* Data fim
+
+Campos opcionais:
+
+* Eventos
+* Produtos
+* Status
+* Tipo de movimento considerado
+
+O botão Gerar Projeção deve ficar desabilitado se:
+
+* não houver data início;
+* não houver data fim;
+* início > fim.
+
+==================================================
+7. RESUMO GERAL DA PROJEÇÃO
+===========================
+
+Após gerar a projeção, mostrar KPIs:
+
+* Produtos analisados
+* Produtos OK
+* Produtos em atenção
+* Produtos críticos
+* Total reservado
+* Total em trânsito
+* Total em evento
+* Retornos previstos
+* Saídas previstas
+* Maior déficit previsto
+
+Esses cards precisam ser clicáveis/filtros rápidos quando possível.
+
+==================================================
+8. LINHA DO TEMPO DIÁRIA
+========================
+
+Criar uma visão por dia.
+
+Exemplo:
+
+03/06
+
+* 120 disponíveis
+* 30 reservados
+* 10 em trânsito
+* 0 déficit
+
+04/06
+
+* 80 disponíveis
+* 70 reservados
+* 20 em evento
+* 5 déficit
+
+05/06
+
+* 40 disponíveis
+* 100 reservados
+* 60 em evento
+* 15 déficit
+
+Visual:
+
+* cards por dia;
+* status do dia;
+* indicador de risco;
+* clique no dia para ver detalhes;
+* destacar o pior dia do período;
+* destacar hoje.
+
+Essa é a parte mais importante para o usuário saber como estará o estoque na semana.
+
+==================================================
+9. TABELA DETALHADA POR PRODUTO E DIA
+=====================================
+
+Criar uma tabela principal com visão operacional.
+
+Colunas sugeridas:
+
+* Produto
+* SKU
+* Unidade
+* Estoque atual
+* Dia
+* Entradas previstas
+* Saídas previstas
+* Reservado
+* Em trânsito
+* Em evento
+* Retorno previsto
+* Saldo projetado
+* Déficit
+* Status
+* Origem do impacto
+
+Também permitir alternar para visão matriz:
+
+Linhas:
+
+* Produtos
+
+Colunas:
+
+* Dias do período
+
+Célula:
+
+* saldo projetado daquele produto naquele dia.
+
+Exemplo:
+
+Produto | 03/06 | 04/06 | 05/06 | 06/06
+Tenda 5x5 | 20 OK | 12 OK | -4 Crítico | 8 OK
+Box Truss | 50 OK | 30 Atenção | 10 Atenção | -8 Crítico
+
+A matriz é extremamente importante para análise semanal.
+
+==================================================
+10. VISÃO POR PRODUTO
+=====================
+
+Ao clicar em um produto, abrir drawer/modal lateral com:
+
+* estoque atual;
+* estoque mínimo;
+* saldo projetado por dia;
+* gráfico/linha simples ou cards diários;
+* eventos que consomem esse produto;
+* viagens que movimentam esse produto;
+* retornos previstos;
+* conflitos;
+* recomendações.
+
+Exemplo de recomendação:
+“Déficit previsto de 4 unidades em 05/06 causado pelo evento Night Run BH.”
+
+==================================================
+11. VISÃO POR EVENTO
+====================
+
+Criar agrupamento por evento.
+
+Cada evento deve mostrar:
+
+* data do evento;
+* montagem;
+* desmontagem;
+* requisições aprovadas;
+* ordens de carregamento;
+* viagens;
+* total de itens consumidos;
+* produtos com conflito;
+* produtos OK.
+
+Exemplo:
+Night Run Belo Horizonte
+
+* Data: 28/11/2025
+* Saída prevista: 25/11
+* Retorno previsto: 30/11
+* 42 produtos requeridos
+* 5 conflitos
+* 3 produtos críticos
+
+==================================================
+12. CONFLITOS DE ESTOQUE
+========================
+
+Criar seção específica:
+
+Conflitos Encontrados
+
+Cada conflito deve mostrar:
+
+* produto;
+* SKU;
+* dia do conflito;
+* estoque disponível projetado;
+* quantidade necessária;
+* déficit;
+* evento/ordem/viagem causadora;
+* sugestão de ação.
+
+Sugestões possíveis:
+
+* comprar/alugar X unidades;
+* antecipar retorno;
+* remanejar de outro evento;
+* ajustar quantidade aprovada;
+* revisar ordem de carregamento;
+* revisar viagem de retorno.
+
+Não precisa executar ação automaticamente.
+Apenas orientar.
+
+==================================================
+13. MOVIMENTAÇÕES CONSIDERADAS
+==============================
+
+Criar aba/seção:
+
+Movimentações Consideradas
+
+Mostrar tudo que entrou no cálculo:
+
+* requisições aprovadas;
+* ordens de carregamento;
+* viagens;
+* movimentações;
+* retornos;
+* descarregamentos;
+* carregamentos.
+
+Cada linha deve mostrar:
+
+* tipo;
+* entidade;
+* produto;
+* quantidade;
+* data;
+* impacto:
+
+  * entrada;
+  * saída;
+  * reserva;
+  * retorno.
+
+Isso é essencial para o usuário confiar na simulação.
+
+==================================================
+14. ERROS DEVEM SER ACIONÁVEIS
+==============================
+
+Hoje aparece erro, mas ele precisa virar ação.
+
+Exemplo:
+“Night BH - Carga Total: Ordem sem período definido”
+
+Melhorar para:
+
+Título:
+“Não foi possível considerar 1 ordem na projeção”
+
+Detalhe:
+“Night BH - Carga Total não possui período definido, nem viagem vinculada com datas.”
+
+Ação:
+
+* Abrir ordem
+* Vincular viagem
+* Definir período
+
+Se não existir rota, mostrar pelo menos o link quando possível.
+
+A simulação não deve simplesmente zerar resultado.
+Se houver erro parcial:
+
+* mostrar resultados válidos;
+* separar itens ignorados;
+* explicar o impacto.
+
+==================================================
+15. EMPTY STATE
+===============
+
+Antes de gerar:
+
+Título:
+“Nenhuma projeção executada”
+
+Descrição:
+“Defina um período e gere a projeção para visualizar o saldo diário do estoque.”
+
+Botão:
+“Gerar Projeção”
+
+Depois de gerar sem dados:
+
+Título:
+“Nenhum impacto encontrado no período”
+
+Descrição:
+“Não há eventos, viagens, ordens ou movimentações afetando o estoque nesse intervalo.”
+
+==================================================
+16. BACK-END / REGRAS DE CÁLCULO
+================================
+
+Revisar cuidadosamente a origem dos dados.
+
+A projeção deve considerar, quando existirem:
+
+Produtos:
+
+* estoque atual;
+* estoque mínimo;
+* unidade;
+* tipo;
+* titularidade.
+
+Eventos:
+
+* montagem;
+* data do evento;
+* desmontagem;
+* janela de requisição.
+
+Requisições:
+
+* itens solicitados;
+* itens aprovados;
+* status.
+
+Ordens de carregamento:
+
+* itens consolidados;
+* status;
+* período planejado;
+* progresso carregado.
+
+Viagens:
+
+* evento;
+* veículo;
+* motorista;
+* carregamento;
+* saída;
+* descarregamento;
+* retorno.
+
+Movimentações:
+
+* saída;
+* entrada;
+* retorno;
+* status;
+* itens carregados.
+
+Devoluções:
+
+* itens retornando;
+* status.
+
+Importante:
+Não criar cálculo falso.
+Se algum dado não existir hoje, retornar como “não informado” e gerar alerta.
+
+==================================================
+17. PERFORMANCE
+===============
+
+Como essa tela pode ficar pesada, cuidar de performance:
+
+* limitar período máximo inicialmente, por exemplo 90 dias;
+* permitir paginação por produtos;
+* calcular apenas produtos impactados, se nenhum produto específico for selecionado;
+* evitar N+1 queries;
+* usar endpoint agregado;
+* cache simples, se necessário;
+* loading state claro.
+
+==================================================
+18. DESIGN SYSTEM
+=================
+
+Usar:
+
+* PageHeader
+* PageSection
+* FilterBar
+* DataCard
+* EmptyState
+* PageLoading
+* ErrorState
+* StatusBadge
+* ActionBar
+
+Design:
+
+* sem gráficos exagerados;
+* foco em tabela, timeline e cards operacionais;
+* dark mode refinado;
+* scrollbars discretos;
+* sem scrollbar branco;
+* layout responsivo;
+* informação densa, mas legível.
+
+==================================================
+19. RESPONSIVIDADE
+==================
+
+Desktop:
+
+* filtros na esquerda ou topo compacto;
+* resultados amplos;
+* matriz/tabela legível.
+
+Tablet:
+
+* filtros acima;
+* tabela com scroll horizontal controlado se inevitável.
+
+Mobile:
+
+* visão em cards por dia/produto;
+* evitar tabela gigante inutilizável;
+* filtros colapsáveis;
+* botões full width.
+
+Nunca permitir overflow quebrado.
+
+==================================================
+20. RBAC
+========
+
+Preservar RBAC atual.
+
+Usuários sem permissão não devem ver dados que não poderiam acessar.
+
+Back-end deve proteger endpoint.
+
+Não alterar:
+
+* role_permissions;
+* helpers de autorização;
+* permissões globais.
+
+==================================================
+21. VALIDAÇÕES TÉCNICAS
+=======================
+
+Rodar:
+
+npm run check
+npm run build
+
+Smoke test obrigatório:
+
+1. Abrir tela de projeção.
+2. Selecionar período de 7 dias.
+3. Gerar projeção sem eventos selecionados.
+4. Gerar projeção com um evento.
+5. Gerar projeção com múltiplos eventos.
+6. Gerar projeção com ordens aprovadas.
+7. Gerar projeção com viagens.
+8. Gerar projeção com movimentações.
+9. Validar produto sem conflito.
+10. Validar produto com estoque baixo.
+11. Validar produto com déficit.
+12. Validar retorno previsto.
+13. Validar erro de ordem sem período.
+14. Validar resultados parciais com erro.
+15. Validar matriz por dia.
+16. Validar drawer de produto.
+17. Validar agrupamento por evento.
+18. Validar mobile.
+
+Perfis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+==================================================
+22. ENTREGA FINAL
+=================
+
+Entregar:
+
+* problema encontrado nas telas atuais;
+* nova lógica de projeção implementada;
+* endpoint criado ou ajustado;
+* fontes de dados consideradas;
+* telas/abas criadas;
+* resumo por dia;
+* matriz produto x dia;
+* conflitos;
+* movimentações consideradas;
+* arquivos alterados;
+* confirmação de RBAC preservado;
+* confirmação de contratos preservados;
+* resultado do npm run check;
+* resultado do npm run build;
+* pendências técnicas.
+
+Critério de aceite:
+
+A tela só será considerada pronta se o usuário conseguir responder:
+
+* quanto estoque terei em cada dia da semana;
+* quais produtos vão faltar;
+* em qual dia vão faltar;
+* qual evento/viagem/ordem causou a falta;
+* o que está reservado;
+* o que está em trânsito;
+* o que está no evento;
+* o que volta para o estoque;
+* o que precisa ser comprado, alugado ou remanejado.
+
+Essa tela deve ser tratada como o coração do app.
+Não entregar apenas filtros e empty state.
+Entregar uma ferramenta real de projeção operacional.

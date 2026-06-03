@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Package, Search, AlertTriangle, X } from "lucide-react";
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect, useMemo } from "react";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -13,73 +13,169 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Product } from "@shared/schema";
 import { ProductDialog } from "@/components/product-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { userIsAdmin } from "@/lib/authz";
 import { PageHeader } from "@/components/page-header";
-import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar } from "@/components/filter-bar";
+import { ProductViewToggle } from "@/components/products/product-view-toggle";
+import { ProductGrid } from "@/components/products/product-grid";
+import { ProductList } from "@/components/products/product-list";
+import {
+  isLowStock,
+  stockStatus,
+  sortProducts,
+  sortValueFor,
+  SORT_OPTIONS,
+  type ViewMode,
+  type Density,
+  type SortKey,
+  type SortDir,
+} from "@/components/products/product-helpers";
 
-const OWNERSHIP_LABELS: Record<string, { label: string; className: string }> = {
-  owned: { label: "Próprio", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" },
-  rented: { label: "Alugado", className: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30" },
-  third_party: { label: "Terceiro", className: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30" },
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  principal: "Principal",
-  variante: "Variante",
-};
-
-function isLowStock(product: Product): boolean {
-  return !!(product.minimumStock && product.minimumStock > 0 && product.currentStock !== null && product.currentStock !== undefined && product.currentStock <= product.minimumStock);
-}
-
-function isZeroStock(product: Product): boolean {
-  return product.currentStock === 0;
-}
+const VIEW_STORAGE_KEY = "products:viewMode";
+const DENSITY_STORAGE_KEY = "products:density";
 
 export default function Products() {
   const { user } = useAuth();
   const canWrite = userIsAdmin(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
+
+  // Search + filters
   const [search, setSearch] = useState("");
   const [filterOwnership, setFilterOwnership] = useState("all");
   const [filterType, setFilterType] = useState("all");
-  const [filterLowStock, setFilterLowStock] = useState(false);
+  const [filterStock, setFilterStock] = useState("all");
+  const [filterImage, setFilterImage] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterUnit, setFilterUnit] = useState("all");
+  const [filterLocation, setFilterLocation] = useState("all");
+
+  // Sorting
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // View mode + density (persisted)
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [density, setDensity] = useState<Density>("comfortable");
+
+  useEffect(() => {
+    const v = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (v === "grid" || v === "list") setViewMode(v);
+    const d = localStorage.getItem(DENSITY_STORAGE_KEY);
+    if (d === "comfortable" || d === "compact") setDensity(d);
+  }, []);
+
+  const handleViewChange = (v: ViewMode) => {
+    setViewMode(v);
+    localStorage.setItem(VIEW_STORAGE_KEY, v);
+  };
+
+  const handleDensityChange = (d: Density) => {
+    setDensity(d);
+    localStorage.setItem(DENSITY_STORAGE_KEY, d);
+  };
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
 
-  const filteredProducts = products?.filter((p) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.sku.toLowerCase().includes(q) ||
-      (p.barcode && p.barcode.toLowerCase().includes(q));
+  // Dynamic filter option lists
+  const { categories, units, locations } = useMemo(() => {
+    const cat = new Set<string>();
+    const uni = new Set<string>();
+    const loc = new Set<string>();
+    (products ?? []).forEach((p) => {
+      if (p.category) cat.add(p.category);
+      if (p.unit) uni.add(p.unit);
+      if (p.location) loc.add(p.location);
+    });
+    const sorter = (a: string, b: string) => a.localeCompare(b, "pt-BR", { sensitivity: "base" });
+    return {
+      categories: Array.from(cat).sort(sorter),
+      units: Array.from(uni).sort(sorter),
+      locations: Array.from(loc).sort(sorter),
+    };
+  }, [products]);
 
-    const matchesOwnership = filterOwnership === "all" || p.ownership === filterOwnership;
-    const matchesType = filterType === "all" || p.productType === filterType;
-    const matchesLowStock = !filterLowStock || isLowStock(p);
+  const filteredProducts = useMemo(() => {
+    const result = (products ?? []).filter((p) => {
+      const q = search.toLowerCase();
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        (p.barcode && p.barcode.toLowerCase().includes(q));
 
-    return matchesSearch && matchesOwnership && matchesType && matchesLowStock;
-  });
+      const matchesOwnership =
+        filterOwnership === "all" ||
+        (filterOwnership === "external" ? p.ownership !== "owned" : p.ownership === filterOwnership);
+      const matchesType = filterType === "all" || p.productType === filterType;
+
+      const st = stockStatus(p);
+      const matchesStock =
+        filterStock === "all" ||
+        (filterStock === "in_stock" && st === "ok") ||
+        (filterStock === "low" && st === "low") ||
+        (filterStock === "zero" && st === "zero");
+
+      const matchesImage =
+        filterImage === "all" ||
+        (filterImage === "with" && !!p.imageUrl) ||
+        (filterImage === "without" && !p.imageUrl);
+
+      const matchesCategory = filterCategory === "all" || p.category === filterCategory;
+      const matchesUnit = filterUnit === "all" || p.unit === filterUnit;
+      const matchesLocation = filterLocation === "all" || p.location === filterLocation;
+
+      return (
+        matchesSearch &&
+        matchesOwnership &&
+        matchesType &&
+        matchesStock &&
+        matchesImage &&
+        matchesCategory &&
+        matchesUnit &&
+        matchesLocation
+      );
+    });
+    return sortProducts(result, sortKey, sortDir);
+  }, [
+    products,
+    search,
+    filterOwnership,
+    filterType,
+    filterStock,
+    filterImage,
+    filterCategory,
+    filterUnit,
+    filterLocation,
+    sortKey,
+    sortDir,
+  ]);
 
   const activeFilterCount = [
     filterOwnership !== "all",
     filterType !== "all",
-    filterLowStock,
+    filterStock !== "all",
+    filterImage !== "all",
+    filterCategory !== "all",
+    filterUnit !== "all",
+    filterLocation !== "all",
   ].filter(Boolean).length;
 
   const handleClearFilters = () => {
     setFilterOwnership("all");
     setFilterType("all");
-    setFilterLowStock(false);
+    setFilterStock("all");
+    setFilterImage("all");
+    setFilterCategory("all");
+    setFilterUnit("all");
+    setFilterLocation("all");
   };
 
   const handleEdit = (product: Product) => {
@@ -92,6 +188,36 @@ export default function Products() {
     setShowDialog(false);
   };
 
+  const handleColumnSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  // Active filter chips
+  const OWNERSHIP_CHIP: Record<string, string> = {
+    owned: "Próprio",
+    rented: "Alugado",
+    third_party: "Terceiro",
+    external: "Locado/Terceiro",
+  };
+  const STOCK_CHIP: Record<string, string> = {
+    in_stock: "Em estoque",
+    low: "Estoque baixo",
+    zero: "Sem estoque",
+  };
+  const chips: { label: string; onRemove: () => void }[] = [];
+  if (filterOwnership !== "all") chips.push({ label: OWNERSHIP_CHIP[filterOwnership] ?? filterOwnership, onRemove: () => setFilterOwnership("all") });
+  if (filterType !== "all") chips.push({ label: filterType === "principal" ? "Principal" : "Variante", onRemove: () => setFilterType("all") });
+  if (filterStock !== "all") chips.push({ label: STOCK_CHIP[filterStock] ?? filterStock, onRemove: () => setFilterStock("all") });
+  if (filterImage !== "all") chips.push({ label: filterImage === "with" ? "Com imagem" : "Sem imagem", onRemove: () => setFilterImage("all") });
+  if (filterCategory !== "all") chips.push({ label: filterCategory, onRemove: () => setFilterCategory("all") });
+  if (filterUnit !== "all") chips.push({ label: filterUnit, onRemove: () => setFilterUnit("all") });
+  if (filterLocation !== "all") chips.push({ label: filterLocation, onRemove: () => setFilterLocation("all") });
+
   // Stats computed from full list (not filtered)
   const stats = products
     ? {
@@ -103,9 +229,7 @@ export default function Products() {
       }
     : null;
 
-  if (isLoading) {
-    return <PageLoading message="Carregando catálogo de produtos..." />;
-  }
+  const sortValue = sortValueFor(sortKey, sortDir);
 
   return (
     <div className="space-y-6">
@@ -127,16 +251,15 @@ export default function Products() {
           {[
             { label: "Total", value: stats.total, onClick: () => { handleClearFilters(); setSearch(""); } },
             { label: "Próprios", value: stats.owned, onClick: () => { handleClearFilters(); setFilterOwnership("owned"); } },
-            { label: "Locado/Terceiro", value: stats.external, onClick: () => { handleClearFilters(); setFilterOwnership("rented"); } },
-            { label: "Estoque baixo", value: stats.lowStock, onClick: () => { handleClearFilters(); setFilterLowStock(true); }, warn: stats.lowStock > 0 },
-            { label: "Sem imagem", value: stats.noImage, onClick: undefined },
+            { label: "Locado/Terceiro", value: stats.external, onClick: () => { handleClearFilters(); setFilterOwnership("external"); } },
+            { label: "Estoque baixo", value: stats.lowStock, onClick: () => { handleClearFilters(); setFilterStock("low"); }, warn: stats.lowStock > 0 },
+            { label: "Sem imagem", value: stats.noImage, onClick: () => { handleClearFilters(); setFilterImage("without"); } },
           ].map((s) => (
             <button
               key={s.label}
               type="button"
               onClick={s.onClick}
-              disabled={!s.onClick}
-              className={`rounded-lg border border-border/60 bg-card p-3 text-left transition-colors ${s.onClick ? "hover-elevate cursor-pointer" : "cursor-default"}`}
+              className="rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover-elevate cursor-pointer"
               data-testid={`stat-${s.label.toLowerCase().replace(/[^a-z]/g, "-")}`}
             >
               <p className={`text-xl font-bold ${s.warn ? "text-amber-500" : "text-foreground"}`}>{s.value}</p>
@@ -185,6 +308,7 @@ export default function Products() {
               <SelectItem value="owned">Próprio</SelectItem>
               <SelectItem value="rented">Alugado</SelectItem>
               <SelectItem value="third_party">Terceiro</SelectItem>
+              <SelectItem value="external">Locado/Terceiro</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -204,25 +328,186 @@ export default function Products() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Estoque</Label>
-          <button
-            type="button"
-            onClick={() => setFilterLowStock((v) => !v)}
-            data-testid="filter-low-stock"
-            className={`flex items-center gap-2 w-full rounded-md border px-3 h-9 text-sm transition-colors ${
-              filterLowStock
-                ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                : "border-border/60 bg-background text-foreground hover-elevate"
-            }`}
-          >
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            Estoque baixo
-          </button>
+          <Label className="text-xs text-muted-foreground">Status de Estoque</Label>
+          <Select value={filterStock} onValueChange={setFilterStock}>
+            <SelectTrigger data-testid="filter-stock">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="in_stock">Em estoque</SelectItem>
+              <SelectItem value="low">Estoque baixo</SelectItem>
+              <SelectItem value="zero">Sem estoque</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Imagem</Label>
+          <Select value={filterImage} onValueChange={setFilterImage}>
+            <SelectTrigger data-testid="filter-image">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="with">Com imagem</SelectItem>
+              <SelectItem value="without">Sem imagem</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Categoria</Label>
+          <Select value={filterCategory} onValueChange={setFilterCategory} disabled={categories.length === 0}>
+            <SelectTrigger data-testid="filter-category">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Unidade</Label>
+          <Select value={filterUnit} onValueChange={setFilterUnit} disabled={units.length === 0}>
+            <SelectTrigger data-testid="filter-unit">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {units.map((u) => (
+                <SelectItem key={u} value={u}>{u}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Localização</Label>
+          <Select value={filterLocation} onValueChange={setFilterLocation} disabled={locations.length === 0}>
+            <SelectTrigger data-testid="filter-location">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {locations.map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </FilterBar>
 
-      {/* Product grid or empty state */}
-      {!filteredProducts || filteredProducts.length === 0 ? (
+      {/* Active filter chips */}
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {chips.map((chip) => (
+            <Badge
+              key={chip.label}
+              variant="secondary"
+              className="gap-1 pr-1"
+              data-testid={`chip-${chip.label.toLowerCase().replace(/[^a-z0-9]/g, "-")}`}
+            >
+              {chip.label}
+              <button
+                type="button"
+                onClick={chip.onRemove}
+                className="rounded-sm hover-elevate p-0.5"
+                aria-label={`Remover filtro ${chip.label}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Toolbar: view toggle + result count + sort + density */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <ProductViewToggle value={viewMode} onChange={handleViewChange} />
+          <span className="text-sm text-muted-foreground" data-testid="text-result-count">
+            {filteredProducts.length}{" "}
+            {filteredProducts.length === 1 ? "produto" : "produtos"}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {viewMode === "list" && (
+            <ToggleGroup
+              type="single"
+              value={density}
+              onValueChange={(v) => {
+                if (v === "comfortable" || v === "compact") handleDensityChange(v);
+              }}
+              className="gap-1"
+            >
+              <ToggleGroupItem value="comfortable" data-testid="toggle-density-comfortable" className="text-xs">
+                Confortável
+              </ToggleGroupItem>
+              <ToggleGroupItem value="compact" data-testid="toggle-density-compact" className="text-xs">
+                Compacta
+              </ToggleGroupItem>
+            </ToggleGroup>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">Ordenar</Label>
+            <Select
+              value={sortValue}
+              onValueChange={(v) => {
+                const opt = SORT_OPTIONS.find((o) => o.value === v);
+                if (opt) {
+                  setSortKey(opt.key);
+                  setSortDir(opt.dir);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[190px]" data-testid="select-sort">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Loading skeletons */}
+      {isLoading ? (
+        viewMode === "grid" ? (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden border-border/60">
+                <div className="h-36 w-full bg-muted animate-pulse" />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-1/2 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-full bg-muted animate-pulse rounded" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border/60 divide-y divide-border/40">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-3">
+                <div className="h-9 w-9 bg-muted animate-pulse rounded-md shrink-0" />
+                <div className="h-4 flex-1 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-16 bg-muted animate-pulse rounded hidden md:block" />
+                <div className="h-4 w-20 bg-muted animate-pulse rounded hidden lg:block" />
+              </div>
+            ))}
+          </div>
+        )
+      ) : filteredProducts.length === 0 ? (
         search || activeFilterCount > 0 ? (
           <EmptyState
             icon={Package}
@@ -238,92 +523,18 @@ export default function Products() {
             action={canWrite ? { label: "Adicionar Produto", onClick: () => setShowDialog(true) } : undefined}
           />
         )
+      ) : viewMode === "grid" ? (
+        <ProductGrid products={filteredProducts} canWrite={canWrite} onEdit={handleEdit} />
       ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredProducts.map((product) => {
-            const low = isLowStock(product);
-            const zero = isZeroStock(product);
-            const ob = OWNERSHIP_LABELS[product.ownership] || { label: product.ownership, className: "" };
-
-            return (
-              <Card
-                key={product.id}
-                className={`overflow-hidden border-border/60 flex flex-col ${canWrite ? "hover-elevate cursor-pointer" : ""}`}
-                onClick={canWrite ? () => handleEdit(product) : undefined}
-                data-testid={`card-product-${product.id}`}
-              >
-                {/* Image area — fixed height h-36 */}
-                {product.imageUrl ? (
-                  <div className="h-36 w-full bg-muted relative shrink-0">
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-36 w-full bg-muted/50 flex items-center justify-center shrink-0">
-                    <Package className="h-9 w-9 text-muted-foreground/25" />
-                  </div>
-                )}
-
-                <CardContent className="p-4 flex flex-col flex-1">
-                  {/* Name + SKU */}
-                  <div className="mb-3">
-                    <h3 className="font-semibold text-base text-foreground leading-snug line-clamp-2">
-                      {product.name}
-                    </h3>
-                    <p className="font-mono text-xs text-muted-foreground mt-0.5">
-                      SKU: {product.sku}
-                    </p>
-                  </div>
-
-                  {/* Metadata */}
-                  <div className="mt-auto pt-3 border-t border-border/40 space-y-2">
-                    {/* Stock */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">Estoque</span>
-                      <span
-                        className={`text-sm font-medium flex items-center gap-1 ${
-                          zero ? "text-destructive" : low ? "text-amber-500 dark:text-amber-400" : "text-foreground"
-                        }`}
-                      >
-                        {low && !zero && <AlertTriangle className="h-3 w-3" />}
-                        {product.currentStock ?? 0}{" "}
-                        <span className="font-normal text-muted-foreground">{product.unit}</span>
-                      </span>
-                    </div>
-
-                    {/* Location */}
-                    {product.location && (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-muted-foreground">Local</span>
-                        <span className="text-xs text-foreground truncate max-w-[120px]">{product.location}</span>
-                      </div>
-                    )}
-
-                    {/* Badges */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      <Badge variant="outline" className={`text-[10px] ${ob.className}`}>
-                        {ob.label}
-                      </Badge>
-                      {product.productType === "variante" && (
-                        <Badge variant="outline" className="text-[10px]">
-                          {TYPE_LABELS[product.productType] || product.productType}
-                        </Badge>
-                      )}
-                      {zero && (
-                        <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
-                          Sem estoque
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <ProductList
+          products={filteredProducts}
+          canWrite={canWrite}
+          onEdit={handleEdit}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={handleColumnSort}
+          density={density}
+        />
       )}
 
       <ProductDialog

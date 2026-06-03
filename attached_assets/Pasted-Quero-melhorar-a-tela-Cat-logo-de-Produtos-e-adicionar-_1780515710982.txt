@@ -1,0 +1,412 @@
+Quero melhorar a tela **Catálogo de Produtos** e adicionar também um **modo de visualização em lista**, mantendo o modo em cards/grade atual.
+
+Objetivo:
+Transformar a página de produtos em uma experiência mais completa, permitindo ao usuário alternar entre:
+
+1. **Visualização em grade (cards)** — já existente, porém refinada
+2. **Visualização em lista** — nova, mais densa e prática para consulta rápida
+
+A tela precisa ficar com cara de sistema profissional, mais funcional e mais eficiente para operação.
+
+---
+
+## CONTEXTO DA TELA
+
+Tela atual:
+
+* Cabeçalho “Catálogo de Produtos”
+* KPIs:
+
+  * Total
+  * Próprios
+  * Locado/Terceiro
+  * Estoque baixo
+  * Sem imagem
+* Campo de busca
+* Filtros recolhíveis
+* Cards de produto
+
+Quero manter essa base, mas melhorar a estrutura e adicionar **toggle de visualização**.
+
+---
+
+# 1) NOVA FUNCIONALIDADE: TOGGLE DE VISUALIZAÇÃO
+
+Adicionar no topo da listagem, acima dos produtos, um controle de alternância entre:
+
+* **Grade**
+* **Lista**
+
+Exemplo:
+
+* botão “Grade” com ícone de grid
+* botão “Lista” com ícone de rows/list
+
+Requisitos:
+
+* um dos modos deve estar sempre ativo
+* por padrão, a tela pode abrir em **grade**
+* salvar a preferência do usuário localmente (ex.: localStorage), para quando ele voltar à página permanecer no último modo utilizado
+* alternância instantânea sem recarregar a página
+
+---
+
+# 2) VISUALIZAÇÃO EM GRADE (REFINAR A ATUAL)
+
+Manter os cards, mas melhorar a organização.
+
+Cada card deve exibir:
+
+* imagem do produto ou placeholder elegante
+* nome do produto
+* SKU
+* estoque atual
+* unidade
+* badges:
+
+  * Próprio / Terceiro / Alugado
+  * Variante (quando for variante)
+  * Sem estoque
+  * Estoque baixo
+  * Sem imagem
+* localização principal (se existir)
+* categoria/tipo do produto (se existir)
+
+Melhorias visuais:
+
+* cards com altura consistente
+* rodapé melhor alinhado
+* mais contraste entre imagem e conteúdo
+* destacar produtos com problema:
+
+  * sem estoque
+  * abaixo do mínimo
+  * sem imagem
+* hover mais claro, com ação visível
+* área clicável para abrir detalhes/editar
+
+Ações no card:
+
+* visualizar detalhes
+* editar
+* opcional: menu de ações com 3 pontinhos
+
+---
+
+# 3) NOVA VISUALIZAÇÃO EM LISTA
+
+Criar uma visualização em lista com maior densidade de informação.
+
+Essa visualização deve ser no formato:
+
+* tabela moderna
+  ou
+* lista tabular estilizada
+
+Preferência:
+uma tabela/lista elegante, consistente com o design dark já existente.
+
+## Colunas sugeridas
+
+Exibir na lista pelo menos:
+
+* Imagem / placeholder pequeno
+* Nome do produto
+* SKU
+* Tipo / Titularidade
+
+  * Próprio
+  * Terceiro
+  * Alugado
+* Categoria / Grupo (se existir)
+* Unidade
+* Estoque atual
+* Estoque mínimo
+* Status
+
+  * OK
+  * Estoque baixo
+  * Sem estoque
+* Localização
+* Indicador de variante
+* Ações
+
+## Regras da lista
+
+* permitir ordenação por colunas relevantes:
+
+  * Nome
+  * SKU
+  * Estoque atual
+  * Estoque mínimo
+  * Tipo
+* linha clicável para abrir detalhes
+* ações rápidas no final da linha:
+
+  * visualizar
+  * editar
+  * opcional: excluir/inativar
+* badges visuais padronizadas
+* estados de risco com destaque:
+
+  * estoque zerado em vermelho
+  * estoque baixo em amarelo/laranja
+  * normal em neutro/verde
+* truncar textos longos com tooltip, quando necessário
+* header da lista fixo/sticky, se fizer sentido
+* paginação ou scroll bem comportado, dependendo da implementação atual
+
+---
+
+# 4) FILTROS MAIS ÚTEIS
+
+A área de filtros deve funcionar bem tanto para grade quanto para lista.
+
+Adicionar/organizar filtros como:
+
+* busca por:
+
+  * nome
+  * SKU
+  * código de barras
+* titularidade:
+
+  * próprio
+  * terceiro
+  * alugado
+* tipo:
+
+  * principal
+  * variante
+* status de estoque:
+
+  * todos
+  * em estoque
+  * estoque baixo
+  * sem estoque
+* com imagem / sem imagem
+* unidade
+* categoria / grupo
+* fornecedor vinculado (quando houver)
+* localização
+
+Também adicionar:
+
+* botão **Limpar filtros**
+* contador de resultados encontrados
+* se possível, exibir chips com filtros ativos
+
+---
+
+# 5) ORDENAÇÃO E DENSIDADE
+
+Adicionar controles de ordenação visíveis:
+
+* Nome A-Z
+* Nome Z-A
+* Estoque menor para maior
+* Estoque maior para menor
+* Últimos cadastrados
+* SKU
+
+Se possível, adicionar também:
+
+* seletor de densidade visual para lista:
+
+  * confortável
+  * compacta
+
+Se isso complicar demais, pode deixar para depois, mas estruturar a lista já pensando nisso.
+
+---
+
+# 6) DETALHE IMPORTANTE DE UX
+
+A mudança entre grade e lista deve ser suave.
+
+Quando o usuário trocar o modo:
+
+* manter busca/filtros aplicados
+* manter paginação ou posição, se possível
+* não resetar a tela sem necessidade
+
+Estado vazio:
+Se não houver produtos com os filtros aplicados:
+
+* mostrar empty state elegante
+* texto claro
+* CTA:
+
+  * limpar filtros
+  * adicionar produto
+
+Loading:
+
+* skeletons adequados para grade
+* skeletons adequados para lista
+
+---
+
+# 7) RESPONSIVIDADE
+
+## Desktop
+
+* grade com múltiplas colunas
+* lista completa com todas ou quase todas as colunas
+
+## Tablet
+
+* grade com menos colunas
+* lista com colunas reduzidas ou colunas secundárias ocultas
+
+## Mobile
+
+* grade com 1 coluna
+* lista no estilo “linhas empilhadas”, sem quebrar usabilidade
+* nunca deixar tabela inutilizável no mobile
+* se necessário, adaptar a lista para cards horizontais mais densos no mobile
+
+---
+
+# 8) BACKEND / DADOS
+
+Verificar se o backend/API já retorna tudo que a tela precisa.
+
+A listagem precisa suportar, idealmente:
+
+* id
+* nome
+* sku
+* descrição
+* imagem
+* titularidade
+* tipo (principal/variante)
+* unidade
+* estoque atual
+* estoque mínimo
+* localização
+* categoria/grupo
+* fornecedor
+* flags/indicadores:
+
+  * sem estoque
+  * estoque baixo
+  * sem imagem
+  * variante
+
+Se algum dado ainda não estiver vindo da API, ajustar o backend.
+
+Se necessário:
+
+* otimizar query da listagem
+* incluir campos agregados
+* evitar N+1 queries
+* suportar paginação/ordenação/filtros de forma consistente
+
+Se a paginação já existir:
+
+* manter compatibilidade nos dois modos de visualização
+
+---
+
+# 9) COMPONENTIZAÇÃO
+
+Organizar bem o front-end.
+
+Sugestão de componentes:
+
+* ProductCatalogPage
+* ProductCatalogHeader
+* ProductMetricsCards
+* ProductSearchBar
+* ProductFiltersPanel
+* ProductViewToggle
+* ProductGrid
+* ProductCard
+* ProductList
+* ProductListRow
+* ProductEmptyState
+
+Objetivo:
+deixar o código limpo, reutilizável e fácil de manter.
+
+---
+
+# 10) PADRONIZAÇÃO VISUAL
+
+Manter o design system escuro atual do EventFlow, mas elevar a qualidade.
+
+Seguir:
+
+* dark theme elegante
+* azul como cor primária
+* badges sem exagero
+* boa hierarquia visual
+* espaçamento consistente
+* tipografia legível
+* contraste melhorado
+* aparência mais profissional e menos crua
+
+A tela precisa parecer pronta para produção.
+
+---
+
+# 11) NÃO QUEBRAR O QUE JÁ EXISTE
+
+Não remover funcionalidades atuais.
+
+Preservar:
+
+* cadastro de produto
+* filtros existentes
+* navegação atual
+* estrutura geral do catálogo
+* integração com variantes, estoque e fornecedores
+
+A melhoria deve ser incremental e segura.
+
+---
+
+# 12) TESTES / VALIDAÇÃO
+
+Ao final:
+
+* rodar `npm run check`
+* rodar `npm run build`
+
+Validar manualmente:
+
+1. abrir catálogo
+2. alternar entre grade e lista
+3. manter filtros ao alternar
+4. buscar produto
+5. aplicar filtros
+6. ordenar
+7. abrir produto na grade
+8. abrir produto na lista
+9. verificar produtos sem imagem
+10. verificar produtos com estoque zero
+11. verificar produtos com estoque baixo
+12. testar responsividade
+13. confirmar que a preferência de visualização fica salva
+
+---
+
+# 13) ENTREGA ESPERADA
+
+Quero como resultado:
+
+* tela de catálogo com modo grade e modo lista
+* UX mais forte
+* visual mais profissional
+* listagem mais útil para operação
+* filtros e ordenação bem organizados
+* tudo funcionando sem quebrar o fluxo atual
+
+No final, me informe:
+
+* arquivos alterados
+* o que foi implementado no front
+* o que foi ajustado no backend
+* resultado do `npm run check`
+* resultado do `npm run build`
