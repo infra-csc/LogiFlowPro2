@@ -98,19 +98,19 @@ function DateTimeFields({
   const datePart = getDatePart(value);
   const timePart = getTimePart(value);
   return (
-    <div className="flex gap-2">
+    <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-2">
       <Input
         type="date"
         value={datePart}
         onChange={(e) => onChange(combineDateTime(e.target.value, timePart))}
-        className={cn("flex-1 min-w-0", invalid && "border-destructive")}
+        className={cn("min-w-0", invalid && "border-destructive")}
         data-testid={dateTestId}
       />
       <Input
         type="time"
         value={timePart}
         onChange={(e) => onChange(combineDateTime(datePart, e.target.value))}
-        className={cn("w-[6.5rem] shrink-0", invalid && "border-destructive")}
+        className={cn("min-w-0", invalid && "border-destructive")}
         data-testid={timeTestId}
       />
     </div>
@@ -280,7 +280,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl flex flex-col p-0 gap-0 max-h-[92vh] border-border/60">
+      <DialogContent className="w-[min(96vw,1100px)] max-w-[calc(100vw-2rem)] flex flex-col p-0 gap-0 max-h-[92vh] overflow-hidden border-border/60">
         {/* Fixed header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
           <DialogTitle>{event ? "Editar Evento" : "Novo Evento"}</DialogTitle>
@@ -296,13 +296,13 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
           >
             {/* Body — fits without scroll on desktop; scrolls only if needed (mobile) */}
             <div
-              className="flex-1 overflow-y-auto md:overflow-visible px-6 py-4 space-y-4"
+              className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4 space-y-4 min-w-0"
               style={{ scrollbarWidth: "thin" }}
             >
               {/* ── A. Identificação ───────────────────────────────── */}
               <SectionLabel>Identificação</SectionLabel>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0 [&>*]:min-w-0">
                 <FormField
                   control={form.control}
                   name="name"
@@ -387,7 +387,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               {/* ── B. Cronograma ──────────────────────────────────── */}
               <SectionLabel>Cronograma do Evento</SectionLabel>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0 [&>*]:min-w-0">
                 <FormField
                   control={form.control}
                   name="setupDate"
@@ -476,7 +476,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                 restringir por data.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0 [&>*]:min-w-0">
                 <FormField
                   control={form.control}
                   name="requestWindowStart"
@@ -612,12 +612,13 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
             </div>
 
             {/* Fixed footer */}
-            <DialogFooter className="px-6 py-4 border-t border-border/40 shrink-0 flex-row justify-end gap-2">
+            <DialogFooter className="px-6 py-4 border-t border-border/40 shrink-0 flex-col-reverse sm:flex-row sm:justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isPending}
+                className="w-full sm:w-auto"
                 data-testid="button-cancel"
               >
                 Cancelar
@@ -625,6 +626,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               <Button
                 type="submit"
                 disabled={isPending || hasBlockingError}
+                className="w-full sm:w-auto"
                 data-testid="button-submit-event"
               >
                 {isPending

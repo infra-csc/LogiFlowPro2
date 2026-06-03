@@ -1,0 +1,258 @@
+Corrigir o modal de Novo/Editar Evento que está cortando na lateral direita.
+
+Arquivo foco:
+
+* componente/modal de evento, provavelmente client/src/components/event-dialog.tsx ou equivalente
+
+Problema atual:
+Depois do ajuste para deixar o modal sem scroll, o modal ficou largo demais e está cortando os campos da direita, principalmente:
+
+* Cliente
+* SKU do Evento
+* horários do Cronograma
+* hora do Fim da Janela
+* conteúdo do footer/observações em algumas resoluções
+
+Objetivo:
+Corrigir o layout para que o modal nunca corte horizontalmente.
+
+Regra principal:
+Não pode existir overflow horizontal.
+Nenhum campo pode sair da tela.
+Nenhum campo pode ficar cortado.
+O modal deve se adaptar à largura da viewport.
+
+==================================================
+
+1. CORRIGIR LARGURA DO MODAL
+   ==================================================
+
+Não usar largura fixa grande que ultrapasse a tela.
+
+Aplicar algo equivalente a:
+
+* width: min(96vw, 1100px)
+* max-width: calc(100vw - 2rem)
+* overflow-x-hidden
+
+Exemplo de classe Tailwind/shadcn:
+
+w-[min(96vw,1100px)]
+max-w-[calc(100vw-2rem)]
+overflow-hidden
+
+Se a sintaxe min() não estiver funcionando no projeto, usar alternativa segura:
+
+w-[96vw]
+max-w-5xl
+overflow-hidden
+
+Mas garantir que nunca passe da viewport.
+
+==================================================
+2. CORRIGIR GRID INTERNO
+========================
+
+O problema principal parece estar no grid interno.
+
+Remover grids rígidos que forçam 2 ou 3 colunas em largura insuficiente.
+
+Usar grids responsivos:
+
+Identificação:
+
+* mobile: 1 coluna
+* md/lg: 2 colunas
+
+Cronograma:
+
+* mobile/tablet: 1 coluna
+* lg: 3 grupos
+* cada grupo contém data + hora
+
+Janela de Requisição:
+
+* mobile/tablet: 1 coluna
+* lg: 2 grupos
+* cada grupo contém data + hora
+
+Não fazer 6 campos soltos na mesma linha sem controle.
+
+==================================================
+3. AGRUPAR DATA + HORA
+======================
+
+Em vez de deixar data e hora como campos soltos que estouram a largura, criar grupos compactos.
+
+Exemplo visual:
+
+Montagem *
+[ Data ] [ Hora ]
+
+Data do Evento *
+[ Data ] [ Hora ]
+
+Desmontagem *
+[ Data ] [ Hora ]
+
+Cada grupo deve usar algo como:
+
+grid grid-cols-[minmax(0,1fr)_96px] gap-2
+
+ou equivalente.
+
+A hora deve ter largura controlada:
+
+* w-24
+* ou min-w-[90px] max-w-[110px]
+
+A data deve usar min-w-0 para não empurrar o layout.
+
+==================================================
+4. GARANTIR min-w-0
+===================
+
+Adicionar min-w-0 nos containers de grid e campos, principalmente:
+
+* colunas do grid;
+* inputs;
+* wrappers de date/time;
+* seções internas.
+
+Isso evita que o conteúdo force largura maior que o modal.
+
+==================================================
+5. SEÇÕES MAIS COMPACTAS
+========================
+
+Manter o modal compacto, mas sem cortar.
+
+Ajustar:
+
+* padding horizontal: p-5 ou p-6, não exagerar;
+* gaps menores: gap-3 ou gap-4;
+* textarea menor;
+* textos auxiliares curtos;
+* footer compacto.
+
+O objetivo é caber bem, mas não sacrificando responsividade.
+
+==================================================
+6. SCROLL
+=========
+
+Desktop grande:
+
+* tentar manter sem scroll vertical.
+
+Desktop menor/notebook:
+
+* permitir scroll vertical se necessário.
+
+Mobile/tablet:
+
+* permitir scroll vertical.
+
+Mas:
+
+* nunca permitir scroll horizontal;
+* nunca cortar campos;
+* footer deve continuar acessível.
+
+Se for necessário escolher entre:
+A) modal sem scroll mas cortado
+B) modal com scroll vertical e sem corte
+
+Escolher sempre B.
+
+==================================================
+7. FOOTER
+=========
+
+O footer deve ficar visível e alinhado.
+
+* Cancelar como outline
+* Criar/Salvar Evento como primary
+* Botões alinhados à direita no desktop
+* Full width ou empilhados no mobile
+
+Não deixar footer cortado.
+
+==================================================
+8. VALIDAÇÃO VISUAL
+===================
+
+Testar nas larguras:
+
+* 1920px
+* 1440px
+* 1366px
+* 1280px
+* 1024px
+* mobile básico
+
+Em todas:
+
+* nenhum campo cortado;
+* nenhum overflow horizontal;
+* modal centralizado;
+* botões visíveis;
+* campos de data/hora utilizáveis.
+
+==================================================
+9. NÃO ALTERAR FUNCIONALIDADE
+=============================
+
+Não alterar:
+
+* backend;
+* endpoints;
+* payload;
+* schema;
+* migrations;
+* RBAC;
+* regras de negócio;
+* status/transições;
+* integrações com requisições, viagens, ordens e movimentações.
+
+Pode alterar:
+
+* layout;
+* classes;
+* grid;
+* largura do modal;
+* responsividade;
+* organização visual dos campos;
+* scroll vertical controlado;
+* separação visual de data/hora.
+
+==================================================
+10. VALIDAÇÕES
+==============
+
+Rodar:
+
+npm run check
+npm run build
+
+Smoke test:
+
+* abrir Novo Evento;
+* validar que não corta lateralmente;
+* preencher todos os campos;
+* testar data e hora;
+* criar evento;
+* abrir Editar Evento;
+* validar campos carregados;
+* salvar evento;
+* testar em tela menor;
+* confirmar ausência de overflow horizontal.
+
+Entrega final:
+
+* arquivos alterados;
+* correção aplicada;
+* confirmação de que o modal não corta mais;
+* confirmação de que não há overflow horizontal;
+* resultado do npm run check;
+* resultado do npm run build.
