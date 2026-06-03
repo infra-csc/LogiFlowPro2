@@ -18,22 +18,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 import type { Event, InsertEvent } from "@shared/schema";
 import { insertEventSchema } from "@shared/schema";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { useEffect } from "react";
 import { AlertCircle, CalendarRange } from "lucide-react";
 
@@ -43,17 +36,9 @@ interface EventDialogProps {
   event?: Event;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  planning: "Planejamento",
-  approved: "Aprovado",
-  in_progress: "Em Andamento",
-  completed: "Concluído",
-  cancelled: "Cancelado",
-};
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 pt-1">
+    <div className="flex items-center gap-2">
       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
         {children}
       </span>
@@ -62,37 +47,74 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function formatDatetimeLocal(val: Date | string | null | undefined): string {
+function getDatePart(val: Date | string | null | undefined): string {
   if (!val) return "";
   try {
     const d = val instanceof Date ? val : new Date(val);
     if (isNaN(d.getTime())) return "";
-    return format(d, "yyyy-MM-dd'T'HH:mm");
+    return format(d, "yyyy-MM-dd");
   } catch {
     return "";
   }
 }
 
-function fmtDisplay(val: Date | string | null | undefined): string {
-  if (!val) return "—";
+function getTimePart(val: Date | string | null | undefined): string {
+  if (!val) return "";
   try {
-    const d = val instanceof Date ? val : new Date(val as string);
-    if (isNaN(d.getTime())) return "—";
-    return format(d, "dd/MM/yyyy HH:mm", { locale: ptBR });
+    const d = val instanceof Date ? val : new Date(val);
+    if (isNaN(d.getTime())) return "";
+    return format(d, "HH:mm");
   } catch {
-    return "—";
+    return "";
   }
 }
 
-function fmtShort(val: Date | string | null | undefined): string {
-  if (!val) return "—";
-  try {
-    const d = val instanceof Date ? val : new Date(val as string);
-    if (isNaN(d.getTime())) return "—";
-    return format(d, "dd/MM/yy", { locale: ptBR });
-  } catch {
-    return "—";
-  }
+function combineDateTime(datePart: string, timePart: string): Date | undefined {
+  if (!datePart) return undefined;
+  const d = new Date(`${datePart}T${timePart || "00:00"}`);
+  return isNaN(d.getTime()) ? undefined : d;
+}
+
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+/** Date + time pair bound to a single Date form field. */
+function DateTimeFields({
+  value,
+  onChange,
+  invalid,
+  dateTestId,
+  timeTestId,
+}: {
+  value: Date | string | null | undefined;
+  onChange: (d: Date | undefined) => void;
+  invalid?: boolean;
+  dateTestId?: string;
+  timeTestId?: string;
+}) {
+  const datePart = getDatePart(value);
+  const timePart = getTimePart(value);
+  return (
+    <div className="flex gap-2">
+      <Input
+        type="date"
+        value={datePart}
+        onChange={(e) => onChange(combineDateTime(e.target.value, timePart))}
+        className={cn("flex-1 min-w-0", invalid && "border-destructive")}
+        data-testid={dateTestId}
+      />
+      <Input
+        type="time"
+        value={timePart}
+        onChange={(e) => onChange(combineDateTime(datePart, e.target.value))}
+        className={cn("w-[6.5rem] shrink-0", invalid && "border-destructive")}
+        data-testid={timeTestId}
+      />
+    </div>
+  );
 }
 
 export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
@@ -157,17 +179,13 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
     }
   }, [event, open]);
 
-  // Watch all date fields for reactive validation and summary
+  // Watch date + identity fields for reactive validation
   const [
     watchedSetup,
     watchedEvent,
     watchedTeardown,
     watchedWindowStart,
     watchedWindowEnd,
-    watchedName,
-    watchedClient,
-    watchedLocation,
-    watchedStatus,
   ] = useWatch({
     control: form.control,
     name: [
@@ -176,10 +194,6 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
       "teardownDate",
       "requestWindowStart",
       "requestWindowEnd",
-      "name",
-      "client",
-      "location",
-      "status",
     ],
   });
 
@@ -203,6 +217,21 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
     else if (wsEnd && now > wsEnd) windowStatus = "closed";
     else windowStatus = "open";
   }
+
+  // Window shortcuts (front-end only — just fill fields)
+  const eventBase = watchedEvent ? new Date(watchedEvent) : null;
+  const applyOpen7DaysBefore = () => {
+    if (!eventBase) return;
+    form.setValue("requestWindowStart", addDays(eventBase, -7), { shouldValidate: true });
+  };
+  const applyCloseDayBefore = () => {
+    if (!eventBase) return;
+    form.setValue("requestWindowEnd", addDays(eventBase, -1), { shouldValidate: true });
+  };
+  const applyNoWindow = () => {
+    form.setValue("requestWindowStart", undefined, { shouldValidate: true });
+    form.setValue("requestWindowEnd", undefined, { shouldValidate: true });
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertEvent) => {
@@ -246,10 +275,12 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const hasBlockingError =
+    !!setupAfterEvent || !!teardownBeforeEvent || !!windowStartAfterEnd;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl flex flex-col p-0 gap-0 max-h-[90vh] border-border/60">
+      <DialogContent className="max-w-4xl flex flex-col p-0 gap-0 max-h-[92vh] border-border/60">
         {/* Fixed header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
           <DialogTitle>{event ? "Editar Evento" : "Novo Evento"}</DialogTitle>
@@ -263,15 +294,15 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col flex-1 min-h-0"
           >
-            {/* Scrollable body */}
+            {/* Body — fits without scroll on desktop; scrolls only if needed (mobile) */}
             <div
-              className="flex-1 overflow-y-auto px-6 py-5 space-y-5"
+              className="flex-1 overflow-y-auto md:overflow-visible px-6 py-4 space-y-4"
               style={{ scrollbarWidth: "thin" }}
             >
               {/* ── A. Identificação ───────────────────────────────── */}
               <SectionLabel>Identificação</SectionLabel>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="name"
@@ -311,52 +342,52 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Local <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Ex: Praça Nova da Pampulha"
+                          data-testid="input-location"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="sku"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SKU do Evento</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="Código para integração, se houver"
+                          data-testid="input-sku"
+                          className="font-mono"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Local <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Ex: Praça Nova da Pampulha"
-                        data-testid="input-location"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="sku"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>SKU do Evento</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        value={field.value || ""}
-                        placeholder="Código para integração, se houver"
-                        data-testid="input-sku"
-                        className="font-mono"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               {/* ── B. Cronograma ──────────────────────────────────── */}
               <SectionLabel>Cronograma do Evento</SectionLabel>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <FormField
                   control={form.control}
                   name="setupDate"
@@ -366,15 +397,12 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                         Montagem <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="datetime-local"
-                          value={formatDatetimeLocal(field.value)}
-                          onChange={(e) =>
-                            field.onChange(e.target.value ? new Date(e.target.value) : null)
-                          }
-                          data-testid="input-setup-date"
-                          aria-invalid={!!setupAfterEvent}
-                          className={setupAfterEvent ? "border-destructive" : ""}
+                        <DateTimeFields
+                          value={field.value}
+                          onChange={field.onChange}
+                          invalid={!!setupAfterEvent}
+                          dateTestId="input-setup-date"
+                          timeTestId="input-setup-time"
                         />
                       </FormControl>
                       <FormMessage />
@@ -391,16 +419,11 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                         Data do Evento <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="datetime-local"
-                          value={formatDatetimeLocal(field.value)}
-                          onChange={(e) =>
-                            field.onChange(e.target.value ? new Date(e.target.value) : null)
-                          }
-                          data-testid="input-event-date"
-                          className={
-                            setupAfterEvent || teardownBeforeEvent ? "border-amber-500" : ""
-                          }
+                        <DateTimeFields
+                          value={field.value}
+                          onChange={field.onChange}
+                          dateTestId="input-event-date"
+                          timeTestId="input-event-time"
                         />
                       </FormControl>
                       <FormMessage />
@@ -417,15 +440,12 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                         Desmontagem <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="datetime-local"
-                          value={formatDatetimeLocal(field.value)}
-                          onChange={(e) =>
-                            field.onChange(e.target.value ? new Date(e.target.value) : null)
-                          }
-                          data-testid="input-teardown-date"
-                          aria-invalid={!!teardownBeforeEvent}
-                          className={teardownBeforeEvent ? "border-destructive" : ""}
+                        <DateTimeFields
+                          value={field.value}
+                          onChange={field.onChange}
+                          invalid={!!teardownBeforeEvent}
+                          dateTestId="input-teardown-date"
+                          timeTestId="input-teardown-time"
                         />
                       </FormControl>
                       <FormMessage />
@@ -438,25 +458,25 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               {setupAfterEvent && (
                 <div className="flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  A data de montagem deve ser anterior à data do evento.
+                  A montagem não pode ocorrer depois do evento.
                 </div>
               )}
               {teardownBeforeEvent && (
                 <div className="flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  A data de desmontagem deve ser posterior à data do evento.
+                  A desmontagem não pode ocorrer antes do evento.
                 </div>
               )}
 
               {/* ── C. Janela de Requisição ────────────────────────── */}
-              <SectionLabel>Período de Requisição de Materiais</SectionLabel>
+              <SectionLabel>Janela de Requisição</SectionLabel>
 
-              <p className="text-xs text-muted-foreground -mt-2">
-                Defina quando os usuários poderão criar e enviar requisições para este evento.
-                Se nenhuma janela for definida, não haverá restrição por data.
+              <p className="text-xs text-muted-foreground -mt-1">
+                Defina quando materiais poderão ser requisitados. Deixe vazio para não
+                restringir por data.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="requestWindowStart"
@@ -464,15 +484,12 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                     <FormItem>
                       <FormLabel>Início da Janela</FormLabel>
                       <FormControl>
-                        <Input
-                          type="datetime-local"
-                          value={formatDatetimeLocal(field.value)}
-                          onChange={(e) =>
-                            field.onChange(e.target.value ? new Date(e.target.value) : undefined)
-                          }
-                          data-testid="input-request-window-start"
-                          aria-invalid={!!windowStartAfterEnd}
-                          className={windowStartAfterEnd ? "border-destructive" : ""}
+                        <DateTimeFields
+                          value={field.value}
+                          onChange={field.onChange}
+                          invalid={!!windowStartAfterEnd}
+                          dateTestId="input-request-window-start"
+                          timeTestId="input-request-window-start-time"
                         />
                       </FormControl>
                       <FormMessage />
@@ -487,15 +504,12 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                     <FormItem>
                       <FormLabel>Fim da Janela</FormLabel>
                       <FormControl>
-                        <Input
-                          type="datetime-local"
-                          value={formatDatetimeLocal(field.value)}
-                          onChange={(e) =>
-                            field.onChange(e.target.value ? new Date(e.target.value) : undefined)
-                          }
-                          data-testid="input-request-window-end"
-                          aria-invalid={!!windowStartAfterEnd}
-                          className={windowStartAfterEnd ? "border-destructive" : ""}
+                        <DateTimeFields
+                          value={field.value}
+                          onChange={field.onChange}
+                          invalid={!!windowStartAfterEnd}
+                          dateTestId="input-request-window-end"
+                          timeTestId="input-request-window-end-time"
                         />
                       </FormControl>
                       <FormMessage />
@@ -504,76 +518,90 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                 />
               </div>
 
-              {/* Window validation warning */}
-              {windowStartAfterEnd && (
-                <div className="flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  O início da janela de requisição deve ser anterior ao fim.
-                </div>
-              )}
+              {/* Window shortcuts + live status */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={applyOpen7DaysBefore}
+                  disabled={!eventBase}
+                  data-testid="button-window-open-7d"
+                >
+                  Abrir 7 dias antes
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={applyCloseDayBefore}
+                  disabled={!eventBase}
+                  data-testid="button-window-close-1d"
+                >
+                  Fechar 1 dia antes
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={applyNoWindow}
+                  data-testid="button-window-none"
+                >
+                  Sem janela
+                </Button>
 
-              {/* Live window status */}
-              {(wsStart || wsEnd) && !windowStartAfterEnd && (
-                <div className="flex items-center gap-2 text-xs">
-                  <CalendarRange className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  {windowStatus === "open" && (
-                    <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10">
-                      Requisições abertas agora
-                    </Badge>
-                  )}
-                  {windowStatus === "future" && (
-                    <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10">
-                      Janela ainda não iniciou
-                    </Badge>
-                  )}
-                  {windowStatus === "closed" && (
-                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-border/50">
-                      Período encerrado
-                    </Badge>
-                  )}
-                </div>
-              )}
-
-              {/* ── D. Status e Observações ────────────────────────── */}
-              <SectionLabel>Status e Observações</SectionLabel>
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-status">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
+                {windowStartAfterEnd ? (
+                  <span className="flex items-center gap-1.5 text-xs text-destructive">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    O início da janela não pode ser depois do fim.
+                  </span>
+                ) : wsStart || wsEnd ? (
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <CalendarRange className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {windowStatus === "open" && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10"
+                      >
+                        Janela aberta
+                      </Badge>
+                    )}
+                    {windowStatus === "future" && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10"
+                      >
+                        Janela futura
+                      </Badge>
+                    )}
+                    {windowStatus === "closed" && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] text-muted-foreground border-border/50"
+                      >
+                        Janela encerrada
+                      </Badge>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sem janela definida</span>
                 )}
-              />
+              </div>
+
+              {/* ── D. Observações ─────────────────────────────────── */}
+              <SectionLabel>Observações</SectionLabel>
 
               <FormField
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Observações</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
                         value={field.value || ""}
                         placeholder="Detalhes adicionais do evento..."
-                        rows={3}
+                        className="min-h-[72px] resize-none"
                         data-testid="input-notes"
                       />
                     </FormControl>
@@ -581,46 +609,6 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                   </FormItem>
                 )}
               />
-
-              {/* ── E. Resumo ──────────────────────────────────────── */}
-              {(watchedName || watchedClient || watchedLocation) && (
-                <>
-                  <SectionLabel>Resumo</SectionLabel>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 overflow-hidden">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border/40">
-                      {[
-                        { label: "Evento", value: watchedName || "—" },
-                        { label: "Cliente", value: watchedClient || "—" },
-                        { label: "Local", value: watchedLocation || "—" },
-                        { label: "Montagem", value: fmtShort(watchedSetup) },
-                        { label: "Data do Evento", value: fmtShort(watchedEvent) },
-                        { label: "Desmontagem", value: fmtShort(watchedTeardown) },
-                        {
-                          label: "Início da Janela",
-                          value: watchedWindowStart ? fmtDisplay(watchedWindowStart) : "Não definido",
-                        },
-                        {
-                          label: "Fim da Janela",
-                          value: watchedWindowEnd ? fmtDisplay(watchedWindowEnd) : "Não definido",
-                        },
-                        {
-                          label: "Status",
-                          value: STATUS_LABELS[watchedStatus || "planning"] || watchedStatus || "—",
-                        },
-                      ].map((cell) => (
-                        <div key={cell.label} className="bg-card px-3 py-2.5">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                            {cell.label}
-                          </p>
-                          <p className="text-xs font-medium text-foreground truncate mt-0.5">
-                            {cell.value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
 
             {/* Fixed footer */}
@@ -636,7 +624,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               </Button>
               <Button
                 type="submit"
-                disabled={isPending || !!setupAfterEvent || !!teardownBeforeEvent || !!windowStartAfterEnd}
+                disabled={isPending || hasBlockingError}
                 data-testid="button-submit-event"
               >
                 {isPending

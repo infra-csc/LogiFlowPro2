@@ -1,0 +1,392 @@
+Vamos refinar o modal de Novo/Editar Evento para ficar 10/10, sem scroll e mais fácil de preencher.
+
+Arquivo foco:
+
+* componente/modal de evento, provavelmente client/src/components/event-dialog.tsx ou equivalente
+* client/src/pages/events.tsx, se necessário apenas para integração visual
+
+Objetivo:
+Melhorar o modal de criação/edição de evento para que ele fique compacto, sem scroll, com todos os campos importantes visíveis ao abrir e com preenchimento de datas/horas mais fácil para o usuário.
+
+Problemas atuais:
+
+* O modal ainda possui scroll vertical.
+* O usuário precisa rolar para ver todos os campos.
+* O campo Status não faz sentido no momento da criação.
+* Os campos de data/hora são difíceis de preencher.
+* O modal está visualmente bom, mas ainda pode ficar mais rápido e prático.
+
+Regras principais:
+
+* Remover o scroll do modal.
+* Mostrar todos os campos principais na primeira visualização.
+* Remover o campo Status do formulário de criação.
+* Facilitar o preenchimento de datas e horários.
+* Preservar payload, back-end, RBAC e regras existentes.
+* Não criar novo Design System.
+
+==================================================
+
+1. MODAL SEM SCROLL
+   ==================================================
+
+Ajustar o layout para que o modal caiba inteiro na tela, sem rolagem vertical.
+
+Direção visual:
+
+* Modal mais largo no desktop, por exemplo max-w-4xl ou max-w-5xl.
+* Layout em grid de 2 ou 3 colunas quando fizer sentido.
+* Reduzir espaçamentos verticais excessivos.
+* Reduzir altura de textarea.
+* Evitar textos auxiliares muito longos.
+* Footer sempre visível.
+* Header sempre visível.
+* Conteúdo completo visível sem scroll em desktop padrão.
+
+Se em telas menores/mobile o scroll for inevitável, permitir apenas no mobile. No desktop, não deve haver scroll.
+
+==================================================
+2. NOVA ORGANIZAÇÃO DO MODAL
+============================
+
+Organizar o formulário em blocos compactos:
+
+A. Identificação
+
+* Nome do Evento *
+* Cliente *
+* Local *
+* SKU do Evento
+
+B. Cronograma
+
+* Data de Montagem *
+* Hora de Montagem *
+* Data do Evento *
+* Hora do Evento *
+* Data de Desmontagem *
+* Hora de Desmontagem *
+
+C. Janela de Requisição
+
+* Início da Janela
+* Hora de Início
+* Fim da Janela
+* Hora de Fim
+
+D. Observações
+
+* Observações
+
+Remover a seção “Status e Observações”.
+Deixar apenas “Observações”.
+
+==================================================
+3. REMOVER STATUS DO MODAL
+==========================
+
+Remover o campo Status da criação do evento.
+
+Na criação:
+
+* o status deve ser definido automaticamente como “Planejamento”, se esse já for o padrão esperado.
+* não exibir o campo para o usuário.
+
+Na edição:
+
+* se for necessário manter edição de status, avaliar uma destas opções:
+
+Opção A:
+
+* manter status oculto também na edição;
+* status é alterado por fluxo próprio ou outra ação.
+
+Opção B:
+
+* mostrar status somente na edição, mas em uma área discreta chamada “Status do Evento”.
+* não mostrar status no modal de Novo Evento.
+
+Preferência:
+
+* remover o status do modal de criação.
+* manter o valor atual no payload sem quebrar o back-end.
+
+Não alterar schema.
+Não alterar status/transições.
+Não alterar regra de negócio.
+
+==================================================
+4. FACILITAR PREENCHIMENTO DE DATA E HORA
+=========================================
+
+Trocar os campos atuais de datetime por uma experiência mais fácil.
+
+Em vez de um único campo de data/hora difícil de preencher, usar:
+
+* campo de Data
+* campo de Hora
+
+Exemplo:
+
+Data de Montagem: [03/06/2026]
+Hora: [16:20]
+
+Data do Evento: [03/06/2026]
+Hora: [18:00]
+
+Data de Desmontagem: [04/06/2026]
+Hora: [08:00]
+
+Benefícios:
+
+* usuário entende melhor;
+* menos erro de digitação;
+* layout fica mais compacto;
+* mais fácil validar.
+
+Ao salvar:
+
+* combinar data + hora internamente para manter o payload atual.
+* não alterar contrato da API se o backend espera datetime.
+
+==================================================
+5. ATALHOS DE DATA/HORA
+=======================
+
+Adicionar pequenos atalhos para facilitar, se for simples:
+
+Para cronograma:
+
+* “Usar mesma data do evento”
+* “Montagem no dia anterior”
+* “Desmontagem no dia seguinte”
+
+Para janela de requisição:
+
+* “Abrir 7 dias antes”
+* “Fechar 1 dia antes do evento”
+* “Sem janela”
+
+Esses atalhos devem apenas preencher campos no front.
+Não alterar regra de negócio.
+
+Se ficar grande demais, implementar só:
+
+* “Sem janela”
+* “Fechar 1 dia antes do evento”
+
+==================================================
+6. JANELA DE REQUISIÇÃO MAIS COMPACTA
+=====================================
+
+A explicação atual está longa.
+
+Trocar por texto menor:
+
+“Defina quando materiais poderão ser requisitados. Deixe vazio para não restringir por data.”
+
+Mostrar em layout 2 colunas:
+
+Início da Janela | Hora
+Fim da Janela | Hora
+
+Ou em 4 campos na mesma linha em desktop:
+
+Data início | Hora início | Data fim | Hora fim
+
+Adicionar status visual pequeno:
+
+* Janela aberta
+* Janela futura
+* Janela encerrada
+* Sem janela definida
+
+Apenas se for simples calcular no front.
+
+==================================================
+7. OBSERVAÇÕES MAIS COMPACTAS
+=============================
+
+Reduzir altura do campo Observações.
+
+Label:
+
+* Observações
+
+Placeholder:
+
+* “Detalhes adicionais do evento...”
+
+Altura sugerida:
+
+* min-h-[72px] ou equivalente.
+
+Não deixar o textarea ocupar espaço demais.
+
+==================================================
+8. VALIDAÇÕES VISUAIS
+=====================
+
+Adicionar validações claras:
+
+Obrigatórios:
+
+* Nome do Evento
+* Cliente
+* Local
+* Data de Montagem
+* Hora de Montagem
+* Data do Evento
+* Hora do Evento
+* Data de Desmontagem
+* Hora de Desmontagem
+
+Validações:
+
+* montagem não pode ser depois da data do evento;
+* desmontagem não pode ser antes da data do evento;
+* início da janela não pode ser depois do fim da janela;
+* se preencher data da janela, pedir hora correspondente ou aplicar horário padrão.
+
+Mensagens:
+
+* “Informe o nome do evento.”
+* “Informe o cliente.”
+* “Informe o local.”
+* “A montagem não pode ocorrer depois do evento.”
+* “A desmontagem não pode ocorrer antes do evento.”
+* “O início da janela não pode ser depois do fim.”
+
+Não alterar regras do back-end sem necessidade.
+Apenas melhorar validação visual e manter backend seguro.
+
+==================================================
+9. LAYOUT SUGERIDO
+==================
+
+Desktop:
+
+Header:
+Novo Evento
+Configure datas, cliente, local e janela de requisição de materiais.
+
+Identificação:
+[Nome do Evento] [Cliente]
+[Local] [SKU do Evento]
+
+Cronograma:
+[Data Montagem] [Hora] [Data Evento] [Hora] [Data Desmontagem] [Hora]
+
+Janela de Requisição:
+[Data Início] [Hora] [Data Fim] [Hora]
+[atalhos: Sem janela | Fechar 1 dia antes]
+
+Observações:
+[textarea compacto]
+
+Footer:
+Cancelar | Criar Evento
+
+Esse layout deve caber sem scroll.
+
+==================================================
+10. FOOTER
+==========
+
+Footer fixo visualmente, mas sem necessidade de scroll.
+
+Botões:
+
+* Cancelar como outline
+* Criar Evento como primary/default
+* Salvar Evento na edição
+
+Botão principal:
+
+* desabilitado se obrigatórios inválidos;
+* loading visual durante salvamento.
+
+==================================================
+11. RESPONSIVIDADE
+==================
+
+Desktop:
+
+* sem scroll;
+* layout em grid.
+
+Tablet:
+
+* pode quebrar para 2 colunas.
+
+Mobile:
+
+* pode ter scroll se necessário;
+* campos em uma coluna;
+* botões full width.
+
+==================================================
+12. RESTRIÇÕES
+==============
+
+Não alterar:
+
+* backend;
+* endpoints;
+* payload final;
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* role_permissions;
+* regras de negócio;
+* status/transições;
+* integrações com requisições, viagens, ordens e movimentações.
+
+Pode alterar:
+
+* layout;
+* JSX visual;
+* classes;
+* organização dos campos;
+* microcopy PT-BR;
+* validação visual;
+* separação visual de data e hora;
+* combinação interna de data + hora antes de enviar;
+* remoção visual do campo status no modal.
+
+==================================================
+13. VALIDAÇÕES TÉCNICAS
+=======================
+
+Rodar:
+
+* npm run check
+* npm run build
+
+Smoke test:
+
+* abrir Novo Evento;
+* confirmar que não há scroll no desktop;
+* preencher nome, cliente e local;
+* preencher datas e horas;
+* criar evento;
+* abrir Editar Evento;
+* validar dados carregados corretamente;
+* alterar datas;
+* salvar evento;
+* testar datas inválidas;
+* testar janela inválida;
+* testar sem janela;
+* validar mobile básico.
+
+Entrega final:
+
+* arquivos alterados;
+* confirmação de modal sem scroll no desktop;
+* confirmação de status removido da criação;
+* confirmação de datas/horas mais fáceis de preencher;
+* confirmação de payload preservado;
+* confirmação de RBAC preservado;
+* resultado do npm run check;
+* resultado do npm run build.
