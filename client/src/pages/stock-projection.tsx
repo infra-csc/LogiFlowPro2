@@ -55,7 +55,7 @@ const SOURCE_SHORT: Record<keyof SourceFlags, string> = {
   loadingOrders: "Ordens",
   requests: "Requisições",
   movements: "Movimentações",
-  trips: "Viagens",
+  trips: "Planos de Viagens",
 };
 
 function fmtChipDate(d: string): string {
@@ -277,7 +277,7 @@ export default function StockProjection() {
     <div className="space-y-6">
       <PageHeader
         title="Projeção de Estoque"
-        description="Saldo projetado dia a dia, considerando requisições, ordens de carregamento, movimentações e viagens."
+        description="Saldo projetado dia a dia, considerando requisições, ordens de carregamento, movimentações e planos de viagens."
       >
         {result && (
           <Button variant="outline" size="sm" onClick={handleClear} data-testid="button-clear-projection">
@@ -356,7 +356,7 @@ export default function StockProjection() {
                       { key: "loadingOrders" as const, label: "Ordens de carregamento", id: "src-loading" },
                       { key: "requests" as const, label: "Requisições aprovadas", id: "src-requests" },
                       { key: "movements" as const, label: "Movimentações", id: "src-movements" },
-                      { key: "trips" as const, label: "Viagens avulsas", id: "src-trips" },
+                      { key: "trips" as const, label: "Planos de Viagens avulsos", id: "src-trips" },
                     ].map((s) => (
                       <label
                         key={s.key}

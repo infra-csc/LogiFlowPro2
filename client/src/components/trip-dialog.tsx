@@ -165,11 +165,11 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({ description: "Viagem criada com sucesso" });
+      toast({ description: "Plano de viagens criado com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Erro ao criar viagem", variant: "destructive" });
+      toast({ description: "Erro ao criar plano de viagens", variant: "destructive" });
     },
   });
 
@@ -178,11 +178,11 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       apiRequest("PATCH", `/api/trips/${trip?.id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-      toast({ description: "Viagem atualizada com sucesso" });
+      toast({ description: "Plano de viagens atualizado com sucesso" });
       onOpenChange(false);
     },
     onError: () => {
-      toast({ description: "Erro ao atualizar viagem", variant: "destructive" });
+      toast({ description: "Erro ao atualizar plano de viagens", variant: "destructive" });
     },
   });
 
@@ -289,7 +289,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       >
         {/* ── Header fixo ── */}
         <DialogHeader className="px-6 py-4 border-b border-border/40 flex-none">
-          <DialogTitle>{trip ? "Editar Viagem" : "Nova Viagem"}</DialogTitle>
+          <DialogTitle>{trip ? "Editar Plano de Viagens" : "Novo Plano de Viagens"}</DialogTitle>
           <DialogDescription>
             Planeje veículo, rota, carregamento e descarregamento da operação.
           </DialogDescription>
@@ -306,7 +306,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
           <div className="space-y-4">
             <SectionLabel
               label="Identificação"
-              description="Descreva e vincule a viagem ao evento correto."
+              description="Descreva e vincule o plano de viagens ao evento correto."
             />
             <div className="space-y-1.5">
               <Label htmlFor="description">Descrição</Label>
@@ -318,7 +318,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
                 data-testid="input-description"
               />
               <p className="text-xs text-muted-foreground">
-                Use uma descrição curta para identificar a viagem na operação.
+                Use uma descrição curta para identificar o plano de viagens na operação.
               </p>
             </div>
 
@@ -652,7 +652,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
                 id="notes"
                 value={formData.notes || ""}
                 onChange={(e) => update({ notes: e.target.value })}
-                placeholder="Notas sobre a viagem..."
+                placeholder="Notas sobre o plano de viagens..."
                 rows={2}
                 data-testid="input-notes"
               />
@@ -695,7 +695,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
 
           {/* H. Resumo */}
           <div className="space-y-3">
-            <SectionLabel label="Resumo da Viagem" />
+            <SectionLabel label="Resumo do Plano de Viagens" />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
               <div className="flex items-start gap-2">
                 <div className="h-7 w-7 rounded bg-muted flex items-center justify-center flex-shrink-0">
@@ -787,8 +787,8 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
               {isPending
                 ? "Salvando..."
                 : trip
-                ? "Salvar Viagem"
-                : "Planejar Viagem"}
+                ? "Salvar Plano de Viagens"
+                : "Criar Plano de Viagens"}
             </Button>
           </div>
         </div>

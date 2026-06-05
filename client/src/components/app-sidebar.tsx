@@ -278,7 +278,7 @@ export function AppSidebar() {
                 }
               />
               <CollapsibleMenu
-                title="Viagens"
+                title="Planos de Viagens"
                 icon={Truck}
                 items={tripItems}
                 location={location}

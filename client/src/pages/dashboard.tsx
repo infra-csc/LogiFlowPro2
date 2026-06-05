@@ -232,7 +232,7 @@ export default function Dashboard() {
       testId: "kpi-low-stock",
     },
     {
-      label: "Viagens Próximas",
+      label: "Planos de Viagens Próximos",
       value: kpis?.upcomingTrips ?? 0,
       icon: Truck,
       desc: "Próximos 7 dias",
@@ -253,7 +253,7 @@ export default function Dashboard() {
   const quickActions = [
     { label: "Criar Evento", icon: Calendar, href: "/events", show: isAdminUser, testId: "qa-event" },
     { label: "Nova Requisição", icon: Package, href: "/requests", show: true, testId: "qa-request" },
-    { label: "Planejar Viagem", icon: Truck, href: "/trips", show: canWriteLogistics, testId: "qa-trip" },
+    { label: "Novo Plano de Viagens", icon: Truck, href: "/trips", show: canWriteLogistics, testId: "qa-trip" },
     { label: "Ordem de Carregamento", icon: Layers, href: "/loading-orders", show: canWriteLogistics, testId: "qa-loading-order" },
     { label: "Nova Movimentação", icon: Warehouse, href: "/movements", show: canCreateMovement || isAlmox, testId: "qa-movement" },
     { label: "Ver Aprovações", icon: CheckCheck, href: "/approvals", show: canSeeApprovals, testId: "qa-approvals" },
@@ -348,7 +348,7 @@ export default function Dashboard() {
                 label="Próximos 7 dias"
                 action={
                   <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-                    <Link href="/trips">Ver viagens</Link>
+                    <Link href="/trips">Ver planos de viagens</Link>
                   </Button>
                 }
               />
@@ -356,7 +356,7 @@ export default function Dashboard() {
                 <EmptyState
                   icon={Calendar}
                   title="Nada agendado"
-                  description="Nenhum evento ou viagem nos próximos 7 dias."
+                  description="Nenhum evento ou plano de viagens nos próximos 7 dias."
                   compact
                 />
               ) : (
@@ -624,7 +624,7 @@ export default function Dashboard() {
             <CardContent className="p-4">
               <SectionTitle
                 icon={Truck}
-                label="Viagens"
+                label="Planos de Viagens"
                 action={
                   <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
                     <Link href="/trips">Ver todas</Link>
@@ -632,7 +632,7 @@ export default function Dashboard() {
                 }
               />
               {!summary.activeOperations.trips.length ? (
-                <p className="text-xs text-muted-foreground py-2">Nenhuma viagem ativa.</p>
+                <p className="text-xs text-muted-foreground py-2">Nenhum plano de viagens ativo.</p>
               ) : (
                 <div className="space-y-1.5">
                   {summary.activeOperations.trips.map((t) => (
@@ -643,7 +643,7 @@ export default function Dashboard() {
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium truncate">
-                            {t.description || t.eventName || "Viagem"}
+                            {t.description || t.eventName || "Plano de viagens"}
                           </p>
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5 flex-wrap">
                             {t.vehicleTypeName && <span>{t.vehicleTypeName}</span>}

@@ -289,7 +289,7 @@ export default function EventDetails() {
           {canLogistics && (
             <Button size="sm" variant="outline" onClick={() => setShowTripDialog(true)}>
               <Truck className="h-4 w-4 mr-1.5" />
-              Viagem
+              Plano de Viagens
             </Button>
           )}
           {canLogistics && (
@@ -328,7 +328,7 @@ export default function EventDetails() {
         />
         <StatCard
           icon={Truck}
-          label="Viagens"
+          label="Planos de Viagens"
           value={tripsSummary.total}
           sub={
             tripsSummary.inProgress > 0
@@ -556,7 +556,7 @@ export default function EventDetails() {
       <Card className="border-border/60">
         <SectionHeader
           icon={Truck}
-          title="Viagens"
+          title="Planos de Viagens"
           count={tripsSummary.total}
           action={
             canLogistics ? { label: "Nova", onClick: () => setShowTripDialog(true) } : undefined
@@ -568,11 +568,11 @@ export default function EventDetails() {
             <div className="p-4">
               <EmptyState
                 icon={Truck}
-                title="Nenhuma viagem"
-                description="Nenhuma viagem foi planejada para este evento."
+                title="Nenhum plano de viagens"
+                description="Nenhum plano de viagens foi criado para este evento."
                 action={
                   canLogistics
-                    ? { label: "Planejar Viagem", onClick: () => setShowTripDialog(true) }
+                    ? { label: "Novo Plano de Viagens", onClick: () => setShowTripDialog(true) }
                     : undefined
                 }
               />
@@ -589,7 +589,7 @@ export default function EventDetails() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <StatusBadge status={trip.status} />
                       <span className="text-sm font-medium truncate">
-                        {trip.description || "Viagem"}
+                        {trip.description || "Plano de viagens"}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap text-xs text-muted-foreground">

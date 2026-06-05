@@ -230,7 +230,7 @@ function DayPanel({
 
   const groupLabels: Record<string, string> = {
     events: "Eventos",
-    trips: "Viagens",
+    trips: "Planos de Viagens",
     loading_orders: "Ordens de Carregamento",
     movements: "Movimentações",
     windows: "Janelas de Requisição",
@@ -554,7 +554,7 @@ export default function OperationalCalendar() {
       {/* Header */}
       <PageHeader
         title="Calendário Operacional"
-        description="Agenda integrada de eventos, viagens, ordens e movimentações"
+        description="Agenda integrada de eventos, planos de viagens, ordens e movimentações"
       >
         <div className="flex items-center gap-2">
           <Button
@@ -601,7 +601,7 @@ export default function OperationalCalendar() {
             {(
               [
                 { key: "showEvents" as const,       label: "Eventos",        dot: "bg-primary",    chipOn: "bg-primary/10 border-primary/30 text-primary" },
-                { key: "showTrips" as const,        label: "Viagens",        dot: "bg-amber-400",  chipOn: "bg-amber-500/10 border-amber-500/20 text-amber-400" },
+                { key: "showTrips" as const,        label: "Planos de Viagens",        dot: "bg-amber-400",  chipOn: "bg-amber-500/10 border-amber-500/20 text-amber-400" },
                 { key: "showLoadingOrders" as const, label: "Ordens de Carga", dot: "bg-emerald-400", chipOn: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" },
                 { key: "showMovements" as const,    label: "Movimentações",  dot: "bg-purple-400", chipOn: "bg-purple-500/10 border-purple-500/20 text-purple-400" },
                 { key: "showWindows" as const,      label: "Janelas",        dot: "bg-orange-400", chipOn: "bg-orange-500/10 border-orange-500/20 text-orange-400" },
@@ -707,7 +707,7 @@ export default function OperationalCalendar() {
             <div className="flex flex-wrap gap-3 mt-3">
               {[
                 { key: "events", label: "Eventos", types: TYPE_GROUPS.events, dot: "bg-primary" },
-                { key: "trips", label: "Viagens", types: TYPE_GROUPS.trips, dot: "bg-amber-400" },
+                { key: "trips", label: "Planos de Viagens", types: TYPE_GROUPS.trips, dot: "bg-amber-400" },
                 { key: "loading_orders", label: "Ordens", types: TYPE_GROUPS.loading_orders, dot: "bg-emerald-400" },
                 { key: "movements", label: "Movimentações", types: TYPE_GROUPS.movements, dot: "bg-purple-400" },
                 { key: "windows", label: "Janelas", types: TYPE_GROUPS.windows, dot: "bg-orange-400" },

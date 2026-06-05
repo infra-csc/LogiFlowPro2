@@ -51,7 +51,7 @@ export default function MovementTypesConfigPage() {
       groupId: "",
       nature: "transfer",
       affectsPhysicalInventory: true,
-      affectsOperationalInventory: true,
+      affectsOperationalInventory: false,
       affectsPatrimonialInventory: true,
       requiresApproval: false,
       requiresDocument: false,
@@ -136,7 +136,7 @@ export default function MovementTypesConfigPage() {
     setEditingType(null);
     form.reset({
       code: "", name: "", groupId: "", nature: "transfer",
-      affectsPhysicalInventory: true, affectsOperationalInventory: true, affectsPatrimonialInventory: true,
+      affectsPhysicalInventory: true, affectsOperationalInventory: false, affectsPatrimonialInventory: true,
       requiresApproval: false, requiresDocument: false, allowsMixedBatch: true,
       changesProductStatus: false, allowedSourceProductStatuses: null, targetProductStatusId: null,
       changesLocation: false, allowedSourceLocations: null, targetLocationId: null, active: true,
@@ -343,11 +343,6 @@ export default function MovementTypesConfigPage() {
                       </span>
                     </span>
                     <span>
-                      <span className={type.affectsOperationalInventory ? "text-emerald-600 dark:text-emerald-400 font-medium" : ""}>
-                        Operacional {type.affectsOperationalInventory ? "✓" : "—"}
-                      </span>
-                    </span>
-                    <span>
                       <span className={(type as any).affectsPatrimonialInventory ? "text-emerald-600 dark:text-emerald-400 font-medium" : ""}>
                         Patrimonial {(type as any).affectsPatrimonialInventory ? "✓" : "—"}
                       </span>
@@ -433,10 +428,9 @@ export default function MovementTypesConfigPage() {
 
               <div className="space-y-3 rounded-lg border p-4">
                 <h4 className="font-medium">Configurações de Estoque</h4>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   {([
                     { name: "affectsPhysicalInventory" as const, label: "Estoque Físico", desc: "Altera a quantidade física", testId: "switch-physical" },
-                    { name: "affectsOperationalInventory" as const, label: "Estoque Operacional", desc: "Altera disponibilidade", testId: "switch-operational" },
                     { name: "affectsPatrimonialInventory" as const, label: "Estoque Patrimonial", desc: "Altera patrimônio próprio", testId: "switch-patrimonial" },
                   ]).map(({ name, label, desc, testId }) => (
                     <FormField key={name} control={form.control} name={name} render={({ field }) => (

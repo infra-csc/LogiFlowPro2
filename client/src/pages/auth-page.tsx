@@ -286,7 +286,7 @@ export default function AuthPage() {
           </div>
           <h2 className="text-4xl font-bold mb-4">Sistema de Gestão de Logística</h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Gerencie eventos, requisições de materiais, estoque, viagens e devoluções de forma integrada e eficiente.
+            Gerencie eventos, requisições de materiais, estoque, planos de viagens e devoluções de forma integrada e eficiente.
           </p>
           <div className="grid grid-cols-2 gap-4 text-left">
             <div className="p-4 bg-card/80 backdrop-blur-sm rounded-lg border shadow-sm">
@@ -304,7 +304,7 @@ export default function AuthPage() {
             <div className="p-4 bg-card/80 backdrop-blur-sm rounded-lg border shadow-sm">
               <h3 className="font-semibold mb-2 text-sm">Planejamento</h3>
               <p className="text-sm text-muted-foreground">
-                Viagens e carregamento otimizado
+                Planos de viagens e carregamento otimizado
               </p>
             </div>
             <div className="p-4 bg-card/80 backdrop-blur-sm rounded-lg border shadow-sm">

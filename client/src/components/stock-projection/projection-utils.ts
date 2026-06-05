@@ -87,7 +87,7 @@ export const SOURCE_LABEL: Record<ProjectionSource, string> = {
   request: "Requisição",
   loading_order: "Ordem de carregamento",
   movement: "Movimentação",
-  trip: "Viagem",
+  trip: "Plano de Viagens",
 };
 
 export function sourceLabel(source: string): string {

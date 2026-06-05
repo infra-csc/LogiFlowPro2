@@ -35,7 +35,7 @@ export default function Returns() {
         <EmptyState
           icon={RotateCcw}
           title="Nenhuma devolução registrada"
-          description="As devoluções aparecerão aqui quando as viagens forem concluídas"
+          description="As devoluções aparecerão aqui quando os planos de viagens forem concluídos"
         />
       ) : (
         <div className="space-y-4">

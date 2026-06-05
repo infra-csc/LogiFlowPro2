@@ -77,7 +77,7 @@ export default function TripUpload() {
     onError: () => {
       toast({
         title: "Erro na importação",
-        description: "Não foi possível importar as viagens",
+        description: "Não foi possível importar os planos de viagens",
         variant: "destructive",
       });
     },
@@ -156,7 +156,7 @@ export default function TripUpload() {
         setParsedData(parsed);
         toast({
           title: "Arquivo carregado",
-          description: `${parsed.length} viagens encontradas`,
+          description: `${parsed.length} planos de viagens encontrados`,
         });
       } catch (error) {
         toast({
@@ -195,8 +195,8 @@ export default function TripUpload() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Importação de Viagens"
-        description="Faça upload de uma planilha Excel com as viagens para importação em lote"
+        title="Importação de Planos de Viagens"
+        description="Faça upload de uma planilha Excel com os planos de viagens para importação em lote"
       />
 
       <Card className="border-border/60">
@@ -225,7 +225,7 @@ export default function TripUpload() {
               <Alert>
                 <FileSpreadsheet className="h-4 w-4" />
                 <AlertDescription>
-                  Arquivo selecionado: {file.name} ({parsedData.length} viagens)
+                  Arquivo selecionado: {file.name} ({parsedData.length} planos de viagens)
                 </AlertDescription>
               </Alert>
             )}

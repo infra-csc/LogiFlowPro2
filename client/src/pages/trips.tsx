@@ -232,18 +232,18 @@ export default function Trips() {
 
   const goToToday = () => setCalendarStartDate(startOfWeek(new Date(), { locale: ptBR }));
 
-  if (isLoading) return <PageLoading message="Carregando viagens..." />;
+  if (isLoading) return <PageLoading message="Carregando planos de viagens..." />;
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Planejamento de Transporte"
-        description="Agende e gerencie viagens, veículos, rotas e carregamentos."
+        description="Agende e gerencie planos de viagens, veículos, rotas e carregamentos."
       >
         {canWrite && (
           <Button onClick={() => setShowDialog(true)} data-testid="button-create-trip">
             <Plus className="h-4 w-4 mr-2" />
-            Planejar Viagem
+            Novo Plano de Viagens
           </Button>
         )}
       </PageHeader>
@@ -475,7 +475,7 @@ export default function Trips() {
           {sortedTrips.length === 0 ? (
             <EmptyState
               icon={Truck}
-              title={activeFilterCount > 0 ? "Nenhuma viagem encontrada" : "Nenhuma viagem agendada"}
+              title={activeFilterCount > 0 ? "Nenhum plano de viagens encontrado" : "Nenhum plano de viagens agendado"}
               description={
                 activeFilterCount > 0
                   ? "Tente ajustar os filtros para ver mais resultados."
@@ -483,7 +483,7 @@ export default function Trips() {
               }
               action={
                 activeFilterCount === 0 && canWrite
-                  ? { label: "Planejar Viagem", onClick: () => setShowDialog(true) }
+                  ? { label: "Novo Plano de Viagens", onClick: () => setShowDialog(true) }
                   : activeFilterCount > 0
                   ? { label: "Limpar filtros", onClick: clearFilters }
                   : undefined
@@ -515,7 +515,7 @@ export default function Trips() {
                           </h3>
                         ) : (
                           <h3 className="font-semibold text-base text-foreground">
-                            {trip.event?.name || "Viagem sem descrição"}
+                            {trip.event?.name || "Plano de viagens sem descrição"}
                           </h3>
                         )}
 
@@ -545,7 +545,7 @@ export default function Trips() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(trip)}
-                          aria-label="Editar viagem"
+                          aria-label="Editar plano de viagens"
                           data-testid={`button-edit-trip-${trip.id}`}
                         >
                           Editar
@@ -689,7 +689,7 @@ export default function Trips() {
                     </div>
                     {dayTrips.length > 0 && (
                       <div className="text-[10px] text-muted-foreground mt-0.5">
-                        {dayTrips.length} viagem{dayTrips.length !== 1 ? "ns" : ""}
+                        {dayTrips.length} {dayTrips.length !== 1 ? "planos de viagens" : "plano de viagens"}
                       </div>
                     )}
                   </div>
@@ -734,7 +734,7 @@ export default function Trips() {
                             </span>
                           </div>
                           <p className="text-xs font-medium leading-tight line-clamp-2">
-                            {entry.trip.description || entry.trip.event?.name || "Viagem"}
+                            {entry.trip.description || entry.trip.event?.name || "Plano de viagens"}
                           </p>
                           {(() => {
                             const t = entry.trip;

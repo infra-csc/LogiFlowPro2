@@ -306,7 +306,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
               <DialogDescription className="text-sm text-muted-foreground mt-1">
                 {order
                   ? "Atualize as informações da ordem de carregamento."
-                  : "Consolide requisições aprovadas e associe viagens para o carregamento."}
+                  : "Consolide requisições aprovadas e associe planos de viagens para o carregamento."}
               </DialogDescription>
             </div>
             <Button
@@ -615,9 +615,9 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                   {order ? "2" : "3"}
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Viagens</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Planos de Viagens</h3>
                   <p className="text-xs text-muted-foreground">
-                    Selecione as viagens associadas (opcional)
+                    Selecione os planos de viagens associados (opcional)
                   </p>
                 </div>
                 <span className="ml-auto text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
@@ -655,7 +655,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                           disabled={!canEdit}
                           data-testid={`checkbox-trip-${trip.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          aria-label={`Selecionar viagem ${trip.description || trip.id}`}
+                          aria-label={`Selecionar plano de viagens ${trip.description || trip.id}`}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2 mb-1">
@@ -745,7 +745,7 @@ export function LoadingOrderDialog({ open, onOpenChange, order }: LoadingOrderDi
                     </span>
                   </div>
                   <div>
-                    <span className="text-xs text-muted-foreground block">Viagens</span>
+                    <span className="text-xs text-muted-foreground block">Planos de Viagens</span>
                     <span className="font-medium text-foreground">
                       {selectedTripIds.length > 0 ? (
                         <span className="flex items-center gap-1">

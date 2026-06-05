@@ -581,7 +581,7 @@ export default function Movements() {
                       {movement.trips && movement.trips.length > 0 && (
                         <div className="flex items-center gap-2">
                           <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="text-muted-foreground">Viagens:</span>
+                          <span className="text-muted-foreground">Planos de Viagens:</span>
                           <span className="text-foreground font-medium">{movement.trips.length}</span>
                         </div>
                       )}

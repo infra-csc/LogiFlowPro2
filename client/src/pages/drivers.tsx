@@ -284,7 +284,7 @@ export default function DriversPage() {
         <EmptyState
           icon={UserCog}
           title={search ? "Nenhum motorista encontrado" : "Nenhum motorista cadastrado"}
-          description={search ? "Tente ajustar a busca." : "Adicione motoristas para vinculá-los às viagens"}
+          description={search ? "Tente ajustar a busca." : "Adicione motoristas para vinculá-los aos planos de viagens"}
           action={!search && canWrite ? { label: "Adicionar Motorista", onClick: () => setIsDialogOpen(true) } : undefined}
         />
       ) : (

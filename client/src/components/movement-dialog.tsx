@@ -400,7 +400,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
             <DialogDescription className="text-sm text-muted-foreground">
               {isEditMode
                 ? "Atualize os dados da movimentação operacional."
-                : "Crie uma movimentação operacional vinculando evento, viagem, ordem de carregamento, veículo e doca."}
+                : "Crie uma movimentação operacional vinculando evento, plano de viagens, ordem de carregamento, veículo e doca."}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -604,14 +604,14 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       const event = events.find((e) => e.id === t.eventId);
                       return {
                         value: t.id,
-                        label: `${event?.name || "Evento"} — ${t.description || `Viagem ${t.id.substring(0, 8)}`}`,
+                        label: `${event?.name || "Evento"} — ${t.description || `Plano de Viagens ${t.id.substring(0, 8)}`}`,
                         searchText: `${t.description || ""} ${event?.name || ""}`.toLowerCase(),
                       };
                     });
 
                     return (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Viagem (opcional)</FormLabel>
+                        <FormLabel className="text-sm font-medium">Plano de Viagens (opcional)</FormLabel>
                         <div className="space-y-2">
                           {selectedTripsList.length > 0 && (
                             <div className="flex flex-wrap gap-2">
@@ -624,7 +624,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                                     className="gap-1 pr-1"
                                     data-testid={`badge-trip-${trip.id}`}
                                   >
-                                    {event?.name || "Evento"} — {trip.description || `Viagem ${trip.id.substring(0, 8)}`}
+                                    {event?.name || "Evento"} — {trip.description || `Plano de Viagens ${trip.id.substring(0, 8)}`}
                                     <Button
                                       type="button"
                                       variant="ghost"
@@ -646,7 +646,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           {selectedEventIds.length === 0 ? (
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
                               <Info className="h-3 w-3" />
-                              Selecione um evento para ver viagens disponíveis
+                              Selecione um evento para ver planos de viagens disponíveis
                             </p>
                           ) : unselectedTrips.length > 0 ? (
                             <FormControl>
@@ -659,9 +659,9 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                                   }
                                 }}
                                 options={tripOptions}
-                                placeholder="Adicionar viagem..."
-                                searchPlaceholder="Buscar viagem por nome ou evento..."
-                                emptyText="Nenhuma viagem encontrada"
+                                placeholder="Adicionar plano de viagens..."
+                                searchPlaceholder="Buscar plano de viagens por nome ou evento..."
+                                emptyText="Nenhum plano de viagens encontrado"
                                 dataTestid="select-trips"
                                 renderItem={(option) => (
                                   <div className="flex flex-col">
@@ -669,17 +669,17 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                                   </div>
                                 )}
                                 renderSelected={() => (
-                                  <span className="text-muted-foreground">Adicionar viagem...</span>
+                                  <span className="text-muted-foreground">Adicionar plano de viagens...</span>
                                 )}
                               />
                             </FormControl>
                           ) : selectedTripsList.length === 0 ? (
                             <p className="text-xs text-muted-foreground">
-                              Nenhuma viagem disponível para os eventos selecionados
+                              Nenhum plano de viagens disponível para os eventos selecionados
                             </p>
                           ) : (
                             <p className="text-xs text-muted-foreground">
-                              Todas as viagens disponíveis foram selecionadas
+                              Todos os planos de viagens disponíveis foram selecionados
                             </p>
                           )}
                         </div>
@@ -782,7 +782,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                         />
                       </FormControl>
                       <p className="text-xs text-muted-foreground">
-                        Informe a placa quando não houver viagem vinculada.
+                        Informe a placa quando não houver plano de viagens vinculado.
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -888,11 +888,11 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       {selectedTrips.length > 0 && (
                         <div className="flex items-start gap-2">
                           <Route className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                          <span className="text-xs text-muted-foreground">Viagem:</span>
+                          <span className="text-xs text-muted-foreground">Plano de Viagens:</span>
                           <div className="flex flex-wrap gap-1">
                             {selectedTrips.map((t) => (
                               <Badge key={t.id} variant="outline" className="text-[10px] h-4 px-1">
-                                {t.description || `Viagem ${t.id.substring(0, 8)}`}
+                                {t.description || `Plano de Viagens ${t.id.substring(0, 8)}`}
                               </Badge>
                             ))}
                           </div>
