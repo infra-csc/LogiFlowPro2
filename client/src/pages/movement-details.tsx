@@ -67,6 +67,11 @@ type MovementWithDetails = Movement & {
     id: string;
     orderNumber: string;
   };
+  request?: {
+    id: string;
+    area: string;
+    event?: { id: string; name: string };
+  };
   dock?: {
     id: string;
     name: string;
@@ -860,6 +865,14 @@ export default function MovementDetails() {
               <span className="flex items-center gap-1">
                 <Layers className="h-3.5 w-3.5" />
                 Ordem: <span className="text-foreground font-medium">{movement.loadingOrder.orderNumber}</span>
+              </span>
+            )}
+            {movement.request && (
+              <span className="flex items-center gap-1">
+                <Layers className="h-3.5 w-3.5" />
+                Requisição: <span className="text-foreground font-medium">
+                  {movement.request.event?.name ? `${movement.request.event.name} — ` : ""}{movement.request.area}
+                </span>
               </span>
             )}
             {movement.events && movement.events.length > 0 && (

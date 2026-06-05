@@ -625,6 +625,8 @@ export const movements = pgTable("movements", {
   movementTypeConfigId: varchar("movement_type_config_id").references(() => movementTypesConfig.id),
   status: movementStatusEnum("status").notNull().default("created"),
   loadingOrderId: varchar("loading_order_id").references(() => loadingOrders.id),
+  // A movement may be linked to a loading order OR directly to a material request (mutually exclusive)
+  requestId: varchar("request_id").references(() => materialRequests.id),
   eventId: varchar("event_id").references(() => events.id), // Deprecated: use movementEvents table for multiple events
   vehiclePlate: text("vehicle_plate"),
   dockId: varchar("dock_id").references(() => docks.id),
@@ -644,6 +646,7 @@ export const movements = pgTable("movements", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
 }, (table) => ({
   loadingOrderIdIdx: index("idx_movements_loading_order_id").on(table.loadingOrderId),
+  requestIdIdx: index("idx_movements_request_id").on(table.requestId),
   eventIdIdx: index("idx_movements_event_id").on(table.eventId),
 }));
 
@@ -997,6 +1000,10 @@ export const movementsRelations = relations(movements, ({ one, many }) => ({
     fields: [movements.loadingOrderId],
     references: [loadingOrders.id]
   }),
+  request: one(materialRequests, {
+    fields: [movements.requestId],
+    references: [materialRequests.id]
+  }),
   event: one(events, {
     fields: [movements.eventId],
     references: [events.id]
@@ -1297,7 +1304,13 @@ export const insertMovementSchema = createInsertSchema(movements).omit({
 export const insertMovementWithEventsSchema = insertMovementSchema.extend({
   eventIds: z.array(z.string()).optional().default([]),
   tripIds: z.array(z.string()).optional()
-});
+}).refine(
+  (data) => !(data.loadingOrderId && data.requestId),
+  {
+    message: "Vincule a movimentação a uma ordem de carregamento OU a uma requisição, não a ambas.",
+    path: ["requestId"],
+  }
+);
 
 export const insertMovementItemSchema = createInsertSchema(movementItems).omit({
   id: true,

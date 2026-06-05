@@ -1120,10 +1120,64 @@ export class DatabaseStorage implements IStorage {
       tripsByMovement.set(r.movementId, arr);
     }
 
+    // Batch-load loading orders and material requests referenced by these movements
+    const loadingOrderIds = Array.from(
+      new Set(movementsData.map((m) => (m as any).loadingOrderId).filter(Boolean))
+    ) as string[];
+    const requestIds = Array.from(
+      new Set(movementsData.map((m) => (m as any).requestId).filter(Boolean))
+    ) as string[];
+
+    const loadingOrderRows = loadingOrderIds.length
+      ? await db
+          .select({
+            id: loadingOrders.id,
+            orderNumber: loadingOrders.orderNumber,
+            eventId: loadingOrders.eventId,
+            status: loadingOrders.status,
+          })
+          .from(loadingOrders)
+          .where(inArray(loadingOrders.id, loadingOrderIds))
+      : [];
+
+    const requestRows = requestIds.length
+      ? await db
+          .select({
+            id: materialRequests.id,
+            area: materialRequests.area,
+            eventId: materialRequests.eventId,
+            status: materialRequests.status,
+            eventName: events.name,
+          })
+          .from(materialRequests)
+          .leftJoin(events, eq(materialRequests.eventId, events.id))
+          .where(inArray(materialRequests.id, requestIds))
+      : [];
+
+    const loadingOrderById = new Map(loadingOrderRows.map((r) => [r.id, r]));
+    const requestById = new Map(
+      requestRows.map((r) => [
+        r.id,
+        {
+          id: r.id,
+          area: r.area,
+          eventId: r.eventId,
+          status: r.status,
+          event: r.eventName ? { id: r.eventId, name: r.eventName } : undefined,
+        },
+      ])
+    );
+
     return movementsData.map((m) => ({
       ...m,
       events: eventsByMovement.get(m.id) ?? [],
       trips: tripsByMovement.get(m.id) ?? [],
+      loadingOrder: (m as any).loadingOrderId
+        ? loadingOrderById.get((m as any).loadingOrderId) ?? undefined
+        : undefined,
+      request: (m as any).requestId
+        ? requestById.get((m as any).requestId) ?? undefined
+        : undefined,
     }));
   }
 
@@ -1169,10 +1223,52 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(trips, eq(movementTrips.tripId, trips.id))
       .where(eq(movementTrips.movementId, movementData.id));
     
+    // Loading order link (if any)
+    let loadingOrder: any = undefined;
+    if (movementData.loadingOrderId) {
+      const [lo] = await db
+        .select({
+          id: loadingOrders.id,
+          orderNumber: loadingOrders.orderNumber,
+          eventId: loadingOrders.eventId,
+          status: loadingOrders.status,
+        })
+        .from(loadingOrders)
+        .where(eq(loadingOrders.id, movementData.loadingOrderId));
+      loadingOrder = lo || undefined;
+    }
+
+    // Material request link (if any) - alternative to loading order
+    let request: any = undefined;
+    if (movementData.requestId) {
+      const [rq] = await db
+        .select({
+          id: materialRequests.id,
+          area: materialRequests.area,
+          eventId: materialRequests.eventId,
+          status: materialRequests.status,
+          eventName: events.name,
+        })
+        .from(materialRequests)
+        .leftJoin(events, eq(materialRequests.eventId, events.id))
+        .where(eq(materialRequests.id, movementData.requestId));
+      request = rq
+        ? {
+            id: rq.id,
+            area: rq.area,
+            eventId: rq.eventId,
+            status: rq.status,
+            event: rq.eventName ? { id: rq.eventId, name: rq.eventName } : undefined,
+          }
+        : undefined;
+    }
+
     return {
       ...movementData,
       events: eventRelations.map(r => r.event).filter(Boolean),
       trips: tripRelations.map(r => r.trip).filter(Boolean),
+      loadingOrder,
+      request,
     } as any;
   }
 

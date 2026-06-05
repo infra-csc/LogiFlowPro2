@@ -2423,6 +2423,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const data = insertMovementWithEventsSchema.parse(req.body);
       
+      // A movement may be linked to a loading order OR a request, never both
+      if (data.loadingOrderId && data.requestId) {
+        return res.status(400).json({ error: "Vincule a uma ordem de carregamento OU a uma requisição, não a ambas." });
+      }
+
       // Validate loading order if provided
       if (data.loadingOrderId) {
         const order = await storage.getLoadingOrder(data.loadingOrderId);
@@ -2431,6 +2436,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (order.status !== "approved" && order.status !== "in_progress") {
           return res.status(400).json({ error: "Loading order must be approved" });
+        }
+      }
+
+      // Validate material request if provided (alternative to loading order)
+      if (data.requestId) {
+        const request = await storage.getMaterialRequest(data.requestId);
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
         }
       }
       
@@ -2501,6 +2514,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const data = insertMovementSchema.partial().parse(req.body);
+
+      // Enforce loading-order/request mutual exclusivity against the resulting state
+      const effectiveLoadingOrderId =
+        data.loadingOrderId !== undefined ? data.loadingOrderId : movement.loadingOrderId;
+      const effectiveRequestId =
+        data.requestId !== undefined ? data.requestId : movement.requestId;
+      if (effectiveLoadingOrderId && effectiveRequestId) {
+        return res.status(400).json({ error: "Vincule a uma ordem de carregamento OU a uma requisição, não a ambas." });
+      }
+      if (data.loadingOrderId) {
+        const order = await storage.getLoadingOrder(data.loadingOrderId);
+        if (!order) {
+          return res.status(404).json({ error: "Loading order not found" });
+        }
+        if (order.status !== "approved" && order.status !== "in_progress") {
+          return res.status(400).json({ error: "Loading order must be approved" });
+        }
+      }
+      if (data.requestId) {
+        const request = await storage.getMaterialRequest(data.requestId);
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+      }
 
       // Reject any status mutation via the general PATCH route — status changes
       // must go through the dedicated PATCH /api/movements/:id/status endpoint

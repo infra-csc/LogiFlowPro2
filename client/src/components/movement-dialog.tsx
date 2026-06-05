@@ -46,7 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { userCanCreateMovement, userCanEditMovement } from "@/lib/authz";
-import type { LoadingOrder, Dock, Event, Trip, Movement, MovementTypeConfig } from "@shared/schema";
+import type { LoadingOrder, Dock, Event, Trip, Movement, MovementTypeConfig, MaterialRequest } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -72,6 +72,7 @@ const formSchema = z.object({
   eventIds: z.array(z.string()).optional().default([]),
   tripIds: z.array(z.string()).optional(),
   loadingOrderId: z.string().optional(),
+  requestId: z.string().optional(),
   vehiclePlate: z.string().optional(),
   dockId: z.string().min(1, "Doca é obrigatória"),
 });
@@ -223,9 +224,16 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const isEditMode = !!movement;
+  const [linkType, setLinkType] = useState<"order" | "request">(
+    movement?.requestId ? "request" : "order"
+  );
 
   const { data: loadingOrders = [] } = useQuery<LoadingOrder[]>({
     queryKey: ["/api/loading-orders"],
+  });
+
+  const { data: requests = [] } = useQuery<(MaterialRequest & { event?: Event })[]>({
+    queryKey: ["/api/requests"],
   });
 
   const { data: docks = [] } = useQuery<Dock[]>({
@@ -254,6 +262,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
       eventIds: [],
       tripIds: [],
       loadingOrderId: undefined,
+      requestId: undefined,
       vehiclePlate: undefined,
       dockId: "",
     },
@@ -270,9 +279,11 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
         eventIds: movement.events?.map((e) => e.id) || [],
         tripIds: movement.trips?.map((t) => t.id) || [],
         loadingOrderId: movement.loadingOrderId ?? undefined,
+        requestId: movement.requestId ?? undefined,
         vehiclePlate: movement.vehiclePlate ?? undefined,
         dockId: movement.dockId || "",
       });
+      setLinkType(movement.requestId ? "request" : "order");
     }
   }, [movement, open, form]);
 
@@ -285,9 +296,11 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
         eventIds: [],
         tripIds: [],
         loadingOrderId: undefined,
+        requestId: undefined,
         vehiclePlate: undefined,
         dockId: "",
       });
+      setLinkType("order");
     }
   }, [open, isEditMode, form]);
 
@@ -314,9 +327,11 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
         eventIds: [],
         tripIds: [],
         loadingOrderId: undefined,
+        requestId: undefined,
         vehiclePlate: undefined,
         dockId: "",
       });
+      setLinkType("order");
     },
     onError: (error: Error) => {
       toast({
@@ -358,14 +373,15 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   const onSubmit = (data: FormData) => {
     const normalizedData = {
       ...data,
-      loadingOrderId: data.loadingOrderId || undefined,
+      loadingOrderId: linkType === "order" ? (data.loadingOrderId || null) : null,
+      requestId: linkType === "request" ? (data.requestId || null) : null,
       vehiclePlate: data.vehiclePlate || undefined,
     };
 
     if (isEditMode) {
-      updateMutation.mutate(normalizedData);
+      updateMutation.mutate(normalizedData as any);
     } else {
-      createMutation.mutate(normalizedData);
+      createMutation.mutate(normalizedData as any);
     }
   };
 
@@ -374,11 +390,17 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     [loadingOrders]
   );
 
+  const linkableRequests = useMemo(
+    () => requests.filter((r) => !["draft", "pending_approval", "rejected"].includes(r.status)),
+    [requests]
+  );
+
   // Computed data for summary
   const selectedType = activeMovementTypes.find((t) => t.id === watchedValues.movementTypeConfigId);
   const selectedEvents = events.filter((e) => (watchedValues.eventIds || []).includes(e.id));
   const selectedTrips = trips.filter((t) => (watchedValues.tripIds || []).includes(t.id));
   const selectedOrder = approvedOrders.find((o) => o.id === watchedValues.loadingOrderId);
+  const selectedRequest = linkableRequests.find((r) => r.id === watchedValues.requestId);
   const selectedDock = docks.find((d) => d.id === watchedValues.dockId);
 
   const isPending = createMutation.isPending || updateMutation.isPending;
@@ -689,7 +711,42 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                   }}
                 />
 
+                {/* Vínculo: Ordem de carregamento OU Requisição (mutuamente exclusivos) */}
+                <div>
+                  <FormLabel className="text-sm font-medium">Vínculo (opcional)</FormLabel>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Vincule a uma ordem de carregamento ou diretamente a uma requisição.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant={linkType === "order" ? "default" : "outline"}
+                      size="sm"
+                      data-testid="button-link-type-order"
+                      onClick={() => {
+                        setLinkType("order");
+                        form.setValue("requestId", undefined);
+                      }}
+                    >
+                      Ordem de carregamento
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={linkType === "request" ? "default" : "outline"}
+                      size="sm"
+                      data-testid="button-link-type-request"
+                      onClick={() => {
+                        setLinkType("request");
+                        form.setValue("loadingOrderId", undefined);
+                      }}
+                    >
+                      Requisição
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Ordem de Carregamento */}
+                {linkType === "order" && (
                 <FormField
                   control={form.control}
                   name="loadingOrderId"
@@ -762,6 +819,83 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                     );
                   }}
                 />
+                )}
+
+                {/* Requisição (alternativa à ordem de carregamento) */}
+                {linkType === "request" && (
+                <FormField
+                  control={form.control}
+                  name="requestId"
+                  render={({ field }) => {
+                    const selectedEventIds = form.watch("eventIds") || [];
+                    const filteredRequests =
+                      selectedEventIds.length > 0
+                        ? linkableRequests.filter((r) => selectedEventIds.includes(r.eventId))
+                        : linkableRequests;
+                    const requestOptions = filteredRequests.map((r) => {
+                      const event = events.find((e) => e.id === r.eventId);
+                      return {
+                        value: r.id,
+                        label: `${event?.name || "Evento"} — ${r.area}`,
+                        searchText: `${r.area} ${event?.name || ""}`.toLowerCase(),
+                      };
+                    });
+
+                    return (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Requisição (opcional)</FormLabel>
+                        <FormControl>
+                          <SearchableSelect
+                            value={field.value || ""}
+                            onChange={(val) => field.onChange(val || undefined)}
+                            options={requestOptions}
+                            placeholder="Selecione uma requisição (opcional)"
+                            searchPlaceholder="Buscar requisição por área ou evento..."
+                            emptyText="Nenhuma requisição encontrada"
+                            dataTestid="select-request"
+                            disabled={selectedEventIds.length === 0 && linkableRequests.length === 0}
+                            renderItem={(option) => {
+                              const request = linkableRequests.find((r) => r.id === option.value);
+                              const event = events.find((e) => e.id === request?.eventId);
+                              return (
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">{option.label}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {event?.name || "Evento"} · {request?.area}
+                                  </span>
+                                </div>
+                              );
+                            }}
+                            renderSelected={(val) => {
+                              const request = linkableRequests.find((r) => r.id === val);
+                              const event = events.find((e) => e.id === request?.eventId);
+                              return request ? (
+                                <span className="truncate">
+                                  {event?.name || "Evento"} — {request.area}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">Selecione uma requisição (opcional)</span>
+                              );
+                            }}
+                          />
+                        </FormControl>
+                        {selectedEventIds.length > 0 && filteredRequests.length === 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Nenhuma requisição disponível para os eventos selecionados
+                          </p>
+                        )}
+                        {selectedEventIds.length === 0 && linkableRequests.length === 0 && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <Info className="h-3 w-3" />
+                            Nenhuma requisição disponível
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+                )}
               </div>
 
               {/* Section 3: Operação */}
@@ -903,6 +1037,15 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="text-xs text-muted-foreground">Ordem:</span>
                           <span className="text-xs font-medium">{selectedOrder.orderNumber}</span>
+                        </div>
+                      )}
+                      {selectedRequest && (
+                        <div className="flex items-center gap-2">
+                          <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-xs text-muted-foreground">Requisição:</span>
+                          <span className="text-xs font-medium">
+                            {selectedRequest.event?.name ? `${selectedRequest.event.name} — ` : ""}{selectedRequest.area}
+                          </span>
                         </div>
                       )}
                       {watchedValues.vehiclePlate && (
