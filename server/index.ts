@@ -40,6 +40,20 @@ app.use((req, res, next) => {
   next();
 });
 
+const CANONICAL_ROLES = [
+  { name: "Adm",               description: "Administrador do sistema" },
+  { name: "Gestor Logistica",  description: "Operações logísticas: viagens, veículos, carregamentos" },
+  { name: "Usuario Requisitor",description: "Cria e acompanha requisições de materiais" },
+  { name: "Almoxarifado",      description: "Operação de almoxarifado: itens, separação e prontidão" },
+  { name: "Supervisor",        description: "Aprova ordens de carregamento e movimentações sensíveis" },
+];
+
+async function seedRoles() {
+  for (const role of CANONICAL_ROLES) {
+    await db.insert(roles).values(role).onConflictDoNothing({ target: roles.name });
+  }
+}
+
 async function seedUser(
   username: string,
   name: string,
@@ -47,10 +61,16 @@ async function seedUser(
   password: string,
   roleName: string,
 ) {
-  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.username, username));
-  if (existing) return;
-
   const [role] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, roleName));
+
+  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.username, username));
+  if (existing) {
+    if (role) {
+      await db.insert(userRoles).values({ userId: existing.id, roleId: role.id }).onConflictDoNothing();
+    }
+    return;
+  }
+
   const hashed = await hashPassword(password);
   const [created] = await db.insert(users).values({
     username,
@@ -62,16 +82,17 @@ async function seedUser(
   }).returning({ id: users.id });
 
   if (role && created) {
-    await db.insert(userRoles).values({ userId: created.id, roleId: role.id });
+    await db.insert(userRoles).values({ userId: created.id, roleId: role.id }).onConflictDoNothing();
   }
   log(`Seeded user: ${username}`);
 }
 
 async function seedStartupUsers() {
   try {
-    await seedUser("admin", "Administrador", "admin@sistema.local", "Admin@2025", "Adm");
-    await seedUser("omar.souza", "Omar Souza", "omar.souza@cscdoesporte.com.br", "Logistica@2025", "Gestor Logistica");
-    await seedUser("eduardo.meira", "Eduardo Meira", "eduardo.meira@cscdoesporte.com.br", "Logistica@2025", "Gestor Logistica");
+    await seedRoles();
+    await seedUser("admin",         "Administrador", "admin@sistema.local",                 "Admin@2025",     "Adm");
+    await seedUser("omar.souza",    "Omar Souza",    "omar.souza@cscdoesporte.com.br",      "Logistica@2025", "Gestor Logistica");
+    await seedUser("eduardo.meira", "Eduardo Meira", "eduardo.meira@cscdoesporte.com.br",   "Logistica@2025", "Gestor Logistica");
   } catch (err) {
     log(`Startup seed error: ${err}`);
   }
