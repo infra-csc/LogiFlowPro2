@@ -40,33 +40,45 @@ app.use((req, res, next) => {
   next();
 });
 
-async function seedAdminUser() {
+async function seedUser(
+  username: string,
+  name: string,
+  email: string,
+  password: string,
+  roleName: string,
+) {
+  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.username, username));
+  if (existing) return;
+
+  const [role] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, roleName));
+  const hashed = await hashPassword(password);
+  const [created] = await db.insert(users).values({
+    username,
+    password: hashed,
+    name,
+    email,
+    active: true,
+    approvalStatus: "approved",
+  }).returning({ id: users.id });
+
+  if (role && created) {
+    await db.insert(userRoles).values({ userId: created.id, roleId: role.id });
+  }
+  log(`Seeded user: ${username}`);
+}
+
+async function seedStartupUsers() {
   try {
-    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.username, "admin"));
-    if (existing) return;
-
-    const [admRole] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, "Adm"));
-    const hashed = await hashPassword("Admin@2025");
-    const [created] = await db.insert(users).values({
-      username: "admin",
-      password: hashed,
-      name: "Administrador",
-      email: "admin@sistema.local",
-      active: true,
-      approvalStatus: "approved",
-    }).returning({ id: users.id });
-
-    if (admRole && created) {
-      await db.insert(userRoles).values({ userId: created.id, roleId: admRole.id });
-    }
-    log("Admin user seeded successfully");
+    await seedUser("admin", "Administrador", "admin@sistema.local", "Admin@2025", "Adm");
+    await seedUser("omar.souza", "Omar Souza", "omar.souza@cscdoesporte.com.br", "Logistica@2025", "Gestor Logistica");
+    await seedUser("eduardo.meira", "Eduardo Meira", "eduardo.meira@cscdoesporte.com.br", "Logistica@2025", "Gestor Logistica");
   } catch (err) {
-    log(`Admin seed skipped: ${err}`);
+    log(`Startup seed error: ${err}`);
   }
 }
 
 (async () => {
-  await seedAdminUser();
+  await seedStartupUsers();
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
