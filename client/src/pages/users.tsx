@@ -28,7 +28,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { FilterBar } from "@/components/filter-bar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { UserPlus, Shield, CheckCircle, XCircle, Clock, Users } from "lucide-react";
+import { UserPlus, Shield, CheckCircle, XCircle, Clock, Users, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,6 +51,15 @@ const userSchema = z.object({
   active: z.boolean().default(true),
 });
 
+const resetPasswordSchema = z.object({
+  password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  confirmPassword: z.string().min(6, "Confirmação é obrigatória"),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: "As senhas não coincidem",
+  path: ["confirmPassword"],
+});
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+
 type UserFormData = z.infer<typeof userSchema>;
 
 function getInitials(name: string): string {
@@ -69,6 +78,7 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRolesDialogOpen, setIsRolesDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Omit<User, "password"> | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const { toast } = useToast();
@@ -166,6 +176,21 @@ export default function UsersPage() {
     },
     onError: () => {
       toast({ title: "Erro", description: "Falha ao rejeitar usuário.", variant: "destructive" });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}`, { password });
+      return res.json();
+    },
+    onSuccess: () => {
+      setIsResetPasswordDialogOpen(false);
+      setSelectedUser(null);
+      toast({ title: "Senha redefinida", description: "A nova senha foi salva com sucesso." });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao redefinir a senha.", variant: "destructive" });
     },
   });
 
@@ -385,6 +410,10 @@ export default function UsersPage() {
                           <Shield className="mr-1 h-3 w-3" />
                           Papéis
                         </Button>
+                        <Button variant="outline" size="sm" onClick={() => { setSelectedUser(user); setIsResetPasswordDialogOpen(true); }} data-testid={`button-reset-password-${user.id}`}>
+                          <KeyRound className="mr-1 h-3 w-3" />
+                          Redefinir Senha
+                        </Button>
                         <Button variant={user.active ? "outline" : "default"} size="sm" onClick={() => toggleUserActive(user)} data-testid={`button-toggle-active-${user.id}`}>
                           {user.active ? "Desativar" : "Ativar"}
                         </Button>
@@ -467,6 +496,17 @@ export default function UsersPage() {
           roles={roles}
           isOpen={isRolesDialogOpen}
           onClose={() => { setIsRolesDialogOpen(false); setSelectedUser(null); }}
+        />
+      )}
+
+      {/* Reset Password Dialog */}
+      {selectedUser && (
+        <ResetPasswordDialog
+          user={selectedUser}
+          isOpen={isResetPasswordDialogOpen}
+          isPending={resetPasswordMutation.isPending}
+          onClose={() => { setIsResetPasswordDialogOpen(false); setSelectedUser(null); }}
+          onSubmit={(password) => resetPasswordMutation.mutate({ userId: selectedUser.id, password })}
         />
       )}
 
@@ -575,6 +615,80 @@ function UserRolesDialog({
         <DialogFooter>
           <Button onClick={onClose} data-testid="button-close-roles">Fechar</Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Reset Password Dialog Component
+function ResetPasswordDialog({
+  user,
+  isOpen,
+  isPending,
+  onClose,
+  onSubmit,
+}: {
+  user: Omit<User, "password">;
+  isOpen: boolean;
+  isPending: boolean;
+  onClose: () => void;
+  onSubmit: (password: string) => void;
+}) {
+  const form = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { password: "", confirmPassword: "" },
+  });
+
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
+  const handleSubmit = (data: ResetPasswordFormData) => {
+    onSubmit(data.password);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="border-border/60">
+        <DialogHeader>
+          <DialogTitle>Redefinir Senha — {user.name}</DialogTitle>
+          <DialogDescription>
+            Digite a nova senha para o usuário <strong>@{user.username}</strong>
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField control={form.control} name="password" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nova Senha</FormLabel>
+                <FormControl>
+                  <Input {...field} type="password" placeholder="Mínimo 6 caracteres" data-testid="input-new-password" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirmar Nova Senha</FormLabel>
+                <FormControl>
+                  <Input {...field} type="password" placeholder="Repita a nova senha" data-testid="input-confirm-password" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel-reset-password">
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending} data-testid="button-confirm-reset-password">
+                <KeyRound className="mr-2 h-4 w-4" />
+                {isPending ? "Salvando..." : "Salvar Nova Senha"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
