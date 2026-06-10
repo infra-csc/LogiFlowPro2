@@ -1,6 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { db } from "./db";
+import { users, roles, userRoles } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { hashPassword } from "./auth";
 
 const app = express();
 app.use(express.json());
@@ -36,7 +40,33 @@ app.use((req, res, next) => {
   next();
 });
 
+async function seedAdminUser() {
+  try {
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.username, "admin"));
+    if (existing) return;
+
+    const [admRole] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, "Adm"));
+    const hashed = await hashPassword("Admin@2025");
+    const [created] = await db.insert(users).values({
+      username: "admin",
+      password: hashed,
+      name: "Administrador",
+      email: "admin@sistema.local",
+      active: true,
+      approvalStatus: "approved",
+    }).returning({ id: users.id });
+
+    if (admRole && created) {
+      await db.insert(userRoles).values({ userId: created.id, roleId: admRole.id });
+    }
+    log("Admin user seeded successfully");
+  } catch (err) {
+    log(`Admin seed skipped: ${err}`);
+  }
+}
+
 (async () => {
+  await seedAdminUser();
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
