@@ -1,0 +1,169 @@
+A tela de detalhe da movimentação melhorou, mas ainda não está 10/10. Quero um refinamento final de layout, visual e usabilidade operacional.
+
+Problemas atuais:
+- Os cards superiores estão estourando na lateral. O card de excedentes aparece cortado.
+- O scanner de produtos está funcional, mas muito alto e ocupando espaço demais.
+- As áreas “Itens da Ordem” e “Itens Carregados” ficam com muito espaço vazio quando há poucos itens.
+- A seção de Evidências está boa, mas ainda simples.
+- O Histórico ainda parece básico e pouco visual.
+- A tela precisa parecer mais uma central operacional de carregamento, não apenas uma tela com blocos empilhados.
+
+Ajustes obrigatórios:
+
+1. Corrigir responsividade do cabeçalho e dos cards
+- Nenhum card pode ficar cortado.
+- Os cards devem caber no container usando grid responsivo.
+- Em telas menores, quebrar para segunda linha.
+- Manter espaçamento consistente entre cards.
+- O topo deve mostrar todos os indicadores sem overflow horizontal.
+
+2. Melhorar os cards de resumo
+Cards:
+- Status
+- Esperados
+- Carregados
+- Pendentes
+- Excedentes
+- Progresso
+- Evidências
+
+Cada card deve ter:
+- Ícone
+- Rótulo
+- Número principal
+- Subtexto curto
+- Cor coerente com o estado
+
+Regra de cor:
+- Verde: concluído / ok
+- Amarelo: pendente / atenção
+- Vermelho: excedente ou erro
+- Azul: ação/neutro, não status crítico
+
+3. Refinar o scanner
+Transformar o scanner em um bloco mais compacto e operacional.
+
+Layout sugerido:
+- Linha 1: campo de busca grande + botão buscar
+- Linha 2: se produto encontrado, exibir card compacto com:
+  - Nome do produto
+  - SKU/código
+  - Esperado
+  - Já carregado
+  - Falta
+  - Status do item
+  - Quantidade para lançar
+  - Botões - / + / Confirmar item
+
+O botão “Confirmar Item” não precisa ocupar a tela inteira se não for necessário. Ele pode ficar à direita, com destaque.
+
+O campo de quantidade deve ser fácil de editar, com auto-select, e o Enter deve confirmar.
+
+4. Melhorar Itens da Ordem e Itens Carregados
+Manter dois painéis lado a lado, mas ajustar altura automática.
+
+Se houver poucos itens:
+- Não deixar cards gigantes vazios.
+- Usar altura mínima menor.
+- Mostrar uma área de resumo/estado vazio elegante.
+
+Itens da Ordem devem mostrar:
+- Nome
+- SKU
+- Esperado
+- Carregado
+- Pendente
+- Progresso
+- Status
+- Badge: Completo, Pendente, Excedido
+
+Itens Carregados devem mostrar:
+- Nome
+- SKU
+- Quantidade carregada
+- Botões + / - / remover
+- Indicador se possui evidência
+- Indicador se foi item excedente
+
+5. Criar visual de conferência mais claro
+Adicionar um bloco pequeno entre scanner e itens com:
+- “Resumo da conferência”
+- X itens completos
+- X pendentes
+- X excedentes
+- Última ação registrada
+- Usuário da última ação
+
+6. Melhorar Evidências
+A seção de evidências deve ter abas:
+- Todas
+- Fotos
+- Vídeos
+- Por item
+- Divergências
+
+O card vazio deve ficar mais elegante e menor.
+
+Quando houver evidências:
+- Mostrar miniaturas
+- Tipo do arquivo
+- Produto relacionado, se houver
+- Categoria
+- Usuário
+- Data/hora
+- Botão para visualizar
+
+Permitir anexar foto e vídeo vinculando a:
+- Movimentação inteira
+- Item específico
+- Divergência
+
+7. Melhorar Histórico
+Transformar o histórico em timeline operacional.
+
+Cada item do histórico deve ter:
+- Ícone alinhado
+- Título da ação
+- Detalhe da ação
+- Usuário
+- Data/hora
+- Produto relacionado, se houver
+- Quantidade, se houver
+
+Filtros:
+- Todos
+- Itens
+- Status
+- Evidências
+- Observações
+
+Não deixar o histórico com aparência vazia ou espaçada demais.
+
+8. Melhorar hierarquia visual
+A tela deve seguir esta ordem:
+- Cabeçalho da movimentação
+- Cards de resumo
+- Alerta operacional
+- Scanner
+- Resumo da conferência
+- Itens da ordem / itens carregados
+- Evidências
+- Histórico
+
+9. Ajustar estados bloqueados
+Se a movimentação estiver concluída:
+- Bloquear scanner
+- Bloquear edição de quantidade
+- Permitir consulta
+- Permitir adicionar evidência pós-finalização
+- Mostrar aviso claro: “Movimentação finalizada. Alterações operacionais bloqueadas.”
+
+Se estiver em andamento:
+- Scanner ativo
+- Botões de quantidade ativos
+- Finalizar só com confirmação se houver pendência ou excedente.
+
+10. Resultado esperado
+Quero uma tela mais bonita, mais compacta, mais operacional e mais profissional.
+Ela precisa parecer uma tela pronta para uso real de logística, com boa leitura rápida durante o carregamento.
+Corrigir todos os cortes, reduzir espaços vazios e melhorar a clareza da operação.

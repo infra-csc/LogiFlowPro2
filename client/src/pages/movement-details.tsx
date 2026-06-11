@@ -926,120 +926,107 @@ export default function MovementDetails() {
       {/* Resumo Operacional */}
       {!focusMode && (
         <PageSection>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
             {/* Status */}
-            <Card className="border-border/60">
-              <CardContent className="p-3 flex flex-col min-h-[88px]">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Status
+            <Card className="border-border/60 min-w-0">
+              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
+                  <BarChart3 className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Status</span>
                 </div>
-                <div className="mt-auto pt-2">
+                <div className="mt-auto pt-1.5">
                   <StatusBadge status={movement.status} />
                 </div>
               </CardContent>
             </Card>
 
             {/* Esperados */}
-            <Card className="border-border/60">
-              <CardContent className="p-3 flex flex-col min-h-[88px]">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  <ClipboardList className="h-3.5 w-3.5" />
-                  Esperados
+            <Card className="border-border/60 min-w-0">
+              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
+                  <ClipboardList className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Esperados</span>
                 </div>
                 <div className="mt-auto pt-1">
-                  <div className="text-2xl font-bold tabular-nums">{totalExpected}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">itens na ordem</div>
+                  <div className="text-xl font-bold tabular-nums leading-none">{totalExpected}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">na ordem</div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Carregados */}
-            <Card className={`border-border/60 ${totalExpected > 0 && totalLoaded >= totalExpected ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}>
-              <CardContent className="p-3 flex flex-col min-h-[88px]">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  <PackageCheck className="h-3.5 w-3.5" />
-                  Carregados
+            <Card className={`border-border/60 min-w-0 ${totalExpected > 0 && totalLoaded >= totalExpected ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}>
+              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
+                  <PackageCheck className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Carregados</span>
                 </div>
                 <div className="mt-auto pt-1">
-                  <div className={`text-2xl font-bold tabular-nums ${totalExpected > 0 && totalLoaded >= totalExpected ? "text-emerald-500" : ""}`}>{totalLoaded}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">unidades</div>
+                  <div className={`text-xl font-bold tabular-nums leading-none ${totalExpected > 0 && totalLoaded >= totalExpected ? "text-emerald-500" : ""}`}>{totalLoaded}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Pendentes */}
-            <Card className={`border-border/60 transition-colors ${totalPending > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
-              <CardContent className="p-3 flex flex-col min-h-[88px]">
-                <div className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${totalPending > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Pendentes
+            <Card className={`border-border/60 min-w-0 transition-colors ${totalPending > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
+              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${totalPending > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+                  <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Pendentes</span>
                 </div>
                 <div className="mt-auto pt-1">
-                  <div className={`text-2xl font-bold tabular-nums ${totalPending > 0 ? "text-amber-500" : ""}`}>{totalPending}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">faltam carregar</div>
+                  <div className={`text-xl font-bold tabular-nums leading-none ${totalPending > 0 ? "text-amber-500" : ""}`}>{totalPending}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">faltam</div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Excedentes */}
-            <Card className={`border-border/60 transition-colors ${totalExceeded > 0 ? "border-rose-500/40 bg-rose-500/5" : ""}`}>
-              <CardContent className="p-3 flex flex-col min-h-[88px]">
-                <div className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${totalExceeded > 0 ? "text-rose-500" : "text-muted-foreground"}`}>
-                  <Plus className="h-3.5 w-3.5" />
-                  Excedentes
+            <Card className={`border-border/60 min-w-0 transition-colors ${totalExceeded > 0 ? "border-rose-500/40 bg-rose-500/5" : ""}`}>
+              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${totalExceeded > 0 ? "text-rose-500" : "text-muted-foreground"}`}>
+                  <Plus className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Excedentes</span>
                 </div>
                 <div className="mt-auto pt-1">
-                  <div className={`text-2xl font-bold tabular-nums ${totalExceeded > 0 ? "text-rose-500" : ""}`}>{totalExceeded}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">além do previsto</div>
+                  <div className={`text-xl font-bold tabular-nums leading-none ${totalExceeded > 0 ? "text-rose-500" : ""}`}>{totalExceeded}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">além</div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Progresso */}
-            <Card className="border-border/60">
-              <CardContent className="p-3 flex flex-col min-h-[88px]">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  Progresso
+            <Card className="border-border/60 min-w-0">
+              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
+                  <TrendingUp className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Progresso</span>
                 </div>
                 <div className="mt-auto pt-1">
-                  <div className={`text-2xl font-bold tabular-nums ${progress === 100 ? "text-emerald-500" : progress >= 50 ? "text-amber-500" : progress > 0 ? "text-foreground" : "text-muted-foreground"}`}>{progress}%</div>
-                  <Progress value={Math.min(progress, 100)} className="h-1.5 mt-1.5" />
+                  <div className={`text-xl font-bold tabular-nums leading-none ${progress === 100 ? "text-emerald-500" : progress >= 50 ? "text-amber-500" : progress > 0 ? "text-foreground" : "text-muted-foreground"}`}>{progress}%</div>
+                  <Progress value={Math.min(progress, 100)} className="h-1 mt-1.5" />
                 </div>
               </CardContent>
             </Card>
 
             {/* Evidências (clickable) */}
             <button
-              className="text-left border rounded-lg border-border/60 hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
-              onClick={() => {
-                const el = document.getElementById("section-evidencias");
-                if (el) el.scrollIntoView({ behavior: "smooth" });
-              }}
+              className="text-left border rounded-lg border-border/60 hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-w-0"
+              onClick={() => { const el = document.getElementById("section-evidencias"); if (el) el.scrollIntoView({ behavior: "smooth" }); }}
               data-testid="card-evidence-count"
             >
-              <div className="p-3 flex flex-col min-h-[88px]">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  <Camera className="h-3.5 w-3.5" />
-                  Evidências
+              <div className="p-2.5 flex flex-col min-h-[80px]">
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
+                  <Camera className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Evidências</span>
                 </div>
                 <div className="mt-auto pt-1">
-                  <div className="text-2xl font-bold tabular-nums">{photoCount + videoCount}</div>
-                  <div className="flex gap-2.5 mt-0.5">
-                    {photoCount > 0 && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                        <ImageIcon className="h-3 w-3" />{photoCount} foto{photoCount !== 1 ? "s" : ""}
-                      </span>
-                    )}
-                    {videoCount > 0 && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                        <Film className="h-3 w-3" />{videoCount} vídeo{videoCount !== 1 ? "s" : ""}
-                      </span>
-                    )}
-                    {photoCount === 0 && videoCount === 0 && (
-                      <span className="text-xs text-muted-foreground">ver seção</span>
-                    )}
+                  <div className="text-xl font-bold tabular-nums leading-none">{photoCount + videoCount}</div>
+                  <div className="flex gap-1.5 mt-0.5 flex-wrap">
+                    {photoCount > 0 && <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><ImageIcon className="h-2.5 w-2.5" />{photoCount}</span>}
+                    {videoCount > 0 && <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Film className="h-2.5 w-2.5" />{videoCount}</span>}
+                    {photoCount === 0 && videoCount === 0 && <span className="text-[10px] text-muted-foreground">ver</span>}
                   </div>
                 </div>
               </div>
@@ -1143,55 +1130,39 @@ export default function MovementDetails() {
       {isEditable && userCanManageMovementItems(user) && (
         <PageSection title="Scanner de Produtos" description="Registre produtos via SKU, código de barras ou nome">
           <Card className="border-border/60">
-            <CardContent className="space-y-4 p-4">
-            <div className="relative">
-              <label className="block mb-2 font-medium flex items-center gap-2">
-                Produto
-                <Badge variant="outline" className="text-xs">
-                  <Keyboard className="h-3 w-3 mr-1" />
-                  Auto-focus
-                </Badge>
-              </label>
-              <div className="flex gap-2">
+            <CardContent className="p-3 space-y-3">
+              {/* Search row */}
+              <div className="flex gap-2 relative">
                 <div className="flex-1 relative">
+                  <Scan className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <Input
                     ref={searchInputRef}
-                    placeholder="Digite SKU, código de barras ou nome do produto..."
+                    placeholder="SKU, código de barras ou nome..."
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
                       setShowSuggestions(true);
-                      if (!e.target.value.trim()) {
-                        setSelectedProduct(null);
-                      }
+                      if (!e.target.value.trim()) setSelectedProduct(null);
                     }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (searchQuery.trim()) {
-                        setShowSuggestions(true);
-                      }
-                    }}
+                    onClick={(e) => { e.stopPropagation(); if (searchQuery.trim()) setShowSuggestions(true); }}
                     disabled={!!selectedProduct}
                     data-testid="input-search-product"
-                    className="text-lg"
+                    className="pl-9"
                     autoFocus
                   />
                   {showSuggestions && filteredProducts.length > 0 && !selectedProduct && (
-                    <Card className="absolute top-full left-0 right-0 mt-1 z-50 max-h-80 overflow-auto border-border/60">
+                    <Card className="absolute top-full left-0 right-0 mt-1 z-50 max-h-72 overflow-auto border-border/60">
                       <CardContent className="p-0">
                         {filteredProducts.map((product) => (
                           <button
                             key={product.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSelectProduct(product);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); handleSelectProduct(product); }}
                             className="w-full text-left p-3 hover-elevate active-elevate-2 border-b last:border-b-0"
                             data-testid={`suggestion-${product.id}`}
                           >
-                            <p className="font-medium">{product.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              SKU: {product.sku} {product.barcode && `| Código: ${product.barcode}`}
+                            <p className="font-medium text-sm">{product.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {product.sku}{product.barcode && ` · ${product.barcode}`}
                             </p>
                           </button>
                         ))}
@@ -1200,97 +1171,61 @@ export default function MovementDetails() {
                   )}
                 </div>
                 <Button
-                  onClick={() => {
-                    if (filteredProducts.length === 1) {
-                      handleSelectProduct(filteredProducts[0]);
-                    }
-                  }}
+                  onClick={() => { if (filteredProducts.length === 1) handleSelectProduct(filteredProducts[0]); }}
                   disabled={!searchQuery || !!selectedProduct || filteredProducts.length !== 1}
                   data-testid="button-search"
+                  title="Buscar produto"
                 >
                   <Search className="h-4 w-4" />
                 </Button>
-              </div>
-            </div>
-
-            {selectedProduct && (
-              <div
-                className={`border rounded-lg p-4 space-y-4 ${
-                  willExceedExpected
-                    ? "bg-destructive/10 border-destructive"
-                    : "bg-muted/50"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg" data-testid="text-selected-product">
-                      {selectedProduct.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      SKU: {selectedProduct.sku} | Código: {selectedProduct.barcode || "-"}
-                    </p>
-                    {selectedExpectedItem && (
-                      <div className="mt-2 space-y-1">
-                        <p className="text-sm">
-                          <span className="text-muted-foreground">Esperado:</span>{" "}
-                          <span className="font-medium">
-                            {selectedExpectedItem.expectedQuantity}
-                          </span>
-                        </p>
-                        <p className="text-sm">
-                          <span className="text-muted-foreground">Já carregado:</span>{" "}
-                          <span className="font-medium">
-                            {selectedExpectedItem.loadedQuantity}
-                          </span>
-                        </p>
-                        <p className="text-sm">
-                          <span className="text-muted-foreground">Faltam:</span>{" "}
-                          <span className="font-medium">{selectedExpectedItem.remaining}</span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                {selectedProduct && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setSelectedProduct(null);
-                      setQuantity(1);
-                      setSearchQuery("");
-                    }}
+                    size="icon"
+                    onClick={() => { setSelectedProduct(null); setQuantity(1); setSearchQuery(""); }}
                     data-testid="button-clear"
+                    title="Limpar seleção"
                   >
-                    Limpar
+                    <X className="h-4 w-4" />
                   </Button>
-                </div>
-
-                {willExceedExpected && (
-                  <div className="bg-destructive/10 border border-destructive/40 rounded-md p-3">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-destructive">
-                          Quantidade excederá o esperado
-                        </p>
-                        <p className="text-sm text-destructive/80 mt-1">
-                          Total após adicionar:{" "}
-                          {selectedExpectedItem!.loadedQuantity + quantity} /{" "}
-                          {selectedExpectedItem!.expectedQuantity}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
                 )}
+                <Badge variant="outline" className="hidden sm:flex items-center gap-1 text-xs px-2 self-center">
+                  <Keyboard className="h-3 w-3" />
+                  Auto-focus
+                </Badge>
+              </div>
 
-                <div className="space-y-3">
-                  <label className="block font-medium flex items-center gap-2">
-                    Quantidade
-                    <Badge variant="outline" className="text-xs">
-                      <Keyboard className="h-3 w-3 mr-1" />
-                      Auto-select
-                    </Badge>
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+              {/* Product card — compact horizontal layout */}
+              {selectedProduct && (
+                <div className={`border rounded-lg ${willExceedExpected ? "bg-destructive/10 border-destructive/60" : "bg-muted/40 border-border/60"}`}>
+                  <div className="p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                    {/* Left: product info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm leading-snug" data-testid="text-selected-product">
+                        {selectedProduct.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {selectedProduct.sku}{selectedProduct.barcode && ` · ${selectedProduct.barcode}`}
+                      </p>
+                      {selectedExpectedItem && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5">
+                          <span className="text-xs text-muted-foreground">Esperado: <span className="font-semibold text-foreground">{selectedExpectedItem.expectedQuantity}</span></span>
+                          <span className="text-xs text-muted-foreground">Carregado: <span className="font-semibold text-foreground">{selectedExpectedItem.loadedQuantity}</span></span>
+                          <span className={`text-xs font-semibold ${selectedExpectedItem.remaining > 0 ? "text-amber-500" : "text-emerald-500"}`}>
+                            {selectedExpectedItem.remaining > 0 ? `Faltam: ${selectedExpectedItem.remaining}` : "Completo"}
+                          </span>
+                        </div>
+                      )}
+                      {willExceedExpected && (
+                        <p className="text-xs text-destructive font-medium mt-1 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Excederá: {selectedExpectedItem!.loadedQuantity + quantity} / {selectedExpectedItem!.expectedQuantity}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right: quantity controls + confirm */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <Button
                         variant="outline"
                         size="icon"
@@ -1307,15 +1242,12 @@ export default function MovementDetails() {
                         onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
-                            console.log('Enter pressed on quantity input');
                             e.preventDefault();
                             e.stopPropagation();
                             handleAddItem();
                           }
                         }}
-                        className={`w-24 text-center text-lg ${
-                          willExceedExpected ? "border-destructive" : ""
-                        }`}
+                        className={`w-16 text-center font-bold text-base ${willExceedExpected ? "border-destructive" : ""}`}
                         data-testid="input-quantity"
                       />
                       <Button
@@ -1326,24 +1258,64 @@ export default function MovementDetails() {
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
+                      <Button
+                        onClick={handleAddItem}
+                        disabled={addItemMutation.isPending}
+                        data-testid="button-add-item"
+                        variant={willExceedExpected ? "destructive" : "default"}
+                        className="gap-1.5"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        {addItemMutation.isPending ? "..." : "Confirmar"}
+                        <Badge variant="outline" className="bg-background/20 text-[10px] px-1 py-0 hidden sm:flex">ENTER</Badge>
+                      </Button>
                     </div>
-                    <Button
-                      onClick={handleAddItem}
-                      disabled={addItemMutation.isPending}
-                      className="flex-1 gap-2"
-                      data-testid="button-add-item"
-                      variant={willExceedExpected ? "destructive" : "default"}
-                    >
-                      {addItemMutation.isPending ? "Adicionando..." : "Confirmar Item"}
-                      <Badge variant="outline" className="bg-background/20">ENTER</Badge>
-                    </Button>
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </PageSection>
+      )}
+
+      {/* Resumo da Conferência */}
+      {!focusMode && expectedItems.length > 0 && (
+        <PageSection>
+          <Card className="border-border/60 bg-muted/20">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                Resumo da Conferência
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </PageSection>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="text-sm text-muted-foreground">
+                    Completos: <span className="font-semibold text-foreground">{expectedItems.filter(i => i.remaining === 0 && i.loadedQuantity <= i.expectedQuantity).length}</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="text-sm text-muted-foreground">
+                    Pendentes: <span className="font-semibold text-amber-500">{expectedItems.filter(i => i.remaining > 0).length}</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full bg-rose-500" />
+                  <span className="text-sm text-muted-foreground">
+                    Excedidos: <span className={`font-semibold ${totalExceeded > 0 ? "text-rose-500" : "text-foreground"}`}>{expectedItems.filter(i => i.loadedQuantity > i.expectedQuantity).length}</span>
+                  </span>
+                </div>
+                {auditLogs.length > 0 && (
+                  <div className="flex items-center gap-1.5 ml-auto text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>Última ação: <span className="font-medium text-foreground">{auditLogs[0]?.actorName}</span> · {format(new Date(auditLogs[0]?.occurredAt), "HH:mm")}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </PageSection>
       )}
 
       {/* Lista dupla: Esperado vs Carregado */}
@@ -1391,12 +1363,13 @@ export default function MovementDetails() {
                   );
                 })}
               </div>
-              <ScrollArea className="h-[460px] pr-4" style={{ scrollbarWidth: 'thin' }}>
-                <div className="space-y-3">
+              <ScrollArea className="max-h-[420px] pr-4" style={{ scrollbarWidth: 'thin' }}>
+                <div className="space-y-2">
                   {filteredExpectedItems.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      {orderSearchQuery ? "Nenhum item encontrado" : "Nenhum item na ordem"}
-                    </p>
+                    <div className="text-center text-muted-foreground py-6">
+                      <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">{orderSearchQuery ? "Nenhum item encontrado" : "Nenhum item na ordem"}</p>
+                    </div>
                   ) : (
                     filteredExpectedItems.map((item) => {
                     const percentComplete = Math.round(
@@ -1525,11 +1498,12 @@ export default function MovementDetails() {
                 data-testid="input-search-loaded-items"
               />
             </div>
-            <ScrollArea className="h-[460px] pr-4" style={{ scrollbarWidth: 'thin' }}>
+            <ScrollArea className="max-h-[420px] pr-4" style={{ scrollbarWidth: 'thin' }}>
               {filteredLoadedItems.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  {loadedSearchQuery ? "Nenhum item encontrado" : "Nenhum item carregado ainda"}
-                </p>
+                <div className="text-center text-muted-foreground py-6">
+                  <PackageCheck className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">{loadedSearchQuery ? "Nenhum item encontrado" : "Nenhum item carregado ainda"}</p>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {filteredLoadedItems.map((item) => {
