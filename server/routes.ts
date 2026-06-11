@@ -5,10 +5,11 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { registerOptimizationRoutes } from "./routes-optimization";
 import { registerReportsRoutes } from "./routes-reports";
 import { registerStockProjectionRoutes } from "./routes-stock-projection";
+import { registerRequestTemplateRoutes } from "./routes-request-templates";
 import {
   insertEventSchema,
   insertKitSchema,
@@ -17,6 +18,8 @@ import {
   insertProductSchema,
   insertMaterialRequestSchema,
   insertRequestItemSchema,
+  requestAreaTemplateItems,
+  requestAreaTemplates,
   insertVehicleTypeSchema,
   insertVehicleSchema,
   insertDriverSchema,
@@ -1285,6 +1288,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const request = await storage.createMaterialRequest(requestData);
+
+      // Auto-insert items from template when templateId is provided
+      const templateId = req.body.templateId as string | undefined;
+      if (templateId) {
+        const templateItems = await db
+          .select()
+          .from(requestAreaTemplateItems)
+          .where(eq(requestAreaTemplateItems.templateId, templateId));
+
+        for (const ti of templateItems) {
+          await storage.createRequestItem({
+            requestId: request.id,
+            productId: ti.productId,
+            quantity: ti.defaultQuantity,
+          });
+        }
+      }
+
       res.status(201).json(request);
     } catch (error) {
       res.status(400).json({ error: "Invalid request data" });
@@ -3822,6 +3843,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch inventory overview" });
     }
   });
+
+  // Register Request Template routes
+  registerRequestTemplateRoutes(app);
 
   // Register AI Optimization routes
   registerOptimizationRoutes(app);

@@ -1708,6 +1708,41 @@ export const locations = pgTable("locations", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)
 });
 
+// Request Area Templates
+export const requestAreaTemplates = pgTable("request_area_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+});
+
+export const requestAreaTemplateItems = pgTable("request_area_template_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").notNull().references(() => requestAreaTemplates.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  defaultQuantity: integer("default_quantity").notNull().default(1),
+  sortOrder: integer("sort_order").notNull().default(0)
+});
+
+export const requestAreaTemplatesRelations = relations(requestAreaTemplates, ({ many, one }) => ({
+  items: many(requestAreaTemplateItems),
+  createdByUser: one(users, { fields: [requestAreaTemplates.createdBy], references: [users.id] }),
+}));
+
+export const requestAreaTemplateItemsRelations = relations(requestAreaTemplateItems, ({ one }) => ({
+  template: one(requestAreaTemplates, { fields: [requestAreaTemplateItems.templateId], references: [requestAreaTemplates.id] }),
+  product: one(products, { fields: [requestAreaTemplateItems.productId], references: [products.id] }),
+}));
+
+export const insertRequestAreaTemplateSchema = createInsertSchema(requestAreaTemplates).omit({ id: true, createdAt: true });
+export const insertRequestAreaTemplateItemSchema = createInsertSchema(requestAreaTemplateItems).omit({ id: true });
+
+export type RequestAreaTemplate = typeof requestAreaTemplates.$inferSelect;
+export type InsertRequestAreaTemplate = z.infer<typeof insertRequestAreaTemplateSchema>;
+export type RequestAreaTemplateItem = typeof requestAreaTemplateItems.$inferSelect;
+export type InsertRequestAreaTemplateItem = z.infer<typeof insertRequestAreaTemplateItemSchema>;
+
 // Insert schemas
 export const insertProductStatusSchema = createInsertSchema(productStatuses).omit({
   id: true,
