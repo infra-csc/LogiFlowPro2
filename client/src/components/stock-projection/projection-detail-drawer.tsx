@@ -29,8 +29,8 @@ import {
   isToday,
   isWeekend,
   sourceLabel,
-  statusBadgeClass,
-  statusLabel,
+  statusBadgeClassExt,
+  statusLabelExt,
 } from "./projection-utils";
 
 export type DetailTarget =
@@ -91,7 +91,14 @@ function CellBody({
           <p className="text-xs text-muted-foreground">{product.sku}</p>
           <p className="font-semibold">{product.name}</p>
         </div>
-        <Badge className={`${statusBadgeClass(cell.status)} text-xs`}>{statusLabel(cell.status)}</Badge>
+        {(() => {
+          const impact = cell.outbound > 0 || cell.inbound > 0 || cell.inEvent > 0 || cell.reserved > 0 || cell.inTransit > 0;
+          return (
+            <Badge className={`${statusBadgeClassExt(cell.status, cell.available, product.minimumStock, impact)} text-xs`}>
+              {statusLabelExt(cell.status, cell.available, product.minimumStock, impact)}
+            </Badge>
+          );
+        })()}
       </div>
       <div className="rounded-md border border-border/60 p-3">
         <div className="flex items-center justify-between mb-1">
@@ -103,10 +110,15 @@ function CellBody({
         <Row label="Saída" value={cell.outbound > 0 ? `-${cell.outbound}` : "0"} tone="text-destructive" />
         <Row label="Entrada" value={cell.inbound > 0 ? `+${cell.inbound}` : "0"} tone="text-chart-4" />
         <Separator className="my-2" />
-        <Row label="Saldo final" value={cell.available} tone="font-semibold" />
+        <Row label="Disponível" value={cell.available} tone="font-semibold" />
         <Row label="Reservado" value={cell.reserved} />
         <Row label="Em trânsito" value={cell.inTransit} />
         <Row label="Em evento" value={cell.inEvent} />
+        {(cell.inEvent > 0 || cell.reserved > 0 || cell.inTransit > 0) && (
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            Em evento, reservado e em trânsito indicam comprometimentos operacionais do saldo projetado.
+          </p>
+        )}
       </div>
 
       <div>
@@ -175,8 +187,8 @@ function ProductBody({
           <p className="text-xs text-muted-foreground">{product.sku}</p>
           <p className="font-semibold">{product.name}</p>
         </div>
-        <Badge className={`${statusBadgeClass(product.worstStatus)} text-xs`}>
-          {statusLabel(product.worstStatus)}
+        <Badge className={`${statusBadgeClassExt(product.worstStatus, product.currentStock, product.minimumStock, product.totalOutbound > 0 || product.totalInbound > 0)} text-xs`}>
+          {statusLabelExt(product.worstStatus, product.currentStock, product.minimumStock, product.totalOutbound > 0 || product.totalInbound > 0)}
         </Badge>
       </div>
 

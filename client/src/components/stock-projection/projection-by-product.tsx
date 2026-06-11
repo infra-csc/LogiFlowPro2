@@ -212,8 +212,8 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-semibold text-sm">Linha do tempo do saldo</p>
-                <Badge className={`${statusBadgeClassExt(product.worstStatus, product.currentStock, product.minimumStock)} text-xs`}>
-                  {statusLabelExt(product.worstStatus, product.currentStock, product.minimumStock)}
+                <Badge className={`${statusBadgeClassExt(product.worstStatus, product.currentStock, product.minimumStock, product.totalOutbound > 0 || product.totalInbound > 0)} text-xs`}>
+                  {statusLabelExt(product.worstStatus, product.currentStock, product.minimumStock, product.totalOutbound > 0 || product.totalInbound > 0)}
                 </Badge>
               </div>
               <div className="overflow-x-auto projection-scroll" style={{ scrollbarWidth: "thin" }}>

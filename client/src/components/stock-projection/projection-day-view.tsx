@@ -384,7 +384,7 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
                     <TableHead className="text-right">Abertura</TableHead>
                     <TableHead className="text-right">Saída</TableHead>
                     <TableHead className="text-right">Entrada</TableHead>
-                    <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead className="text-right">Disponível</TableHead>
                     <TableHead className="text-right">Reservado</TableHead>
                     <TableHead className="text-right">Em trânsito</TableHead>
                     <TableHead className="text-right">Em evento</TableHead>
@@ -411,9 +411,14 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
                       <TableCell className="text-right tabular-nums text-muted-foreground">{cell.inTransit}</TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">{cell.inEvent}</TableCell>
                       <TableCell>
-                        <Badge className={`${statusBadgeClassExt(cell.status, cell.available, product.minimumStock)} text-xs`}>
-                          {statusLabelExt(cell.status, cell.available, product.minimumStock)}
-                        </Badge>
+                        {(() => {
+                          const impact = cell.outbound > 0 || cell.inbound > 0 || cell.inEvent > 0 || cell.reserved > 0 || cell.inTransit > 0;
+                          return (
+                            <Badge className={`${statusBadgeClassExt(cell.status, cell.available, product.minimumStock, impact)} text-xs`}>
+                              {statusLabelExt(cell.status, cell.available, product.minimumStock, impact)}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}

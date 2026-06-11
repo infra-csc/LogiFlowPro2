@@ -210,22 +210,24 @@ export function ProjectionMatrix({
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 border-b border-border/40 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${statusDotClass("ok")}`}
-              />{" "}
+              <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass("ok")}`} />
               Adequado
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${statusDotClass("low")}`}
-              />{" "}
+              <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass("low")}`} />
               Abaixo do mínimo
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${statusDotClass("shortage")}`}
-              />{" "}
+              <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass("shortage")}`} />
               Em falta
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-destructive/80" />
+              Sem disponibilidade
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
+              Sem estoque
             </span>
             <span className="inline-flex items-center gap-1">
               <ArrowDown className="w-3 h-3 text-destructive" /> Saída
@@ -262,7 +264,7 @@ export function ProjectionMatrix({
                         key={d}
                         className={`text-right px-2 py-1.5 whitespace-nowrap font-medium ${
                           today
-                            ? "bg-primary/15 text-primary"
+                            ? "bg-muted/40 text-foreground border-t-2 border-primary/50"
                             : weekend
                               ? "bg-muted/60 text-muted-foreground"
                               : "bg-card text-muted-foreground"
@@ -272,6 +274,11 @@ export function ProjectionMatrix({
                         <div className="text-[10px] font-normal opacity-70 leading-none mt-0.5">
                           {weekdayShort(d)}
                         </div>
+                        {today && (
+                          <div className="text-[8px] font-bold text-primary leading-none mt-0.5 uppercase tracking-wide">
+                            Hoje
+                          </div>
+                        )}
                       </th>
                     );
                   })}
@@ -323,7 +330,7 @@ export function ProjectionMatrix({
                             weekend && c.status === "ok" && !hasImpact
                               ? "bg-muted/20"
                               : ""
-                          } ${today ? "ring-1 ring-inset ring-primary/15" : ""} ${showDeficit ? "text-destructive font-bold" : ""}`}
+                          } ${today ? "bg-muted/10 border-t border-primary/20" : ""} ${showDeficit ? "text-destructive font-bold" : ""}`}
                           data-testid={`cell-${p.productId}-${c.date}`}
                         >
                           <button

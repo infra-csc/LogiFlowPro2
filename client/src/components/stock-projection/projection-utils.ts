@@ -223,8 +223,13 @@ export function statusDotClassExt(
 ): string {
   if (worstStatus === "shortage") return "bg-destructive";
   if (worstStatus === "low") return "bg-chart-5";
-  if (currentStock === 0 && minimumStock === 0 && totalOutbound === 0 && totalInbound === 0) {
-    return "bg-muted-foreground/40"; // gray — neutral/sem estoque
+  // "Sem disponibilidade": stock=0 mas há atividade no período (não pode ser verde)
+  if (currentStock === 0 && (totalOutbound > 0 || totalInbound > 0)) {
+    return "bg-destructive/80";
+  }
+  // "Sem estoque": stock=0, min=0, sem atividade → cinza neutro
+  if (currentStock === 0 && minimumStock === 0) {
+    return "bg-muted-foreground/40";
   }
   return "bg-chart-4"; // green — realmente adequado
 }
@@ -236,9 +241,11 @@ export function statusLabelExt(
   status: ProjectionDayStatus,
   available?: number,
   minimumStock?: number,
+  hasOperationalImpact?: boolean,
 ): string {
-  if (status === "ok" && (available ?? 1) === 0 && (minimumStock ?? 0) === 0) {
-    return "Sem estoque";
+  if (status === "ok" && (available ?? 1) === 0) {
+    if (hasOperationalImpact) return "Sem disponibilidade";
+    if ((minimumStock ?? 0) === 0) return "Sem estoque";
   }
   return statusLabel(status);
 }
@@ -250,9 +257,11 @@ export function statusBadgeClassExt(
   status: ProjectionDayStatus,
   available?: number,
   minimumStock?: number,
+  hasOperationalImpact?: boolean,
 ): string {
-  if (status === "ok" && (available ?? 1) === 0 && (minimumStock ?? 0) === 0) {
-    return "bg-muted text-muted-foreground border border-border/60";
+  if (status === "ok" && (available ?? 1) === 0) {
+    if (hasOperationalImpact) return "bg-destructive/20 text-destructive border border-destructive/30";
+    if ((minimumStock ?? 0) === 0) return "bg-muted text-muted-foreground border border-border/60";
   }
   return statusBadgeClass(status);
 }

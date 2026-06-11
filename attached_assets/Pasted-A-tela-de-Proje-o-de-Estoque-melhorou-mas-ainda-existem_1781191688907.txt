@@ -1,0 +1,171 @@
+A tela de Projeção de Estoque melhorou, mas ainda existem três problemas importantes de visual e lógica que precisam ser corrigidos.
+
+1. Remover o azul forte da coluna/dia selecionado na matriz
+O destaque azul atual na coluna do dia selecionado, por exemplo quinta 11/06, está visualmente pesado e feio. Não usar preenchimento azul forte na coluna inteira.
+
+Novo comportamento:
+- Dia selecionado deve ter apenas contorno sutil ou fundo levemente mais claro.
+- A célula do cabeçalho pode ter borda fina azul/ciano, mas sem bloco azul forte.
+- A coluna inteira não deve ficar azul.
+- Hoje deve ser indicado de forma discreta, com pequeno badge “Hoje” ou linha superior fina.
+- Dia selecionado e hoje devem ser visualmente diferentes.
+- Usar azul apenas como detalhe de foco, nunca como preenchimento dominante da matriz.
+
+2. Corrigir lógica visual da bolinha/status para estoque zerado
+Hoje produtos com estoque 0 aparecem com bolinha cinza em alguns casos e ainda fica confuso. Ajustar a regra para ficar operacionalmente clara.
+
+Regras de status por produto na projeção:
+
+- Em falta:
+  Quando saldo disponível projetado < 0 ou existe demanda não atendida.
+  Visual: bolinha vermelha + badge vermelho “Em falta”.
+
+- Sem disponibilidade:
+  Quando saldo disponível projetado = 0 e o produto é relevante para a projeção, ou seja:
+  possui movimentação, requisição, ordem, está em evento, está reservado, está em trânsito ou foi selecionado no filtro.
+  Visual: bolinha vermelha ou vermelho discreto + badge “Sem disponibilidade”.
+  Esse caso não deve aparecer verde.
+
+- Sem estoque:
+  Quando saldo disponível = 0, mínimo = 0 e o produto não tem impacto/demanda no período.
+  Visual: bolinha cinza + badge cinza “Sem estoque”.
+  Não usar verde.
+
+- Abaixo do mínimo:
+  Quando saldo disponível projetado > 0, mínimo > 0 e saldo disponível < mínimo.
+  Visual: bolinha amarela + badge “Abaixo do mínimo”.
+
+- Adequado:
+  Quando saldo disponível projetado > mínimo e existe saldo disponível real.
+  Visual: bolinha verde + badge “Adequado”.
+
+Importante:
+Produto com saldo 0 nunca deve aparecer como adequado.
+Produto com saldo 0 e algum impacto operacional deve chamar atenção como “Sem disponibilidade”.
+Produto com saldo 0 sem impacto pode ficar neutro/cinza.
+
+3. Corrigir a confusão entre “Saldo”, “Abertura” e “Em evento”
+Atualmente existe caso em que o produto mostra:
+- Abertura: 50
+- Em evento: 20
+- Saldo: 50
+
+Isso é confuso, porque se 20 unidades estão em evento, o administrador precisa saber claramente quanto está disponível no armazém.
+
+Ajustar a lógica e os nomes das colunas para separar:
+
+- Estoque total/controlado:
+  quantidade total conhecida do produto no sistema, incluindo o que está no armazém, em evento, em trânsito ou reservado.
+
+- Disponível no armazém:
+  quantidade realmente disponível para novas operações.
+
+- Reservado:
+  quantidade comprometida por requisição/ordem, mas ainda não movimentada fisicamente.
+
+- Em trânsito:
+  quantidade em deslocamento.
+
+- Em evento:
+  quantidade fora do armazém, alocada em evento e ainda não retornada.
+
+- Disponível projetado:
+  quantidade que o administrador pode considerar disponível naquele dia.
+
+A matriz principal deve exibir como número principal o “Disponível projetado”, não o total controlado.
+
+Fórmula operacional sugerida:
+
+disponivelProjetadoDia =
+estoqueFisicoOuBaseDisponivel
++ entradasPrevistasAteODia
+- saidasPrevistasAteODia
+- reservasAtivasNoDia
+- itensEmTransitoNoDia
+- itensEmEventoNoDia
+
+Se o sistema já desconta fisicamente uma movimentação quando ela sai do estoque, não descontar duas vezes. Nesse caso, a fonte deve aparecer em “Fontes da projeção” como “já movimentado fisicamente” e o cálculo precisa explicar isso.
+
+Para evitar dúvida, na aba “Visão por Dia” e no drawer “Detalhe do dia”, mostrar os números separados:
+
+Abertura disponível
+Saídas
+Entradas/retornos
+Reservado
+Em trânsito
+Em evento
+Disponível final
+
+Exemplo correto:
+Produto: Box Truss - Cubo de 5 faces
+Estoque total/controlado: 50
+Em evento: 20
+Disponível final: 30
+
+Se o saldo final continuar 50 porque o sistema considera “saldo” como patrimônio total, então mudar o nome da coluna para “Total controlado” e adicionar outra coluna “Disponível”. Porém, para a matriz principal, priorizar sempre “Disponível”.
+
+4. Ajustar os cards e legendas para refletirem essa regra
+Na legenda da matriz, trocar/ajustar:
+- Verde = adequado com saldo disponível
+- Amarelo = abaixo do mínimo
+- Vermelho = em falta ou sem disponibilidade
+- Cinza = sem estoque/sem impacto
+- Azul/cinza = em evento/em uso
+
+Não usar bolinha verde quando:
+- saldo disponível for 0;
+- produto estiver apenas em evento;
+- produto não tiver estoque disponível.
+
+5. Ajustar a aba “Visão por Dia”
+Na tabela “Detalhes por produto”, trocar a coluna “Saldo” por “Disponível final” ou “Disponível”.
+Manter separadas as colunas:
+- Abertura
+- Saída
+- Entrada
+- Reservado
+- Em trânsito
+- Em evento
+- Disponível final
+- Status
+
+Assim fica claro que “Em evento” reduz a disponibilidade, ou então fica explicado quando já foi descontado fisicamente.
+
+6. Ajustar o drawer “Detalhe do dia”
+No drawer lateral, mostrar uma explicação do cálculo:
+
+Exemplo:
+Abertura disponível: 50
+- Em evento: 20
+- Reservado: 0
+- Em trânsito: 0
+- Saídas do dia: 0
++ Entradas do dia: 0
+= Disponível final: 30
+
+Se algum item já foi descontado por movimentação física, mostrar:
+“Esta origem já foi movimentada fisicamente e não foi descontada novamente para evitar duplicidade.”
+
+7. Ajustar aba “Fontes da projeção”
+Quando uma fonte estiver impactando “Em evento”, “Reservado” ou “Em trânsito”, deixar claro qual impacto ela gera.
+
+Adicionar coluna ou badge:
+- Impacto: Saída
+- Impacto: Retorno
+- Impacto: Reserva
+- Impacto: Em evento
+- Impacto: Em trânsito
+- Impacto: Ignorado por duplicidade
+
+8. Resultado esperado
+Depois do ajuste, a leitura precisa ficar assim:
+
+- Azul não domina mais a matriz.
+- Hoje e dia selecionado são discretos.
+- Produto zerado não aparece como adequado.
+- Produto zerado com impacto aparece como “Sem disponibilidade”.
+- Produto zerado sem impacto aparece como “Sem estoque”.
+- Produto com 20 em evento e 50 de estoque não fica confuso.
+- A matriz mostra o saldo realmente disponível para operação.
+- O detalhe explica o cálculo.
+- O administrador entende rapidamente quanto pode usar, quanto está fora, quanto está reservado e quanto vai retornar.
