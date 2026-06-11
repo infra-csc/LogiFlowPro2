@@ -1,0 +1,171 @@
+Melhore completamente o fluxo de inclusão de Produto/Kit dentro da Requisição de Material.
+
+Contexto:
+Hoje existe um modal “Adicionar Material” com abas Produto e Kit, campo de produto, quantidade e observação. Está funcional, mas lento para operação real, porque o usuário precisa adicionar item por item. Quero transformar isso em uma experiência rápida, clara e profissional para requisições com muitos materiais.
+
+Objetivo:
+Facilitar ao máximo a inclusão de produtos e kits na requisição, permitindo busca rápida, seleção múltipla, edição de quantidades em massa, observação por item e preview antes de adicionar.
+
+Regras principais:
+- A requisição pode conter produtos individuais e kits.
+- Kit não deve ser tratado como estoque único. Ao adicionar um kit, ele deve expandir os produtos do BOM na requisição.
+- Manter rastreabilidade: cada item vindo de kit deve salvar também kit_id, kit_nome e origem = "kit".
+- Produto manual deve salvar origem = "manual".
+- Se o mesmo produto já existir na requisição, não duplicar automaticamente. Deve somar quantidade ou perguntar ao usuário se deseja somar/substituir.
+- Quantidade deve ser obrigatória e maior que zero para adicionar na requisição.
+- O campo observação deve ser opcional por item.
+- Se a requisição estiver enviada/aprovada/processada, bloquear edição conforme regra já existente. Se estiver em rascunho, permitir adicionar/remover/editar.
+
+Novo layout do modal:
+Transformar o modal em um modal maior, sem sensação apertada, com largura entre 850px e 1050px em desktop e responsivo em mobile.
+
+Título:
+“Adicionar materiais”
+
+Subtítulo:
+“Busque produtos individuais ou selecione um kit para preencher a requisição.”
+
+Topo do modal:
+- Tabs: “Produtos” e “Kits”
+- Campo de busca grande com placeholder:
+  - Produtos: “Buscar por nome, SKU ou código de barras”
+  - Kits: “Buscar kit por nome”
+- Botão secundário: “Limpar seleção”
+- Contador: “X item(ns) selecionado(s)”
+
+Aba Produtos:
+Criar uma lista/tabela compacta de produtos encontrados, não apenas um select.
+
+Cada linha deve mostrar:
+- Nome do produto
+- SKU
+- Unidade
+- Titularidade: Próprio / Locado / Terceiro
+- Estoque atual, se disponível
+- Campo de quantidade
+- Campo curto de observação ou botão “+ observação”
+- Checkbox ou botão “Adicionar à seleção”
+
+O usuário deve conseguir:
+- Buscar produto
+- Selecionar múltiplos produtos
+- Digitar quantidade direto na linha
+- Usar Enter para confirmar quantidade
+- Usar Tab para ir para o próximo campo
+- Remover item selecionado antes de salvar
+
+Aba Kits:
+Exibir cards/lista de kits disponíveis.
+
+Cada kit deve mostrar:
+- Nome do kit
+- Quantidade de itens no BOM
+- Descrição curta
+- Botão “Visualizar itens”
+- Campo “Quantidade de kits”
+
+Ao selecionar um kit:
+- Mostrar preview dos itens do BOM antes de adicionar
+- Cada item do kit deve aparecer com:
+  - Produto
+  - SKU
+  - Unidade
+  - Quantidade base do BOM
+  - Quantidade de kits
+  - Quantidade final calculada
+  - Campo editável para ajustar quantidade final, se necessário
+  - Observação opcional
+- Permitir remover um item específico do kit antes de adicionar à requisição
+- Permitir adicionar item extra junto com o kit
+
+Importante:
+Se a quantidade base do BOM for 0 ou vazia, permitir que o usuário preencha manualmente a quantidade na hora da requisição.
+
+Rodapé do modal:
+- À esquerda: resumo da seleção
+  Exemplo: “5 produtos selecionados • 1 kit • 18 itens finais”
+- Botão “Cancelar”
+- Botão principal “Adicionar materiais”
+- O botão principal só deve habilitar se houver pelo menos 1 item com quantidade maior que zero.
+
+Ao clicar em “Adicionar materiais”:
+- Validar todos os itens.
+- Mostrar erro inline nos itens com quantidade inválida.
+- Expandir kits em itens individuais da requisição.
+- Mesclar duplicados conforme regra.
+- Atualizar imediatamente a lista de “Materiais Requisitados”.
+- Fechar modal e exibir toast:
+  “Materiais adicionados à requisição.”
+
+Melhorar a lista de Materiais Requisitados na tela da requisição:
+Cada item deve mostrar:
+- Produto
+- SKU
+- Unidade
+- Quantidade requisitada
+- Origem: Manual / Kit
+- Nome do kit, quando aplicável
+- Observação, quando houver
+- Botões editar/remover
+- Status futuro: pendente, aprovado, rejeitado, parcial, se já existir regra
+
+Adicionar edição inline:
+- Permitir editar quantidade diretamente na lista.
+- Permitir editar observação.
+- Permitir remover item.
+- Se o item veio de kit, avisar:
+  “Este item veio do kit X. Remover apenas este item?”
+- Não remover o kit inteiro automaticamente, apenas o item selecionado, salvo se o usuário escolher remover todos os itens daquele kit.
+
+Adicionar botão na tela da requisição:
+- “Adicionar materiais”
+- “Adicionar por template”, se houver templates de área
+- “Importar lista”, opcional para futuro
+
+Backend:
+Criar ou ajustar estrutura para request_items com os campos:
+- id
+- requisition_id
+- product_id
+- product_name_snapshot
+- sku_snapshot
+- unit_snapshot
+- quantity_requested
+- observation
+- source_type: manual | kit | template
+- source_id
+- source_name
+- kit_id
+- kit_name
+- created_by
+- created_at
+- updated_at
+
+Para kits:
+- Buscar kit_items/BOM.
+- Gerar request_items para cada produto do kit.
+- Salvar snapshot do nome, SKU e unidade no momento da inclusão.
+- Não depender apenas do nome atual do produto, para preservar histórico.
+
+Validações:
+- product_id obrigatório
+- quantity_requested > 0
+- não permitir quantidade negativa
+- não permitir adicionar produto inativo
+- não permitir adicionar fornecedor/locado sem dados obrigatórios se a regra do produto exigir fornecedor
+- respeitar janela de requisição do evento
+- respeitar status da requisição
+
+UX visual:
+- Usar o mesmo dark theme atual.
+- Reduzir espaços vazios.
+- Labels claros.
+- Estados vazios elegantes.
+- Badges para origem do item.
+- Destaque discreto para itens vindos de kit.
+- Inputs de quantidade compactos.
+- Botões com hierarquia clara.
+
+Resultado esperado:
+O usuário deve conseguir montar uma requisição com muitos produtos em poucos segundos, sem precisar abrir o modal várias vezes.
+A experiência deve ser rápida, parecida com um carrinho de materiais: busca, seleciona, informa quantidades, revisa e adiciona tudo de uma vez.

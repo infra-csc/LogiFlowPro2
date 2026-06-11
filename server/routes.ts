@@ -1535,6 +1535,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/requests/:id/items/batch", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).json({ error: "Não autenticado" });
+
+      const parentRequest = await storage.getMaterialRequest(req.params.id);
+      if (!parentRequest) return res.status(404).json({ error: "Requisição não encontrada" });
+      if (!(await canEditResource(req.user, parentRequest.requestedBy))) {
+        return res.status(403).json({ error: "Acesso negado", message: "Apenas o criador da requisição pode adicionar itens" });
+      }
+      if (parentRequest.status !== "draft") {
+        return res.status(403).json({ error: "Não é possível adicionar itens a uma requisição já enviada" });
+      }
+
+      const { items } = req.body;
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Lista de itens inválida ou vazia" });
+      }
+
+      for (const item of items) {
+        if (!item.productId) return res.status(400).json({ error: "productId obrigatório em todos os itens" });
+        const qty = parseInt(item.quantity);
+        if (isNaN(qty) || qty < 1) return res.status(400).json({ error: `Quantidade inválida para produto ${item.productId}` });
+      }
+
+      const existingItems = await storage.getRequestItems(req.params.id);
+      const results: any[] = [];
+
+      for (const item of items) {
+        const qty = parseInt(item.quantity);
+        const existing = (existingItems as any[]).find((e: any) => e.productId === item.productId);
+        if (existing) {
+          const updated = await storage.updateRequestItem(existing.id, { quantity: existing.quantity + qty });
+          results.push({ ...updated, action: "merged" });
+        } else {
+          const created = await storage.createRequestItem({
+            requestId: req.params.id,
+            productId: item.productId,
+            quantity: qty,
+            notes: item.notes || undefined,
+            kitId: item.kitId || undefined,
+          } as any);
+          results.push({ ...created, action: "created" });
+        }
+      }
+
+      res.status(201).json({ items: results, count: results.length });
+    } catch (error) {
+      console.error("Error batch creating request items:", error);
+      res.status(500).json({ error: "Falha ao adicionar itens em lote" });
+    }
+  });
+
   app.patch("/api/request-items/:id", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {

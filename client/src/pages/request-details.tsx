@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X, Boxes } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
@@ -122,7 +122,7 @@ export default function RequestDetails() {
     enabled: !!request?.eventId,
   });
 
-  const { data: products = [], isLoading: productsLoading } = useQuery<{ id: string; name: string; sku: string; unit: string }[]>({
+  const { data: products = [], isLoading: productsLoading } = useQuery<{ id: string; name: string; sku: string; unit: string; ownership: string; currentStock?: number }[]>({
     queryKey: ["/api/products"],
   });
 
@@ -566,10 +566,16 @@ export default function RequestDetails() {
                             <p className="font-semibold text-sm text-foreground">
                               {item.kit ? item.kit.name : item.product?.name}
                             </p>
-                            <div className="flex items-center gap-3 mt-1">
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                                {item.kit ? "Kit" : item.product?.sku}
+                                {item.product?.sku ?? "—"}
                               </span>
+                              {item.kitId && item.kit && (
+                                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30">
+                                  <Boxes className="h-2.5 w-2.5" />
+                                  Kit: {item.kit.name}
+                                </span>
+                              )}
                               {!canEdit && item.approvalStatus && (
                                 <span className={`text-xs ${statusColor}`}>
                                   {item.approvalStatus === "approved" ? "Aprovado" : item.approvalStatus === "rejected" ? "Rejeitado" : "Pendente"}
@@ -729,6 +735,7 @@ export default function RequestDetails() {
         requestId={id!}
         products={products}
         kits={kits}
+        existingItems={items.map((i) => ({ productId: i.productId, quantity: i.quantity }))}
         productsLoading={productsLoading}
         kitsLoading={kitsLoading}
       />
