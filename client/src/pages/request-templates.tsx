@@ -64,10 +64,12 @@ function TemplateFormDialog({
   open,
   onOpenChange,
   template,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   template?: RequestAreaTemplate;
+  onCreated?: (id: string) => void;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -81,10 +83,14 @@ function TemplateFormDialog({
       }
       return apiRequest("POST", "/api/request-templates", { name, description });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/request-templates"] });
+    onSuccess: async (res) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/request-templates"] });
       toast({ description: template ? "Template atualizado" : "Template criado" });
       onOpenChange(false);
+      if (!template && onCreated) {
+        const created = await res.json();
+        onCreated(created.id);
+      }
     },
     onError: () => {
       toast({ description: "Erro ao salvar template", variant: "destructive" });
@@ -267,10 +273,10 @@ function AddItemDialog({
 
 // ── Template Card ────────────────────────────────────────────────────────────
 
-function TemplateCard({ template }: { template: TemplateWithItems }) {
+function TemplateCard({ template, defaultExpanded }: { template: TemplateWithItems; defaultExpanded?: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [editOpen, setEditOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -483,6 +489,7 @@ function TemplateCard({ template }: { template: TemplateWithItems }) {
 
 export default function RequestTemplatesPage() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [autoExpandId, setAutoExpandId] = useState<string | null>(null);
 
   const { data: templates, isLoading } = useQuery<RequestAreaTemplate[]>({
     queryKey: ["/api/request-templates"],
@@ -524,12 +531,16 @@ export default function RequestTemplatesPage() {
       ) : (
         <div className="space-y-3">
           {(allLoaded ? templatesWithItems : templates.map((t) => ({ ...t, items: [] }))).map((t) => (
-            <TemplateCard key={t.id} template={t as TemplateWithItems} />
+            <TemplateCard key={t.id} template={t as TemplateWithItems} defaultExpanded={t.id === autoExpandId} />
           ))}
         </div>
       )}
 
-      <TemplateFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <TemplateFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(id) => setAutoExpandId(id)}
+      />
     </div>
   );
 }
