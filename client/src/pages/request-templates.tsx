@@ -273,10 +273,15 @@ function AddItemDialog({
 
 // ── Template Card ────────────────────────────────────────────────────────────
 
-function TemplateCard({ template, defaultExpanded }: { template: TemplateWithItems; defaultExpanded?: boolean }) {
+function TemplateCard({ template, defaultExpanded }: { template: RequestAreaTemplate; defaultExpanded?: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
+
+  const { data: detail } = useQuery<TemplateWithItems>({
+    queryKey: ["/api/request-templates", template.id],
+  });
+  const items: TemplateItem[] = detail?.items ?? [];
   const [editOpen, setEditOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -323,7 +328,7 @@ function TemplateCard({ template, defaultExpanded }: { template: TemplateWithIte
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold text-base">{template.name}</h3>
                 <Badge variant="secondary" className="text-xs">
-                  {template.items.length} {template.items.length === 1 ? "item" : "itens"}
+                  {items.length} {items.length === 1 ? "item" : "itens"}
                 </Badge>
               </div>
               {template.description && (
@@ -362,11 +367,11 @@ function TemplateCard({ template, defaultExpanded }: { template: TemplateWithIte
         {expanded && (
           <CardContent className="pt-0 px-4 pb-4 space-y-3">
             <div className="border-t border-border/40 pt-3">
-              {template.items.length === 0 ? (
+              {items.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2 text-center">Nenhum item no template. Adicione abaixo.</p>
               ) : (
                 <div className="space-y-2">
-                  {template.items.map((item) => {
+                  {items.map((item) => {
                     const editQty = editingQty[item.id];
                     return (
                       <div
@@ -441,7 +446,7 @@ function TemplateCard({ template, defaultExpanded }: { template: TemplateWithIte
         open={addItemOpen}
         onOpenChange={setAddItemOpen}
         templateId={template.id}
-        existingProductIds={template.items.map((i) => i.productId)}
+        existingProductIds={items.map((i) => i.productId)}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
@@ -495,18 +500,6 @@ export default function RequestTemplatesPage() {
     queryKey: ["/api/request-templates"],
   });
 
-  // Fetch full detail (with items) for each template
-  const templateIds = templates?.map((t) => t.id) || [];
-  const detailQueries = templateIds.map((id) =>
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useQuery<TemplateWithItems>({ queryKey: ["/api/request-templates", id] })
-  );
-
-  const allLoaded = detailQueries.every((q) => !q.isLoading);
-  const templatesWithItems: TemplateWithItems[] = detailQueries
-    .map((q) => q.data)
-    .filter((d): d is TemplateWithItems => !!d);
-
   if (isLoading) return <PageLoading />;
 
   return (
@@ -530,8 +523,8 @@ export default function RequestTemplatesPage() {
         />
       ) : (
         <div className="space-y-3">
-          {(allLoaded ? templatesWithItems : templates.map((t) => ({ ...t, items: [] }))).map((t) => (
-            <TemplateCard key={t.id} template={t as TemplateWithItems} defaultExpanded={t.id === autoExpandId} />
+          {templates.map((t) => (
+            <TemplateCard key={t.id} template={t} defaultExpanded={t.id === autoExpandId} />
           ))}
         </div>
       )}
