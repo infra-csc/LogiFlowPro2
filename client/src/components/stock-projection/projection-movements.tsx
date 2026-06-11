@@ -3,7 +3,14 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Info,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,7 +20,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { StockProjectionResult } from "@shared/stock-projection";
-import { formatDayFull, situationBadgeClass, situationLabel, sourceLabel } from "./projection-utils";
+import {
+  formatDayFull,
+  situationBadgeClass,
+  situationLabel,
+  situationReason,
+  sourceLabel,
+} from "./projection-utils";
 
 interface Props {
   result: StockProjectionResult;
@@ -34,7 +47,7 @@ export function ProjectionMovements({ result }: Props) {
   if (rows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
-        Nenhuma fonte considerada com os filtros atuais. Ajuste o período ou as fontes para ver os dados que entram no cálculo.
+        Nenhuma fonte considerada com os filtros atuais. Ajuste o período ou as fontes selecionadas para ver os dados que entram no cálculo.
       </p>
     );
   }
@@ -62,6 +75,7 @@ export function ProjectionMovements({ result }: Props) {
               {rows.map((m, idx) => {
                 const key = `${m.source}-${m.sourceId}-${idx}`;
                 const isOpen = expanded.has(key);
+                const reason = situationReason(m.situation, m.outDate, m.inDate);
                 return (
                   <Fragment key={key}>
                     <TableRow
@@ -98,39 +112,56 @@ export function ProjectionMovements({ result }: Props) {
                         </Badge>
                       </TableCell>
                     </TableRow>
+
                     {isOpen && (
                       <TableRow data-testid={`row-movement-detail-${idx}`}>
                         <TableCell colSpan={10} className="bg-muted/30">
-                          <div className="py-1 space-y-2">
+                          <div className="py-2 space-y-3">
+                            {/* Situation reason */}
+                            {reason && (
+                              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-chart-5" />
+                                <span>{reason}</span>
+                              </div>
+                            )}
+
+                            {/* Meta row */}
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge variant="secondary" className="text-xs">
-                                {m.alreadyPhysical ? "Já movimentado" : "Previsto"}
+                                {m.alreadyPhysical ? "Já movimentado fisicamente" : "Previsto"}
                               </Badge>
-                              <span className="text-xs text-muted-foreground">Status: {m.status}</span>
+                              {m.status && (
+                                <span className="text-xs text-muted-foreground">
+                                  Status da origem: <span className="font-medium text-foreground">{m.status}</span>
+                                </span>
+                              )}
                               {m.href && (
                                 <Link href={m.href}>
                                   <Button size="sm" variant="outline" className="h-7 text-xs" data-testid={`link-movement-${idx}`}>
-                                    <ExternalLink className="w-3 h-3 mr-1" />
-                                    Abrir origem
+                                    <ExternalLink className="w-3 h-3 mr-1" /> Abrir origem
                                   </Button>
                                 </Link>
                               )}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
-                              {m.products.map((p) => (
-                                <div
-                                  key={p.productId}
-                                  className="flex items-center justify-between gap-2 text-sm"
-                                  data-testid={`movement-product-${idx}-${p.productId}`}
-                                >
-                                  <div className="min-w-0">
-                                    <span className="truncate block">{p.name}</span>
-                                    <span className="text-xs text-muted-foreground">{p.sku}</span>
+
+                            {/* Products */}
+                            {m.products.length > 0 && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+                                {m.products.map((p) => (
+                                  <div
+                                    key={p.productId}
+                                    className="flex items-center justify-between gap-2 text-sm"
+                                    data-testid={`movement-product-${idx}-${p.productId}`}
+                                  >
+                                    <div className="min-w-0">
+                                      <span className="truncate block">{p.name}</span>
+                                      <span className="text-xs text-muted-foreground">{p.sku}</span>
+                                    </div>
+                                    <span className="tabular-nums font-medium flex-shrink-0">{p.qty}</span>
                                   </div>
-                                  <span className="tabular-nums font-medium flex-shrink-0">{p.qty}</span>
-                                </div>
-                              ))}
-                            </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

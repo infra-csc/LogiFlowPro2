@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ExternalLink } from "lucide-react";
+import { Package, ExternalLink } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -64,7 +64,9 @@ function hrefForDriver(d: ProjectionDriver): string | undefined {
 
 export function ProjectionByProduct({ result, selectedProductId, onSelectProduct }: Props) {
   const { products } = result;
-  const [internalId, setInternalId] = useState<string>(selectedProductId || products[0]?.productId || "");
+  const [internalId, setInternalId] = useState<string>(
+    selectedProductId || products[0]?.productId || "",
+  );
 
   useEffect(() => {
     if (selectedProductId) setInternalId(selectedProductId);
@@ -110,9 +112,17 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
 
   if (products.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-8 text-center">
-        Nenhum produto com movimentação no período selecionado.
-      </p>
+      <div className="flex flex-col items-center gap-3 py-12 text-center" data-testid="by-product-empty">
+        <span className="flex items-center justify-center w-12 h-12 rounded-full bg-muted">
+          <Package className="w-6 h-6 text-muted-foreground" />
+        </span>
+        <div>
+          <p className="font-medium">Nenhum produto com impacto no período</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+            Não encontramos requisições, ordens de carregamento ou movimentações que alterem o saldo deste produto no período selecionado.
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -141,6 +151,7 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
 
       {product && (
         <>
+          {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <Card className="border-border/60">
               <CardContent className="p-3">
@@ -162,9 +173,7 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
             </Card>
             <Card className={product.maxDeficit > 0 ? "border-destructive/40" : "border-border/60"}>
               <CardContent className="p-3">
-                <div
-                  className={`text-xl font-bold tabular-nums ${product.maxDeficit > 0 ? "text-destructive" : ""}`}
-                >
+                <div className={`text-xl font-bold tabular-nums ${product.maxDeficit > 0 ? "text-destructive" : ""}`}>
                   {product.maxDeficit}
                 </div>
                 <div className="text-xs text-muted-foreground mt-0.5">Déficit máx.</div>
@@ -184,6 +193,7 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
             </Card>
           </div>
 
+          {/* Timeline */}
           <Card className="border-border/60">
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
@@ -193,65 +203,80 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                 </Badge>
               </div>
               <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
-                <div className="flex gap-1 min-w-min">
-                  {product.days.map((c) => (
-                    <div
-                      key={c.date}
-                      className="flex flex-col items-center gap-1 flex-shrink-0 w-10"
-                      data-testid={`timeline-${product.productId}-${c.date}`}
-                    >
+                <div className="flex gap-1 min-w-min pb-1">
+                  {product.days.map((c) => {
+                    const hasFlow = c.outbound > 0 || c.inbound > 0;
+                    return (
                       <div
-                        className={`w-full text-center rounded px-1 py-1.5 text-xs tabular-nums ${cellToneClass(
-                          c.status,
-                        )} ${c.status === "ok" ? "bg-muted/40" : ""}`}
-                        title={`Saldo ${c.available} · Saída ${c.outbound} · Entrada ${c.inbound}`}
+                        key={c.date}
+                        className="flex flex-col items-center gap-1 flex-shrink-0 w-10"
+                        data-testid={`timeline-${product.productId}-${c.date}`}
                       >
-                        {c.available}
+                        {/* Day indicators */}
+                        <div className="flex gap-0.5 h-2 items-center">
+                          {c.outbound > 0 && <div className="w-1.5 h-1.5 rounded-full bg-destructive" title="Saída" />}
+                          {c.inbound > 0 && <div className="w-1.5 h-1.5 rounded-full bg-chart-4" title="Entrada" />}
+                          {!hasFlow && <div className="w-1.5 h-1.5 rounded-full bg-transparent" />}
+                        </div>
+                        {/* Balance cell */}
+                        <div
+                          className={`w-full text-center rounded px-1 py-1.5 text-xs tabular-nums ${cellToneClass(c.status)} ${c.status === "ok" ? "bg-muted/40" : ""}`}
+                          title={`Saldo ${c.available} · Saída ${c.outbound} · Entrada ${c.inbound}`}
+                        >
+                          {c.available}
+                        </div>
+                        {/* Date label */}
+                        <div
+                          className={`text-[10px] leading-none ${
+                            isToday(c.date)
+                              ? "text-primary font-medium"
+                              : isWeekend(c.date)
+                                ? "text-muted-foreground/60"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {formatDay(c.date)}
+                        </div>
                       </div>
-                      <div
-                        className={`text-[10px] leading-none ${
-                          isToday(c.date)
-                            ? "text-primary font-medium"
-                            : isWeekend(c.date)
-                              ? "text-muted-foreground/60"
-                              : "text-muted-foreground"
-                        }`}
-                      >
-                        {formatDay(c.date)}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              </div>
+              {/* Legend */}
+              <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-destructive inline-block" /> Saída</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-chart-4 inline-block" /> Entrada</span>
               </div>
             </CardContent>
           </Card>
 
+          {/* Impacts table */}
           <Card className="border-border/60">
             <CardContent className="p-0">
               <div className="px-4 pt-4 pb-2">
                 <p className="font-semibold text-sm">Origens que impactam este produto</p>
               </div>
-              <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
-                <Table data-testid="table-by-product-impacts">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Origem</TableHead>
-                      <TableHead>Referência</TableHead>
-                      <TableHead>Evento</TableHead>
-                      <TableHead className="text-right">Saída</TableHead>
-                      <TableHead className="text-right">Entrada</TableHead>
-                      <TableHead className="w-8" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {impacts.length === 0 ? (
+              {impacts.length === 0 ? (
+                <div className="px-4 pb-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Este produto não possui movimentações, requisições ou ordens de carregamento impactando o saldo no período selecionado.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+                  <Table data-testid="table-by-product-impacts">
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">
-                          Sem origens no período.
-                        </TableCell>
+                        <TableHead>Origem</TableHead>
+                        <TableHead>Referência</TableHead>
+                        <TableHead>Evento</TableHead>
+                        <TableHead className="text-right">Saída</TableHead>
+                        <TableHead className="text-right">Entrada</TableHead>
+                        <TableHead className="w-8" />
                       </TableRow>
-                    ) : (
-                      impacts.map((imp, i) => (
+                    </TableHeader>
+                    <TableBody>
+                      {impacts.map((imp, i) => (
                         <TableRow key={`${imp.source}-${imp.sourceId}-${i}`} data-testid={`row-impact-${i}`}>
                           <TableCell className="text-muted-foreground">{sourceLabel(imp.source)}</TableCell>
                           <TableCell className="font-medium">{imp.label}</TableCell>
@@ -272,11 +297,11 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                             )}
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </>

@@ -9,6 +9,7 @@ import {
   Lightbulb,
   ExternalLink,
   PanelRightOpen,
+  ArrowRight,
 } from "lucide-react";
 import type {
   ProjectionConflict,
@@ -20,6 +21,7 @@ import { sourceLabel } from "./projection-utils";
 interface Props {
   result: StockProjectionResult;
   onOpenDetail?: (conflict: ProjectionConflict) => void;
+  onGoToSources?: () => void;
 }
 
 const KIND_LABEL: Record<ProjectionConflict["kind"], string> = {
@@ -35,20 +37,12 @@ function LinkButtons({ links }: { links?: ProjectionLink[] }) {
       {links.map((l, i) =>
         l.href ? (
           <Link key={`${l.type}-${l.id}-${i}`} href={l.href}>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              data-testid={`link-conflict-${l.type}-${l.id}`}
-            >
-              <ExternalLink className="w-3 h-3 mr-1" />
-              {l.label}
+            <Button size="sm" variant="outline" className="h-7 text-xs" data-testid={`link-conflict-${l.type}-${l.id}`}>
+              <ExternalLink className="w-3 h-3 mr-1" /> {l.label}
             </Button>
           </Link>
         ) : (
-          <Badge key={`${l.type}-${l.id}-${i}`} variant="secondary" className="text-xs">
-            {l.label}
-          </Badge>
+          <Badge key={`${l.type}-${l.id}-${i}`} variant="secondary" className="text-xs">{l.label}</Badge>
         ),
       )}
     </div>
@@ -68,82 +62,52 @@ function ConflictRow({
 }) {
   const Icon = tone === "error" ? AlertTriangle : Info;
   const color = tone === "error" ? "text-destructive" : "text-chart-5";
-  const border =
-    tone === "error"
-      ? "border-destructive/20 bg-destructive/5"
-      : "border-chart-5/20 bg-chart-5/5";
+  const border = tone === "error" ? "border-destructive/20 bg-destructive/5" : "border-chart-5/20 bg-chart-5/5";
   return (
-    <div
-      className={`p-3 border ${border} rounded-md`}
-      data-testid={`conflict-${tone}-${idx}`}
-    >
+    <div className={`p-3 border ${border} rounded-md`} data-testid={`conflict-${tone}-${idx}`}>
       <div className="flex items-start gap-3">
         <Icon className={`w-4 h-4 ${color} flex-shrink-0 mt-0.5`} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="text-sm font-medium">
-              {c.productName
-                ? c.productName
-                : `${sourceLabel(c.source)}: ${c.sourceLabel}`}
-              {c.sku && (
-                <span className="text-muted-foreground font-normal"> · {c.sku}</span>
-              )}
+              {c.productName ? c.productName : `${sourceLabel(c.source)}: ${c.sourceLabel}`}
+              {c.sku && <span className="text-muted-foreground font-normal"> · {c.sku}</span>}
             </div>
             <div className="flex items-center gap-1.5">
-              <Badge variant="secondary" className="text-xs">
-                {KIND_LABEL[c.kind]}
-              </Badge>
+              <Badge variant="secondary" className="text-xs">{KIND_LABEL[c.kind]}</Badge>
               {onOpenDetail && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => onOpenDetail(c)}
-                  data-testid={`button-conflict-detail-${tone}-${idx}`}
-                  aria-label="Ver detalhes do conflito"
-                >
+                <Button size="icon" variant="ghost" onClick={() => onOpenDetail(c)} data-testid={`button-conflict-detail-${tone}-${idx}`} aria-label="Ver detalhes">
                   <PanelRightOpen className="w-4 h-4" />
                 </Button>
               )}
             </div>
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">{c.message}</div>
-
-          {(c.deficit != null && c.deficit > 0) || c.projectedBalance != null ? (
+          {((c.deficit != null && c.deficit > 0) || c.projectedBalance != null) && (
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs">
               {c.projectedBalance != null && (
-                <span>
-                  Saldo previsto:{" "}
-                  <span className="tabular-nums font-medium">{c.projectedBalance}</span>
-                </span>
+                <span>Saldo previsto: <span className="tabular-nums font-medium">{c.projectedBalance}</span></span>
               )}
               {c.minimumStock != null && (
-                <span className="text-muted-foreground">
-                  Mínimo: <span className="tabular-nums">{c.minimumStock}</span>
-                </span>
+                <span className="text-muted-foreground">Mínimo: <span className="tabular-nums">{c.minimumStock}</span></span>
               )}
               {c.deficit != null && c.deficit > 0 && (
-                <span className={color}>
-                  Déficit: <span className="tabular-nums font-medium">{c.deficit}</span>
-                </span>
+                <span className={color}>Déficit: <span className="tabular-nums font-medium">{c.deficit}</span></span>
               )}
             </div>
-          ) : null}
-
+          )}
           {c.suggestedAction && (
             <div className="flex items-start gap-1.5 mt-2 text-xs text-foreground/90">
               <Lightbulb className="w-3.5 h-3.5 text-chart-5 flex-shrink-0 mt-0.5" />
               <span>{c.suggestedAction}</span>
             </div>
           )}
-
           <LinkButtons links={c.links} />
         </div>
       </div>
     </div>
   );
 }
-
-// ─── Checklist item for the clean empty state ─────────────────────────────────
 
 function CheckItem({ label }: { label: string }) {
   return (
@@ -154,25 +118,63 @@ function CheckItem({ label }: { label: string }) {
   );
 }
 
-export function ProjectionConflicts({ result, onOpenDetail }: Props) {
+export function ProjectionConflicts({ result, onOpenDetail, onGoToSources }: Props) {
   const errors = result.conflicts.filter((c) => c.severity === "error");
   const warnings = result.conflicts.filter((c) => c.severity === "warning");
 
+  // Count ignored sources to show a nuanced message when there are no conflicts
+  const ignoredCount = result.consideredMovements.filter(
+    (m) => m.situation === "ignored" || m.situation === "no_date",
+  ).length;
+
   if (result.conflicts.length === 0) {
+    const hasIgnored = ignoredCount > 0;
     return (
       <div className="space-y-3" data-testid="conflicts-empty">
-        {/* Compact positive card */}
-        <Card className="border-chart-4/40">
-          <CardContent className="p-4 flex items-center gap-3">
-            <span className="flex items-center justify-center w-10 h-10 rounded-full bg-chart-4/10 flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-chart-4" />
-            </span>
-            <div>
-              <p className="font-semibold">Nenhum conflito detectado</p>
-              <p className="text-sm text-muted-foreground">
-                A projeção não encontrou saldos negativos nem inconsistências.
-              </p>
+        {/* Status card */}
+        <Card className={hasIgnored ? "border-chart-5/40" : "border-chart-4/40"}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <span className={`flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0 ${hasIgnored ? "bg-chart-5/10" : "bg-chart-4/10"}`}>
+                {hasIgnored
+                  ? <Info className="w-5 h-5 text-chart-5" />
+                  : <CheckCircle2 className="w-5 h-5 text-chart-4" />}
+              </span>
+              <div className="flex-1">
+                {hasIgnored ? (
+                  <>
+                    <p className="font-semibold">Nenhum conflito de saldo detectado</p>
+                    <p className="text-sm text-muted-foreground">
+                      Porém, existem <strong>{ignoredCount}</strong> origem(ns) ignoradas que não entraram no cálculo.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">Nenhum conflito detectado</p>
+                    <p className="text-sm text-muted-foreground">
+                      A projeção não encontrou saldos negativos nem inconsistências.
+                    </p>
+                  </>
+                )}
+              </div>
+              {hasIgnored && onGoToSources && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onGoToSources}
+                  data-testid="button-go-to-sources"
+                  className="flex-shrink-0"
+                >
+                  Fontes da projeção
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              )}
             </div>
+            {hasIgnored && (
+              <p className="text-xs text-muted-foreground mt-3 pl-[52px]">
+                Verifique a aba <strong>Fontes da projeção</strong> para entender quais origens foram desconsideradas e o motivo.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -200,19 +202,11 @@ export function ProjectionConflicts({ result, onOpenDetail }: Props) {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-4 h-4 text-destructive" />
-              <p className="font-semibold text-base text-destructive">
-                Conflitos ({errors.length})
-              </p>
+              <p className="font-semibold text-base text-destructive">Conflitos ({errors.length})</p>
             </div>
             <div className="space-y-2">
               {errors.map((c, idx) => (
-                <ConflictRow
-                  key={idx}
-                  c={c}
-                  idx={idx}
-                  tone="error"
-                  onOpenDetail={onOpenDetail}
-                />
+                <ConflictRow key={idx} c={c} idx={idx} tone="error" onOpenDetail={onOpenDetail} />
               ))}
             </div>
           </CardContent>
@@ -224,19 +218,11 @@ export function ProjectionConflicts({ result, onOpenDetail }: Props) {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <Info className="w-4 h-4 text-chart-5" />
-              <p className="font-semibold text-base text-chart-5">
-                Avisos ({warnings.length})
-              </p>
+              <p className="font-semibold text-base text-chart-5">Avisos ({warnings.length})</p>
             </div>
             <div className="space-y-2">
               {warnings.map((c, idx) => (
-                <ConflictRow
-                  key={idx}
-                  c={c}
-                  idx={idx}
-                  tone="warning"
-                  onOpenDetail={onOpenDetail}
-                />
+                <ConflictRow key={idx} c={c} idx={idx} tone="warning" onOpenDetail={onOpenDetail} />
               ))}
             </div>
           </CardContent>

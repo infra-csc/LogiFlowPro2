@@ -15,8 +15,6 @@ export function statusLabel(status: ProjectionDayStatus): string {
   }
 }
 
-// Tailwind classes for a colored badge per status (follows the existing
-// chart-4 / chart-5 / destructive convention used across reports).
 export function statusBadgeClass(status: ProjectionDayStatus): string {
   switch (status) {
     case "shortage":
@@ -28,7 +26,6 @@ export function statusBadgeClass(status: ProjectionDayStatus): string {
   }
 }
 
-// Background tint for matrix cells based on the day status.
 export function cellToneClass(status: ProjectionDayStatus): string {
   switch (status) {
     case "shortage":
@@ -40,7 +37,6 @@ export function cellToneClass(status: ProjectionDayStatus): string {
   }
 }
 
-// Background tint for day-view rows.
 export function rowToneClass(status: ProjectionDayStatus): string {
   switch (status) {
     case "shortage":
@@ -53,7 +49,6 @@ export function rowToneClass(status: ProjectionDayStatus): string {
 }
 
 export function formatDay(dayKey: string): string {
-  // dayKey is yyyy-MM-dd (UTC day). Render as dd/MM without TZ drift.
   const [, m, d] = dayKey.split("-");
   return `${d}/${m}`;
 }
@@ -120,7 +115,30 @@ export function situationBadgeClass(s: ConsideredSituation): string {
   }
 }
 
-// Net day direction used to render ↓ / ↑ / ↔ trend glyphs in the matrix.
+/**
+ * Human-readable explanation for why a source was not fully considered.
+ * Returns empty string for 'considered' (no explanation needed).
+ */
+export function situationReason(
+  s: ConsideredSituation,
+  outDate?: string | null,
+  inDate?: string | null,
+): string {
+  switch (s) {
+    case "ignored":
+      if (!outDate && !inDate)
+        return "Ignorado porque a origem não possui período de saída/retorno definido.";
+      return "Ignorado porque a data de saída está fora do período selecionado para a projeção.";
+    case "no_date":
+      return "Ignorado porque a origem não possui data de saída definida. Verifique se a ordem ou requisição possui período válido.";
+    case "partial":
+      return "Considerado parcialmente — parte do período está fora do intervalo selecionado. Apenas os dias dentro do período entraram no cálculo.";
+    case "considered":
+      return "";
+  }
+}
+
+// Net day direction used to render trend glyphs in the matrix.
 export type DayTrend = "down" | "up" | "flat";
 
 export function dayTrend(outbound: number, inbound: number): DayTrend {
@@ -130,8 +148,6 @@ export function dayTrend(outbound: number, inbound: number): DayTrend {
   return "flat";
 }
 
-// Heatmap background for a matrix cell. Neutral when the day has no flow and is
-// healthy; otherwise a subtle severity wash so risk reads at a glance.
 export function cellHeatClass(status: ProjectionDayStatus, hasImpact: boolean): string {
   switch (status) {
     case "shortage":
@@ -143,7 +159,6 @@ export function cellHeatClass(status: ProjectionDayStatus, hasImpact: boolean): 
   }
 }
 
-// Small status dot used in legends / headers.
 export function statusDotClass(status: ProjectionDayStatus): string {
   switch (status) {
     case "shortage":
@@ -161,7 +176,6 @@ export interface KpiMeta {
   tooltip: string;
 }
 
-// Tooltips that explain how each executive KPI is computed.
 export const KPI_TOOLTIPS: Record<string, string> = {
   totalProducts: "Produtos com pelo menos um movimento (entrada/saída) no período.",
   productsShortage: "Produtos cujo saldo projetado fica negativo em algum dia.",
