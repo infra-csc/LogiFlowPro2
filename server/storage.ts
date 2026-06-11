@@ -257,6 +257,7 @@ export interface IStorage {
   createMovement(movement: InsertMovement): Promise<Movement>;
   createMovementWithEvents(movement: InsertMovementWithEvents): Promise<Movement>;
   updateMovement(id: string, movement: Partial<InsertMovement>): Promise<Movement>;
+  deleteMovement(id: string): Promise<void>;
 
   // Movement Items
   getMovementItems(movementId: string): Promise<MovementItem[]>;
@@ -1430,6 +1431,14 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMovementItem(id: string): Promise<void> {
     await db.delete(movementItems).where(eq(movementItems.id, id));
+  }
+
+  async deleteMovement(id: string): Promise<void> {
+    await db.delete(movementAuditLogs).where(eq(movementAuditLogs.movementId, id));
+    await db.delete(movementItems).where(eq(movementItems.movementId, id));
+    await db.delete(movementEvents).where(eq(movementEvents.movementId, id));
+    await db.delete(movementTrips).where(eq(movementTrips.movementId, id));
+    await db.delete(movements).where(eq(movements.id, id));
   }
 
   async getRecentSuppliers(limit: number = 10): Promise<string[]> {
