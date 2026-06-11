@@ -23,6 +23,7 @@ import {
   BarChart3,
   Link2 as LinkIcon,
   User,
+  LayoutTemplate,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -111,6 +112,7 @@ const configItems: ConfigItem[] = [
   { title: "Notificações", url: "/notification-settings", icon: Bell },
   { title: "Usuários", url: "/config/users", icon: Users, adminOnly: true },
   { title: "Papéis e Permissões", url: "/config/roles", icon: Shield, adminOnly: true },
+  { title: "Templates de Requisição", url: "/config/request-templates", icon: LayoutTemplate, adminOnly: true },
   { title: "Tipos de Veículos", url: "/config/vehicle-types", icon: Truck, adminOnly: true },
   { title: "Veículos", url: "/config/vehicles", icon: CarFront },
   { title: "Motoristas", url: "/config/drivers", icon: UserCog },

@@ -39,9 +39,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageLoading } from "@/components/ui/page-loading";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { PageLoading } from "@/components/page-loading";
 import type { RequestAreaTemplate, Product } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
@@ -507,25 +507,19 @@ export default function RequestTemplatesPage() {
       <PageHeader
         title="Templates de Requisição"
         description="Defina listas de itens padrão por área. Ao criar uma requisição, selecione um template e os itens serão pré-preenchidos automaticamente."
-        actions={
-          <Button onClick={() => setCreateOpen(true)} data-testid="button-new-template">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Template
-          </Button>
-        }
-      />
+      >
+        <Button onClick={() => setCreateOpen(true)} data-testid="button-new-template">
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Template
+        </Button>
+      </PageHeader>
 
       {!templates?.length ? (
         <EmptyState
           icon={LayoutTemplate}
           title="Nenhum template cadastrado"
           description="Crie templates com itens padrão por área para agilizar a criação de requisições."
-          action={
-            <Button onClick={() => setCreateOpen(true)} data-testid="button-empty-new-template">
-              <Plus className="h-4 w-4 mr-2" />
-              Criar primeiro template
-            </Button>
-          }
+          action={{ label: "Criar primeiro template", onClick: () => setCreateOpen(true) }}
         />
       ) : (
         <div className="space-y-3">

@@ -15,14 +15,31 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, AlertCircle, Check, ChevronsUpDown, Loader2, PartyPopper, Clock, Lock } from "lucide-react";
+import {
+  Calendar, AlertCircle, Check, ChevronsUpDown, Loader2, PartyPopper,
+  Clock, Lock, Package, LayoutTemplate, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import type { MaterialRequest, InsertMaterialRequest, Event } from "@shared/schema";
+import type { MaterialRequest, InsertMaterialRequest, Event, RequestAreaTemplate } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
-// Helper to compute request window status for an event
+// ── types ───────────────────────────────────────────────────────────────────
+
+type TemplateItem = {
+  id: string;
+  productId: string;
+  defaultQuantity: number;
+  productName: string | null;
+  productSku: string | null;
+  productUnit: string | null;
+};
+
+type TemplateWithItems = RequestAreaTemplate & { items: TemplateItem[] };
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
 function getEventWindowStatus(event: Event) {
   if (!event.requestWindowStart || !event.requestWindowEnd) return null;
   const now = new Date();
@@ -32,6 +49,8 @@ function getEventWindowStatus(event: Event) {
   if (now > end) return { label: "Encerrado", color: "bg-destructive/10 text-destructive border-destructive/20" as const, icon: Lock };
   return { label: "Aberto", color: "bg-chart-4/10 text-chart-4 border-chart-4/20" as const, icon: PartyPopper };
 }
+
+// ── component ─────────────────────────────────────────────────────────────────
 
 interface RequestDialogProps {
   open: boolean;
@@ -43,14 +62,23 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
   const [formData, setFormData] = useState({
     eventId: request?.eventId || "",
     area: request?.area || "",
     notes: request?.notes || "",
   });
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [eventOpen, setEventOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [showTemplateItems, setShowTemplateItems] = useState(false);
 
   const { data: events, isLoading: eventsLoading } = useQuery<Event[]>({ queryKey: ["/api/events"] });
+  const { data: templates } = useQuery<RequestAreaTemplate[]>({ queryKey: ["/api/request-templates"] });
+  const { data: selectedTemplateDetail } = useQuery<TemplateWithItems>({
+    queryKey: ["/api/request-templates", templateId],
+    enabled: !!templateId,
+  });
 
   useEffect(() => {
     if (open) {
@@ -59,53 +87,37 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
         area: request?.area || "",
         notes: request?.notes || "",
       });
+      setTemplateId(null);
+      setShowTemplateItems(false);
     }
   }, [open, request]);
 
-  const selectedEvent = useMemo(() => {
-    return events?.find(e => e.id === formData.eventId);
-  }, [events, formData.eventId]);
+  const selectedEvent = useMemo(() => events?.find(e => e.id === formData.eventId), [events, formData.eventId]);
 
   const requestWindowInfo = useMemo(() => {
-    if (!selectedEvent?.requestWindowStart || !selectedEvent?.requestWindowEnd) {
-      return null;
-    }
-
+    if (!selectedEvent?.requestWindowStart || !selectedEvent?.requestWindowEnd) return null;
     const now = new Date();
     const start = new Date(selectedEvent.requestWindowStart);
     const end = new Date(selectedEvent.requestWindowEnd);
-
-    const formatDate = (date: Date) => {
-      return date.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    };
-
-    const isBeforeWindow = now < start;
-    const isAfterWindow = now > end;
-    const isWithinWindow = !isBeforeWindow && !isAfterWindow;
-
+    const formatDate = (d: Date) =>
+      d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
     return {
       start: formatDate(start),
       end: formatDate(end),
-      isBeforeWindow,
-      isAfterWindow,
-      isWithinWindow
+      isBeforeWindow: now < start,
+      isAfterWindow: now > end,
+      isWithinWindow: now >= start && now <= end,
     };
   }, [selectedEvent]);
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertMaterialRequest) => {
+    mutationFn: async (data: InsertMaterialRequest & { templateId?: string }) => {
       const response = await apiRequest("POST", "/api/requests", data);
       if (!response.ok) {
         const errorData = await response.json();
         throw errorData;
       }
-      return response;
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
@@ -114,38 +126,22 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
     },
     onError: (error: any) => {
       let description = "Erro ao criar requisição";
-
       if (error?.windowStart && error?.windowEnd) {
         const start = new Date(error.windowStart);
         const end = new Date(error.windowEnd);
-        description = `${error.error}\n\nPeríodo permitido: ${start.toLocaleString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })} até ${end.toLocaleString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}`;
+        const fmt = (d: Date) =>
+          d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        description = `${error.error}\n\nPeríodo permitido: ${fmt(start)} até ${fmt(end)}`;
       } else if (error?.error) {
         description = error.error;
       }
-
-      toast({
-        description: description,
-        variant: "destructive"
-      });
+      toast({ description, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<InsertMaterialRequest>) => {
-      return apiRequest("PATCH", `/api/requests/${request?.id}`, data);
-    },
+    mutationFn: async (data: Partial<InsertMaterialRequest>) =>
+      apiRequest("PATCH", `/api/requests/${request?.id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       toast({ description: "Requisição atualizada com sucesso" });
@@ -161,24 +157,21 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!formData.eventId || !formData.area) {
       toast({ description: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
-
-    const submitData: InsertMaterialRequest = {
+    const submitData = {
       eventId: formData.eventId,
       area: formData.area,
       notes: formData.notes || undefined,
-      status: "draft",
+      status: "draft" as const,
       requestedBy: user?.id || "sistema",
     };
-
     if (request) {
       updateMutation.mutate(submitData);
     } else {
-      createMutation.mutate(submitData);
+      createMutation.mutate({ ...submitData, templateId: templateId || undefined });
     }
   };
 
@@ -190,9 +183,11 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
         : { label: "Período encerrado", icon: Lock, color: "bg-destructive/10 text-destructive border-destructive/20" }
     : null;
 
+  const templateItemCount = selectedTemplateDetail?.items.length ?? 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden p-0 flex flex-col" style={{ maxHeight: '90vh' }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden p-0 flex flex-col">
         {/* Header */}
         <div className="p-6 pb-4 border-b border-border">
           <DialogHeader>
@@ -207,7 +202,8 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
           </DialogHeader>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 p-6 overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin', maxHeight: '60vh' }}>
+        <form onSubmit={handleSubmit} className="space-y-6 p-6 overflow-y-auto flex-1" style={{ scrollbarWidth: "thin" }}>
+
           {/* Bloco 1: Evento */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Evento *</Label>
@@ -258,17 +254,12 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                               <div className="flex flex-col gap-1 min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-sm font-medium truncate">{event.name}</span>
-                                  <Check
-                                    className={cn(
-                                      "h-4 w-4 shrink-0",
-                                      formData.eventId === event.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
+                                  <Check className={cn("h-4 w-4 shrink-0", formData.eventId === event.id ? "opacity-100" : "opacity-0")} />
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-muted-foreground">
-                                    {event.eventDate ? new Date(event.eventDate).toLocaleDateString('pt-BR') : ''}
-                                    {event.location ? ` · ${event.location}` : ''}
+                                    {event.eventDate ? new Date(event.eventDate).toLocaleDateString("pt-BR") : ""}
+                                    {event.location ? ` · ${event.location}` : ""}
                                   </span>
                                   {windowStatus && (
                                     <Badge variant="outline" className={cn("text-[10px] font-medium px-1.5 py-0 h-4", windowStatus.color)}>
@@ -288,7 +279,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
               </PopoverContent>
             </Popover>
 
-            {/* Resumo do evento selecionado */}
+            {/* Resumo do evento */}
             {selectedEvent && (
               <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
                 <div className="flex items-center gap-2">
@@ -299,9 +290,7 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span>
-                        {requestWindowInfo.start} até {requestWindowInfo.end}
-                      </span>
+                      <span>{requestWindowInfo.start} até {requestWindowInfo.end}</span>
                     </div>
                     {windowBadge && (
                       <Badge variant="outline" className={cn("text-[10px] font-medium", windowBadge.color)}>
@@ -311,14 +300,11 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Sem período de requisição configurado para este evento.
-                  </p>
+                  <p className="text-xs text-muted-foreground">Sem período de requisição configurado.</p>
                 )}
               </div>
             )}
 
-            {/* Alerta de janela de requisição */}
             {requestWindowInfo && !requestWindowInfo.isWithinWindow && (
               <Alert variant="destructive">
                 <div className="flex items-start gap-2">
@@ -344,23 +330,155 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
             )}
           </div>
 
-          {/* Bloco 2: Identificação */}
-          <div className="space-y-3">
-            <Label htmlFor="area" className="text-sm font-medium">
-              Área / Nome da requisição *
-            </Label>
-            <Input
-              id="area"
-              value={formData.area}
-              onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-              placeholder="Ex: Cenografia — Palco Principal"
-              data-testid="input-area"
-              className="h-10"
-            />
-            <p className="text-xs text-muted-foreground">
-              Use um nome que ajude a identificar o setor ou uso dos materiais.
-            </p>
-          </div>
+          {/* Bloco 2: Área — template ou personalizada */}
+          {!request && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Área / Template *</Label>
+
+              {/* Template combobox */}
+              {templates && templates.length > 0 && (
+                <Popover open={templateOpen} onOpenChange={setTemplateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between h-10 font-normal"
+                      data-testid="combobox-template"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <LayoutTemplate className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="truncate">
+                          {templateId
+                            ? templates.find((t) => t.id === templateId)?.name
+                            : "Selecionar template de área"}
+                        </span>
+                      </div>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar template..." />
+                      <CommandList className="max-h-60">
+                        <CommandEmpty>Nenhum template encontrado</CommandEmpty>
+                        <CommandGroup>
+                          {templateId && (
+                            <CommandItem
+                              value="__none__"
+                              onSelect={() => {
+                                setTemplateId(null);
+                                setFormData({ ...formData, area: "" });
+                                setTemplateOpen(false);
+                                setShowTemplateItems(false);
+                              }}
+                            >
+                              <span className="text-muted-foreground text-sm">Sem template (personalizado)</span>
+                            </CommandItem>
+                          )}
+                          {templates.map((t) => (
+                            <CommandItem
+                              key={t.id}
+                              value={t.name}
+                              onSelect={() => {
+                                setTemplateId(t.id);
+                                setFormData({ ...formData, area: t.name });
+                                setTemplateOpen(false);
+                                setShowTemplateItems(true);
+                              }}
+                              data-testid={`template-option-${t.id}`}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4 shrink-0", templateId === t.id ? "opacity-100" : "opacity-0")} />
+                              <div className="flex flex-col gap-0.5 min-w-0">
+                                <span className="text-sm font-medium">{t.name}</span>
+                                {t.description && (
+                                  <span className="text-xs text-muted-foreground truncate">{t.description}</span>
+                                )}
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+
+              {/* Nome da área (editável mesmo quando template selecionado) */}
+              <Input
+                value={formData.area}
+                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                placeholder="Nome da área / requisição"
+                data-testid="input-area"
+                className="h-10"
+              />
+              <p className="text-xs text-muted-foreground">
+                {templateId
+                  ? "Nome pré-preenchido pelo template. Edite se necessário."
+                  : templates && templates.length > 0
+                  ? "Selecione um template acima ou escreva um nome personalizado."
+                  : "Use um nome que identifique o setor ou uso dos materiais."}
+              </p>
+
+              {/* Preview dos itens do template */}
+              {templateId && selectedTemplateDetail && (
+                <div className="rounded-md border border-border/60 bg-muted/20 overflow-hidden">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium hover-elevate"
+                    onClick={() => setShowTemplateItems(!showTemplateItems)}
+                    data-testid="button-toggle-template-preview"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary" />
+                      <span>
+                        {templateItemCount === 0
+                          ? "Nenhum item no template"
+                          : `${templateItemCount} ${templateItemCount === 1 ? "item será pré-preenchido" : "itens serão pré-preenchidos"}`}
+                      </span>
+                    </div>
+                    {templateItemCount > 0 && (
+                      showTemplateItems
+                        ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {showTemplateItems && templateItemCount > 0 && (
+                    <div className="border-t border-border/40 divide-y divide-border/30">
+                      {selectedTemplateDetail.items.map((item) => (
+                        <div key={item.id} className="flex items-center gap-2 px-3 py-1.5">
+                          <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm flex-1 truncate">{item.productName}</span>
+                          <Badge variant="secondary" className="text-xs shrink-0">
+                            {item.defaultQuantity}{item.productUnit ? ` ${item.productUnit}` : ""}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {templateItemCount === 0 && (
+                    <p className="text-xs text-muted-foreground px-3 pb-2">
+                      A requisição será criada sem itens pré-preenchidos.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Área simples para edição */}
+          {request && (
+            <div className="space-y-3">
+              <Label htmlFor="area" className="text-sm font-medium">Área / Nome da requisição *</Label>
+              <Input
+                id="area"
+                value={formData.area}
+                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                placeholder="Ex: Cenografia — Palco Principal"
+                data-testid="input-area"
+                className="h-10"
+              />
+            </div>
+          )}
 
           {/* Bloco 3: Observações */}
           <div className="space-y-3">
@@ -398,8 +516,12 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Salvando...
               </>
+            ) : request ? (
+              "Atualizar"
+            ) : templateId ? (
+              "Criar com template"
             ) : (
-              request ? "Atualizar" : "Criar"
+              "Criar"
             )}
           </Button>
         </div>

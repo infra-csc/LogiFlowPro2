@@ -52,6 +52,7 @@ import MovementTypesConfig from "@/pages/movement-types-config";
 import MovementApprovals from "@/pages/movement-approvals";
 import InventoryViews from "@/pages/inventory-views";
 import OperationalCalendar from "@/pages/calendar";
+import RequestTemplates from "@/pages/request-templates";
 
 const PUBLIC_ROUTES = ["/auth", "/forgot-password", "/reset-password"];
 
@@ -120,6 +121,7 @@ function Router() {
       <ProtectedRoute path="/config/movement-types" component={MovementTypesConfig} requireAdmin />
       <ProtectedRoute path="/config/product-statuses" component={ProductStatuses} requireAdmin />
       <ProtectedRoute path="/config/locations" component={Locations} requireAdmin />
+      <ProtectedRoute path="/config/request-templates" component={RequestTemplates} requireAdmin />
       <ProtectedRoute path="/calendar" component={OperationalCalendar} />
       <Route component={NotFound} />
     </Switch>
