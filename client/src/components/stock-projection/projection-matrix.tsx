@@ -60,6 +60,15 @@ export function ProjectionMatrix({
     });
   }, [rangeDays, products]);
 
+  const sortedProducts = useMemo(() => {
+    const ORDER = { shortage: 0, low: 1, ok: 2 } as const;
+    return [...products].sort((a, b) => {
+      const statusDiff = ORDER[a.worstStatus] - ORDER[b.worstStatus];
+      if (statusDiff !== 0) return statusDiff;
+      return (b.totalOutbound + b.totalInbound) - (a.totalOutbound + a.totalInbound);
+    });
+  }, [products]);
+
   if (products.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
@@ -245,7 +254,7 @@ export function ProjectionMatrix({
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => (
+                {sortedProducts.map((p) => (
                   <tr
                     key={p.productId}
                     className="border-b border-border/40 hover:bg-muted/20"

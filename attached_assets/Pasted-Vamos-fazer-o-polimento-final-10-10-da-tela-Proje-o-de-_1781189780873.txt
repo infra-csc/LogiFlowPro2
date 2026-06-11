@@ -1,0 +1,321 @@
+Vamos fazer o polimento final 10/10 da tela Projeção de Estoque.
+
+A tela já está bem evoluída e funcional. Não quero refazer a tela do zero. Quero apenas elevar a clareza operacional, o acabamento visual e a leitura rápida para que ela pareça realmente a Central de Controle de Estoque do app.
+
+Tela foco:
+- client/src/pages/stock-position-simulation.tsx
+- componentes relacionados à matriz, timeline, KPIs, abas, avisos, conflitos, fontes da projeção e filtros avançados
+
+Objetivo:
+Transformar a tela em uma central de decisão, onde o administrador consiga bater o olho e entender:
+
+- se o estoque está saudável;
+- quais produtos estão em risco;
+- quais dias terão impacto;
+- quais fontes entraram no cálculo;
+- se existem avisos ou ambiguidades;
+- o que precisa de atenção imediata.
+
+Não alterar regras de negócio indevidamente.
+Não alterar RBAC.
+Não alterar permissões.
+Não alterar schema/migrations/seed.
+Não quebrar endpoints existentes.
+Se precisar ajustar retorno da projeção, manter compatibilidade.
+
+1. Adicionar diagnóstico operacional no topo
+
+Abaixo da barra de contexto ou acima dos KPIs, adicionar um bloco discreto de diagnóstico automático.
+
+Exemplos:
+
+Quando estiver tudo saudável:
+“Projeção saudável: 29 produtos analisados, nenhum item em falta e 2 avisos para revisar.”
+
+Quando houver falta:
+“Atenção: X produtos entram em falta no período. O primeiro risco ocorre em DD/MM.”
+
+Quando houver apenas avisos:
+“Nenhum conflito de saldo encontrado, mas existem X avisos de dados para revisar.”
+
+Esse diagnóstico deve usar os dados já calculados:
+- produtos analisados;
+- em falta;
+- abaixo do mínimo;
+- avisos;
+- conflitos;
+- primeiro dia de risco, se existir.
+
+Visual:
+- card horizontal compacto;
+- ícone de status;
+- cor sutil: verde para saudável, âmbar para aviso, vermelho para risco;
+- não ocupar muito espaço.
+
+2. Melhorar Matriz por Dia para parecer heatmap operacional
+
+A matriz ainda parece uma tabela comum. Melhorar visualmente as células.
+
+Cada célula deve comunicar o status:
+
+- adequado: neutro/verde muito sutil;
+- abaixo do mínimo: âmbar sutil;
+- em falta: vermelho sutil;
+- sem impacto: texto mais apagado;
+- saída no dia: pequeno indicador vermelho;
+- entrada no dia: pequeno indicador verde;
+- retorno no dia: indicador discreto;
+- dia selecionado: destaque azul;
+- hoje: borda ou fundo sutil diferente.
+
+Regras:
+- manter compacta;
+- evitar poluição visual;
+- manter legibilidade;
+- primeira coluna Produto deve continuar fixa/sticky;
+- header dos dias deve continuar legível;
+- produto com risco deve aparecer acima dos produtos sem risco.
+
+Se houver produtos em falta ou abaixo do mínimo, ordenar automaticamente:
+1. Em falta
+2. Abaixo do mínimo
+3. Adequados com impacto
+4. Adequados sem impacto
+
+3. Melhorar linha do tempo de impactos diários
+
+A linha do tempo precisa ser mais útil.
+
+Cada dia deve mostrar pequenos indicadores quando houver:
+- saída;
+- entrada;
+- falta;
+- aviso;
+- evento;
+- produto impactado.
+
+Se não houver impacto, deixar o dia mais apagado.
+
+Ao clicar em um dia:
+- selecionar o dia;
+- trocar para aba “Visão por Dia”;
+- atualizar os cards do dia.
+
+Adicionar tooltip no dia:
+- data;
+- total de saídas;
+- total de entradas;
+- produtos em falta;
+- produtos abaixo do mínimo;
+- itens em evento.
+
+4. Melhorar Visão por Dia
+
+A aba Visão por Dia deve parecer uma agenda operacional do dia.
+
+Manter:
+- seletor de dia;
+- anterior/próximo;
+- cards do dia.
+
+Melhorar:
+- criar bloco “Resumo do dia” com frase automática.
+
+Exemplos:
+“Nenhuma entrada ou saída prevista neste dia. 57 unidades permanecem em evento.”
+“Dia com 3 saídas previstas e 1 entrada. Nenhum produto em falta.”
+“Atenção: 2 produtos entram em falta neste dia.”
+
+Na tabela, ordenar:
+1. produtos em falta;
+2. abaixo do mínimo;
+3. com saída/entrada;
+4. sem impacto.
+
+5. Melhorar Por Produto
+
+A aba Por Produto deve contar a história do produto no período.
+
+Melhorar:
+- destacar pior saldo;
+- destacar pior dia;
+- mostrar variação total do período;
+- mostrar se o produto ficou estável;
+- marcar visualmente dias com entrada/saída;
+- melhorar mensagem quando não houver impacto.
+
+Texto quando não houver impacto:
+“Este produto mantém saldo estável no período selecionado.”
+
+Texto quando houver impacto:
+“Este produto possui X saída(s), Y entrada(s) e pior saldo de Z em DD/MM.”
+
+Na linha do tempo do produto:
+- destacar pior dia;
+- destacar entrada/saída;
+- evitar parecer apenas uma sequência de números.
+
+6. Melhorar Avisos e Conflitos
+
+Manter separação entre Avisos e Conflitos.
+
+Conflito deve ser apenas:
+- falta real;
+- saldo negativo;
+- abaixo do mínimo crítico;
+- erro que impacta projeção.
+
+Aviso deve ser:
+- ambiguidade;
+- vínculo múltiplo;
+- data consolidada;
+- origem ignorada;
+- dado incompleto que não gera falta.
+
+Se houver avisos e nenhum conflito:
+mostrar:
+“Nenhum conflito de saldo encontrado, mas existem avisos de dados para revisar.”
+
+Se houver conflito:
+mostrar:
+“Conflitos encontrados que podem afetar a disponibilidade de estoque.”
+
+7. Melhorar Fontes da projeção
+
+A aba Fontes da projeção deve ser a auditoria do cálculo.
+
+Melhorar a coluna Situação para ser mais específica:
+
+- Considerado no saldo atual
+- Considerado no período
+- Considerado como em evento
+- Considerado como saída
+- Considerado como entrada
+- Ignorado fora do período
+- Ignorado sem data
+- Ambíguo
+- Parcial
+
+Ao expandir uma linha, mostrar:
+- regra aplicada;
+- motivo da situação;
+- produtos impactados;
+- data usada para saída;
+- data usada para retorno;
+- se afetou saldo atual, saída, entrada, reservado ou em evento.
+
+Isso é importante para não confundir movimentações antigas aparecendo como consideradas.
+
+8. Compactar visualmente os KPIs
+
+Os KPIs estão bons, mas ainda ocupam muito espaço vertical.
+
+Ajustar:
+- reduzir um pouco altura dos cards;
+- manter leitura forte dos números;
+- manter grupos “Risco de Estoque” e “Volume Operacional”;
+- labels mais objetivos.
+
+Trocar:
+“Pico em evento”
+por:
+“57 un. em evento”
+ou manter número e adicionar tooltip claro:
+“Maior quantidade simultânea alocada em eventos no período.”
+
+9. Melhorar scroll e acabamento visual
+
+Revisar:
+- matriz;
+- timeline;
+- drawer;
+- tabelas;
+- página geral.
+
+Garantir:
+- sem scrollbar branca;
+- sem overflow horizontal da página inteira;
+- scroll horizontal apenas dentro da matriz/timeline;
+- scrollbar dark, fina e integrada;
+- nada cortado;
+- sem elementos colados na lateral;
+- responsivo em notebook.
+
+10. Estado vazio melhorado
+
+Se a projeção não tiver impacto:
+não mostrar uma tela vazia genérica.
+
+Mostrar:
+“Nenhum impacto encontrado no período.”
+“Não encontramos saídas, entradas, ordens, requisições ou movimentações que alterem o estoque no intervalo selecionado.”
+
+Sugerir:
+- ampliar período;
+- selecionar outros eventos;
+- incluir outras fontes.
+
+11. Microcopy final
+
+Ajustar textos para ficarem mais profissionais:
+
+“Projeção calculada às HH:mm” manter.
+
+“Saldo projetado dia a dia — recalcula automaticamente ao aplicar filtros.”
+pode virar:
+“Saldo projetado dia a dia com base nas fontes e filtros aplicados.”
+
+“Fontes da projeção” manter.
+
+“Risco de estoque” manter.
+
+“Volume operacional” manter.
+
+12. Validações
+
+Rodar:
+
+npm run check
+npm run build
+
+13. Smoke test obrigatório
+
+Testar:
+- abrir tela;
+- projeção inicial automática;
+- filtros avançados;
+- aplicar filtros;
+- limpar filtros;
+- matriz por dia;
+- visão por dia;
+- por produto;
+- avisos;
+- conflitos;
+- fontes da projeção;
+- scroll interno;
+- ausência de overflow horizontal;
+- notebook;
+- mobile básico.
+
+Confirmar:
+- não existe botão Atualizar;
+- projeção recalcula automaticamente;
+- RBAC preservado;
+- endpoints preservados;
+- regras de negócio preservadas;
+- backend não foi alterado indevidamente.
+
+14. Entrega final
+
+Informar:
+- arquivos alterados;
+- melhorias feitas no diagnóstico;
+- melhorias feitas na matriz;
+- melhorias feitas na timeline;
+- melhorias feitas na visão por dia;
+- melhorias feitas no por produto;
+- melhorias feitas em avisos/conflitos;
+- melhorias feitas em fontes da projeção;
+- melhorias feitas nos KPIs;
+- resultado do npm run check;
+- resultado do npm run build.

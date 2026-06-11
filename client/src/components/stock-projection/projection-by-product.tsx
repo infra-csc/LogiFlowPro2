@@ -24,6 +24,7 @@ import type { ProjectionDriver, StockProjectionResult } from "@shared/stock-proj
 import {
   cellToneClass,
   formatDay,
+  formatDayFull,
   isToday,
   isWeekend,
   sourceLabel,
@@ -153,6 +154,14 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
           </SelectContent>
         </Select>
       </div>
+
+      {product && (
+        <p className="text-sm text-muted-foreground -mt-1" data-testid="by-product-summary">
+          {product.totalOutbound === 0 && product.totalInbound === 0
+            ? "Este produto mantém saldo estável no período selecionado."
+            : `Este produto possui ${product.totalOutbound} saída(s), ${product.totalInbound} entrada(s) e pior saldo de ${product.minAvailable}${worstDayDate ? ` em ${formatDayFull(worstDayDate)}` : ""}.`}
+        </p>
+      )}
 
       {product && (
         <>

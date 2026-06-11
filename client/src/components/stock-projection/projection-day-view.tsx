@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Package,
+  Info,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,69 @@ interface DayFlow {
   productName: string;
   direction: "outbound" | "inbound";
   qty: number;
+}
+
+// ─── Day summary sentence ─────────────────────────────────────────────────────
+
+function DaySummary({
+  shortage,
+  low,
+  outbound,
+  inbound,
+  inEvent,
+}: {
+  shortage: number;
+  low: number;
+  outbound: number;
+  inbound: number;
+  inEvent: number;
+}) {
+  if (shortage > 0) {
+    return (
+      <Card className="border-destructive/40 bg-destructive/5" data-testid="day-summary-risk">
+        <CardContent className="p-3 flex items-center gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
+          <p className="text-sm">
+            <span className="font-semibold text-destructive">Atenção:</span>{" "}
+            <span className="text-muted-foreground">
+              {shortage} produto(s) entram em falta neste dia.
+            </span>
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (outbound === 0 && inbound === 0) {
+    return (
+      <Card className="border-border/60 bg-muted/20" data-testid="day-summary-quiet">
+        <CardContent className="p-3 flex items-center gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            Nenhuma entrada ou saída prevista neste dia
+            {inEvent > 0 ? `. ${inEvent} unidade(s) permanecem em evento.` : "."}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const parts: string[] = [];
+  if (outbound > 0) parts.push(`${outbound} saída(s)`);
+  if (inbound > 0) parts.push(`${inbound} entrada(s)`);
+  return (
+    <Card className="border-border/60 bg-muted/20" data-testid="day-summary-active">
+      <CardContent className="p-3 flex items-center gap-2.5">
+        <Info className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <p className="text-sm text-muted-foreground">
+          Dia com {parts.join(" e ")} prevista(s)
+          {low > 0
+            ? `. ${low} produto(s) abaixo do mínimo.`
+            : " sem itens em falta."}
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
 
 // ─── Agenda block ─────────────────────────────────────────────────────────────
@@ -180,6 +244,15 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
           </div>
         </div>
       </div>
+
+      {/* ── Day summary sentence ── */}
+      <DaySummary
+        shortage={kpis.shortage}
+        low={kpis.low}
+        outbound={kpis.outbound}
+        inbound={kpis.inbound}
+        inEvent={kpis.inEvent}
+      />
 
       {/* ── Day summary KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

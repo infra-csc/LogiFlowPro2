@@ -126,6 +126,84 @@ function daysBetween(start: string, end: string): number {
   return Math.round(ms / 86400000) + 1;
 }
 
+// ─── Diagnostic banner ────────────────────────────────────────────────────────
+
+function DiagnosticBanner({ result }: { result: StockProjectionResult }) {
+  const { summary, conflicts, products } = result;
+
+  const warnCount = useMemo(
+    () => conflicts.filter((c) => c.severity === "warning").length,
+    [conflicts],
+  );
+
+  const firstRiskDate = useMemo(() => {
+    if (summary.productsShortage === 0) return null;
+    let earliest: string | null = null;
+    for (const p of products) {
+      for (const d of p.days) {
+        if (d.status === "shortage") {
+          if (!earliest || d.date < earliest) earliest = d.date;
+          break;
+        }
+      }
+    }
+    return earliest;
+  }, [summary.productsShortage, products]);
+
+  if (summary.productsShortage > 0) {
+    return (
+      <Card className="border-destructive/40 bg-destructive/5" data-testid="diagnostic-risk">
+        <CardContent className="p-3 flex items-center gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
+          <p className="text-sm">
+            <span className="font-semibold text-destructive">Atenção: </span>
+            <span className="text-muted-foreground">
+              {summary.productsShortage} produto(s) entram em falta no período
+              {firstRiskDate ? `. Primeiro risco em ${fmtDateFull(firstRiskDate)}.` : "."}
+            </span>
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (summary.productsLow > 0 || warnCount > 0) {
+    return (
+      <Card className="border-chart-5/40 bg-chart-5/5" data-testid="diagnostic-warning">
+        <CardContent className="p-3 flex items-center gap-2.5">
+          <Info className="w-4 h-4 text-chart-5 flex-shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            Nenhum conflito de saldo detectado
+            {summary.productsLow > 0 && (
+              <>, mas{" "}
+                <span className="font-medium text-chart-5">{summary.productsLow} produto(s) abaixo do mínimo</span>
+              </>
+            )}
+            {summary.productsLow > 0 && warnCount > 0 && " e "}
+            {warnCount > 0 && (
+              <span className="font-medium text-chart-5">{warnCount} aviso(s) para revisar</span>
+            )}
+            .
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-chart-4/40 bg-chart-4/5" data-testid="diagnostic-healthy">
+      <CardContent className="p-3 flex items-center gap-2.5">
+        <CheckCircle2 className="w-4 h-4 text-chart-4 flex-shrink-0" />
+        <p className="text-sm text-muted-foreground">
+          <span className="font-semibold text-chart-4">Projeção saudável: </span>
+          {summary.totalProducts} produto(s) analisado(s), nenhum item em falta
+          {warnCount > 0 ? ` e ${warnCount} aviso(s) para revisar.` : "."}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── KPI card ─────────────────────────────────────────────────────────────────
 
 type KpiAccent = "primary" | "destructive" | "warn" | "success" | "neutral";
@@ -593,7 +671,7 @@ export default function StockProjection() {
       {/* ── Header ── */}
       <PageHeader
         title="Projeção de Estoque"
-        description="Saldo projetado dia a dia — recalcula automaticamente ao aplicar filtros."
+        description="Saldo projetado dia a dia com base nas fontes e filtros aplicados."
       >
         <Button
           variant="ghost"
@@ -686,6 +764,9 @@ export default function StockProjection() {
       {/* ── Results (with opacity overlay while recalculating) ── */}
       {result && hasData && (
         <div className={`space-y-4 transition-opacity duration-300 ${isGenerating ? "opacity-40 pointer-events-none select-none" : "opacity-100"}`}>
+          {/* ── Diagnostic banner ── */}
+          <DiagnosticBanner result={result} />
+
           {/* ── KPIs ── */}
           <div className="space-y-3">
             <div className="space-y-1.5">
