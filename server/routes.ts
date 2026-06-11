@@ -2384,6 +2384,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/loading-orders/:id", requireAuth, requireAdmin({ message: "Apenas administradores podem excluir ordens de carregamento" }), async (req, res) => {
+    try {
+      await storage.deleteLoadingOrder(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Erro ao excluir ordem de carregamento" });
+    }
+  });
+
   // Movements
   app.get("/api/movements", requireAuth, async (req, res) => {
     try {

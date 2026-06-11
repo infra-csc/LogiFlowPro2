@@ -242,6 +242,7 @@ export interface IStorage {
   // Loading Order Items
   getLoadingOrderItems(loadingOrderId: string): Promise<LoadingOrderItem[]>;
   createLoadingOrderItem(item: InsertLoadingOrderItem): Promise<LoadingOrderItem>;
+  deleteLoadingOrder(id: string): Promise<void>;
   deleteLoadingOrderItems(loadingOrderId: string): Promise<void>;
 
   // Loading Order Trips (junction table)
@@ -1052,6 +1053,13 @@ export class DatabaseStorage implements IStorage {
   async createLoadingOrderItem(item: InsertLoadingOrderItem): Promise<LoadingOrderItem> {
     const [created] = await db.insert(loadingOrderItems).values(item as any).returning();
     return created;
+  }
+
+  async deleteLoadingOrder(id: string): Promise<void> {
+    await db.delete(loadingOrderRequests).where(eq(loadingOrderRequests.loadingOrderId, id));
+    await db.delete(loadingOrderItems).where(eq(loadingOrderItems.loadingOrderId, id));
+    await db.delete(loadingOrderTrips).where(eq(loadingOrderTrips.loadingOrderId, id));
+    await db.delete(loadingOrders).where(eq(loadingOrders.id, id));
   }
 
   async deleteLoadingOrderItems(loadingOrderId: string): Promise<void> {
