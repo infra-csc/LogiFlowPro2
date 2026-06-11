@@ -185,7 +185,6 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
 
   // Watch date + identity fields for reactive validation
   const [
-    watchedSetup,
     watchedEvent,
     watchedTeardown,
     watchedWindowStart,
@@ -193,7 +192,6 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
   ] = useWatch({
     control: form.control,
     name: [
-      "setupDate",
       "eventDate",
       "teardownDate",
       "requestWindowStart",
@@ -201,9 +199,14 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
     ],
   });
 
+  // Keep setupDate in sync with eventDate automatically
+  useEffect(() => {
+    if (watchedEvent) {
+      form.setValue("setupDate", new Date(watchedEvent), { shouldValidate: false });
+    }
+  }, [watchedEvent]);
+
   // Date order validation
-  const setupAfterEvent =
-    watchedSetup && watchedEvent && new Date(watchedSetup) > new Date(watchedEvent);
   const teardownBeforeEvent =
     watchedTeardown && watchedEvent && new Date(watchedTeardown) < new Date(watchedEvent);
   const windowStartAfterEnd =
@@ -279,8 +282,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
-  const hasBlockingError =
-    !!setupAfterEvent || !!teardownBeforeEvent || !!windowStartAfterEnd;
+  const hasBlockingError = !!teardownBeforeEvent || !!windowStartAfterEnd;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -391,29 +393,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               {/* ── B. Cronograma ──────────────────────────────────── */}
               <SectionLabel>Cronograma do Evento</SectionLabel>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0 [&>*]:min-w-0">
-                <FormField
-                  control={form.control}
-                  name="setupDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Montagem <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <DateTimeFields
-                          value={field.value}
-                          onChange={field.onChange}
-                          invalid={!!setupAfterEvent}
-                          dateTestId="input-setup-date"
-                          hideTime
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0 [&>*]:min-w-0">
                 <FormField
                   control={form.control}
                   name="eventDate"
@@ -459,12 +439,6 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
               </div>
 
               {/* Date order warnings */}
-              {setupAfterEvent && (
-                <div className="flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  A montagem não pode ocorrer depois do evento.
-                </div>
-              )}
               {teardownBeforeEvent && (
                 <div className="flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
