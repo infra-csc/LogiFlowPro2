@@ -1,0 +1,681 @@
+Vamos parar de fazer pequenos ajustes e refazer a UX/UI da tela de Simulação/Projeção de Estoque como uma tela principal do sistema.
+
+Tela foco:
+
+* client/src/pages/stock-simulation.tsx
+* client/src/pages/stock-position-simulation.tsx
+* componentes relacionados à projeção/simulação de estoque
+* endpoint /api/stock/projection, se existir
+* componentes de filtros, matriz, resultado, cards e empty state
+
+Problema atual:
+A tela continua visualmente fraca e não passa sensação de ser o coração do app.
+
+Hoje ela parece:
+
+* uma tela de filtros;
+* com um painel lateral muito pesado;
+* com área principal vazia;
+* com botão importante escondido no final do filtro;
+* com scroll ruim dentro das listas;
+* com pouca orientação para o usuário;
+* sem sensação de simulação operacional;
+* sem visão clara de “semana”, “dias”, “entradas”, “saídas” e “saldo futuro” logo de cara.
+
+Objetivo:
+Transformar essa tela em uma verdadeira Central de Simulação de Estoque.
+
+Ela precisa abrir e imediatamente comunicar:
+
+* qual período está sendo analisado;
+* quais fontes entram no cálculo;
+* quais eventos impactam o estoque;
+* quais produtos estão envolvidos;
+* qual o saldo previsto por dia;
+* quais riscos existem;
+* quais entradas e saídas estão previstas;
+* quais dados estão faltando para simular melhor.
+
+Conceito visual:
+Stock Simulation Command Center
+
+Não quero mais uma tela com filtro gigante e área vazia.
+Quero uma tela operacional, guiada e útil.
+
+==================================================
+
+1. REORGANIZAR O LAYOUT DA TELA
+   ==================================================
+
+Abandonar o layout atual de “sidebar gigante + vazio”.
+
+Novo layout sugerido:
+
+Topo:
+
+* PageHeader
+* título: Projeção de Estoque
+* descrição curta
+* ações:
+
+  * Gerar Projeção
+  * Limpar
+  * Recolher filtros
+
+Abaixo do header:
+
+* barra compacta de configuração rápida:
+
+  * período
+  * fontes consideradas
+  * eventos selecionados
+  * produtos selecionados
+  * botão Gerar Projeção
+
+Depois:
+
+* Resumo executivo
+* Abas de análise
+* Resultado principal
+
+O filtro não pode ocupar a tela inteira.
+O usuário deve ver o resultado como protagonista.
+
+==================================================
+2. REMOVER PAINEL LATERAL FIXO COMO PADRÃO
+==========================================
+
+O painel lateral atual domina demais a tela.
+
+Alterar para uma destas opções:
+
+Opção preferida:
+
+* filtros em painel horizontal compacto no topo;
+* detalhes avançados em drawer lateral ao clicar em “Filtros avançados”.
+
+Ou:
+
+Opção alternativa:
+
+* manter lateral, mas iniciar recolhida;
+* quando aberta, largura máxima de 280px;
+* área principal continua ampla.
+
+Regra:
+A área de resultado deve ocupar pelo menos 70% da tela.
+
+Nunca deixar a tela abrir com grande espaço vazio à direita.
+
+==================================================
+3. GERAR PROJEÇÃO AUTOMÁTICA INICIAL
+====================================
+
+Essa tela não deve abrir vazia.
+
+Ao abrir a tela:
+
+* usar período padrão:
+
+  * hoje até +30 dias
+    ou
+  * semana atual + próximas 3 semanas
+* fontes padrão marcadas:
+
+  * requisições aprovadas;
+  * ordens de carregamento;
+  * movimentações;
+  * planos de viagem.
+* eventos vazios = todos do período;
+* produtos vazios = todos os produtos impactados.
+
+Gerar automaticamente uma primeira projeção.
+
+Se não houver dados:
+mostrar um estado rico explicando:
+
+* nenhum impacto encontrado;
+* nenhum evento no período;
+* nenhuma ordem/movimentação encontrada;
+* o que o usuário pode fazer.
+
+Não mostrar apenas “Gere uma projeção”.
+
+==================================================
+4. CRIAR UMA BARRA DE CONTEXTO DA SIMULAÇÃO
+===========================================
+
+Logo abaixo do header, criar uma barra/card compacto:
+
+“Simulando: 11/06/2026 a 11/07/2026”
+
+Mostrar chips:
+
+* 4 fontes ativas
+* Todos os eventos do período
+* Todos os produtos impactados
+* Período: 30 dias
+
+Ações:
+
+* Alterar período
+* Filtros avançados
+* Gerar novamente
+
+Isso orienta o usuário sem ocupar a tela inteira.
+
+==================================================
+5. FILTROS AVANÇADOS EM DRAWER OU PAINEL COLAPSÁVEL
+===================================================
+
+Criar “Filtros Avançados”.
+
+Dentro dele:
+
+Seção 1 — Período
+
+* Data início
+* Data fim
+* atalhos:
+
+  * Hoje
+  * 7 dias
+  * 15 dias
+  * 30 dias
+  * 60 dias
+
+Seção 2 — Fontes
+
+* Requisições aprovadas
+* Ordens de carregamento
+* Movimentações
+* Planos de viagens
+* Retornos/devoluções, se existirem
+
+Seção 3 — Eventos
+
+* busca
+* selecionar todos
+* limpar
+* lista com scroll dark
+
+Seção 4 — Produtos
+
+* busca
+* selecionar todos
+* limpar
+* lista com scroll dark
+
+Seção 5 — Opções
+
+* mostrar apenas produtos em falta
+* mostrar apenas impactados
+* mostrar apenas conflitos
+
+Footer sticky:
+
+* Aplicar filtros
+* Limpar filtros
+
+Importante:
+
+* sem scrollbar branca;
+* sem lista cortada;
+* sem botão principal escondido.
+
+==================================================
+6. EMPTY STATE MAIS INTELIGENTE
+===============================
+
+Se ainda não houver projeção, o empty state precisa ser mais útil.
+
+Em vez de só:
+“Gere uma projeção”
+
+Mostrar:
+
+Título:
+“Pronto para simular o estoque”
+
+Descrição:
+“A projeção considera requisições aprovadas, ordens de carregamento, movimentações e planos de viagem para calcular o saldo dia a dia.”
+
+Cards explicativos pequenos:
+
+* Saídas previstas
+* Entradas/retornos
+* Reservas
+* Conflitos
+
+CTA:
+
+* Gerar projeção dos próximos 30 dias
+
+Mas a preferência é:
+gerar automaticamente a projeção inicial.
+
+==================================================
+7. RESULTADO PRINCIPAL COMO DASHBOARD OPERACIONAL
+=================================================
+
+Após gerar, o resultado deve aparecer assim:
+
+A. Resumo da projeção
+Cards:
+
+* Produtos analisados
+* Produtos com falta
+* Abaixo do mínimo
+* Adequados
+* Total de saídas
+* Total de entradas
+* Pico em evento
+* Pico reservado
+
+B. Linha do tempo do período
+Uma faixa horizontal com os dias:
+
+* hoje destacado;
+* dias com saída;
+* dias com entrada;
+* dias com conflito;
+* dias sem impacto.
+
+C. Matriz Produto x Dia
+Essa deve ser a visão principal.
+
+D. Abas complementares:
+
+* Visão por Dia
+* Por Produto
+* Conflitos
+* Fontes consideradas
+
+==================================================
+8. MATRIZ PRODUTO X DIA COM VISUAL DE HEATMAP
+=============================================
+
+A matriz precisa deixar de parecer tabela comum.
+
+Transformar em heatmap operacional.
+
+Regras visuais:
+
+* primeira coluna Produto fixa;
+* coluna Atual fixa;
+* cabeçalho de dias fixo;
+* destacar hoje;
+* destacar finais de semana discretamente;
+* célula verde sutil para OK;
+* célula amarela para abaixo do mínimo;
+* célula vermelha para falta;
+* célula azul/roxa discreta para em trânsito/em evento;
+* célula neutra se não houver impacto.
+
+Cada célula deve mostrar:
+
+* saldo projetado;
+* indicador de saída se houver saída no dia;
+* indicador de entrada se houver retorno no dia;
+* indicador de alerta se houver conflito.
+
+Exemplos:
+100
+92 ↓
+130 ↑
+-4 ⚠
+
+Ao clicar na célula:
+abrir drawer explicando:
+
+* produto;
+* dia;
+* abertura;
+* saídas;
+* entradas;
+* reservado;
+* em evento;
+* saldo final;
+* fontes que impactaram.
+
+==================================================
+9. LINHA DO TEMPO DO PERÍODO
+============================
+
+Criar uma faixa visual acima da matriz:
+
+Dias do período:
+11/06, 12/06, 13/06...
+
+Cada dia mostra:
+
+* total de saídas;
+* total de entradas;
+* quantidade de produtos em risco;
+* ícone se houver evento/viagem.
+
+Clicar em um dia troca para a aba “Visão por Dia”.
+
+Isso ajuda muito o admin a enxergar a semana.
+
+==================================================
+10. ABA VISÃO POR DIA
+=====================
+
+Essa aba deve responder:
+“O que acontece nesse dia?”
+
+Mostrar:
+
+* seletor de dia;
+* botão dia anterior;
+* botão próximo dia;
+* resumo do dia:
+
+  * saídas;
+  * entradas;
+  * em evento;
+  * produtos em falta;
+* lista de impactos do dia.
+
+Agrupar por:
+
+* Saídas
+* Entradas
+* Reservas
+* Eventos
+* Conflitos
+
+Não mostrar apenas tabela fria.
+
+==================================================
+11. ABA POR PRODUTO
+===================
+
+Essa aba deve responder:
+“Como esse produto se comporta no período?”
+
+Mostrar:
+
+* busca/select de produto;
+* estoque atual;
+* estoque mínimo;
+* pior saldo;
+* déficit máximo;
+* linha do tempo visual do saldo;
+* eventos/ordens/movimentações que impactam.
+
+A linha do tempo do produto deve ser visual, não apenas tabela.
+
+==================================================
+12. ABA CONFLITOS
+=================
+
+Quando houver conflito, mostrar cards acionáveis:
+
+Cada card:
+
+* Produto
+* SKU
+* Dia do conflito
+* Saldo projetado
+* Déficit
+* Causa provável
+* Evento/ordem/movimentação relacionada
+* Sugestão operacional
+
+Sugestões:
+
+* comprar/alugar X unidades;
+* antecipar retorno;
+* revisar aprovação;
+* revisar ordem;
+* ajustar viagem.
+
+Quando não houver conflito:
+mostrar card positivo pequeno, não ocupar metade da tela.
+
+==================================================
+13. ABA FONTES CONSIDERADAS
+===========================
+
+Renomear “Movimentações” para:
+
+“Fontes consideradas”
+
+Porque ali devem aparecer todas as origens do cálculo:
+
+* Requisições
+* Ordens de carregamento
+* Movimentações
+* Planos de viagem
+* Retornos
+
+Cada linha deve mostrar:
+
+* tipo;
+* referência;
+* evento;
+* data usada;
+* sentido;
+* quantidade;
+* situação:
+
+  * considerada;
+  * ignorada;
+  * parcial;
+  * sem data;
+  * fora do período.
+
+Linha expansível:
+
+* produtos impactados;
+* quantidades;
+* motivo do cálculo;
+* link para origem.
+
+Essa aba é a auditoria da projeção.
+
+==================================================
+14. MELHORAR VISUAL DOS SCROLLS
+===============================
+
+Corrigir todos os scrolls:
+
+* lista de eventos;
+* lista de produtos;
+* matriz;
+* tabelas;
+* drawer;
+* filtros.
+
+Regras:
+
+* scrollbar dark;
+* fina;
+* sem track branco;
+* sem scroll horizontal dentro de lista de produtos/eventos;
+* texto não pode cortar feio;
+* usar truncamento com tooltip se necessário.
+
+==================================================
+15. DADOS INSUFICIENTES DEVEM VIRAR ALERTAS
+===========================================
+
+Se a simulação não consegue calcular algo, não deixar invisível.
+
+Mostrar card:
+
+“Dados incompletos encontrados”
+
+Exemplos:
+
+* Ordem sem período definido
+* Viagem sem retorno
+* Movimentação sem data
+* Evento sem desmontagem
+* Produto sem estoque mínimo
+
+Cada item:
+
+* entidade;
+* problema;
+* impacto;
+* ação possível.
+
+Isso é essencial para a tela ser confiável.
+
+==================================================
+16. MICROCOPY MAIS CLARA
+========================
+
+Trocar textos técnicos por textos operacionais.
+
+Exemplos:
+
+Antes:
+“Fontes consideradas”
+
+Melhor:
+“O que entra no cálculo”
+
+Antes:
+“Produtos vazios = todos os produtos envolvidos”
+
+Melhor:
+“Sem seleção: analisaremos todos os produtos impactados no período.”
+
+Antes:
+“Gerar Projeção”
+
+Melhor:
+“Atualizar projeção”
+
+Depois da primeira execução, o botão deve virar:
+“Atualizar projeção”
+
+==================================================
+17. RESPONSIVIDADE
+==================
+
+Desktop:
+
+* resultado como protagonista;
+* filtros compactos/drawer;
+* matriz ampla.
+
+Notebook:
+
+* filtros recolhidos por padrão;
+* matriz sem corte.
+
+Mobile:
+
+* ocultar matriz como principal;
+* mostrar visão por dia;
+* filtros em drawer;
+* cards empilhados.
+
+Nunca permitir:
+
+* tela cortada;
+* scroll branco;
+* lista esmagada;
+* botão escondido;
+* grande área vazia sem conteúdo.
+
+==================================================
+18. NÃO ALTERAR REGRAS SEM NECESSIDADE
+======================================
+
+Pode alterar:
+
+* layout;
+* componentes;
+* estrutura visual;
+* filtros;
+* empty state;
+* tabs;
+* matriz;
+* drawer;
+* microcopy;
+* agrupamento visual;
+* auto geração inicial da projeção;
+* endpoint apenas se precisar de dados de detalhe.
+
+Não alterar:
+
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* permissões;
+* regras de negócio;
+* contratos existentes;
+* status/transições.
+
+Se precisar adicionar campos no retorno do endpoint:
+
+* manter compatibilidade com o retorno atual;
+* apenas acrescentar dados.
+
+==================================================
+19. VALIDAÇÕES
+==============
+
+Rodar:
+
+npm run check
+npm run build
+
+Smoke test:
+
+1. Abrir tela.
+2. Confirmar que não abre vazia inutilmente.
+3. Confirmar que há projeção inicial ou empty state rico.
+4. Abrir filtros avançados.
+5. Aplicar período de 7 dias.
+6. Aplicar período de 30 dias.
+7. Selecionar evento.
+8. Selecionar produto.
+9. Gerar/atualizar projeção.
+10. Ver matriz.
+11. Clicar em uma célula.
+12. Abrir drawer explicativo.
+13. Ver visão por dia.
+14. Ver por produto.
+15. Ver conflitos.
+16. Ver fontes consideradas.
+17. Validar dados incompletos.
+18. Validar scrollbars dark.
+19. Validar sem overflow horizontal.
+20. Validar notebook/mobile.
+
+Entrega final:
+
+* problemas encontrados;
+* novo layout implementado;
+* filtros compactados;
+* projeção inicial/empty state rico;
+* matriz heatmap;
+* timeline por dia;
+* drawer explicativo;
+* fontes consideradas;
+* alertas de dados incompletos;
+* arquivos alterados;
+* confirmação de RBAC preservado;
+* confirmação de cálculo preservado;
+* resultado do npm run check;
+* resultado do npm run build.
+
+Critério de aceite:
+A tela só será considerada boa se ela deixar de parecer “formulário com filtros” e passar a parecer uma Central de Simulação de Estoque.
+
+O usuário precisa abrir a tela e entender rapidamente:
+
+* o período analisado;
+* o que está sendo considerado;
+* quais produtos serão impactados;
+* em quais dias haverá risco;
+* de onde vieram os números;
+* o que precisa de ação.

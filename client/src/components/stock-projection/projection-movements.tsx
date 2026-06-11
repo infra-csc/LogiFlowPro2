@@ -34,7 +34,7 @@ export function ProjectionMovements({ result }: Props) {
   if (rows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
-        Nenhuma movimentação considerada com os filtros atuais.
+        Nenhuma fonte considerada com os filtros atuais. Ajuste o período ou as fontes para ver os dados que entram no cálculo.
       </p>
     );
   }
@@ -42,7 +42,7 @@ export function ProjectionMovements({ result }: Props) {
   return (
     <Card className="border-border/60">
       <CardContent className="p-0">
-        <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+        <div className="overflow-x-auto projection-scroll" style={{ scrollbarWidth: "thin" }}>
           <Table data-testid="table-considered-movements">
             <TableHeader>
               <TableRow>
