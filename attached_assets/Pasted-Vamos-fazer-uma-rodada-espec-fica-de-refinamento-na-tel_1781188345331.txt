@@ -1,0 +1,652 @@
+Vamos fazer uma rodada específica de refinamento na tela **Projeção de Estoque**, focando em confiança, hierarquia visual e comportamento automático da projeção.
+
+Tela foco:
+
+* `client/src/pages/stock-position-simulation.tsx`
+* componentes relacionados à projeção de estoque
+* drawer/painel de filtros avançados
+* componentes de KPIs, abas, matriz, visão por dia, produto, conflitos e fontes do cálculo
+* endpoint de projeção somente se for necessário ajustar retorno visual, mantendo compatibilidade
+
+## Objetivo
+
+A tela de Projeção de Estoque deve parecer uma **Central de Controle de Estoque**, não uma tela de relatório manual.
+
+Hoje ela já evoluiu, mas ainda tem pontos que passam insegurança:
+
+* existe botão “Atualizar projeção”;
+* existe botão “Atualizar” duplicado;
+* isso passa a sensação de que a projeção pode estar desatualizada;
+* as ações do topo estão repetidas;
+* a hierarquia visual ainda pode melhorar;
+* a tela precisa transmitir mais confiança sobre quando os dados foram calculados;
+* a projeção deve recalcular automaticamente quando os filtros forem aplicados.
+
+A ideia principal é:
+
+> O usuário não deve precisar se preocupar se clicou ou não em “Atualizar”.
+> A tela deve sempre mostrar a projeção vigente com base nos filtros aplicados.
+
+---
+
+# 1. Remover botões de atualização manual
+
+Remover da interface:
+
+* botão “Atualizar projeção” no topo;
+* botão “Atualizar” na barra de contexto;
+* qualquer ação duplicada de refresh manual.
+
+Não quero que a tela passe sensação de dado desatualizado.
+
+A projeção deve ser atualizada automaticamente quando:
+
+* a tela carregar com filtros padrão;
+* o usuário clicar em “Aplicar filtros” no drawer;
+* o usuário clicar em “Limpar filtros”;
+* o usuário alterar atalhos de período e aplicar.
+
+Se tecnicamente já existe função de refetch/recalcular, ela deve ser chamada internamente, sem exigir botão explícito de atualizar.
+
+---
+
+# 2. Nova lógica de atualização automática
+
+Implementar comportamento:
+
+## Ao abrir a tela
+
+Carregar automaticamente uma projeção inicial com:
+
+* período padrão: hoje até +30 dias;
+* fontes padrão:
+
+  * ordens de carregamento;
+  * requisições aprovadas;
+  * movimentações;
+  * planos de viagens avulsos, se existir;
+* eventos vazios = todos os eventos do período;
+* produtos vazios = todos os produtos impactados.
+
+Se já houver estado salvo/local, pode respeitar, mas a tela não deve abrir inutilmente vazia.
+
+## Ao aplicar filtros
+
+Quando o usuário clicar em **Aplicar filtros**:
+
+* fechar o drawer;
+* recalcular a projeção automaticamente;
+* atualizar KPIs, matriz, abas e fontes consideradas;
+* atualizar a data/hora da última geração.
+
+## Ao limpar filtros
+
+Quando o usuário clicar em **Limpar filtros**:
+
+* resetar filtros para o padrão;
+* recalcular automaticamente;
+* atualizar tudo.
+
+---
+
+# 3. Mostrar status de atualização no lugar do botão
+
+No lugar dos botões de atualizar, mostrar um status discreto de confiança.
+
+Exemplo:
+
+* `Projeção atualizada às 11:27`
+* `Recalculando projeção...`
+* `Erro ao recalcular projeção`
+* `Dados calculados com base nos filtros aplicados`
+
+Esse status deve aparecer na barra de contexto, de forma discreta.
+
+Sugestão visual:
+
+Na barra onde hoje aparece:
+
+`11/06/2026 – 11/07/2026 | 31 dias | 3 fonte(s) | 1 evento(s) | Todos os produtos`
+
+Adicionar:
+
+`Atualizada às 11:27`
+
+ou:
+
+`Recalculando...`
+
+Não precisa ser um botão.
+
+---
+
+# 4. Reorganizar ações do topo
+
+Hoje há ações duplicadas no topo.
+
+Deixar apenas:
+
+* **Filtros avançados**
+* **Limpar filtros**
+
+Remover:
+
+* Atualizar projeção
+* Atualizar
+
+Ação principal da tela não deve ser “atualizar”.
+A ação principal deve ser **alterar filtros**.
+
+Topbar sugerida:
+
+Esquerda:
+
+* título: Projeção de Estoque
+* descrição
+
+Direita:
+
+* botão secundário: Limpar filtros
+* botão principal/outline: Filtros avançados
+
+A atualização deve ser automática.
+
+---
+
+# 5. Melhorar barra de contexto da simulação
+
+A barra atual está boa, mas precisa ficar mais clara e operacional.
+
+Transformar em uma barra de contexto com:
+
+* Período: `11/06/2026 – 11/07/2026`
+* Duração: `31 dias`
+* Fontes: `3 fontes ativas`
+* Eventos: `1 evento selecionado` ou `Todos os eventos`
+* Produtos: `Todos os produtos impactados` ou `X produtos selecionados`
+* Status: `Atualizada às HH:mm`
+
+Exemplo visual:
+
+`11/06/2026 – 11/07/2026`
+`31 dias` `3 fontes ativas` `1 evento selecionado` `Todos os produtos impactados` `Atualizada às 11:27`
+
+A barra deve ter visual limpo, sem muitos botões.
+
+---
+
+# 6. Melhorar o texto dos filtros
+
+No drawer de filtros avançados, melhorar microcopy:
+
+Trocar:
+
+`Sem seleção: analisaremos todos os eventos do período.`
+
+Por:
+
+`Se nenhum evento for selecionado, todos os eventos do período serão considerados.`
+
+Trocar:
+
+`Sem seleção: analisaremos todos os produtos impactados no período.`
+
+Por:
+
+`Se nenhum produto for selecionado, todos os produtos impactados serão considerados.`
+
+Trocar:
+
+`O que entra no cálculo`
+
+Por uma opção mais profissional:
+
+* `Fontes da projeção`
+
+ou
+
+* `Origens do cálculo`
+
+Preferência:
+usar **Fontes da projeção**.
+
+---
+
+# 7. Renomear aba “O que entra no cálculo”
+
+Renomear a aba:
+
+De:
+`O que entra no cálculo`
+
+Para:
+`Fontes da projeção`
+
+Essa aba deve continuar mostrando:
+
+* movimentações;
+* ordens de carregamento;
+* requisições;
+* planos de viagem;
+* retornos/devoluções, se houver.
+
+Mas o nome precisa parecer mais profissional.
+
+---
+
+# 8. Melhorar hierarquia dos KPIs
+
+Os cards estão bons, mas precisam ficar mais organizados.
+
+Separar mentalmente em dois grupos:
+
+## Grupo 1 — Risco
+
+* Produtos
+* Em falta
+* Abaixo do mínimo
+* Adequados
+
+## Grupo 2 — Operação
+
+* Total saídas
+* Total entradas
+* Pico reservado
+* Pico em evento
+
+Visualmente:
+
+* manter todos na mesma área, mas com espaçamento e ordem mais lógica;
+* os cards de risco devem vir primeiro;
+* os operacionais depois;
+* números importantes com destaque;
+* label curto;
+* tooltip opcional explicando o cálculo.
+
+Ordem sugerida:
+
+1. Produtos
+2. Em falta
+3. Abaixo do mínimo
+4. Adequados
+5. Total saídas
+6. Total entradas
+7. Pico reservado
+8. Pico em evento
+
+---
+
+# 9. Melhorar empty/loading states
+
+Enquanto estiver recalculando:
+
+Mostrar estado discreto:
+
+* skeleton nos KPIs;
+* skeleton na matriz;
+* texto: `Recalculando projeção com os filtros aplicados...`
+
+Não deixar a tela piscar ou parecer quebrada.
+
+Se não houver dados:
+
+Mostrar empty state rico:
+
+Título:
+`Nenhum impacto encontrado no período`
+
+Descrição:
+`Não encontramos requisições, ordens, movimentações ou viagens que alterem o estoque no intervalo selecionado.`
+
+Sugestões:
+
+* ampliar período;
+* selecionar outros eventos;
+* incluir outras fontes da projeção.
+
+Não voltar para o estado “Gere uma projeção” se a tela já tentou calcular.
+
+---
+
+# 10. Melhorar matriz visualmente
+
+A matriz já está melhor, mas ainda pode parecer mais “central operacional”.
+
+Ajustar:
+
+* manter primeira coluna Produto fixa/sticky;
+* manter header dos dias fixo se possível;
+* destacar hoje;
+* destacar finais de semana de forma sutil;
+* células com cor muito leve por status:
+
+  * adequado: verde sutil;
+  * abaixo do mínimo: amarelo/âmbar sutil;
+  * em falta: vermelho sutil;
+  * sem impacto: neutro;
+* indicadores pequenos:
+
+  * saída: seta vermelha;
+  * entrada: seta verde;
+  * falta: ponto vermelho ou alerta.
+
+Evitar visual de planilha crua.
+
+A matriz deve parecer um heatmap operacional.
+
+---
+
+# 11. Melhorar linha do tempo de impactos diários
+
+A linha do tempo deve ser mais útil.
+
+Cada dia deve indicar:
+
+* se tem saída;
+* se tem entrada;
+* se tem falta;
+* se tem evento;
+* se tem produto impactado.
+
+Mesmo que os números sejam zero, o visual deve explicar que o dia está estável.
+
+Ao clicar em um dia:
+
+* ir para aba `Visão por Dia`;
+* selecionar aquele dia.
+
+---
+
+# 12. Melhorar “Visão por Dia”
+
+A aba Visão por Dia deve parecer uma agenda operacional.
+
+Mostrar:
+
+* dia selecionado;
+* botões anterior/próximo;
+* resumo do dia:
+
+  * em falta;
+  * abaixo do mínimo;
+  * saídas;
+  * entradas;
+  * reservado;
+  * em evento.
+
+Adicionar bloco:
+
+`Agenda do dia`
+
+Se não houver saída/entrada:
+mostrar:
+
+`Nenhuma entrada ou saída prevista neste dia.`
+
+Mas também mostrar:
+`35 itens permanecem em evento.`
+se houver itens em evento.
+
+A tabela abaixo deve continuar, mas com melhor hierarquia.
+
+---
+
+# 13. Melhorar “Por Produto”
+
+Na aba Por Produto:
+
+* manter seletor de produto;
+* mostrar cards:
+
+  * estoque atual;
+  * mínimo;
+  * pior saldo;
+  * déficit máximo;
+  * saídas;
+  * entradas.
+
+A linha do tempo do saldo deve ser mais visual:
+
+* pequenos blocos por dia;
+* cor por status;
+* destacar pior dia;
+* destacar dias com entrada/saída.
+
+Se não houver origem no período:
+mostrar texto melhor:
+
+`Este produto não possui movimentações, requisições ou ordens impactando o saldo no período selecionado.`
+
+---
+
+# 14. Melhorar “Conflitos”
+
+Quando não houver conflito, o estado atual está ok, mas pode ser menor.
+
+Mostrar também validações positivas:
+
+* `Nenhum saldo negativo previsto`
+* `Nenhum produto abaixo do mínimo`
+* `Todas as origens consideradas possuem datas válidas`
+
+Se alguma origem foi ignorada, não dizer que está tudo perfeito. Nesse caso mostrar:
+
+`Nenhum conflito de saldo, mas existem origens ignoradas.`
+
+E apontar para aba `Fontes da projeção`.
+
+---
+
+# 15. Melhorar “Fontes da projeção”
+
+A aba Fontes da projeção deve ser a auditoria do cálculo.
+
+Cada linha deve mostrar claramente:
+
+* tipo da origem;
+* referência;
+* evento;
+* sentido;
+* data usada para saída;
+* data usada para retorno;
+* quantidade;
+* situação.
+
+Situações:
+
+* `Considerado`
+* `Ignorado`
+* `Parcial`
+* `Sem data`
+* `Fora do período`
+
+Ao expandir uma linha:
+mostrar:
+
+* produtos impactados;
+* quantidade por produto;
+* motivo da situação;
+* regra aplicada;
+* link para abrir origem, se existir.
+
+Para itens ignorados:
+explicar o motivo.
+
+Exemplo:
+
+`Ignorado porque a data de saída está fora do período selecionado.`
+
+ou:
+
+`Ignorado porque a ordem não possui período válido.`
+
+---
+
+# 16. Remover sensação de dado desatualizado
+
+Regra geral:
+
+Nenhum texto ou botão deve sugerir que o usuário precisa atualizar manualmente.
+
+Evitar:
+
+* Atualizar
+* Refresh
+* Recarregar
+* Atualizar projeção
+
+Usar:
+
+* Aplicar filtros
+* Projeção atualizada às HH:mm
+* Recalculando projeção
+* Filtros aplicados
+
+O sistema deve transmitir:
+`Os dados na tela já refletem os filtros aplicados.`
+
+---
+
+# 17. Drawer de filtros avançados
+
+Melhorar o drawer:
+
+* título: `Filtros avançados`
+* subtítulo: `Ajuste período, fontes, eventos e produtos da projeção.`
+* footer fixo com:
+
+  * Limpar filtros
+  * Aplicar filtros
+
+Ao clicar em Aplicar filtros:
+
+* fechar drawer;
+* recalcular projeção automaticamente;
+* atualizar status `Recalculando...`;
+* depois atualizar para `Atualizada às HH:mm`.
+
+Corrigir scrollbars:
+
+* sem scroll branco;
+* sem lista com scroll horizontal;
+* truncar nomes longos;
+* tooltip em nomes longos se possível.
+
+---
+
+# 18. Não alterar regras indevidamente
+
+Pode alterar:
+
+* layout;
+* botões;
+* microcopy;
+* estado de carregamento;
+* comportamento de aplicação de filtros;
+* chamada automática da projeção;
+* visual da matriz;
+* nome da aba;
+* organização dos KPIs.
+
+Não alterar:
+
+* schema;
+* migrations;
+* seed;
+* RBAC;
+* permissions;
+* role_permissions;
+* regras de negócio;
+* status/transições;
+* endpoints existentes de outras telas.
+
+Se for necessário ajustar o endpoint de projeção:
+
+* manter compatibilidade;
+* apenas adicionar campos;
+* não quebrar consumidores existentes.
+
+---
+
+# 19. Validações técnicas
+
+Rodar:
+
+```bash
+npm run check
+npm run build
+```
+
+---
+
+# 20. Smoke test obrigatório
+
+Testar:
+
+1. Abrir tela Projeção de Estoque.
+2. Confirmar que não existe botão Atualizar/Atualizar projeção.
+3. Confirmar que a projeção inicial é carregada automaticamente.
+4. Abrir Filtros avançados.
+5. Alterar período.
+6. Clicar em Aplicar filtros.
+7. Confirmar que o drawer fecha.
+8. Confirmar que a projeção recalcula automaticamente.
+9. Confirmar que aparece `Recalculando...`.
+10. Confirmar que depois aparece `Atualizada às HH:mm`.
+11. Limpar filtros.
+12. Confirmar que recalcula automaticamente.
+13. Ver Matriz por Dia.
+14. Ver Visão por Dia.
+15. Ver Por Produto.
+16. Ver Conflitos.
+17. Ver Fontes da projeção.
+18. Confirmar que scrollbars não ficam brancas.
+19. Confirmar que não há overflow horizontal.
+20. Testar em notebook e mobile básico.
+
+Perfis:
+
+* Admin
+* Logística
+* Almoxarifado
+* Supervisor
+* Usuário comum
+
+Confirmar:
+
+* RBAC preservado;
+* cálculo preservado;
+* endpoint protegido;
+* nenhuma regra existente quebrada.
+
+---
+
+# 21. Entrega final
+
+Ao finalizar, informar:
+
+* arquivos alterados;
+* botões removidos;
+* novo comportamento de atualização automática;
+* novo texto/status de última atualização;
+* melhorias nos filtros;
+* melhorias nos KPIs;
+* melhorias na matriz;
+* melhorias nas abas;
+* confirmação de que não há botão manual de atualização;
+* confirmação de que aplicar filtros recalcula automaticamente;
+* resultado do `npm run check`;
+* resultado do `npm run build`;
+* pendências restantes.
+
+Critério de aceite:
+
+A tela só será considerada correta se:
+
+* não existir botão “Atualizar”;
+* não existir botão “Atualizar projeção”;
+* filtros aplicados recalcularem automaticamente;
+* a tela mostrar quando a projeção foi gerada;
+* a tela não parecer dependente de refresh manual;
+* a matriz continuar funcional;
+* a tela transmitir confiança operacional.

@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   AlertTriangle,
-  Filter,
   Search,
   CalendarRange,
   LayoutGrid,
@@ -23,6 +22,7 @@ import {
   SlidersHorizontal,
   BarChart3,
   Zap,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,16 +64,13 @@ import { KPI_TOOLTIPS } from "@/components/stock-projection/projection-utils";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-const SOURCE_SHORT: Record<keyof SourceFlags, string> = {
-  loadingOrders: "Ordens",
-  requests: "Requisições",
-  movements: "Movimentações",
-  trips: "Viagens",
-};
-
 function fmtDate(d: string): string {
   const [y, m, day] = d.split("-");
   return `${day}/${m}/${y}`;
+}
+
+function fmtTime(d: Date): string {
+  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 function daysBetween(start: string, end: string): number {
@@ -85,7 +82,7 @@ function daysBetween(start: string, end: string): number {
 
 type KpiAccent = "primary" | "destructive" | "warn" | "success" | "neutral";
 
-const ACCENT: Record<
+const ACCENT_MAP: Record<
   KpiAccent,
   { border: string; bg: string; icon: string; value: string; ring: string }
 > = {
@@ -119,7 +116,7 @@ const ACCENT: Record<
   },
   neutral: {
     border: "border-border/60",
-    bg: "bg-muted",
+    bg: "bg-muted/60",
     icon: "text-muted-foreground",
     value: "text-foreground",
     ring: "ring-primary/40",
@@ -145,10 +142,10 @@ function KpiCard({
   onClick?: () => void;
   testId: string;
 }) {
-  const a = ACCENT[accent];
+  const a = ACCENT_MAP[accent];
   const inner = (
     <Card
-      className={`${a.border} h-full ${onClick ? "hover-elevate" : ""} ${active ? `ring-1 ${a.ring}` : ""}`}
+      className={`${a.border} h-full ${onClick ? "hover-elevate cursor-pointer" : ""} ${active ? `ring-1 ${a.ring}` : ""}`}
     >
       <CardContent className="p-3">
         <div className="flex items-center gap-2.5">
@@ -172,9 +169,9 @@ function KpiCard({
     </Card>
   );
   const trigger = onClick ? (
-    <button onClick={onClick} className="text-left w-full" data-testid={testId}>
+    <div onClick={onClick} data-testid={testId}>
       {inner}
-    </button>
+    </div>
   ) : (
     <div data-testid={testId}>{inner}</div>
   );
@@ -186,40 +183,36 @@ function KpiCard({
   );
 }
 
-// ─── Context bar ──────────────────────────────────────────────────────────────
+// ─── Context / status bar ─────────────────────────────────────────────────────
 
-function ContextBar({
+function StatusBar({
   result,
   isGenerating,
-  onOpenFilters,
-  onRefresh,
+  lastGeneratedAt,
 }: {
   result: StockProjectionResult;
   isGenerating: boolean;
-  onOpenFilters: () => void;
-  onRefresh: () => void;
+  lastGeneratedAt: Date | null;
 }) {
   const f = result.filters;
   const days = daysBetween(f.startDate, f.endDate);
   const inc = f.include ?? {};
-  const sourceCount = [
-    inc.loadingOrders,
-    inc.requests,
-    inc.movements,
-    inc.trips,
-  ].filter(Boolean).length;
+  const sourceCount = [inc.loadingOrders, inc.requests, inc.movements, inc.trips].filter(Boolean).length;
   const eventCount = f.eventIds?.length ?? 0;
   const productCount = f.productIds?.length ?? 0;
 
   return (
     <div
-      className="flex flex-wrap items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-4 py-3"
-      data-testid="context-bar"
+      className="flex flex-wrap items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-4 py-2.5"
+      data-testid="status-bar"
     >
       <CalendarRange className="w-4 h-4 text-muted-foreground flex-shrink-0" />
       <span className="text-sm font-medium">
-        {fmtDate(f.startDate)} – {fmtDate(f.endDate)}
+        {fmtDate(f.startDate)} → {fmtDate(f.endDate)}
       </span>
+
+      <span className="text-muted-foreground/40 mx-0.5">·</span>
+
       <Badge variant="secondary" className="text-xs">
         {days} {days === 1 ? "dia" : "dias"}
       </Badge>
@@ -231,10 +224,7 @@ function ContextBar({
           {eventCount} evento(s)
         </Badge>
       ) : (
-        <Badge
-          variant="outline"
-          className="text-xs text-muted-foreground border-dashed"
-        >
+        <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">
           Todos os eventos
         </Badge>
       )}
@@ -243,45 +233,25 @@ function ContextBar({
           {productCount} produto(s)
         </Badge>
       ) : (
-        <Badge
-          variant="outline"
-          className="text-xs text-muted-foreground border-dashed"
-        >
+        <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">
           Todos os produtos
         </Badge>
       )}
-      {f.onlyShortages && (
-        <Badge variant="secondary" className="text-xs">
-          Apenas em falta
-        </Badge>
-      )}
-      {f.onlyImpacted && (
-        <Badge variant="secondary" className="text-xs">
-          Apenas impactados
-        </Badge>
-      )}
+      {f.onlyShortages && <Badge variant="secondary" className="text-xs">Apenas em falta</Badge>}
+      {f.onlyImpacted && <Badge variant="secondary" className="text-xs">Apenas impactados</Badge>}
 
-      <div className="ml-auto flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onOpenFilters}
-          data-testid="button-context-filters"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
-          Alterar filtros
-        </Button>
-        <Button
-          size="sm"
-          onClick={onRefresh}
-          disabled={isGenerating}
-          data-testid="button-context-refresh"
-        >
-          <RefreshCw
-            className={`w-3.5 h-3.5 mr-1.5 ${isGenerating ? "animate-spin" : ""}`}
-          />
-          Atualizar
-        </Button>
+      <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+        {isGenerating ? (
+          <>
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" />
+            <span className="text-primary font-medium">Recalculando...</span>
+          </>
+        ) : lastGeneratedAt ? (
+          <>
+            <Clock className="w-3.5 h-3.5" />
+            <span>Gerado às {fmtTime(lastGeneratedAt)}</span>
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -330,64 +300,39 @@ function RichEmptyState({
   ];
 
   return (
-    <div
-      className="flex flex-col items-center gap-8 py-12"
-      data-testid="empty-state-rich"
-    >
+    <div className="flex flex-col items-center gap-8 py-12" data-testid="empty-state-rich">
       <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
         <BarChart3 className="w-8 h-8 text-primary" />
       </div>
-
       <div className="text-center max-w-lg">
-        <h2 className="text-xl font-semibold mb-2">
-          Pronto para simular o estoque
-        </h2>
+        <h2 className="text-xl font-semibold mb-2">Pronto para simular o estoque</h2>
         <p className="text-sm text-muted-foreground">
           A projeção considera requisições aprovadas, ordens de carregamento,
-          movimentações e planos de viagem para calcular o saldo disponível dia
-          a dia.
+          movimentações e planos de viagem para calcular o saldo disponível dia a dia.
         </p>
       </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-2xl">
         {cards.map((item) => (
           <Card key={item.label} className="border-border/60">
             <CardContent className="p-4 flex flex-col items-center gap-2 text-center">
-              <span
-                className={`flex items-center justify-center w-9 h-9 rounded-md ${item.bg}`}
-              >
+              <span className={`flex items-center justify-center w-9 h-9 rounded-md ${item.bg}`}>
                 <item.icon className={`w-4 h-4 ${item.color}`} />
               </span>
               <div>
-                <div className="text-sm font-medium leading-tight">
-                  {item.label}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {item.desc}
-                </div>
+                <div className="text-sm font-medium leading-tight">{item.label}</div>
+                <div className="text-xs text-muted-foreground mt-1">{item.desc}</div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
-
       <div className="flex flex-col sm:flex-row items-center gap-3">
-        <Button
-          onClick={onGenerate}
-          disabled={isGenerating}
-          size="lg"
-          data-testid="button-generate-empty"
-        >
+        <Button onClick={onGenerate} disabled={isGenerating} size="lg" data-testid="button-generate-empty">
           <Zap className="w-4 h-4 mr-2" />
           {isGenerating ? "Gerando..." : "Gerar projeção dos próximos 30 dias"}
         </Button>
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={onOpenFilters}
-          data-testid="button-filters-empty"
-        >
-          <Filter className="w-4 h-4 mr-2" />
+        <Button variant="outline" size="lg" onClick={onOpenFilters} data-testid="button-filters-empty">
+          <SlidersHorizontal className="w-4 h-4 mr-2" />
           Personalizar filtros
         </Button>
       </div>
@@ -407,22 +352,13 @@ interface SourceFlags {
 type StatusFilter = ProjectionDayStatus | null;
 
 const DEFAULT_START = format(new Date(), "yyyy-MM-dd");
-const DEFAULT_END = format(
-  new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  "yyyy-MM-dd",
-);
-
-const DEFAULT_SOURCES: SourceFlags = {
-  loadingOrders: true,
-  requests: true,
-  movements: true,
-  trips: false,
-};
+const DEFAULT_END = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+const DEFAULT_SOURCES: SourceFlags = { loadingOrders: true, requests: true, movements: true, trips: false };
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function StockProjection() {
-  // filter state (edited in the drawer)
+  // filter state
   const [startDate, setStartDate] = useState(DEFAULT_START);
   const [endDate, setEndDate] = useState(DEFAULT_END);
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
@@ -437,25 +373,19 @@ export default function StockProjection() {
   const [result, setResult] = useState<StockProjectionResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasEverGenerated, setHasEverGenerated] = useState(false);
+  const [lastGeneratedAt, setLastGeneratedAt] = useState<Date | null>(null);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
   const [activeTab, setActiveTab] = useState("matrix");
-  const [focusProductId, setFocusProductId] = useState<string | undefined>(
-    undefined,
-  );
+  const [focusProductId, setFocusProductId] = useState<string | undefined>(undefined);
   const [detail, setDetail] = useState<DetailTarget | null>(null);
 
   const { data: events } = useQuery<any[]>({ queryKey: ["/api/events"] });
   const { data: products } = useQuery<any[]>({ queryKey: ["/api/products"] });
 
   const dateError = !!(startDate && endDate && startDate > endDate);
-  const anySource =
-    sources.loadingOrders ||
-    sources.requests ||
-    sources.movements ||
-    sources.trips;
+  const anySource = sources.loadingOrders || sources.requests || sources.movements || sources.trips;
   const canGenerate = !dateError && !!startDate && !!endDate && anySource;
 
   const filteredEvents = useMemo(() => {
@@ -475,8 +405,7 @@ export default function StockProjection() {
     if (!productSearch.trim()) return products;
     const q = productSearch.toLowerCase();
     return products.filter(
-      (p: any) =>
-        p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q),
+      (p: any) => p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q),
     );
   }, [products, productSearch]);
 
@@ -513,14 +442,10 @@ export default function StockProjection() {
         onlyShortages,
         onlyImpacted,
       };
-      const response = await apiRequest(
-        "POST",
-        "/api/reports/stock-projection",
-        payload,
-      );
+      const response = await apiRequest("POST", "/api/reports/stock-projection", payload);
       const data = (await response.json()) as StockProjectionResult;
       setResult(data);
-      setHasEverGenerated(true);
+      setLastGeneratedAt(new Date());
       setStatusFilter(null);
       setFocusProductId(undefined);
     } catch (err: any) {
@@ -530,7 +455,7 @@ export default function StockProjection() {
     }
   }
 
-  // Auto-generate on mount with default filters
+  // Auto-generate on mount
   useEffect(() => {
     handleGenerate(); // eslint-disable-line react-hooks/exhaustive-deps
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -559,17 +484,13 @@ export default function StockProjection() {
     setStatusFilter(null);
     setFocusProductId(undefined);
     setActiveTab("matrix");
-    setHasEverGenerated(false);
+    setLastGeneratedAt(null);
   }
 
   const toggleEvent = (id: string) =>
-    setSelectedEventIds((p) =>
-      p.includes(id) ? p.filter((x) => x !== id) : [...p, id],
-    );
+    setSelectedEventIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const toggleProduct = (id: string) =>
-    setSelectedProductIds((p) =>
-      p.includes(id) ? p.filter((x) => x !== id) : [...p, id],
-    );
+    setSelectedProductIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const toggleStatusFilter = (s: ProjectionDayStatus) =>
     setStatusFilter((prev) => (prev === s ? null : s));
 
@@ -581,12 +502,10 @@ export default function StockProjection() {
   const handleSelectDay = () => setActiveTab("day");
   const openCellDetail = (product: ProjectionProduct, cell: ProjectionDayCell) =>
     setDetail({ kind: "cell", product, cell });
-  const openProductDetail = (product: ProjectionProduct) =>
-    setDetail({ kind: "product", product });
+  const openProductDetail = (product: ProjectionProduct) => setDetail({ kind: "product", product });
   const openConflictDetail = (conflict: ProjectionConflict) =>
     setDetail({ kind: "conflict", conflict });
 
-  // Date shortcuts
   const dateShortcuts = [
     { label: "7 dias", days: 7 },
     { label: "15 dias", days: 15 },
@@ -595,22 +514,22 @@ export default function StockProjection() {
   ];
 
   function applyShortcut(days: number) {
-    const s = format(new Date(), "yyyy-MM-dd");
-    const e = format(new Date(Date.now() + days * 86400000), "yyyy-MM-dd");
-    setStartDate(s);
-    setEndDate(e);
+    setStartDate(format(new Date(), "yyyy-MM-dd"));
+    setEndDate(format(new Date(Date.now() + days * 86400000), "yyyy-MM-dd"));
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
-      {/* ── Header ── */}
+      {/* ── Header (only Limpar + Filtros avançados — sem botão Atualizar) ── */}
       <PageHeader
         title="Projeção de Estoque"
-        description="Saldo projetado dia a dia considerando requisições, ordens, movimentações e viagens."
+        description="Saldo projetado dia a dia — a projeção recalcula automaticamente ao aplicar filtros."
       >
         {result && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleClear}
             data-testid="button-clear-projection"
@@ -628,30 +547,14 @@ export default function StockProjection() {
           <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
           Filtros avançados
         </Button>
-        <Button
-          onClick={handleGenerate}
-          disabled={!canGenerate || isGenerating}
-          size="sm"
-          data-testid="button-generate"
-        >
-          <RefreshCw
-            className={`w-3.5 h-3.5 mr-1.5 ${isGenerating ? "animate-spin" : ""}`}
-          />
-          {isGenerating
-            ? "Gerando..."
-            : hasEverGenerated
-              ? "Atualizar projeção"
-              : "Gerar projeção"}
-        </Button>
       </PageHeader>
 
-      {/* ── Context bar (after first generation) ── */}
+      {/* ── Status bar (info only — sem botões de ação) ── */}
       {result && (
-        <ContextBar
+        <StatusBar
           result={result}
           isGenerating={isGenerating}
-          onOpenFilters={() => setFiltersOpen(true)}
-          onRefresh={handleGenerate}
+          lastGeneratedAt={lastGeneratedAt}
         />
       )}
 
@@ -661,6 +564,15 @@ export default function StockProjection() {
           <CardContent className="p-4 flex items-center gap-2 text-sm text-destructive">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 text-xs"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+            >
+              Tentar novamente
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -669,9 +581,7 @@ export default function StockProjection() {
       {isGenerating && !result && (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <RefreshCw className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">
-            Calculando projeção de estoque...
-          </p>
+          <p className="text-sm text-muted-foreground">Calculando projeção de estoque...</p>
         </div>
       )}
 
@@ -687,103 +597,113 @@ export default function StockProjection() {
       {/* ── Results ── */}
       {result && (
         <>
-          {/* KPIs */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Resumo da Projeção
-              </h2>
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                Clique num card de status para filtrar a análise
-              </span>
+          {/* ── KPIs — dois grupos separados ── */}
+          <div className="space-y-3">
+            {/* Grupo 1 — Risco de estoque */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Risco de estoque
+                <span className="ml-2 font-normal normal-case">
+                  · clique para filtrar a análise
+                </span>
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <KpiCard
+                  icon={Package}
+                  value={result.summary.totalProducts}
+                  label="Produtos analisados"
+                  tooltip={KPI_TOOLTIPS.totalProducts}
+                  accent="primary"
+                  active={statusFilter === null}
+                  onClick={() => setStatusFilter(null)}
+                  testId="kpi-total"
+                />
+                <KpiCard
+                  icon={AlertTriangle}
+                  value={result.summary.productsShortage}
+                  label="Em falta"
+                  tooltip={KPI_TOOLTIPS.productsShortage}
+                  accent="destructive"
+                  active={statusFilter === "shortage"}
+                  onClick={() => toggleStatusFilter("shortage")}
+                  testId="kpi-shortage"
+                />
+                <KpiCard
+                  icon={TrendingDown}
+                  value={result.summary.productsLow}
+                  label="Abaixo do mínimo"
+                  tooltip={KPI_TOOLTIPS.productsLow}
+                  accent="warn"
+                  active={statusFilter === "low"}
+                  onClick={() => toggleStatusFilter("low")}
+                  testId="kpi-low"
+                />
+                <KpiCard
+                  icon={CheckCircle2}
+                  value={result.summary.productsOk}
+                  label="Adequados"
+                  tooltip={KPI_TOOLTIPS.productsOk}
+                  accent="success"
+                  active={statusFilter === "ok"}
+                  onClick={() => toggleStatusFilter("ok")}
+                  testId="kpi-ok"
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-              <KpiCard
-                icon={Package}
-                value={result.summary.totalProducts}
-                label="Produtos"
-                tooltip={KPI_TOOLTIPS.totalProducts}
-                accent="primary"
-                active={statusFilter === null}
-                onClick={() => setStatusFilter(null)}
-                testId="kpi-total"
-              />
-              <KpiCard
-                icon={AlertTriangle}
-                value={result.summary.productsShortage}
-                label="Em falta"
-                tooltip={KPI_TOOLTIPS.productsShortage}
-                accent="destructive"
-                active={statusFilter === "shortage"}
-                onClick={() => toggleStatusFilter("shortage")}
-                testId="kpi-shortage"
-              />
-              <KpiCard
-                icon={TrendingDown}
-                value={result.summary.productsLow}
-                label="Abaixo do mín."
-                tooltip={KPI_TOOLTIPS.productsLow}
-                accent="warn"
-                active={statusFilter === "low"}
-                onClick={() => toggleStatusFilter("low")}
-                testId="kpi-low"
-              />
-              <KpiCard
-                icon={CheckCircle2}
-                value={result.summary.productsOk}
-                label="Adequados"
-                tooltip={KPI_TOOLTIPS.productsOk}
-                accent="success"
-                active={statusFilter === "ok"}
-                onClick={() => toggleStatusFilter("ok")}
-                testId="kpi-ok"
-              />
-              <KpiCard
-                icon={ArrowUpRight}
-                value={result.summary.totalOutbound}
-                label="Total saídas"
-                tooltip={KPI_TOOLTIPS.totalOutbound}
-                accent="destructive"
-                testId="kpi-outbound"
-              />
-              <KpiCard
-                icon={ArrowDownLeft}
-                value={result.summary.totalInbound}
-                label="Total entradas"
-                tooltip={KPI_TOOLTIPS.totalInbound}
-                accent="success"
-                testId="kpi-inbound"
-              />
-              <KpiCard
-                icon={Lock}
-                value={result.summary.totalReserved}
-                label="Pico reservado"
-                tooltip={KPI_TOOLTIPS.totalReserved}
-                accent="neutral"
-                testId="kpi-reserved"
-              />
-              <KpiCard
-                icon={MapPin}
-                value={result.summary.totalInEvent}
-                label="Pico em evento"
-                tooltip={KPI_TOOLTIPS.totalInEvent}
-                accent="neutral"
-                testId="kpi-inevent"
-              />
+
+            {/* Grupo 2 — Volume operacional */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Volume operacional
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <KpiCard
+                  icon={ArrowUpRight}
+                  value={result.summary.totalOutbound}
+                  label="Total saídas"
+                  tooltip={KPI_TOOLTIPS.totalOutbound}
+                  accent="neutral"
+                  testId="kpi-outbound"
+                />
+                <KpiCard
+                  icon={ArrowDownLeft}
+                  value={result.summary.totalInbound}
+                  label="Total entradas"
+                  tooltip={KPI_TOOLTIPS.totalInbound}
+                  accent="neutral"
+                  testId="kpi-inbound"
+                />
+                <KpiCard
+                  icon={Lock}
+                  value={result.summary.totalReserved}
+                  label="Pico reservado"
+                  tooltip={KPI_TOOLTIPS.totalReserved}
+                  accent="neutral"
+                  testId="kpi-reserved"
+                />
+                <KpiCard
+                  icon={MapPin}
+                  value={result.summary.totalInEvent}
+                  label="Pico em evento"
+                  tooltip={KPI_TOOLTIPS.totalInEvent}
+                  accent="neutral"
+                  testId="kpi-inevent"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Incomplete data alert */}
+          {/* Dados incompletos */}
           {incompleteWarnings.length > 0 && (
             <Card className="border-chart-5/40">
               <CardContent className="p-4">
-                <div className="flex items-start gap-2 mb-3">
+                <div className="flex items-start gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-chart-5 flex-shrink-0 mt-0.5" />
                   <p className="text-sm font-semibold text-chart-5">
-                    Dados incompletos encontrados ({incompleteWarnings.length})
+                    Dados incompletos ({incompleteWarnings.length})
                   </p>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {incompleteWarnings.slice(0, 3).map((c, i) => (
                     <p key={i} className="text-xs text-muted-foreground">
                       • {c.message}
@@ -803,23 +723,17 @@ export default function StockProjection() {
             </Card>
           )}
 
-          {/* System warnings */}
+          {/* Avisos do sistema */}
           {result.warnings.length > 0 && (
             <Card className="border-border/60">
-              <CardContent className="p-3">
-                <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                  <div className="space-y-0.5">
-                    {result.warnings.map((w, i) => (
-                      <p
-                        key={i}
-                        className="text-xs text-muted-foreground"
-                        data-testid={`warning-${i}`}
-                      >
-                        {w}
-                      </p>
-                    ))}
-                  </div>
+              <CardContent className="p-3 flex items-start gap-2">
+                <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  {result.warnings.map((w, i) => (
+                    <p key={i} className="text-xs text-muted-foreground" data-testid={`warning-${i}`}>
+                      {w}
+                    </p>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -828,11 +742,7 @@ export default function StockProjection() {
           {/* Status filter chip */}
           {statusFilter && (
             <div className="flex items-center gap-2">
-              <Badge
-                variant="secondary"
-                className="text-xs gap-1"
-                data-testid="chip-status-filter"
-              >
+              <Badge variant="secondary" className="text-xs gap-1" data-testid="chip-status-filter">
                 {statusFilter === "shortage"
                   ? "Em falta"
                   : statusFilter === "low"
@@ -879,7 +789,7 @@ export default function StockProjection() {
               </TabsTrigger>
               <TabsTrigger value="movements" data-testid="tab-movements">
                 <Truck className="w-4 h-4 mr-1.5" />
-                O que entra no cálculo
+                Fontes da projeção
               </TabsTrigger>
             </TabsList>
 
@@ -892,10 +802,7 @@ export default function StockProjection() {
               />
             </TabsContent>
             <TabsContent value="day" className="mt-4">
-              <ProjectionDayView
-                result={displayResult!}
-                onSelectProduct={openProduct}
-              />
+              <ProjectionDayView result={displayResult!} onSelectProduct={openProduct} />
             </TabsContent>
             <TabsContent value="by-product" className="mt-4">
               <ProjectionByProduct
@@ -905,10 +812,7 @@ export default function StockProjection() {
               />
             </TabsContent>
             <TabsContent value="conflicts" className="mt-4">
-              <ProjectionConflicts
-                result={result}
-                onOpenDetail={openConflictDetail}
-              />
+              <ProjectionConflicts result={result} onOpenDetail={openConflictDetail} />
             </TabsContent>
             <TabsContent value="movements" className="mt-4">
               <ProjectionMovements result={result} />
@@ -924,10 +828,7 @@ export default function StockProjection() {
 
       {/* ── Advanced Filters Sheet ── */}
       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent
-          className="w-full sm:max-w-md flex flex-col"
-          data-testid="filters-sheet"
-        >
+        <SheetContent className="w-full sm:max-w-md flex flex-col" data-testid="filters-sheet">
           <SheetHeader className="flex-shrink-0">
             <SheetTitle className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4" />
@@ -942,7 +843,7 @@ export default function StockProjection() {
             className="flex-1 overflow-y-auto py-4 space-y-5 projection-scroll"
             style={{ scrollbarWidth: "thin" }}
           >
-            {/* Seção 1 — Período */}
+            {/* Período */}
             <section className="space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <CalendarRange className="w-4 h-4 text-primary/70" />
@@ -981,10 +882,7 @@ export default function StockProjection() {
               <div className="flex flex-wrap gap-1.5">
                 {dateShortcuts.map(({ label, days }) => {
                   const s = format(new Date(), "yyyy-MM-dd");
-                  const e = format(
-                    new Date(Date.now() + days * 86400000),
-                    "yyyy-MM-dd",
-                  );
+                  const e = format(new Date(Date.now() + days * 86400000), "yyyy-MM-dd");
                   const isActive = startDate === s && endDate === e;
                   return (
                     <Button
@@ -1000,79 +898,55 @@ export default function StockProjection() {
                   );
                 })}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Período máximo de 90 dias.
-              </p>
+              <p className="text-xs text-muted-foreground">Período máximo de 90 dias.</p>
             </section>
 
             <Separator />
 
-            {/* Seção 2 — Fontes */}
+            {/* Fontes */}
             <section className="space-y-2">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Truck className="w-4 h-4 text-primary/70" />
-                O que entra no cálculo
+                Fontes do cálculo
                 {!anySource && (
-                  <span className="text-xs text-destructive font-normal">
-                    (selecione ao menos 1)
-                  </span>
+                  <span className="text-xs text-destructive font-normal">(selecione ao menos 1)</span>
                 )}
               </h3>
-              <div className="space-y-0.5">
-                {(
-                  [
-                    {
-                      key: "loadingOrders" as const,
-                      label: "Ordens de carregamento",
-                      id: "src-loading",
-                    },
-                    {
-                      key: "requests" as const,
-                      label: "Requisições aprovadas",
-                      id: "src-requests",
-                    },
-                    {
-                      key: "movements" as const,
-                      label: "Movimentações",
-                      id: "src-movements",
-                    },
-                    {
-                      key: "trips" as const,
-                      label: "Planos de Viagens avulsos",
-                      id: "src-trips",
-                    },
-                  ] as const
-                ).map((s) => (
-                  <label
-                    key={s.key}
-                    htmlFor={s.id}
-                    className="flex items-center gap-2.5 rounded px-2 py-2 cursor-pointer hover:bg-muted/50"
-                  >
-                    <Checkbox
-                      id={s.id}
-                      checked={sources[s.key]}
-                      onCheckedChange={(v) =>
-                        setSources((prev) => ({ ...prev, [s.key]: !!v }))
-                      }
-                      data-testid={`checkbox-source-${s.key}`}
-                    />
-                    <span className="text-sm">{s.label}</span>
-                  </label>
-                ))}
-              </div>
+              {(
+                [
+                  { key: "loadingOrders" as const, label: "Ordens de carregamento", id: "src-loading" },
+                  { key: "requests" as const, label: "Requisições aprovadas", id: "src-requests" },
+                  { key: "movements" as const, label: "Movimentações", id: "src-movements" },
+                  { key: "trips" as const, label: "Planos de Viagens avulsos", id: "src-trips" },
+                ] as const
+              ).map((s) => (
+                <label
+                  key={s.key}
+                  htmlFor={s.id}
+                  className="flex items-center gap-2.5 rounded px-2 py-2 cursor-pointer hover:bg-muted/50"
+                >
+                  <Checkbox
+                    id={s.id}
+                    checked={sources[s.key]}
+                    onCheckedChange={(v) => setSources((prev) => ({ ...prev, [s.key]: !!v }))}
+                    data-testid={`checkbox-source-${s.key}`}
+                  />
+                  <span className="text-sm">{s.label}</span>
+                </label>
+              ))}
             </section>
 
             <Separator />
 
-            {/* Seção 3 — Eventos */}
+            {/* Eventos */}
             <section className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold">
                   Eventos
                   {selectedEventIds.length > 0 && (
-                    <span className="ml-1.5 font-normal text-muted-foreground">
-                      ({selectedEventIds.length})
-                    </span>
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {selectedEventIds.length}
+                    </Badge>
                   )}
                 </h3>
                 <div className="flex gap-1">
@@ -1080,11 +954,7 @@ export default function StockProjection() {
                     variant="ghost"
                     size="sm"
                     className="h-6 text-xs px-2"
-                    onClick={() =>
-                      setSelectedEventIds(
-                        (events || []).map((e: any) => e.id),
-                      )
-                    }
+                    onClick={() => setSelectedEventIds((events || []).map((e: any) => e.id))}
                     data-testid="button-select-all-events"
                   >
                     Todos
@@ -1102,7 +972,7 @@ export default function StockProjection() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Sem seleção: analisaremos todos os eventos do período.
+                Se nada for selecionado, todos os eventos do período serão considerados.
               </p>
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -1115,14 +985,12 @@ export default function StockProjection() {
                 />
               </div>
               <div
-                className="border border-border/60 rounded-md p-2 max-h-48 overflow-y-auto space-y-0.5 projection-scroll"
+                className="border border-border/60 rounded-md p-1.5 max-h-40 overflow-y-auto space-y-0.5 projection-scroll"
                 style={{ scrollbarWidth: "thin" }}
               >
                 {filteredEvents.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">
-                    {!events?.length
-                      ? "Nenhum evento disponível"
-                      : "Nenhum resultado"}
+                  <p className="text-xs text-muted-foreground text-center py-3">
+                    {!events?.length ? "Nenhum evento disponível" : "Nenhum resultado"}
                   </p>
                 ) : (
                   filteredEvents.map((event: any) => (
@@ -1130,9 +998,7 @@ export default function StockProjection() {
                       key={event.id}
                       htmlFor={`ev-${event.id}`}
                       className={`flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors ${
-                        selectedEventIds.includes(event.id)
-                          ? "bg-primary/10"
-                          : "hover:bg-muted/50"
+                        selectedEventIds.includes(event.id) ? "bg-primary/10" : "hover:bg-muted/50"
                       }`}
                     >
                       <Checkbox
@@ -1143,14 +1009,10 @@ export default function StockProjection() {
                         data-testid={`checkbox-event-${event.id}`}
                       />
                       <div className="min-w-0">
-                        <div className="text-sm leading-tight truncate">
-                          {event.name}
-                        </div>
+                        <div className="text-sm leading-tight truncate">{event.name}</div>
                         {event.eventDate && (
                           <div className="text-xs text-muted-foreground">
-                            {new Date(event.eventDate).toLocaleDateString(
-                              "pt-BR",
-                            )}
+                            {new Date(event.eventDate).toLocaleDateString("pt-BR")}
                           </div>
                         )}
                       </div>
@@ -1162,15 +1024,15 @@ export default function StockProjection() {
 
             <Separator />
 
-            {/* Seção 4 — Produtos */}
+            {/* Produtos */}
             <section className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold">
                   Produtos
                   {selectedProductIds.length > 0 && (
-                    <span className="ml-1.5 font-normal text-muted-foreground">
-                      ({selectedProductIds.length})
-                    </span>
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {selectedProductIds.length}
+                    </Badge>
                   )}
                 </h3>
                 <Button
@@ -1185,8 +1047,7 @@ export default function StockProjection() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Sem seleção: analisaremos todos os produtos impactados no
-                período.
+                Se nada for selecionado, todos os produtos impactados no período serão analisados.
               </p>
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -1199,14 +1060,12 @@ export default function StockProjection() {
                 />
               </div>
               <div
-                className="border border-border/60 rounded-md p-2 max-h-48 overflow-y-auto space-y-0.5 projection-scroll"
+                className="border border-border/60 rounded-md p-1.5 max-h-40 overflow-y-auto space-y-0.5 projection-scroll"
                 style={{ scrollbarWidth: "thin" }}
               >
                 {filteredProducts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">
-                    {!products?.length
-                      ? "Nenhum produto disponível"
-                      : "Nenhum resultado"}
+                  <p className="text-xs text-muted-foreground text-center py-3">
+                    {!products?.length ? "Nenhum produto disponível" : "Nenhum resultado"}
                   </p>
                 ) : (
                   filteredProducts.slice(0, 200).map((product: any) => (
@@ -1214,9 +1073,7 @@ export default function StockProjection() {
                       key={product.id}
                       htmlFor={`pr-${product.id}`}
                       className={`flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors ${
-                        selectedProductIds.includes(product.id)
-                          ? "bg-primary/10"
-                          : "hover:bg-muted/50"
+                        selectedProductIds.includes(product.id) ? "bg-primary/10" : "hover:bg-muted/50"
                       }`}
                     >
                       <Checkbox
@@ -1227,12 +1084,8 @@ export default function StockProjection() {
                         data-testid={`checkbox-product-${product.id}`}
                       />
                       <div className="min-w-0">
-                        <div className="text-sm leading-tight truncate">
-                          {product.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {product.sku}
-                        </div>
+                        <div className="text-sm leading-tight truncate">{product.name}</div>
+                        <div className="text-xs text-muted-foreground">{product.sku}</div>
                       </div>
                     </label>
                   ))
@@ -1242,7 +1095,7 @@ export default function StockProjection() {
 
             <Separator />
 
-            {/* Seção 5 — Opções */}
+            {/* Exibição */}
             <section className="space-y-1">
               <h3 className="text-sm font-semibold mb-2">Exibição</h3>
               <label
@@ -1267,9 +1120,7 @@ export default function StockProjection() {
                   onCheckedChange={(v) => setOnlyImpacted(!!v)}
                   data-testid="checkbox-only-impacted"
                 />
-                <span className="text-sm">
-                  Mostrar apenas produtos impactados
-                </span>
+                <span className="text-sm">Mostrar apenas produtos impactados</span>
               </label>
             </section>
           </div>
@@ -1289,7 +1140,14 @@ export default function StockProjection() {
               disabled={!canGenerate || isGenerating}
               data-testid="button-apply-filters"
             >
-              {isGenerating ? "Gerando..." : "Aplicar filtros"}
+              {isGenerating ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Calculando...
+                </>
+              ) : (
+                "Aplicar filtros"
+              )}
             </Button>
           </SheetFooter>
         </SheetContent>

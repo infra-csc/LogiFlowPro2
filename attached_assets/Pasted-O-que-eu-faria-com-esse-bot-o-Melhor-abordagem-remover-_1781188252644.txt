@@ -1,0 +1,240 @@
+O que eu faria com esse botão
+Melhor abordagem
+remover “Atualizar projeção” e “Atualizar”
+a projeção deve:
+carregar automaticamente ao abrir a tela
+recalcular automaticamente ao clicar em “Aplicar filtros”
+opcionalmente, recalcular ao trocar filtros simples
+Em vez do botão, mostrar:
+“Última projeção gerada em 11/06/2026 às 11:27”
+status visual:
+Atualizada agora
+Recalculando...
+Erro ao recalcular
+
+Ou seja: sai a lógica de “preciso lembrar de atualizar” e entra a lógica de “o sistema sempre me mostra o cenário vigente com base nos filtros aplicados”.
+
+O que ainda dá para melhorar nessa tela
+1. Tem ação duplicada demais no topo
+
+Hoje você tem:
+
+Limpar
+Filtros avançados
+Atualizar projeção
+
+e depois outra barra com:
+
+Alterar filtros
+Atualizar
+
+Isso gera ruído.
+
+Melhor:
+
+Deixar só isso no topo:
+
+Filtros avançados
+Limpar filtros (secundário)
+
+E a projeção acontece automaticamente.
+
+2. A barra de contexto está boa, mas pode ficar mais forte
+
+Essa linha com:
+
+período
+31 dias
+3 fontes
+1 evento
+todos os produtos
+
+é boa, mas pode virar uma barra-resumo mais útil.
+
+Exemplo melhor:
+
+Simulando: 11/06/2026 → 11/07/2026
+Fontes: 3 ativas
+Eventos: 1 selecionado
+Produtos: todos os impactados
+Base: última geração às 11:27
+
+Isso melhora muito a clareza.
+
+3. Os cards de resumo estão legais, mas ainda parecem todos do mesmo peso
+
+Hoje eles estão bonitos, porém visualmente ficam meio “flat” e concorrendo entre si.
+
+Eu faria:
+Linha 1 — cards principais
+Produtos analisados
+Em falta
+Abaixo do mínimo
+Adequados
+Linha 2 — cards operacionais
+Total saídas
+Total entradas
+Pico reservado
+Pico em evento
+
+Assim a leitura fica mais natural:
+primeiro risco, depois operação.
+
+4. A aba “Matriz por Dia” ainda é a melhor, mas falta leitura operacional
+
+A tabela está melhor, só que ainda está muito “número puro”.
+
+Melhorias:
+destacar hoje
+destacar dias com:
+saída
+entrada
+conflito
+usar cor de fundo por célula, tipo heatmap leve:
+verde = adequado
+amarelo = abaixo do mínimo
+vermelho = falta
+mostrar microindicadores na célula:
+100
+95 ↓
+110 ↑
+-5 ⚠
+
+Hoje ela parece mais uma tabela horizontal; ela precisa parecer uma simulação de saldo.
+
+5. A “Linha do tempo — impactos diários” ainda está fraca
+
+Ela ocupa espaço, mas ainda informa pouco.
+
+Eu faria ela mostrar por dia:
+se houve saída
+se houve entrada
+se houve falta
+quantos produtos foram impactados
+se há evento importante naquele dia
+
+Exemplo visual:
+
+bolinha vermelha = risco
+seta verde = entrada
+seta vermelha = saída
+badge com número de impactos
+
+Assim ela vira realmente uma faixa de leitura rápida da semana/mês.
+
+6. “Visão por Dia” precisa parecer mais agenda operacional
+
+Hoje ela está limpa, mas ainda está muito estática.
+
+Melhorias:
+
+Adicionar blocos do tipo:
+
+Agenda do dia
+Saídas previstas
+Entradas/retornos previstos
+Itens em evento
+Riscos do dia
+
+Se não houver movimentação, mostrar:
+
+“Sem entradas ou saídas previstas”
+“35 itens permanecem em evento”
+“Nenhum risco de falta hoje”
+
+Assim a aba fica mais “dia de operação” e menos “tabela do mesmo dado”.
+
+7. “Por Produto” precisa de visual mais forte
+
+Hoje essa aba está melhor, mas a linha do tempo ainda parece só uma fileira de números.
+
+Melhorias:
+mini gráfico/step chart de saldo
+pontos marcando dias com entrada/saída
+badge do pior dia
+bloco “origens que impactam este produto” com mais destaque
+se não houver impacto, mostrar isso de forma elegante:
+“Sem movimentações no período”
+“Saldo estável durante todo o intervalo”
+
+Essa aba tem potencial enorme.
+
+8. “Conflitos” está boa quando não tem conflito, mas está vazia demais
+
+O empty state está correto, porém grande demais.
+
+Melhor:
+
+Se não houver conflito:
+
+um card positivo menor
+abaixo, uma lista curta de validações:
+todas as saídas datadas
+nenhum saldo negativo previsto
+nenhuma falta abaixo do mínimo no período
+
+Assim a aba continua útil mesmo sem conflito.
+
+9. “O que entra no cálculo” poderia ter nome melhor
+
+Eu mudaria para algo mais operacional, tipo:
+
+Fontes da projeção
+ou
+Origens do cálculo
+
+Porque “O que entra no cálculo” é ok, mas parece um pouco informal perto do resto.
+
+E nessa aba, eu destacaria melhor:
+
+quais registros foram considerados
+quais foram ignorados
+e por quê
+
+Exemplo:
+
+Ignorado: fora do período
+Ignorado: sem data válida
+Ignorado: sem impacto no saldo
+Considerado: saída em 01/07
+
+Isso aumenta muito a confiança.
+
+10. O drawer de filtros avançados está melhor, mas ainda dá para lapidar
+
+Ele está bem melhor que a sidebar fixa.
+
+Ajustes:
+diminuir um pouco a altura visual das listas
+deixar os botões finais sempre fixos no rodapé
+colocar contador de seleção:
+Eventos (1)
+Produtos (0)
+nos produtos/eventos, permitir chips de seleção visíveis no topo
+trocar o texto:
+“Sem seleção: analisaremos todos os produtos impactados no período.”
+por algo ainda mais direto:
+“Se nada for selecionado, todos os produtos impactados serão considerados.”
+O principal ponto conceitual
+Essa tela não deve parecer “um relatório que precisa ser atualizado”
+
+Ela tem que parecer uma central viva de projeção.
+
+Então eu seguiria estas regras:
+
+Regra 1
+
+Sem botão Atualizar.
+
+Regra 2
+
+A projeção é recalculada automaticamente quando os filtros são aplicados.
+
+Regra 3
+
+Mostrar sempre:
+
+período da análise
+data/hora da última geração
+fontes consideradas
+se está recalculando ou não
