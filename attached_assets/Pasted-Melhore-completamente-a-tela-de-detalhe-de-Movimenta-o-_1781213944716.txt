@@ -1,0 +1,503 @@
+Melhore completamente a tela de detalhe de Movimentação / Carga e Descarga.
+
+Objetivo:
+Essa tela deve ser o centro operacional do carregamento. O usuário precisa conseguir acompanhar tudo que aconteceu naquela movimentação: status, ordem vinculada, evento, veículo, doca, itens esperados, itens carregados, pendências, excedentes, divergências, histórico de ações e evidências em foto/vídeo.
+
+Manter o tema dark atual do EventFlow, mas deixar a tela mais completa, organizada, visual e operacional.
+
+1. HEADER DA MOVIMENTAÇÃO
+
+No topo da tela, manter:
+- Nome da movimentação
+- Código da movimentação
+- Status
+- Botões de ação
+
+Melhorar o header para ficar mais informativo:
+
+Exemplo:
+
+Energy Land - 1
+MVT-20260601-001
+
+Tags abaixo:
+- Concluído
+- Carga para Evento
+- Ordem: 1234
+- Evento: Energy Land - São Paulo 2026
+- Veículo: abc1234
+- Doca: -
+- Responsável: Administrador
+- Última atualização: data/hora
+
+Botões:
+- Editar Status
+- Voltar
+- Gerar Relatório
+- Adicionar Evidência
+
+Se a movimentação estiver concluída:
+- Não permitir alterar quantidades ou produtos.
+- Mas permitir adicionar foto/vídeo como evidência pós-carregamento, desde que fique registrado no histórico.
+
+2. CARDS DE RESUMO
+
+Manter os cards atuais, mas melhorar visualmente e completar:
+
+Cards:
+- Status
+- Itens esperados
+- Itens carregados
+- Pendentes
+- Excedentes
+- Divergências
+- Evidências
+- Progresso
+
+Exemplo:
+Status: Concluído
+Esperados: 35
+Carregados: 35
+Pendentes: 0
+Excedentes: 0
+Divergências: 0
+Evidências: 8 fotos / 2 vídeos
+Progresso: 100%
+
+Regras:
+- Cards clicáveis devem filtrar a lista de itens.
+- Clicar em “Pendentes” mostra só itens pendentes.
+- Clicar em “Excedentes” mostra só itens excedidos.
+- Clicar em “Evidências” rola para a seção de mídias.
+
+3. STATUS E ALERTAS
+
+A mensagem atual:
+“Movimentação finalizada. Não é possível adicionar ou modificar produtos.”
+
+Melhorar para:
+
+“Movimentação concluída. Os produtos e quantidades estão bloqueados, mas ainda é possível anexar evidências operacionais.”
+
+Quando houver divergência:
+- Mostrar alerta vermelho.
+Quando estiver tudo certo:
+- Mostrar alerta verde discreto:
+“Carregamento concluído sem pendências.”
+
+Quando houver excedente:
+- Mostrar alerta amarelo/vermelho:
+“Existem itens carregados acima da quantidade esperada.”
+
+4. LAYOUT PRINCIPAL DA TELA
+
+Abaixo do resumo, criar abas:
+
+Aba 1: Itens
+Aba 2: Evidências
+Aba 3: Divergências
+Aba 4: Histórico
+Aba 5: Informações da Movimentação
+
+A tela não deve ficar apenas com dois blocos simples. Precisa parecer uma tela de controle operacional.
+
+5. ABA ITENS
+
+A aba Itens deve ter duas visões:
+
+Visão Comparativa:
+Tabela ou cards com:
+
+Produto
+SKU
+Esperado
+Carregado
+Pendente
+Excedente
+Status
+Evidências
+Observação
+Ações
+
+Status possíveis:
+- Completo
+- Pendente
+- Excedido
+- Não previsto
+- Sem movimentação
+
+Exemplo visual:
+
+Box Truss - Q30 - Cubo de 3 faces
+SKU: BOX_3QC3
+Esperado: 20
+Carregado: 20
+Pendente: 0
+Status: Completo
+Evidências: 2 fotos
+Botão: Ver detalhes
+
+Para cada item:
+- Mostrar barra de progresso.
+- Se completo: borda/indicador verde.
+- Se pendente: amarelo.
+- Se excedido: vermelho.
+- Se produto não consta na ordem: laranja.
+
+Adicionar filtro rápido:
+- Todos
+- Pendentes
+- Completos
+- Excedidos
+- Não previstos
+- Com evidência
+- Sem evidência
+
+Adicionar busca:
+“Buscar por produto, SKU ou código de barras...”
+
+6. ITEM DETALHADO
+
+Ao clicar em um item, abrir drawer lateral ou modal com:
+
+Título:
+Box Truss - Q30 - Cubo de 3 faces
+
+Informações:
+- SKU
+- Unidade
+- Quantidade esperada
+- Quantidade carregada
+- Pendente
+- Excedente
+- Status
+- Se pertence à ordem ou foi produto extra
+- Última movimentação
+- Responsável pelo registro
+
+Seção de evidências do item:
+- Fotos vinculadas a este item
+- Vídeos vinculados a este item
+- Botão “Adicionar foto/vídeo”
+- Campo de observação do item
+
+Se a movimentação estiver concluída:
+- Bloquear edição da quantidade.
+- Permitir adicionar observação/evidência, com log.
+
+7. ABA EVIDÊNCIAS
+
+Criar uma área completa chamada:
+
+Evidências do Carregamento
+
+Ela deve permitir anexar:
+- Fotos
+- Vídeos
+- Documentos opcionais, se fizer sentido futuramente
+
+Tipos de evidência:
+- Antes do carregamento
+- Durante o carregamento
+- Depois do carregamento
+- Produto específico
+- Veículo
+- Doca
+- Divergência
+- Canhoto/documento
+- Outro
+
+Cada evidência deve ter:
+- Miniatura
+- Tipo: Foto ou Vídeo
+- Categoria
+- Produto vinculado, se houver
+- Legenda/observação
+- Usuário que anexou
+- Data/hora do envio
+- Tamanho do arquivo
+- Botão visualizar
+- Botão excluir, se permitido
+
+Layout:
+- Galeria em cards.
+- Filtros por tipo: Todos, Fotos, Vídeos.
+- Filtro por categoria.
+- Filtro por produto.
+- Botão “Adicionar Evidência”.
+
+Ao clicar em uma foto:
+- Abrir preview grande.
+- Permitir navegar entre imagens.
+- Mostrar metadados.
+
+Ao clicar em um vídeo:
+- Abrir player no modal/drawer.
+- Não baixar automaticamente.
+
+8. UPLOAD DE FOTO E VÍDEO
+
+Criar componente de upload bonito e funcional.
+
+Botão:
+“Adicionar foto/vídeo”
+
+Modal:
+Título: Nova Evidência
+
+Campos:
+- Arquivo
+- Tipo detectado automaticamente: Foto ou Vídeo
+- Categoria da evidência
+- Produto relacionado, opcional
+- Observação
+- Botão Salvar Evidência
+
+Regras:
+- Aceitar imagens: PNG, JPG, JPEG, WebP.
+- Aceitar vídeos: MP4, MOV, WebM.
+- Limite imagem: 10 MB.
+- Limite vídeo: 100 MB.
+- Permitir múltiplos arquivos.
+- Gerar preview antes de salvar.
+- Para vídeo, gerar thumbnail quando possível.
+- Mostrar progresso do upload.
+- Validar erro de formato e tamanho com mensagem clara.
+- Não deixar o usuário perder o preenchimento se um upload falhar.
+
+Se o usuário anexar vários arquivos de uma vez:
+- Aplicar mesma categoria e observação para todos.
+- Permitir editar individualmente depois.
+
+9. ABA DIVERGÊNCIAS
+
+Criar aba específica para divergências.
+
+Mostrar:
+- Produtos excedidos
+- Produtos pendentes
+- Produtos não previstos na ordem
+- Produtos carregados sem vínculo com ordem
+- Itens esperados sem carregamento
+- Itens com quantidade divergente
+
+Cada divergência deve mostrar:
+- Produto
+- SKU
+- Esperado
+- Carregado
+- Diferença
+- Tipo da divergência
+- Observação
+- Evidências relacionadas
+- Ação recomendada
+
+Exemplo:
+Produto: Box Truss - Q30 - Peça 6000
+Esperado: 0
+Carregado: 3
+Divergência: Produto não consta na ordem
+Ação sugerida: Validar se foi carregamento extra ou erro de registro.
+
+10. ABA HISTÓRICO
+
+Melhorar o histórico para ser uma linha do tempo operacional.
+
+Cada registro deve mostrar:
+- Ícone da ação
+- Descrição
+- Usuário
+- Data/hora
+- Produto relacionado, se houver
+- Quantidade, se houver
+- Status anterior e novo, se houver
+- Evidência vinculada, se houver
+
+Exemplos:
+- Administrador iniciou a movimentação
+- Administrador adicionou 20x Box Truss
+- Administrador anexou 2 fotos do veículo
+- Administrador alterou status de Em andamento para Concluída
+
+A timeline deve ser clara, com separação por data.
+
+11. ABA INFORMAÇÕES DA MOVIMENTAÇÃO
+
+Criar uma aba com dados completos:
+
+Dados gerais:
+- Nome
+- Código
+- Tipo
+- Status
+- Ordem vinculada
+- Evento vinculado
+- Viagem vinculada
+- Doca
+- Veículo
+- Motorista, se existir
+- Responsável
+- Criado em
+- Iniciado em
+- Pausado em
+- Finalizado em
+
+Resumo operacional:
+- Total esperado
+- Total carregado
+- Total pendente
+- Total excedente
+- Quantidade de produtos distintos
+- Quantidade de evidências
+- Tempo total da operação
+
+12. BACKEND — EVIDÊNCIAS
+
+Criar estrutura para salvar mídias da movimentação.
+
+Tabela: movement_attachments
+
+Campos:
+- id
+- movement_id
+- movement_item_id nullable
+- product_id nullable
+- file_url
+- file_name
+- file_type
+- mime_type
+- file_size
+- thumbnail_url nullable
+- duration_seconds nullable
+- category
+- caption nullable
+- uploaded_by
+- uploaded_at
+- created_at
+- updated_at
+- deleted_at nullable
+
+Categorias permitidas:
+- before_loading
+- during_loading
+- after_loading
+- vehicle
+- dock
+- product
+- discrepancy
+- document
+- other
+
+Regras:
+- movement_id obrigatório.
+- movement_item_id opcional.
+- product_id opcional.
+- Permitir evidência geral da movimentação.
+- Permitir evidência vinculada a um item específico.
+- Não excluir fisicamente; usar soft delete.
+- Registrar no histórico quando mídia for adicionada ou removida.
+
+13. BACKEND — HISTÓRICO
+
+Garantir que toda ação importante seja registrada.
+
+Tabela sugerida: movement_history
+
+Campos:
+- id
+- movement_id
+- movement_item_id nullable
+- action_type
+- description
+- old_value nullable
+- new_value nullable
+- metadata json/jsonb nullable
+- created_by
+- created_at
+
+Registrar:
+- criação da movimentação
+- início
+- pausa
+- retomada
+- finalização
+- alteração de status
+- adição de produto
+- alteração de quantidade
+- produto excedido
+- produto pendente
+- upload de foto
+- upload de vídeo
+- remoção de evidência
+- observação adicionada
+
+14. BACKEND — RELATÓRIO
+
+Adicionar botão “Gerar Relatório”.
+
+O relatório deve consolidar:
+- Dados da movimentação
+- Evento
+- Ordem
+- Veículo
+- Doca
+- Resumo de quantidades
+- Lista de itens esperados x carregados
+- Divergências
+- Histórico
+- Evidências anexadas
+
+Pode ser inicialmente uma página/impressão ou exportação simples. Não precisa gerar PDF agora se for complexo, mas preparar a estrutura.
+
+15. REGRAS DE PERMISSÃO
+
+Admin:
+- Pode editar status
+- Pode anexar evidências
+- Pode excluir evidências
+- Pode ver histórico completo
+
+Operador:
+- Pode iniciar/pausar/finalizar
+- Pode carregar produtos
+- Pode anexar evidências
+- Não pode excluir evidências de outros usuários
+
+Usuário visualizador:
+- Apenas visualiza movimentação, itens, histórico e evidências
+
+Se movimentação concluída:
+- Bloquear alteração de produtos e quantidades.
+- Permitir anexar evidência se o usuário tiver permissão.
+- Toda evidência pós-finalização deve ficar marcada no histórico como “adicionada após conclusão”.
+
+16. AJUSTE VISUAL
+
+Melhorar o visual geral:
+- Cards mais compactos e úteis.
+- Separar informações gerais dos itens.
+- Usar badges claros.
+- Melhorar espaçamentos.
+- Evitar excesso de blocos grandes vazios.
+- Usar abas para organizar a complexidade.
+- Drawer lateral para detalhes de item e evidência.
+- Galeria de fotos/vídeos com miniaturas.
+- Tabelas com cabeçalho fixo quando houver muitos itens.
+- Layout responsivo.
+
+17. IMPORTANTE
+
+Não alterar a lógica principal de carregamento existente.
+Não quebrar a tela atual.
+Apenas evoluir a tela para ser mais completa e operacional.
+
+A movimentação concluída deve continuar bloqueando alteração de produtos, mas deve permitir anexar evidências operacionais.
+
+O objetivo final é que o administrador consiga abrir uma movimentação e entender rapidamente:
+- O que deveria ser carregado
+- O que foi carregado
+- O que ficou pendente
+- O que passou do esperado
+- Quais evidências comprovam o carregamento
+- Quem fez cada ação
+- Quando cada etapa aconteceu
