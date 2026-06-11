@@ -81,38 +81,42 @@ function addDays(base: Date, days: number): Date {
   return d;
 }
 
-/** Date + time pair bound to a single Date form field. */
+/** Date + optional time pair bound to a single Date form field. */
 function DateTimeFields({
   value,
   onChange,
   invalid,
   dateTestId,
   timeTestId,
+  hideTime = false,
 }: {
   value: Date | string | null | undefined;
   onChange: (d: Date | undefined) => void;
   invalid?: boolean;
   dateTestId?: string;
   timeTestId?: string;
+  hideTime?: boolean;
 }) {
   const datePart = getDatePart(value);
   const timePart = getTimePart(value);
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-2">
+    <div className={cn("grid gap-2", hideTime ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_96px]")}>
       <Input
         type="date"
         value={datePart}
-        onChange={(e) => onChange(combineDateTime(e.target.value, timePart))}
+        onChange={(e) => onChange(combineDateTime(e.target.value, hideTime ? "00:00" : timePart))}
         className={cn("min-w-0", invalid && "border-destructive")}
         data-testid={dateTestId}
       />
-      <Input
-        type="time"
-        value={timePart}
-        onChange={(e) => onChange(combineDateTime(datePart, e.target.value))}
-        className={cn("min-w-0", invalid && "border-destructive")}
-        data-testid={timeTestId}
-      />
+      {!hideTime && (
+        <Input
+          type="time"
+          value={timePart}
+          onChange={(e) => onChange(combineDateTime(datePart, e.target.value))}
+          className={cn("min-w-0", invalid && "border-destructive")}
+          data-testid={timeTestId}
+        />
+      )}
     </div>
   );
 }
@@ -402,7 +406,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                           onChange={field.onChange}
                           invalid={!!setupAfterEvent}
                           dateTestId="input-setup-date"
-                          timeTestId="input-setup-time"
+                          hideTime
                         />
                       </FormControl>
                       <FormMessage />
@@ -423,7 +427,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                           value={field.value}
                           onChange={field.onChange}
                           dateTestId="input-event-date"
-                          timeTestId="input-event-time"
+                          hideTime
                         />
                       </FormControl>
                       <FormMessage />
@@ -445,7 +449,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                           onChange={field.onChange}
                           invalid={!!teardownBeforeEvent}
                           dateTestId="input-teardown-date"
-                          timeTestId="input-teardown-time"
+                          hideTime
                         />
                       </FormControl>
                       <FormMessage />
