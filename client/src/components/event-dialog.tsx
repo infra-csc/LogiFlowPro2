@@ -403,7 +403,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                           onChange={field.onChange}
                           invalid={!!setupAfterEvent}
                           dateTestId="input-setup-date"
-                          hideTime
+                          timeTestId="input-setup-time"
                         />
                       </FormControl>
                       <FormMessage />
@@ -424,7 +424,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                           value={field.value}
                           onChange={field.onChange}
                           dateTestId="input-event-date"
-                          hideTime
+                          timeTestId="input-event-time"
                         />
                       </FormControl>
                       <FormMessage />
@@ -446,7 +446,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                           onChange={field.onChange}
                           invalid={!!teardownBeforeEvent}
                           dateTestId="input-teardown-date"
-                          hideTime
+                          timeTestId="input-teardown-time"
                         />
                       </FormControl>
                       <FormMessage />
