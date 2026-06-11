@@ -28,8 +28,8 @@ import {
   isToday,
   isWeekend,
   sourceLabel,
-  statusBadgeClass,
-  statusLabel,
+  statusBadgeClassExt,
+  statusLabelExt,
 } from "./projection-utils";
 
 interface Props {
@@ -212,8 +212,8 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-semibold text-sm">Linha do tempo do saldo</p>
-                <Badge className={`${statusBadgeClass(product.worstStatus)} text-xs`}>
-                  {statusLabel(product.worstStatus)}
+                <Badge className={`${statusBadgeClassExt(product.worstStatus, product.currentStock, product.minimumStock)} text-xs`}>
+                  {statusLabelExt(product.worstStatus, product.currentStock, product.minimumStock)}
                 </Badge>
               </div>
               <div className="overflow-x-auto projection-scroll" style={{ scrollbarWidth: "thin" }}>
@@ -236,7 +236,7 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                         </div>
                         {/* Balance cell */}
                         <div
-                          className={`w-full text-center rounded px-1 py-1.5 text-xs tabular-nums ${cellToneClass(c.status)} ${c.status === "ok" ? "bg-muted/40" : ""} ${isWorst ? "ring-1 ring-destructive/60" : ""}`}
+                          className={`w-full text-center rounded px-1 py-1.5 text-xs tabular-nums ${cellToneClass(c.status, c.available, product.minimumStock, hasFlow)} ${isWorst ? "ring-1 ring-destructive/60" : ""}`}
                           title={`Saldo ${c.available} · Saída ${c.outbound} · Entrada ${c.inbound}${isWorst ? " · Pior dia" : ""}`}
                         >
                           {c.available}

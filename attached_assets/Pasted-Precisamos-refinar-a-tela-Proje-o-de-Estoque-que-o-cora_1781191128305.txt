@@ -1,0 +1,664 @@
+Precisamos refinar a tela “Projeção de Estoque”, que é o coração do app EventFlow. O objetivo dessa tela é permitir que o administrador entenda, de forma confiável e visualmente clara, quanto estoque teremos dia a dia, considerando eventos, requisições aprovadas, ordens de carregamento, movimentações físicas e planos de viagens.
+
+A tela já melhorou, mas ainda precisa de ajustes finais importantes de lógica, visual, hierarquia e confiabilidade. Faça uma revisão completa de front-end e back-end dessa tela, mantendo o tema dark atual do EventFlow, mas elevando a experiência para um nível realmente operacional/profissional.
+
+CONTEXTO DA TELA
+A Projeção de Estoque deve responder perguntas como:
+- Quanto estoque físico eu tenho hoje?
+- Quanto terei em cada dia da semana/mês?
+- Quais produtos vão faltar?
+- Quais produtos ficam abaixo do mínimo?
+- O que já está em evento?
+- O que está reservado?
+- O que está em trânsito?
+- O que vai sair?
+- O que vai retornar?
+- Quais fontes estão sendo consideradas no cálculo?
+- Quais origens têm ambiguidade e precisam ser validadas?
+- Qual evento, viagem, ordem ou movimentação está impactando cada item?
+
+OBJETIVO PRINCIPAL
+Transformar a tela em um painel operacional de decisão, não apenas uma tabela. O administrador precisa olhar e entender rapidamente:
+1. Risco de estoque.
+2. Volume operacional.
+3. Saldo projetado por dia.
+4. Impactos por produto.
+5. Impactos por evento.
+6. Fontes consideradas.
+7. Avisos/ambiguidades.
+8. Detalhe ao clicar em qualquer célula ou origem.
+
+NÃO USAR BOTÃO “ATUALIZAR”
+Remover qualquer botão com texto “Atualizar” ou “Atualizar projeção”.
+
+A projeção deve recalcular automaticamente quando:
+- o usuário aplicar filtros avançados;
+- o usuário limpar filtros;
+- o usuário mudar período;
+- o usuário alterar fontes consideradas;
+- o usuário selecionar eventos/produtos.
+
+No topo, exibir apenas uma informação discreta:
+“Projeção calculada às HH:mm”
+
+Não usar linguagem que dê a sensação de dado desatualizado. A tela deve passar confiança.
+
+AÇÕES NO TOPO
+Manter apenas:
+- Limpar
+- Filtros avançados
+
+O botão “Filtros avançados” abre um drawer lateral à direita.
+O botão “Limpar” reseta todos os filtros e recalcula automaticamente.
+
+BARRA DE CONTEXTO DA PROJEÇÃO
+Abaixo do título, manter uma barra com chips informativos:
+- Período: 11/06/2026 → 11/07/2026
+- 31 dias
+- 3 fonte(s) ativa(s)
+- Todos os eventos ou X evento(s)
+- Todos os produtos impactados ou X produto(s)
+
+Essa barra deve ser visualmente discreta, com fundo escuro, borda sutil e sem competir com os cards principais.
+
+AJUSTE VISUAL DOS DIAS E TIMELINE
+O azul atual dos dias está forte demais. Reduzir o protagonismo do azul.
+
+Separar visualmente:
+- “Hoje”
+- “Dia selecionado”
+
+Regras visuais:
+- Hoje deve ser apenas um marcador discreto: contorno fino, pequeno badge “Hoje” ou linha superior discreta.
+- Dia selecionado deve ter destaque moderado: fundo levemente diferente, borda fina azul/ciano, sem preenchimento azul forte.
+- Se hoje e selecionado forem o mesmo dia, combinar os estados sem exagerar no azul.
+- Os cards de dia da timeline devem ser mais neutros.
+- Usar pequenos indicadores/pontos para impacto:
+  - vermelho para saída/falta;
+  - verde para entrada/retorno;
+  - amarelo para aviso;
+  - cinza quando não houver impacto.
+- A timeline deve parecer um “calendário operacional horizontal”, não uma sequência de botões azuis.
+
+CORRIGIR STATUS DE PRODUTO ZERADO
+Hoje alguns produtos com estoque 0 aparecem com bolinha verde. Isso está errado visualmente e logicamente.
+
+Criar regra clara de status:
+
+1. EM FALTA
+Quando:
+- saldo projetado < 0;
+- ou demanda maior que saldo disponível;
+- ou falta prevista em qualquer dia do período.
+
+Visual:
+- bolinha vermelha;
+- badge vermelho “Em falta”;
+- célula vermelha na matriz.
+
+2. ABAIXO DO MÍNIMO
+Quando:
+- saldo projetado >= 0;
+- mínimo > 0;
+- saldo projetado < mínimo.
+
+Visual:
+- bolinha amarela;
+- badge amarelo “Abaixo do mínimo”.
+
+3. ADEQUADO
+Quando:
+- saldo projetado > mínimo;
+- e existe saldo real disponível;
+- ou mínimo = 0 e saldo projetado > 0.
+
+Visual:
+- bolinha verde;
+- badge verde “Adequado”.
+
+4. SEM ESTOQUE / NEUTRO
+Quando:
+- saldo = 0;
+- mínimo = 0;
+- não há demanda não atendida;
+- não há risco no período.
+
+Visual:
+- bolinha cinza;
+- badge cinza “Sem estoque” ou “Neutro”.
+Nunca usar bolinha verde nesse caso.
+
+5. EM EVENTO
+Quando:
+- o produto está fora do estoque físico porque está em evento;
+- não há falta projetada;
+- mas ele não está disponível fisicamente.
+
+Visual:
+- bolinha azul discreta ou cinza-azulada;
+- badge “Em evento” ou “Em uso”.
+Não usar verde.
+
+Essa regra deve valer em todas as abas:
+- Matriz por Dia
+- Visão por Dia
+- Por Produto
+- Avisos
+- Fontes da projeção
+- Drawer de detalhe do dia
+
+CARDS DE RESUMO
+Manter dois grupos de cards:
+
+Grupo 1: RISCO DE ESTOQUE
+- Produtos analisados
+- Em falta
+- Abaixo do mínimo
+- Adequados
+
+Grupo 2: VOLUME OPERACIONAL
+- Total saídas
+- Total entradas
+- Pico reservado
+- Pico em evento
+
+Melhorar tooltips:
+- Total saídas: “Soma de todas as saídas previstas no período.”
+- Total entradas: “Soma de todas as entradas/retornos previstos no período.”
+- Pico reservado: “Maior quantidade reservada simultaneamente no período.”
+- Pico em evento: “Maior quantidade simultânea fora do estoque por evento no período.”
+- Produtos analisados: “Produtos com estoque, requisição, ordem ou movimentação no período.”
+- Em falta: “Produtos com saldo projetado negativo ou demanda não atendida.”
+- Abaixo do mínimo: “Produtos com saldo positivo, porém abaixo do estoque mínimo.”
+- Adequados: “Produtos com saldo suficiente dentro das regras de mínimo.”
+
+Os cards devem ser clicáveis para filtrar a análise.
+Exemplo:
+- clicar em “Em falta” filtra a matriz para produtos em falta;
+- clicar em “Abaixo do mínimo” filtra para produtos abaixo do mínimo;
+- clicar em “Adequados” filtra para adequados.
+
+AVISO GERAL
+Quando não houver ruptura, mas houver avisos:
+Mostrar banner:
+“Nenhum conflito de saldo detectado. Existem 2 aviso(s) para revisar.”
+
+Abaixo, mostrar “Ações recomendadas”:
+- Validar origens ambíguas antes de usar a projeção como definitiva.
+
+O banner não deve ocupar espaço exagerado.
+Deve ser discreto, mas visível.
+
+ABAS DA TELA
+Manter as abas:
+1. Matriz por Dia
+2. Visão por Dia
+3. Por Produto
+4. Avisos
+5. Fontes da projeção
+
+A aba ativa deve ter destaque moderado, sem azul excessivo.
+
+ABA 1 — MATRIZ POR DIA
+Essa deve ser a visão principal.
+
+Layout:
+- Linha do tempo horizontal acima da matriz.
+- Matriz com produtos nas linhas e dias nas colunas.
+- Coluna Produto fixa à esquerda.
+- Coluna Atual fixa.
+- Cabeçalho dos dias fixo no topo quando rolar.
+- Scroll horizontal bem tratado.
+- Scroll vertical sem barra branca feia.
+- A tabela precisa parecer uma matriz operacional, não uma tabela comum.
+
+Colunas:
+- Produto
+- Atual
+- Um conjunto de colunas por dia do período
+
+Cada célula do dia deve mostrar o saldo final projetado daquele produto naquele dia.
+
+Cores das células:
+- vermelho: saldo negativo ou falta;
+- amarelo: saldo abaixo do mínimo;
+- verde discreto: adequado com saldo;
+- cinza/neutro: saldo 0 com mínimo 0;
+- azul/cinza: produto em evento;
+- sem cor forte quando não houver impacto.
+
+Importante:
+- Não pintar tudo de verde.
+- Produtos zerados com mínimo 0 devem ficar neutros.
+- Produtos com saldo estável podem ficar com texto mais discreto.
+- Produtos com alteração no dia devem ter destaque visual.
+
+Ao clicar numa célula:
+Abrir drawer lateral “Detalhe do dia” com:
+- Produto
+- SKU
+- Dia
+- Status
+- Abertura
+- Saída
+- Entrada
+- Saldo final
+- Reservado
+- Em trânsito
+- Em evento
+- Fontes de impacto daquele dia
+- Botão “Ver na aba Por Produto”
+
+O drawer deve explicar claramente por que aquele saldo existe.
+
+ABA 2 — VISÃO POR DIA
+Objetivo: o admin escolhe um dia e entende tudo que acontece nele.
+
+Topo:
+- seletor de dia com anterior/próximo;
+- data com dia da semana;
+- frase de resumo:
+  “Nenhuma entrada ou saída prevista neste dia. 57 unidade(s) permanecem em evento.”
+  ou
+  “Neste dia há 3 saídas, 1 entrada e 2 produtos em risco.”
+
+Cards do dia:
+- Em falta
+- Abaixo do mínimo
+- Saídas
+- Entradas
+- Reservado
+- Em evento
+
+Abaixo, três blocos:
+1. Saídas previstas
+2. Entradas e retornos
+3. Riscos do dia
+
+Cada bloco deve ter:
+- título;
+- resumo;
+- lista de origens quando houver;
+- empty state discreto quando não houver.
+
+Depois, tabela “Detalhes por produto”:
+- Produto
+- Abertura
+- Saída
+- Entrada
+- Saldo
+- Reservado
+- Em trânsito
+- Em evento
+- Status
+
+Aplicar a mesma lógica de status:
+- zero com mínimo zero = neutro, não verde.
+
+ABA 3 — POR PRODUTO
+Objetivo: acompanhar a vida de um produto no período.
+
+Topo:
+- seletor de produto com busca.
+- ao selecionar, mostrar resumo do produto:
+  - estoque atual
+  - mínimo
+  - pior saldo
+  - déficit máximo
+  - saídas
+  - entradas
+  - status geral
+
+Linha do tempo do saldo:
+- mostrar saldo por dia;
+- destacar dias com saída/entrada;
+- usar vermelho quando ficar negativo;
+- amarelo quando ficar abaixo do mínimo;
+- cinza quando saldo zero neutro;
+- verde somente quando realmente adequado.
+
+Abaixo:
+“Origens que impactam este produto”
+Tabela com:
+- Origem
+- Referência
+- Evento
+- Sentido
+- Saída
+- Entrada/Retorno
+- Quantidade
+- Situação
+- botão abrir origem
+
+Quando não houver origem:
+“Este produto não possui movimentações, requisições ou ordens impactando o saldo no período selecionado.”
+
+ABA 4 — AVISOS
+Objetivo: listar tudo que exige atenção, mesmo sem ruptura de estoque.
+
+Tipos de aviso:
+- Origem ambígua
+- Ordem sem período definido
+- Ordem vinculada a múltiplas viagens
+- Origem sem data de saída
+- Origem sem data de retorno
+- Item sem produto vinculado
+- Produto sem unidade
+- Produto com estoque zerado
+- Produto com mínimo não definido
+- Origem ignorada por já existir movimentação física
+- Possível duplicidade entre requisição, ordem e movimentação
+
+Visual:
+- card de aviso com borda amarela;
+- ícone discreto;
+- título claro;
+- explicação;
+- badge do tipo;
+- botão “Abrir origem”.
+
+Exemplo:
+“Ordem de carregamento: TESTE”
+“Ordem com 3 viagens — período consolidado usando saída mais cedo e retorno mais tarde.”
+Badge: “Origem ambígua”
+
+Ações recomendadas:
+- Validar origem
+- Revisar datas
+- Abrir ordem
+- Abrir evento
+
+ABA 5 — FONTES DA PROJEÇÃO
+Objetivo: auditoria do cálculo.
+
+Tabela:
+- Origem
+- Referência
+- Evento
+- Sentido
+- Saída
+- Retorno
+- Produtos
+- Quantidade
+- Situação
+
+Situação pode ser:
+- Considerado no período
+- Ignorado
+- Ambíguo
+- Já movimentado fisicamente
+- Fora do período
+- Sem data
+- Duplicado
+
+Cada linha deve poder expandir.
+Ao expandir, mostrar:
+- status da origem;
+- produtos envolvidos;
+- SKU;
+- quantidade;
+- regra usada no cálculo;
+- motivo de ter sido considerada ou ignorada;
+- botão “Abrir origem”.
+
+Melhorar texto:
+Trocar “Considerado” por “Considerado no período”.
+Trocar “Ambiguidade” por “Origem ambígua”.
+
+LÓGICA DE CÁLCULO BACK-END
+Criar ou revisar um serviço central de projeção de estoque.
+
+A lógica deve ser única e reutilizada por todas as abas.
+
+Nome sugerido:
+StockProjectionService
+ou equivalente dentro da estrutura atual do projeto.
+
+Entrada:
+- dataInicio
+- dataFim
+- fontes consideradas:
+  - ordens de carregamento
+  - requisições aprovadas
+  - movimentações
+  - planos de viagens avulsos
+- eventos selecionados
+- produtos selecionados
+- flags:
+  - mostrar apenas produtos em falta
+  - mostrar apenas produtos impactados
+
+Saída:
+- resumo geral
+- lista de dias
+- matriz por produto/dia
+- visão por dia
+- visão por produto
+- avisos
+- fontes da projeção
+- timestamp do cálculo
+
+REGRA DE SALDO
+Para cada produto e cada dia:
+
+abertura do dia = saldo final do dia anterior
+saídas do dia = soma das saídas consideradas no dia
+entradas do dia = soma das entradas/retornos consideradas no dia
+saldo final = abertura - saídas + entradas
+
+Além disso calcular:
+- reservado
+- em trânsito
+- em evento
+
+Definições:
+- reservado: quantidade aprovada/alocada, mas ainda não fisicamente movimentada.
+- em trânsito: quantidade vinculada a viagem/movimentação entre saída e retorno.
+- em evento: quantidade fora do estoque físico durante o período do evento ou até retorno previsto.
+- saldo físico disponível: estoque atual ajustado por entradas/saídas físicas.
+- saldo projetado: saldo previsto considerando todas as fontes selecionadas.
+
+DEDUPLICAÇÃO
+Evitar contar o mesmo item duas vezes.
+
+Prioridade das fontes:
+1. Movimentação física registrada
+2. Ordem de carregamento
+3. Requisição aprovada
+4. Plano de viagem avulso
+
+Se uma requisição está dentro de uma ordem, não contar a requisição separadamente.
+Se uma ordem já gerou movimentação física, não contar a ordem novamente.
+Se uma movimentação já representa a saída real, ela tem prioridade.
+Se houver vínculo entre origem e evento/viagem, usar esse vínculo para evitar duplicidade.
+
+Quando algo for ignorado por deduplicação, deve aparecer em “Fontes da projeção” como:
+“Ignorado — já representado por movimentação física”
+ou
+“Ignorado — já consolidado em ordem de carregamento”
+
+ORDENS COM MÚLTIPLAS VIAGENS
+Quando uma ordem tiver múltiplas viagens:
+- calcular saída usando a menor data de saída/carregamento;
+- calcular retorno usando a maior data de retorno/descarregamento;
+- gerar aviso “Origem ambígua”;
+- explicar que foi usado período consolidado.
+
+Não bloquear o cálculo, mas sinalizar que exige validação.
+
+ORIGENS SEM DATA
+Se uma origem não tiver data suficiente:
+- não deixar quebrar a projeção;
+- não inventar data;
+- marcar como aviso;
+- na tabela de fontes, situação “Ignorado — sem data suficiente”;
+- mostrar em Avisos.
+
+ESTADOS DE ORIGEM
+Considerar apenas origens válidas conforme status.
+
+Exemplo:
+- Requisições: considerar aprovadas/processadas conforme regra atual do app.
+- Ordens: considerar prontas/aprovadas/em andamento, ignorar rascunho/cancelada.
+- Movimentações: considerar criadas/em andamento/finalizadas conforme impacto físico real.
+- Planos de viagem: só considerar quando fonte estiver marcada e possuir data.
+
+Preservar os status atuais do sistema, adaptando aos nomes existentes no código.
+
+FILTROS AVANÇADOS
+Drawer lateral à direita.
+
+Ajustes visuais:
+- largura adequada, cerca de 420–480px;
+- sem scroll branco;
+- scroll interno escuro estilizado;
+- rodapé fixo com botões;
+- botão “Aplicar filtros”;
+- botão “Limpar filtros”;
+- fechar no X;
+- fundo da página escurecido.
+
+Seções:
+1. Período
+- Data início
+- Data fim
+- botões rápidos: 7 dias, 15 dias, 30 dias, 60 dias
+- limitar a 90 dias
+- validar data fim >= data início
+
+2. Fontes da projeção
+- Ordens de carregamento
+- Requisições aprovadas
+- Movimentações
+- Planos de viagens avulsos
+
+3. Eventos
+- Busca por evento
+- Lista com checkbox/radio visual
+- Botões Todos / Limpar
+- Texto:
+  “Se nenhum evento for selecionado, todos os eventos do período serão considerados.”
+
+4. Produtos
+- Busca por produto
+- Lista com SKU
+- Botão Limpar
+- Texto:
+  “Se nenhum produto for selecionado, todos os produtos impactados serão considerados.”
+
+5. Exibição
+- Mostrar apenas produtos em falta
+- Mostrar apenas produtos impactados
+
+Ao aplicar filtros:
+- fechar drawer;
+- recalcular projeção automaticamente;
+- atualizar chips do topo;
+- atualizar timestamp “Projeção calculada às HH:mm”.
+
+Não usar botão “Atualizar”.
+
+MELHORIAS VISUAIS GERAIS
+- Reduzir excesso de azul.
+- Usar azul apenas para foco, navegação e ações primárias.
+- Usar verde apenas para situação realmente saudável.
+- Usar cinza para neutro/sem estoque.
+- Usar amarelo para atenção.
+- Usar vermelho para risco/falta.
+- Melhorar espaçamento vertical.
+- Reduzir altura exagerada de banners.
+- Evitar áreas vazias gigantes.
+- Melhorar legibilidade da matriz.
+- Melhorar hover dos cards e células.
+- Usar cursor pointer onde houver clique.
+- Tooltips precisam estar corretos e úteis.
+- Evitar textos técnicos demais para o usuário final.
+
+EMPTY STATES
+Quando não houver projeção:
+Mostrar centralizado:
+“Gere uma projeção”
+“Selecione o período e os filtros para ver o saldo projetado dia a dia.”
+
+Mas, como agora a projeção recalcula automaticamente, ao abrir a tela já deve tentar calcular com filtros padrão:
+- período padrão: próximos 30 dias;
+- fontes padrão: ordens, requisições e movimentações;
+- eventos: todos do período;
+- produtos: todos impactados.
+
+Ou seja, evitar tela vazia quando já existem dados suficientes.
+
+PADRÃO DE FILTRO INICIAL
+Ao abrir a tela:
+- data início = hoje;
+- data fim = hoje + 30 dias;
+- fontes ativas = ordens de carregamento, requisições aprovadas, movimentações;
+- planos de viagens avulsos desmarcado por padrão;
+- eventos = todos;
+- produtos = todos impactados;
+- mostrar apenas em falta = falso;
+- mostrar apenas impactados = verdadeiro.
+
+VALIDAÇÕES
+- Data fim não pode ser anterior à data início.
+- Período máximo 90 dias.
+- Produto sem SKU deve continuar aparecendo, mas com identificador interno.
+- Produto com mínimo vazio deve assumir mínimo 0, mas gerar aviso opcional se fizer sentido.
+- Produto com estoque 0 e mínimo 0 deve ser neutro.
+- Produto com estoque 0 e mínimo maior que 0 deve ser abaixo do mínimo ou em falta conforme demanda.
+- Produto com saldo negativo em qualquer dia deve ser em falta no resumo.
+
+PERFORMANCE
+- Usar memoização/cache local no front quando possível.
+- Evitar recalcular em cada clique de aba.
+- Recalcular apenas quando filtros mudarem.
+- Virtualizar listas grandes de produtos/eventos no drawer.
+- A matriz deve suportar muitos produtos e até 90 dias sem travar.
+- Usar loading skeleton discreto ao recalcular.
+
+RESPONSIVIDADE
+A tela deve funcionar bem em:
+- desktop 1366px;
+- desktop 1440px;
+- telas maiores;
+- notebook com sidebar aberta;
+- sidebar recolhida.
+
+Na matriz:
+- manter produto e atual fixos;
+- permitir scroll horizontal apenas na área dos dias;
+- não quebrar layout.
+
+CRITÉRIOS DE ACEITE
+A entrega só está correta se:
+
+1. Não existe mais botão “Atualizar” ou “Atualizar projeção”.
+2. A projeção recalcula automaticamente ao aplicar filtros.
+3. Existe timestamp “Projeção calculada às HH:mm”.
+4. O azul dos dias foi reduzido.
+5. Hoje e dia selecionado têm estilos diferentes.
+6. Produto com saldo 0 e mínimo 0 não aparece verde.
+7. Produto zerado neutro aparece com bolinha cinza e status neutro/sem estoque.
+8. Verde só aparece quando o produto está realmente adequado.
+9. A matriz por dia está legível, com colunas fixas e scroll bem tratado.
+10. Clicar numa célula abre detalhe do dia.
+11. A aba Visão por Dia mostra saídas, entradas, riscos e detalhes.
+12. A aba Por Produto mostra linha do tempo e origens de impacto.
+13. A aba Avisos mostra ambiguidades e problemas de dados.
+14. A aba Fontes da projeção permite auditar o cálculo.
+15. As fontes não são contadas em duplicidade.
+16. Ordens com múltiplas viagens geram aviso, mas não quebram o cálculo.
+17. Origens sem data são ignoradas com aviso, não inventadas.
+18. Tooltips estão corretos.
+19. O visual está mais limpo, menos azul e mais operacional.
+20. A tela passa confiança para o administrador tomar decisão.
+
+IMPORTANTE
+Não remover funcionalidades existentes.
+Não quebrar rotas existentes.
+Não apagar dados.
+Preservar o padrão visual dark do EventFlow.
+Refatorar o mínimo necessário, mas garantir que a lógica da projeção fique centralizada, confiável e reutilizável.
+
+Resultado esperado:
+Uma tela de Projeção de Estoque com aparência profissional, lógica clara, status corretos, auditoria das fontes e experiência realmente útil para o administrador controlar estoque futuro por dia, evento, produto e origem.

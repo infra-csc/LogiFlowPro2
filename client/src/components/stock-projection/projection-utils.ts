@@ -26,14 +26,23 @@ export function statusBadgeClass(status: ProjectionDayStatus): string {
   }
 }
 
-export function cellToneClass(status: ProjectionDayStatus): string {
+export function cellToneClass(
+  status: ProjectionDayStatus,
+  available?: number,
+  minimumStock?: number,
+  hasImpact?: boolean,
+): string {
+  // Neutral: available=0, minimumStock=0, no activity → dim gray
+  if (status === "ok" && !hasImpact && available === 0 && (minimumStock ?? 0) === 0) {
+    return "text-muted-foreground/30 bg-muted/15";
+  }
   switch (status) {
     case "shortage":
       return "bg-destructive/15 text-destructive font-semibold";
     case "low":
       return "bg-chart-5/15 text-chart-5";
     default:
-      return "text-foreground";
+      return "bg-muted/40 text-foreground";
   }
 }
 
@@ -148,7 +157,16 @@ export function dayTrend(outbound: number, inbound: number): DayTrend {
   return "flat";
 }
 
-export function cellHeatClass(status: ProjectionDayStatus, hasImpact: boolean): string {
+export function cellHeatClass(
+  status: ProjectionDayStatus,
+  hasImpact: boolean,
+  available?: number,
+  minimumStock?: number,
+): string {
+  // Neutral: available=0, minimumStock=0, no activity → dim gray (not green)
+  if (status === "ok" && !hasImpact && available === 0 && (minimumStock ?? 0) === 0) {
+    return "text-muted-foreground/25";
+  }
   switch (status) {
     case "shortage":
       return "bg-destructive/30 text-destructive font-bold";
@@ -189,6 +207,54 @@ export function statusDotClass(status: ProjectionDayStatus): string {
     default:
       return "bg-chart-4";
   }
+}
+
+// ─── Extended status helpers with neutral / sem-estoque detection ─────────────
+
+/**
+ * Status dot with neutral detection: stock=0, min=0, no demand → gray dot.
+ */
+export function statusDotClassExt(
+  worstStatus: ProjectionDayStatus,
+  currentStock: number,
+  minimumStock: number,
+  totalOutbound: number,
+  totalInbound: number,
+): string {
+  if (worstStatus === "shortage") return "bg-destructive";
+  if (worstStatus === "low") return "bg-chart-5";
+  if (currentStock === 0 && minimumStock === 0 && totalOutbound === 0 && totalInbound === 0) {
+    return "bg-muted-foreground/40"; // gray — neutral/sem estoque
+  }
+  return "bg-chart-4"; // green — realmente adequado
+}
+
+/**
+ * Status label with neutral: available=0 and min=0 → "Sem estoque".
+ */
+export function statusLabelExt(
+  status: ProjectionDayStatus,
+  available?: number,
+  minimumStock?: number,
+): string {
+  if (status === "ok" && (available ?? 1) === 0 && (minimumStock ?? 0) === 0) {
+    return "Sem estoque";
+  }
+  return statusLabel(status);
+}
+
+/**
+ * Status badge class with neutral: available=0 and min=0 → gray badge.
+ */
+export function statusBadgeClassExt(
+  status: ProjectionDayStatus,
+  available?: number,
+  minimumStock?: number,
+): string {
+  if (status === "ok" && (available ?? 1) === 0 && (minimumStock ?? 0) === 0) {
+    return "bg-muted text-muted-foreground border border-border/60";
+  }
+  return statusBadgeClass(status);
 }
 
 export interface KpiMeta {

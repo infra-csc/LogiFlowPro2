@@ -34,8 +34,8 @@ import type { StockProjectionResult } from "@shared/stock-projection";
 import {
   formatDayFull,
   rowToneClass,
-  statusBadgeClass,
-  statusLabel,
+  statusBadgeClassExt,
+  statusLabelExt,
   weekdayShort,
 } from "./projection-utils";
 
@@ -411,7 +411,9 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
                       <TableCell className="text-right tabular-nums text-muted-foreground">{cell.inTransit}</TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">{cell.inEvent}</TableCell>
                       <TableCell>
-                        <Badge className={`${statusBadgeClass(cell.status)} text-xs`}>{statusLabel(cell.status)}</Badge>
+                        <Badge className={`${statusBadgeClassExt(cell.status, cell.available, product.minimumStock)} text-xs`}>
+                          {statusLabelExt(cell.status, cell.available, product.minimumStock)}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   ))}

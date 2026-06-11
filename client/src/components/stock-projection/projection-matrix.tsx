@@ -8,6 +8,7 @@ import type {
 } from "@shared/stock-projection";
 import {
   cellHeatClass,
+  statusDotClassExt,
   formatDay,
   isToday,
   isWeekend,
@@ -116,7 +117,7 @@ export function ProjectionMatrix({
                     onClick={() => onSelectDay?.(dt.date)}
                     className={`flex flex-col items-center gap-0.5 flex-shrink-0 w-12 rounded-md px-1 py-1.5 text-center transition-colors hover-elevate ${
                       today
-                        ? "bg-primary/20 ring-1 ring-primary/30"
+                        ? "ring-1 ring-primary/30 bg-muted/20"
                         : dt.shortageCount > 0
                           ? "bg-destructive/15"
                           : dt.lowCount > 0
@@ -290,7 +291,7 @@ export function ProjectionMatrix({
                         data-testid={`button-product-${p.productId}`}
                       >
                         <span
-                          className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${statusDotClass(p.worstStatus)}`}
+                          className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${statusDotClassExt(p.worstStatus, p.currentStock, p.minimumStock, p.totalOutbound, p.totalInbound)}`}
                         />
                         <span className="min-w-0">
                           <span className="font-medium leading-tight truncate block">
@@ -316,11 +317,13 @@ export function ProjectionMatrix({
                           className={`text-right px-2 py-1.5 tabular-nums whitespace-nowrap ${cellHeatClass(
                             c.status,
                             hasImpact,
+                            c.available,
+                            p.minimumStock,
                           )} ${
                             weekend && c.status === "ok" && !hasImpact
                               ? "bg-muted/20"
                               : ""
-                          } ${today ? "ring-1 ring-inset ring-primary/25" : ""} ${showDeficit ? "text-destructive font-bold" : ""}`}
+                          } ${today ? "ring-1 ring-inset ring-primary/15" : ""} ${showDeficit ? "text-destructive font-bold" : ""}`}
                           data-testid={`cell-${p.productId}-${c.date}`}
                         >
                           <button
