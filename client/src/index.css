@@ -365,17 +365,21 @@
   background: hsl(var(--primary));
 }
 /* Thin dark scrollbar for stock-projection scroll containers */
+.projection-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.6) transparent;
+}
 .projection-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 4px;
+  height: 4px;
 }
 .projection-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 .projection-scroll::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: hsl(var(--border) / 0.6);
   border-radius: 999px;
 }
 .projection-scroll::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(var(--muted-foreground) / 0.4);
 }

@@ -85,6 +85,11 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
     [products, internalId],
   );
 
+  const worstDayDate = useMemo<string | null>(() => {
+    if (!product || product.days.length === 0) return null;
+    return product.days.reduce((min, c) => (c.available < min.available ? c : min)).date;
+  }, [product]);
+
   const impacts = useMemo<AggImpact[]>(() => {
     if (!product) return [];
     const map = new Map<string, AggImpact>();
@@ -202,10 +207,12 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                   {statusLabel(product.worstStatus)}
                 </Badge>
               </div>
-              <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+              <div className="overflow-x-auto projection-scroll" style={{ scrollbarWidth: "thin" }}>
                 <div className="flex gap-1 min-w-min pb-1">
                   {product.days.map((c) => {
                     const hasFlow = c.outbound > 0 || c.inbound > 0;
+                    const isWorst = worstDayDate === c.date && product.maxDeficit > 0;
+                    const isQuiet = !hasFlow && c.status === "ok";
                     return (
                       <div
                         key={c.date}
@@ -220,8 +227,8 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                         </div>
                         {/* Balance cell */}
                         <div
-                          className={`w-full text-center rounded px-1 py-1.5 text-xs tabular-nums ${cellToneClass(c.status)} ${c.status === "ok" ? "bg-muted/40" : ""}`}
-                          title={`Saldo ${c.available} · Saída ${c.outbound} · Entrada ${c.inbound}`}
+                          className={`w-full text-center rounded px-1 py-1.5 text-xs tabular-nums ${cellToneClass(c.status)} ${c.status === "ok" ? "bg-muted/40" : ""} ${isWorst ? "ring-1 ring-destructive/60" : ""}`}
+                          title={`Saldo ${c.available} · Saída ${c.outbound} · Entrada ${c.inbound}${isWorst ? " · Pior dia" : ""}`}
                         >
                           {c.available}
                         </div>
@@ -230,9 +237,13 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                           className={`text-[10px] leading-none ${
                             isToday(c.date)
                               ? "text-primary font-medium"
-                              : isWeekend(c.date)
-                                ? "text-muted-foreground/60"
-                                : "text-muted-foreground"
+                              : isWorst
+                                ? "text-destructive font-medium"
+                                : isWeekend(c.date)
+                                  ? "text-muted-foreground/60"
+                                  : isQuiet
+                                    ? "text-muted-foreground/40"
+                                    : "text-muted-foreground"
                           }`}
                         >
                           {formatDay(c.date)}
@@ -243,9 +254,12 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                 </div>
               </div>
               {/* Legend */}
-              <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-destructive inline-block" /> Saída</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-chart-4 inline-block" /> Entrada</span>
+                {product.maxDeficit > 0 && (
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded border border-destructive/60 inline-block" /> Pior dia</span>
+                )}
               </div>
             </CardContent>
           </Card>

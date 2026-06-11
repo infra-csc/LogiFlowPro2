@@ -1,0 +1,201 @@
+Vamos fazer o refinamento final 10/10 da tela Projeção de Estoque.
+
+A tela já está funcional e bem melhor, mas ainda precisa de acabamento visual e clareza operacional para parecer uma Central de Controle de Estoque premium.
+
+Foco:
+- client/src/pages/stock-position-simulation.tsx
+- componentes da matriz, timeline, KPIs, abas, conflitos e fontes da projeção
+
+Objetivo:
+Não refazer a tela do zero. Apenas elevar o acabamento visual, reduzir ruídos e deixar a leitura operacional mais clara.
+
+1. Corrigir scrollbars
+
+Corrigir todas as barras de scroll internas:
+
+- matriz horizontal;
+- linha do tempo;
+- tabelas;
+- drawer;
+- listas de eventos/produtos.
+
+Regras:
+- nunca usar scrollbar branca padrão;
+- scrollbar fina;
+- track transparente ou dark;
+- thumb discreto;
+- sem overflow horizontal da página inteira;
+- apenas a matriz pode ter scroll horizontal interno.
+
+2. Transformar a matriz em heatmap visual real
+
+A matriz ainda parece tabela escura comum. Melhorar para parecer heatmap operacional.
+
+Cada célula deve comunicar status visualmente:
+
+- adequado: fundo verde muito sutil ou texto neutro com indicador verde;
+- abaixo do mínimo: fundo âmbar sutil;
+- em falta: fundo vermelho sutil;
+- sem impacto: célula mais neutra/apagada;
+- saída no dia: pequeno indicador vermelho ↓;
+- entrada no dia: pequeno indicador verde ↑;
+- retorno: indicador azul ↩;
+- conflito: ícone de alerta.
+
+A célula deve continuar compacta, mas com leitura visual rápida.
+
+Evitar poluição visual. Usar cores sutis.
+
+3. Melhorar linha do tempo de impactos diários
+
+Hoje a linha do tempo mostra datas, mas comunica pouco.
+
+Cada dia deve exibir indicadores pequenos quando houver:
+
+- saída;
+- entrada;
+- falta;
+- evento;
+- produtos impactados.
+
+Se o dia não tiver impacto, deixar visual mais apagado.
+
+Ao clicar no dia:
+- selecionar a aba Visão por Dia;
+- carregar aquele dia.
+
+4. Compactar KPIs
+
+Os KPIs estão bons, mas ocupam muito espaço vertical.
+
+Ajustar para ficarem mais compactos e elegantes:
+
+Grupo 1:
+- Produtos analisados
+- Em falta
+- Abaixo do mínimo
+- Adequados
+
+Grupo 2:
+- Total saídas
+- Total entradas
+- Pico reservado
+- Pico em evento
+
+Reduzir altura dos cards sem perder leitura.
+
+Melhorar labels:
+- “Pico em evento” deve indicar unidade.
+Exemplo: “57 un. em evento”
+ou tooltip explicando: “Maior quantidade simultânea alocada em eventos no período.”
+
+5. Separar Conflitos de Avisos
+
+Hoje a aba mostra “Conflitos 2”, mas os itens parecem avisos/ambiguidades, não falta real.
+
+Ajustar regra visual:
+
+- Conflitos = falta, saldo negativo, abaixo do mínimo.
+- Avisos = ambiguidades, datas consolidadas, origens ignoradas, múltiplos vínculos.
+
+Se houver apenas avisos:
+- mostrar badge “Avisos 2”, não “Conflitos 2”.
+- dentro da aba, mostrar seção “Avisos encontrados”.
+
+Se houver conflito real:
+- mostrar “Conflitos X” em vermelho.
+
+6. Melhorar aba Por Produto
+
+A linha do tempo do produto ainda parece uma sequência de números.
+
+Melhorar:
+
+- destacar pior dia;
+- destacar dias com entrada/saída;
+- cor por status;
+- mostrar mensagem clara se não houver impacto:
+  “Este produto mantém saldo estável no período selecionado.”
+- se houver impacto, listar origem logo abaixo.
+
+7. Melhorar Fontes da projeção
+
+Na aba Fontes da projeção, deixar mais claro por que cada origem foi considerada.
+
+A coluna Situação deve ser mais específica:
+
+- Considerado no período
+- Considerado no saldo atual
+- Considerado como em evento
+- Ignorado fora do período
+- Ignorado sem data
+- Parcial
+- Ambíguo
+
+Ao expandir a linha, mostrar:
+- motivo;
+- regra aplicada;
+- produtos impactados;
+- data usada;
+- se afetou saldo inicial, saída, entrada, reservado ou em evento.
+
+Isso é importante para evitar confusão com movimentações antigas aparecendo como consideradas.
+
+8. Melhorar microcopy
+
+Trocar textos genéricos por textos mais operacionais.
+
+Exemplos:
+
+“Atualizada às 11:46”
+para:
+“Projeção calculada às 11:46”
+
+“Pico em evento”
+para:
+“Pico em evento: 57 un.”
+
+“Fontes da projeção”
+manter.
+
+“Risco de estoque”
+manter.
+
+9. Melhorar estado sem conflito
+
+Quando não houver falta real:
+- mostrar card positivo compacto.
+- se existirem avisos, deixar claro:
+  “Nenhum conflito de saldo encontrado, mas existem avisos de dados para revisar.”
+
+10. Validações
+
+Rodar:
+
+npm run check
+npm run build
+
+Smoke test:
+- abrir tela;
+- validar que não existe botão Atualizar;
+- validar cálculo automático;
+- validar matriz;
+- validar visão por dia;
+- validar por produto;
+- validar conflitos/avisos;
+- validar fontes da projeção;
+- validar scrollbars dark;
+- validar ausência de overflow horizontal;
+- validar mobile/notebook básico.
+
+Entrega final:
+- arquivos alterados;
+- scrollbars corrigidas;
+- melhorias na matriz/heatmap;
+- melhorias na timeline;
+- KPIs compactados;
+- conflitos separados de avisos;
+- aba Por Produto refinada;
+- Fontes da projeção mais explicativas;
+- resultado do npm run check;
+- resultado do npm run build.

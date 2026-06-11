@@ -194,14 +194,14 @@ function KpiCard({
     <Card
       className={`${a.border} h-full ${onClick ? "hover-elevate cursor-pointer" : ""} ${active ? `ring-1 ${a.ring}` : ""}`}
     >
-      <CardContent className="p-3">
-        <div className="flex items-center gap-2.5">
-          <span className={`flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0 ${a.bg}`}>
-            <Icon className={`w-4 h-4 ${a.icon}`} />
+      <CardContent className="p-2.5">
+        <div className="flex items-center gap-2">
+          <span className={`flex items-center justify-center w-8 h-8 rounded-md flex-shrink-0 ${a.bg}`}>
+            <Icon className={`w-3.5 h-3.5 ${a.icon}`} />
           </span>
           <div className="min-w-0">
-            <div className={`text-xl font-bold tabular-nums leading-none ${a.value}`}>{value}</div>
-            <div className="text-xs text-muted-foreground mt-1 truncate">{label}</div>
+            <div className={`text-lg font-bold tabular-nums leading-none ${a.value}`}>{value}</div>
+            <div className="text-xs text-muted-foreground mt-0.5 truncate leading-tight">{label}</div>
           </div>
         </div>
       </CardContent>
@@ -224,11 +224,11 @@ function KpiCard({
 function KpiSkeleton() {
   return (
     <Card className="border-border/60 h-full animate-pulse">
-      <CardContent className="p-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-md bg-muted flex-shrink-0" />
-          <div className="space-y-2 flex-1">
-            <div className="h-6 w-10 bg-muted rounded" />
+      <CardContent className="p-2.5">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-md bg-muted flex-shrink-0" />
+          <div className="space-y-1.5 flex-1">
+            <div className="h-5 w-10 bg-muted rounded" />
             <div className="h-3 w-20 bg-muted rounded" />
           </div>
         </div>
@@ -301,7 +301,7 @@ function StatusBar({
         ) : lastGeneratedAt ? (
           <>
             <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Atualizada às {fmtTime(lastGeneratedAt)}</span>
+            <span className="text-muted-foreground">Projeção calculada às {fmtTime(lastGeneratedAt)}</span>
           </>
         ) : null}
       </div>
@@ -780,12 +780,29 @@ export default function StockProjection() {
               </TabsTrigger>
               <TabsTrigger value="conflicts" data-testid="tab-conflicts">
                 <AlertCircle className="w-4 h-4 mr-1.5" />
-                Conflitos
-                {result.conflicts.length > 0 && (
-                  <span className="ml-1.5 text-xs rounded-full bg-destructive/15 text-destructive px-1.5">
-                    {result.conflicts.length}
-                  </span>
-                )}
+                {(() => {
+                  const errCount = result.conflicts.filter((c) => c.severity === "error").length;
+                  const warnCount = result.conflicts.filter((c) => c.severity === "warning").length;
+                  if (errCount > 0)
+                    return (
+                      <>
+                        Conflitos
+                        <span className="ml-1.5 text-xs rounded-full bg-destructive/15 text-destructive px-1.5">
+                          {errCount}
+                        </span>
+                      </>
+                    );
+                  if (warnCount > 0)
+                    return (
+                      <>
+                        Avisos
+                        <span className="ml-1.5 text-xs rounded-full bg-chart-5/20 text-chart-5 px-1.5">
+                          {warnCount}
+                        </span>
+                      </>
+                    );
+                  return <>Conflitos</>;
+                })()}
               </TabsTrigger>
               <TabsTrigger value="movements" data-testid="tab-movements">
                 <Truck className="w-4 h-4 mr-1.5" /> Fontes da projeção

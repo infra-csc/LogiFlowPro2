@@ -117,14 +117,22 @@ export function ProjectionMatrix({
                   >
                     <span
                       className={`text-[10px] font-medium leading-none ${
-                        today ? "text-primary" : "text-muted-foreground"
+                        today
+                          ? "text-primary"
+                          : !hasActivity && !hasRisk
+                            ? "text-muted-foreground/35"
+                            : "text-muted-foreground"
                       }`}
                     >
                       {weekdayShort(dt.date)}
                     </span>
                     <span
                       className={`text-xs font-semibold leading-none mt-0.5 ${
-                        today ? "text-primary" : "text-foreground"
+                        today
+                          ? "text-primary"
+                          : !hasActivity && !hasRisk
+                            ? "text-muted-foreground/40"
+                            : "text-foreground"
                       }`}
                     >
                       {formatDay(dt.date)}

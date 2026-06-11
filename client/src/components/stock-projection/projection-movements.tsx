@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/table";
 import type { StockProjectionResult } from "@shared/stock-projection";
 import {
+  extendedSituationLabel,
   formatDayFull,
   situationBadgeClass,
-  situationLabel,
   situationReason,
   sourceLabel,
 } from "./projection-utils";
@@ -107,8 +107,8 @@ export function ProjectionMovements({ result }: Props) {
                       <TableCell className="text-right tabular-nums">{m.productCount}</TableCell>
                       <TableCell className="text-right tabular-nums">{m.totalQuantity}</TableCell>
                       <TableCell>
-                        <Badge className={`${situationBadgeClass(m.situation)} text-xs`}>
-                          {situationLabel(m.situation)}
+                        <Badge className={`${situationBadgeClass(m.situation)} text-xs whitespace-nowrap`}>
+                          {extendedSituationLabel(m.situation, m.outDate, m.inDate)}
                         </Badge>
                       </TableCell>
                     </TableRow>

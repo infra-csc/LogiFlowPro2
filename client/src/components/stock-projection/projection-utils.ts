@@ -151,11 +151,32 @@ export function dayTrend(outbound: number, inbound: number): DayTrend {
 export function cellHeatClass(status: ProjectionDayStatus, hasImpact: boolean): string {
   switch (status) {
     case "shortage":
-      return "bg-destructive/20 text-destructive font-semibold";
+      return "bg-destructive/25 text-destructive font-semibold";
     case "low":
-      return "bg-chart-5/15 text-chart-5";
+      return "bg-chart-5/20 text-chart-5";
     default:
-      return hasImpact ? "bg-chart-4/10 text-foreground" : "text-muted-foreground";
+      return hasImpact ? "bg-chart-4/12 text-foreground" : "text-muted-foreground/50";
+  }
+}
+
+/**
+ * Extended situation label with more context — used in "Fontes da projeção" table.
+ */
+export function extendedSituationLabel(
+  s: ConsideredSituation,
+  outDate?: string | null,
+  inDate?: string | null,
+): string {
+  switch (s) {
+    case "considered":
+      return "Considerado no período";
+    case "partial":
+      return "Parcial — datas sobrepostas";
+    case "ignored":
+      if (!outDate && !inDate) return "Ignorado — sem período";
+      return "Ignorado — fora do período";
+    case "no_date":
+      return "Ignorado — sem data";
   }
 }
 
