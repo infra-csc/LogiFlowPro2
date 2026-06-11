@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 type TemplateItem = {
   id: string;
   productId: string;
-  defaultQuantity: number;
+  itemNotes: string | null;
   productName: string | null;
   productSku: string | null;
   productUnit: string | null;
@@ -74,7 +74,8 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
   const [showTemplateItems, setShowTemplateItems] = useState(false);
 
   const { data: events, isLoading: eventsLoading } = useQuery<Event[]>({ queryKey: ["/api/events"] });
-  const { data: templates } = useQuery<RequestAreaTemplate[]>({ queryKey: ["/api/request-templates"] });
+  const { data: allTemplates } = useQuery<RequestAreaTemplate[]>({ queryKey: ["/api/request-templates"] });
+  const templates = allTemplates?.filter((t) => t.isActive);
   const { data: selectedTemplateDetail } = useQuery<TemplateWithItems>({
     queryKey: ["/api/request-templates", templateId],
     enabled: !!templateId,
@@ -378,21 +379,19 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                           {templates.map((t) => (
                             <CommandItem
                               key={t.id}
-                              value={t.name}
+                              value={`${t.name} ${t.area}`}
                               onSelect={() => {
                                 setTemplateId(t.id);
-                                setFormData({ ...formData, area: t.name });
+                                setFormData({ ...formData, area: t.area });
                                 setTemplateOpen(false);
                                 setShowTemplateItems(true);
                               }}
                               data-testid={`template-option-${t.id}`}
                             >
                               <Check className={cn("mr-2 h-4 w-4 shrink-0", templateId === t.id ? "opacity-100" : "opacity-0")} />
-                              <div className="flex flex-col gap-0.5 min-w-0">
-                                <span className="text-sm font-medium">{t.name}</span>
-                                {t.description && (
-                                  <span className="text-xs text-muted-foreground truncate">{t.description}</span>
-                                )}
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-sm font-medium truncate">{t.name}</span>
+                                <Badge variant="secondary" className="text-xs shrink-0">{t.area}</Badge>
                               </div>
                             </CommandItem>
                           ))}
@@ -432,8 +431,8 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                       <Package className="h-4 w-4 text-primary" />
                       <span>
                         {templateItemCount === 0
-                          ? "Nenhum item no template"
-                          : `${templateItemCount} ${templateItemCount === 1 ? "item será pré-preenchido" : "itens serão pré-preenchidos"}`}
+                          ? "Template sem itens cadastrados"
+                          : `${templateItemCount} ${templateItemCount === 1 ? "produto será carregado" : "produtos serão carregados"} — quantidades zeradas`}
                       </span>
                     </div>
                     {templateItemCount > 0 && (
@@ -448,12 +447,17 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                         <div key={item.id} className="flex items-center gap-2 px-3 py-1.5">
                           <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="text-sm flex-1 truncate">{item.productName}</span>
-                          <Badge variant="secondary" className="text-xs shrink-0">
-                            {item.defaultQuantity}{item.productUnit ? ` ${item.productUnit}` : ""}
-                          </Badge>
+                          {item.productUnit && (
+                            <Badge variant="outline" className="text-xs shrink-0">{item.productUnit}</Badge>
+                          )}
                         </div>
                       ))}
                     </div>
+                  )}
+                  {templateItemCount > 0 && (
+                    <p className="text-xs text-muted-foreground px-3 py-2 border-t border-border/30">
+                      Preencha as quantidades após criar a requisição.
+                    </p>
                   )}
                   {templateItemCount === 0 && (
                     <p className="text-xs text-muted-foreground px-3 pb-2">

@@ -1,0 +1,419 @@
+Quero refazer completamente o módulo “Templates de Requisição” do EventFlow.
+
+Hoje a tela ficou simples demais e não atende ao objetivo principal. O objetivo desse módulo é permitir que o administrador cadastre modelos padrão de itens por área/departamento, para que, ao criar uma nova requisição de materiais para um evento, o usuário possa escolher um template e os itens já venham pré-preenchidos automaticamente, facilitando muito a inserção.
+
+Exemplo real:
+Área/Departamento: Percurso
+
+Itens padrão do template:
+- Cavaletes Trânsito
+- Cochos para água
+- Cavaletes de ferro p/ cochos
+- Cones GRANDES
+- Cones PEQUENOS
+- Tina 1000L
+- Palet Ferro
+- Palet Plástico
+- Rampas de madeira
+- Prismas (cavaletes grandes)
+
+Esses itens devem vir automaticamente na requisição quando o usuário selecionar o template “Percurso”, mas o usuário precisa poder:
+- editar as quantidades;
+- excluir itens que não serão usados;
+- adicionar novos produtos;
+- preencher observação por item;
+- preencher uma observação geral da requisição.
+
+--------------------------------------------------
+1. OBJETIVO DO MÓDULO
+--------------------------------------------------
+
+Criar um módulo completo de “Templates de Requisição” com frontend e backend.
+
+Esse módulo deve permitir:
+
+1. Cadastro de templates por área/departamento.
+2. Cadastro de itens padrão dentro de cada template.
+3. Quantidade padrão opcional por item.
+4. Observação padrão opcional por item.
+5. Ativar/inativar templates.
+6. Editar templates existentes.
+7. Duplicar template.
+8. Excluir template, com confirmação.
+9. Usar template na criação de uma requisição.
+10. Permitir que o usuário ajuste os itens antes de enviar a requisição.
+
+--------------------------------------------------
+2. TELA DE LISTAGEM DOS TEMPLATES
+--------------------------------------------------
+
+Refazer a tela atual “Templates de Requisição”.
+
+A tela não deve ser apenas um card vazio com botão de adicionar item.
+
+Criar uma tela mais completa, com layout operacional e visual 10/10 seguindo o design system atual do EventFlow.
+
+Topo da tela:
+- Título: Templates de Requisição
+- Subtítulo: “Crie modelos padrão de materiais por área para agilizar novas requisições.”
+- Botão principal: “Novo Template”
+
+Adicionar cards de resumo:
+- Total de templates
+- Templates ativos
+- Total de itens padrão
+- Áreas com template
+
+Adicionar busca:
+- Buscar por nome do template, área ou produto.
+
+Adicionar filtros:
+- Área
+- Status: Ativo/Inativo
+- Templates com itens / sem itens
+
+Listagem principal:
+Usar formato de cards expansíveis ou tabela premium, mas mais informativo que o atual.
+
+Cada template deve mostrar:
+- Nome do template
+- Área/departamento
+- Quantidade de itens
+- Status Ativo/Inativo
+- Última atualização
+- Botões: Editar, Duplicar, Excluir, Expandir
+
+Quando expandir um template, mostrar:
+- Lista dos itens do template
+- Produto
+- SKU
+- Quantidade padrão
+- Unidade
+- Observação
+- Ações rápidas de editar/remover item
+
+Estado vazio:
+Se não houver templates, mostrar empty state bonito:
+“Toda requisição começa mais rápido com um modelo.”
+Botão: “Criar primeiro template”
+
+--------------------------------------------------
+3. MODAL / DRAWER DE NOVO TEMPLATE
+--------------------------------------------------
+
+Substituir o modal atual por um drawer ou modal grande, bem organizado e sem parecer improvisado.
+
+Título:
+- Novo Template de Requisição
+
+Campos principais:
+- Nome do Template *
+  Exemplo: Percurso
+- Área/Departamento *
+  Exemplo: Percurso, Estrutura, Produção, Cenografia, Operações
+- Descrição
+  Exemplo: Lista padrão de materiais utilizados na montagem do percurso.
+- Status
+  Ativo por padrão
+- Observação interna do template
+
+Depois, seção “Itens padrão do template”.
+
+Essa seção deve ser o coração do cadastro.
+
+Cada linha de item deve ter:
+- Produto *
+  Select pesquisável usando o Catálogo de Produtos
+- SKU preenchido automaticamente
+- Unidade preenchida automaticamente
+- Quantidade padrão
+- Observação do item
+- Botão remover
+
+Ações:
+- Adicionar item
+- Adicionar vários itens
+- Salvar template
+- Cancelar
+
+Importante:
+- Produto deve ser vinculado ao catálogo existente.
+- Não permitir produto duplicado dentro do mesmo template, a menos que exista uma justificativa.
+- Se o produto digitado não existir no catálogo, oferecer ação:
+  “Produto não encontrado. Criar no catálogo?”
+- Não criar produtos duplicados automaticamente.
+
+--------------------------------------------------
+4. EDIÇÃO RÁPIDA DE QUANTIDADES
+--------------------------------------------------
+
+Na tela de edição do template, as quantidades precisam ser fáceis de ajustar.
+
+A quantidade padrão deve ser editável diretamente na tabela de itens.
+
+Exemplo:
+
+Produto                         SKU                  Qtd padrão     Unidade      Obs
+Cavaletes Trânsito              CAV_TRANS            [ 20 ]         unit         -
+Cones GRANDES                   CONE_G               [ 50 ]         unit         -
+Tina 1000L                      TINA_1000L           [ 2 ]          unit         -
+
+A experiência deve ser parecida com uma planilha simples:
+- fácil de alterar quantidade;
+- fácil de apagar item;
+- fácil de adicionar novo produto;
+- salvar tudo de uma vez.
+
+--------------------------------------------------
+5. SEED INICIAL DO TEMPLATE “PERCURSO”
+--------------------------------------------------
+
+Criar automaticamente um template inicial chamado “Percurso”, ativo, com os seguintes itens:
+
+1. Cavaletes Trânsito
+2. Cochos para água
+3. Cavaletes de ferro p/ cochos
+4. Cones GRANDES
+5. Cones PEQUENOS
+6. Tina 1000L
+7. Palet Ferro
+8. Palet Plástico
+9. Rampas de madeira
+10. Prismas (cavaletes grandes)
+
+Para cada item:
+- tentar vincular pelo nome ao catálogo de produtos existente;
+- se encontrar produto similar, vincular;
+- se não encontrar, deixar item como “Produto não vinculado” e mostrar alerta para o administrador corrigir;
+- não criar produtos duplicados sem confirmação.
+
+Quantidade padrão:
+- pode iniciar como 0 ou vazio;
+- o administrador editará depois.
+
+--------------------------------------------------
+6. USO DO TEMPLATE NA CRIAÇÃO DE REQUISIÇÃO
+--------------------------------------------------
+
+A tela de criação de requisição precisa permitir selecionar um template.
+
+Fluxo esperado:
+
+1. Usuário cria nova requisição.
+2. Seleciona o evento.
+3. Seleciona a área/departamento.
+4. Sistema sugere templates ativos daquela área.
+5. Usuário escolhe um template.
+6. Sistema pré-preenche os itens automaticamente.
+7. Usuário edita quantidades.
+8. Usuário remove itens que não serão usados.
+9. Usuário adiciona itens extras se necessário.
+10. Usuário preenche observações.
+11. Envia para aprovação.
+
+Importante:
+- O template não deve travar a requisição.
+- Ele serve como ponto de partida.
+- Depois de aplicado, a requisição deve ter sua própria lista de itens.
+- Alterar o template depois não deve alterar requisições já criadas.
+
+--------------------------------------------------
+7. TELA DE REQUISIÇÃO COM TEMPLATE APLICADO
+--------------------------------------------------
+
+Na tela de criação/edição de requisição, quando o template for aplicado, mostrar uma seção clara:
+
+“Template aplicado: Percurso”
+
+Com ações:
+- Trocar template
+- Remover template
+- Recarregar itens do template
+
+A lista de itens da requisição deve mostrar:
+- Produto
+- SKU
+- Quantidade solicitada
+- Unidade
+- Observação
+- Remover item
+
+Permitir:
+- editar quantidade;
+- remover item;
+- adicionar novo item;
+- observação por item;
+- observação geral da requisição.
+
+Adicionar aviso:
+“Os itens vieram do template, mas podem ser ajustados antes do envio.”
+
+--------------------------------------------------
+8. BACKEND / BANCO DE DADOS
+--------------------------------------------------
+
+Criar ou ajustar as tabelas necessárias.
+
+Sugestão de estrutura:
+
+Tabela: request_templates
+- id
+- name
+- area
+- description
+- is_active
+- internal_notes
+- created_at
+- updated_at
+- created_by
+- updated_by
+
+Tabela: request_template_items
+- id
+- template_id
+- product_id
+- product_name_snapshot
+- sku_snapshot
+- default_quantity
+- unit_snapshot
+- item_notes
+- sort_order
+- created_at
+- updated_at
+
+Na requisição, adicionar referência opcional:
+Tabela: material_requests
+- template_id nullable
+- template_name_snapshot nullable
+
+Itens da requisição continuam independentes:
+Tabela: material_request_items
+- request_id
+- product_id
+- product_name_snapshot
+- sku_snapshot
+- requested_quantity
+- approved_quantity
+- unit_snapshot
+- notes
+- source_template_item_id nullable
+
+Regras importantes:
+- Ao aplicar template, copiar os itens para a requisição.
+- Não manter dependência viva com o template.
+- Usar snapshot de nome, SKU e unidade para histórico.
+- Se o produto for alterado depois no catálogo, a requisição antiga não deve quebrar.
+
+--------------------------------------------------
+9. ENDPOINTS / AÇÕES NECESSÁRIAS
+--------------------------------------------------
+
+Criar endpoints ou actions para:
+
+Templates:
+- listar templates
+- buscar template por id
+- criar template
+- editar template
+- duplicar template
+- excluir template
+- ativar/inativar template
+
+Itens do template:
+- adicionar item
+- editar item
+- remover item
+- reordenar itens
+- validar duplicidade de produto
+
+Uso na requisição:
+- listar templates ativos por área
+- aplicar template na requisição
+- copiar itens do template para a requisição
+- permitir edição independente dos itens copiados
+
+--------------------------------------------------
+10. VALIDAÇÕES
+--------------------------------------------------
+
+Obrigatório:
+- Nome do template
+- Área/departamento
+- Produto nos itens
+- Quantidade padrão deve ser numérica e não negativa
+- Não permitir salvar template com nome vazio
+- Alertar se template estiver sem itens
+
+Validações úteis:
+- Avisar se houver produto duplicado no template
+- Avisar se houver produto não vinculado ao catálogo
+- Avisar se quantidade padrão estiver zerada
+
+Mensagens:
+- “Template salvo com sucesso.”
+- “Template duplicado com sucesso.”
+- “Este template está inativo e não aparecerá na criação de requisições.”
+- “Produto já existe neste template.”
+- “A requisição foi preenchida com os itens do template.”
+
+--------------------------------------------------
+11. VISUAL / UX
+--------------------------------------------------
+
+Manter o dark mode e o design system atual do EventFlow.
+
+Melhorar muito a tela atual.
+
+A tela precisa parecer um módulo administrativo robusto, não apenas um card simples.
+
+Diretrizes visuais:
+- usar cards bem estruturados;
+- tabela interna para itens;
+- badges de status;
+- botões claros;
+- espaçamento consistente;
+- ícones discretos;
+- estados vazios bem feitos;
+- edição rápida de quantidade;
+- drawer/modal organizado;
+- evitar scroll confuso;
+- evitar excesso de informação escondida.
+
+Na listagem, o template “Percurso” deve aparecer assim:
+
+Template: Percurso
+Área: Percurso
+Itens: 10
+Status: Ativo
+
+Ao expandir:
+
+Cavaletes Trânsito | SKU | Qtd padrão | Unidade | Obs
+Cochos para água | SKU | Qtd padrão | Unidade | Obs
+Cavaletes de ferro p/ cochos | SKU | Qtd padrão | Unidade | Obs
+Cones GRANDES | SKU | Qtd padrão | Unidade | Obs
+Cones PEQUENOS | SKU | Qtd padrão | Unidade | Obs
+Tina 1000L | SKU | Qtd padrão | Unidade | Obs
+Palet Ferro | SKU | Qtd padrão | Unidade | Obs
+Palet Plástico | SKU | Qtd padrão | Unidade | Obs
+Rampas de madeira | SKU | Qtd padrão | Unidade | Obs
+Prismas (cavaletes grandes) | SKU | Qtd padrão | Unidade | Obs
+
+--------------------------------------------------
+12. RESULTADO ESPERADO
+--------------------------------------------------
+
+Depois dessa alteração, o administrador deve conseguir:
+
+1. Criar um template padrão por área.
+2. Adicionar produtos padrão ao template.
+3. Definir quantidades padrão.
+4. Editar quantidades facilmente.
+5. Excluir ou adicionar itens no template.
+6. Usar esse template na criação de uma requisição.
+7. Pré-preencher automaticamente os itens.
+8. Ajustar as quantidades antes de enviar.
+9. Adicionar observações por item e observação geral.
+10. Ganhar velocidade na criação de requisições recorrentes por evento.
+
+Esse módulo é importante porque muitos eventos usam listas parecidas de materiais. O sistema deve evitar que o usuário tenha que montar tudo do zero toda vez.

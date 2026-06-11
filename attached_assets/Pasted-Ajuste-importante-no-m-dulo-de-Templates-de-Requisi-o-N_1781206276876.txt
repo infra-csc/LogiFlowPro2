@@ -1,0 +1,98 @@
+Ajuste importante no módulo de Templates de Requisição:
+
+Não deve existir “quantidade padrão” no template.
+
+O template serve apenas para definir quais produtos normalmente fazem parte daquela área/departamento. A quantidade deve vir sempre zerada ou vazia quando o template for aplicado em uma requisição, para o usuário preencher de acordo com cada evento.
+
+Regras corretas:
+
+1. No cadastro do template:
+- O administrador escolhe o nome do template.
+- Escolhe a área/departamento.
+- Adiciona os produtos padrão daquele template.
+- Pode adicionar observação padrão por item, se necessário.
+- NÃO deve existir campo de quantidade padrão.
+- NÃO deve pedir quantidade no template.
+
+2. Exemplo de template:
+Template: Percurso
+
+Itens:
+- Cavaletes Trânsito
+- Cochos para água
+- Cavaletes de ferro p/ cochos
+- Cones GRANDES
+- Cones PEQUENOS
+- Tina 1000L
+- Palet Ferro
+- Palet Plástico
+- Rampas de madeira
+- Prismas (cavaletes grandes)
+
+Esses itens aparecem no template apenas como lista base, sem quantidade.
+
+3. Ao criar uma requisição:
+- O usuário seleciona o evento.
+- Seleciona a área/departamento.
+- Escolhe o template “Percurso”.
+- O sistema copia os produtos do template para a requisição.
+- Todos os itens entram com quantidade solicitada = 0 ou campo vazio.
+- O usuário preenche manualmente a quantidade de cada item naquela requisição.
+- O usuário pode excluir itens que não serão usados.
+- O usuário pode adicionar produtos extras.
+- O usuário pode preencher observação por item.
+- O usuário pode preencher observação geral da requisição.
+
+4. Visual da requisição com template aplicado:
+Mostrar a seção:
+
+Template aplicado: Percurso
+“Os itens foram carregados do template. Preencha as quantidades antes de enviar.”
+
+Tabela de itens:
+Produto | SKU | Unidade | Quantidade solicitada | Observação | Ações
+
+A coluna “Quantidade solicitada” deve ser editável e iniciar vazia ou com 0.
+
+5. Validação:
+- Não permitir enviar a requisição com todos os itens zerados.
+- Se algum item estiver com quantidade 0, permitir manter, mas destacar visualmente como “sem quantidade”.
+- Antes do envio, mostrar aviso:
+  “Existem itens sem quantidade. Eles serão enviados como 0 ou deseja removê-los?”
+- Idealmente permitir botão: “Remover itens zerados”.
+
+6. Backend:
+Remover qualquer campo de quantidade padrão do template.
+
+Tabela request_template_items deve ter:
+- id
+- template_id
+- product_id
+- product_name_snapshot
+- sku_snapshot
+- unit_snapshot
+- item_notes
+- sort_order
+- created_at
+- updated_at
+
+Não usar:
+- default_quantity
+
+Tabela material_request_items deve continuar tendo:
+- requested_quantity
+
+Quando aplicar template:
+- requested_quantity deve iniciar como 0 ou null.
+- A quantidade só passa a existir de verdade quando o usuário preencher na requisição.
+
+7. Ajuste visual:
+Na tela de Templates de Requisição, a lista de itens deve mostrar apenas:
+Produto | SKU | Unidade | Observação | Ações
+
+Não mostrar quantidade no template.
+
+Na tela de criação de requisição, aí sim mostrar:
+Produto | SKU | Unidade | Quantidade | Observação | Remover
+
+O foco é: template define “o que geralmente vai”, e a requisição define “quanto vai neste evento”.

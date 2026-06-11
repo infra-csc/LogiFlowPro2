@@ -1712,17 +1712,21 @@ export const locations = pgTable("locations", {
 export const requestAreaTemplates = pgTable("request_area_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  area: text("area").notNull(),
   description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  internalNotes: text("internal_notes"),
   createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
 export const requestAreaTemplateItems = pgTable("request_area_template_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   templateId: varchar("template_id").notNull().references(() => requestAreaTemplates.id, { onDelete: "cascade" }),
   productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
-  defaultQuantity: integer("default_quantity").notNull().default(1),
-  sortOrder: integer("sort_order").notNull().default(0)
+  itemNotes: text("item_notes"),
+  sortOrder: integer("sort_order").notNull().default(0),
 });
 
 export const requestAreaTemplatesRelations = relations(requestAreaTemplates, ({ many, one }) => ({
@@ -1735,7 +1739,7 @@ export const requestAreaTemplateItemsRelations = relations(requestAreaTemplateIt
   product: one(products, { fields: [requestAreaTemplateItems.productId], references: [products.id] }),
 }));
 
-export const insertRequestAreaTemplateSchema = createInsertSchema(requestAreaTemplates).omit({ id: true, createdAt: true });
+export const insertRequestAreaTemplateSchema = createInsertSchema(requestAreaTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertRequestAreaTemplateItemSchema = createInsertSchema(requestAreaTemplateItems).omit({ id: true });
 
 export type RequestAreaTemplate = typeof requestAreaTemplates.$inferSelect;

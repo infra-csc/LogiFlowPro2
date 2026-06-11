@@ -1301,7 +1301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createRequestItem({
             requestId: request.id,
             productId: ti.productId,
-            quantity: ti.defaultQuantity,
+            quantity: 0,
           });
         }
       }
