@@ -158,8 +158,8 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
       {product && (
         <p className="text-sm text-muted-foreground -mt-1" data-testid="by-product-summary">
           {product.totalOutbound === 0 && product.totalInbound === 0
-            ? "Este produto mantém saldo estável no período selecionado."
-            : `Este produto possui ${product.totalOutbound} saída(s), ${product.totalInbound} entrada(s) e pior saldo de ${product.minAvailable}${worstDayDate ? ` em ${formatDayFull(worstDayDate)}` : ""}.`}
+            ? "Este produto não possui movimentações, requisições ou ordens impactando o saldo no período selecionado."
+            : `${product.totalOutbound} saída(s) · ${product.totalInbound} entrada(s) · pior saldo: ${product.minAvailable}${worstDayDate ? ` em ${formatDayFull(worstDayDate)}` : ""}.`}
         </p>
       )}
 
@@ -212,8 +212,8 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="font-semibold text-sm">Linha do tempo do saldo</p>
-                <Badge className={`${statusBadgeClassExt(product.worstStatus, product.currentStock, product.minimumStock, product.totalOutbound > 0 || product.totalInbound > 0)} text-xs`}>
-                  {statusLabelExt(product.worstStatus, product.currentStock, product.minimumStock, product.totalOutbound > 0 || product.totalInbound > 0)}
+                <Badge className={`${statusBadgeClassExt(product.worstStatus, product.currentStock, product.minimumStock)} text-xs`}>
+                  {statusLabelExt(product.worstStatus, product.currentStock, product.minimumStock)}
                 </Badge>
               </div>
               <div className="overflow-x-auto projection-scroll" style={{ scrollbarWidth: "thin" }}>

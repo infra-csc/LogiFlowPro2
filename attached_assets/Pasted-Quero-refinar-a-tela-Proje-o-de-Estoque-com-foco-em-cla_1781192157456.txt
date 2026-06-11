@@ -1,0 +1,331 @@
+Quero refinar a tela “Projeção de Estoque” com foco em clareza operacional, simplificação visual e eliminação de elementos confusos.
+
+A tela já melhorou, mas ainda existem pontos importantes que precisam ser corrigidos.
+
+OBJETIVO GERAL
+A projeção precisa ficar mais limpa, mais fácil de interpretar e sem ambiguidades visuais. O usuário precisa entender rapidamente:
+- quais produtos estão ok;
+- quais merecem atenção;
+- quanto está realmente disponível;
+- quais origens impactam a projeção;
+- quais avisos precisam de revisão.
+
+--------------------------------------------------
+1. SIMPLIFICAR A LÓGICA DE STATUS
+--------------------------------------------------
+
+Hoje “Sem disponibilidade” e “Sem estoque” ficaram muito confusos. Quero simplificar isso.
+
+REMOVER o status “Sem disponibilidade”.
+
+Manter apenas estes status operacionais:
+
+1. Adequado
+- Quando o produto possui saldo disponível suficiente no período.
+- Visual:
+  - bolinha verde
+  - badge verde “Adequado”
+
+2. Abaixo do mínimo
+- Quando o saldo disponível é maior que 0, mas está abaixo do estoque mínimo.
+- Visual:
+  - bolinha amarela
+  - badge amarela “Abaixo do mínimo”
+
+3. Em falta
+- Quando existe ruptura, saldo negativo, ou demanda não atendida.
+- Visual:
+  - bolinha vermelha
+  - badge vermelha “Em falta”
+
+4. Sem estoque
+- Quando o produto está zerado no período (saldo = 0) e não está em ruptura.
+- Visual:
+  - bolinha cinza
+  - badge cinza “Sem estoque”
+
+REGRAS IMPORTANTES:
+- Não usar mais o status “Sem disponibilidade”.
+- Produto zerado deve aparecer como “Sem estoque”, não verde.
+- Produto só deve ficar vermelho se realmente houver problema operacional / ruptura / falta.
+- Produto com saldo 0 e sem ruptura deve ficar cinza, não vermelho.
+- Produto com saldo 0 e ainda com unidades “em evento” ou em outro contexto operacional pode continuar “Sem estoque”, mas o detalhe da situação deve aparecer nas colunas, não em um novo status.
+
+Resumo final de status:
+- Verde = Adequado
+- Amarelo = Abaixo do mínimo
+- Vermelho = Em falta
+- Cinza = Sem estoque
+
+--------------------------------------------------
+2. REMOVER A BOLINHA AZUL EMBAIXO DOS DIAS
+--------------------------------------------------
+
+A bolinha azul embaixo de cada dia na linha do tempo ficou estranha e sem função clara. Não dá para entender o que ela representa.
+
+REMOVER essas bolinhas azuis da timeline.
+
+Novo comportamento para a linha do tempo:
+- Não mostrar bolinhas decorativas sem significado.
+- Cada dia deve ser representado apenas pelo card/chip do dia.
+- Se quiser indicar impacto naquele dia, usar um marcador realmente semântico e discreto, por exemplo:
+  - pequeno traço vermelho = saída
+  - pequeno traço verde = entrada
+  - pequeno traço amarelo = atenção
+- Mas só mostrar marcador quando houver impacto real.
+- Dias sem impacto não precisam de marcador nenhum.
+- Não usar bolinha azul genérica.
+
+IMPORTANTE:
+O usuário precisa entender visualmente o porquê de um dia estar marcado. Se o marcador não representa nada claro, ele deve ser removido.
+
+--------------------------------------------------
+3. AJUSTAR O DESTAQUE DO DIA SELECIONADO / HOJE
+--------------------------------------------------
+
+O azul usado no dia selecionado e na grade ainda está pesado e feio. Quero algo mais elegante e discreto.
+
+Novo comportamento:
+- O dia selecionado deve ter apenas:
+  - fundo levemente destacado, ou
+  - borda discreta, ou
+  - glow sutil
+- Não deixar a coluna inteira com cara de bloco azul pesado.
+- O destaque do “Hoje” deve ser mais sutil.
+- “Hoje” pode aparecer com um microbadge pequeno no cabeçalho do dia.
+- O dia selecionado e o “Hoje” precisam ser diferentes:
+  - “Hoje” = pequeno badge textual “Hoje”
+  - “Selecionado” = borda/fundo discreto
+- Evitar azul vibrante como cor dominante da grade.
+
+--------------------------------------------------
+4. CORRIGIR A LEITURA DE SALDO / EM EVENTO / DISPONIBILIDADE
+--------------------------------------------------
+
+Existe uma confusão importante:
+Exemplo:
+- abertura = 50
+- em evento = 20
+- saldo = 50
+
+Isso é confuso, porque o usuário entende que se 20 estão em evento, não deveria parecer que 50 ainda estão disponíveis.
+
+Quero separar claramente conceito patrimonial de conceito operacional.
+
+Usar esta lógica:
+
+- Abertura:
+  quantidade base no início do dia/período.
+
+- Saída:
+  quantidade que sai no dia/período.
+
+- Entrada:
+  quantidade que entra/retorna no dia/período.
+
+- Em trânsito:
+  quantidade que está em deslocamento.
+
+- Em evento:
+  quantidade alocada fora do estoque operacional.
+
+- Saldo disponível:
+  quantidade realmente disponível para uso.
+
+IMPORTANTE:
+O principal número da projeção deve ser o que está disponível operacionalmente, não apenas o total patrimonial.
+
+Se “Em evento” já foi abatido do saldo, isso precisa ficar muito claro na nomenclatura.
+Se “Em evento” não foi abatido do saldo, então o sistema deve mostrar explicitamente:
+
+- Total controlado
+- Em evento
+- Disponível
+
+Exemplo correto:
+- Total controlado: 50
+- Em evento: 20
+- Disponível: 30
+
+OU, se preferirem manter menos colunas:
+- Abertura disponível: 30
+- Em evento: 20 (informativo)
+- Total controlado: 50 (secundário)
+
+Mas o usuário não pode mais ver “Abertura 50 / Em evento 20 / Saldo 50” sem explicação.
+
+--------------------------------------------------
+5. AJUSTAR A MATRIZ POR DIA
+--------------------------------------------------
+
+Na aba “Matriz por Dia”, quero:
+- layout mais limpo;
+- menos ruído visual;
+- mais legibilidade.
+
+Ajustes:
+- manter a legenda simplificada:
+  - Adequado
+  - Abaixo do mínimo
+  - Em falta
+  - Sem estoque
+  - Saída
+  - Entrada
+
+REMOVER da legenda:
+- Sem disponibilidade
+
+Na tabela:
+- manter a bolinha de status ao lado do produto, mas obedecendo a nova regra simplificada.
+- células devem ter leitura fácil.
+- o foco deve estar no saldo disponível.
+- o dia selecionado pode ter uma borda sutil, não um preenchimento azul forte.
+
+--------------------------------------------------
+6. AJUSTAR A ABA “VISÃO POR DIA”
+--------------------------------------------------
+
+Na aba “Visão por Dia”, a leitura está melhor, mas ainda quero deixar mais clara.
+
+Quero:
+- manter os cards-resumo do dia;
+- manter os blocos “Saídas previstas”, “Entradas e retornos” e “Riscos do dia”;
+- deixar mais claro o que significa o saldo final.
+
+Na tabela “Detalhes por produto”, usar colunas claras:
+- Produto
+- Abertura
+- Saída
+- Entrada
+- Saldo disponível
+- Reservado
+- Em trânsito
+- Em evento
+- Status
+
+Se necessário, renomear “Saldo” para “Saldo disponível” ou “Disponível final”, para evitar ambiguidade.
+
+--------------------------------------------------
+7. AJUSTAR A ABA “POR PRODUTO”
+--------------------------------------------------
+
+Na aba “Por Produto”, manter a linha do tempo do saldo, mas:
+- sem exagero no azul;
+- sem marcadores decorativos sem função;
+- com foco no saldo disponível.
+
+Se o produto não tiver nenhuma movimentação no período:
+- mostrar mensagem clara e simples:
+  “Este produto não possui movimentações, requisições ou ordens impactando o saldo no período selecionado.”
+- manter o status coerente com a nova lógica:
+  - se saldo 0 = “Sem estoque”
+  - se saldo > 0 = “Adequado” ou “Abaixo do mínimo”, conforme regra
+
+--------------------------------------------------
+8. AJUSTAR A ABA “AVISOS”
+--------------------------------------------------
+
+Na aba “Avisos”, manter o bloco porque ele ficou útil.
+
+Mas quero melhorar a nomenclatura dos badges.
+
+Trocar o badge “Ambiguidade” por algo mais claro:
+- “Origem ambígua”
+
+Texto explicativo do card:
+- “Ordem com 2 viagens — período consolidado (saída mais cedo, retorno mais tarde).”
+está bom, pode manter.
+
+Adicionar orientação no topo da tela:
+- “Existem X aviso(s) para revisar.”
+está bom, pode manter.
+
+A caixa “Ações recomendadas” também pode ficar, mas de forma enxuta.
+
+--------------------------------------------------
+9. AJUSTAR A ABA “FONTES DA PROJEÇÃO”
+--------------------------------------------------
+
+Essa aba está útil, mas quero reforçar a clareza.
+
+Manter:
+- Origem
+- Referência
+- Evento
+- Sentido
+- Saída
+- Retorno
+- Produtos
+- Quantidade
+- Situação
+
+Na expansão da linha, deixar claro:
+- itens impactados;
+- quantidade por item;
+- status da origem;
+- botão “Abrir origem”.
+
+Se uma origem já foi movimentada fisicamente:
+- mostrar badge “Já movimentado fisicamente”
+- mostrar texto explicando que não foi descontada novamente para evitar duplicidade
+
+--------------------------------------------------
+10. AJUSTAR O DRAWER / DETALHE DO DIA
+--------------------------------------------------
+
+No drawer lateral “Detalhe do dia”, manter o formato atual, mas com nomenclatura coerente.
+
+Campos:
+- Abertura
+- Saída
+- Entrada
+- Saldo disponível
+- Reservado
+- Em trânsito
+- Em evento
+
+Também mostrar:
+- status do produto
+- mínimo
+- fontes do impacto no dia
+
+Se não houver movimentação:
+- mostrar “Nenhum movimento neste dia.”
+
+--------------------------------------------------
+11. REFINOS VISUAIS GERAIS
+--------------------------------------------------
+
+Quero uma estética mais limpa e menos “barulhenta”.
+
+Ajustes gerais:
+- reduzir excesso de azul vibrante;
+- usar azul apenas para foco/ação, não como preenchimento dominante;
+- melhorar contraste entre fundo e conteúdo;
+- manter dark mode elegante;
+- preservar consistência visual entre abas;
+- manter cabeçalho e filtros compactos;
+- manter sensação de painel premium / operacional.
+
+--------------------------------------------------
+12. RESULTADO ESPERADO
+--------------------------------------------------
+
+Após essas alterações, a experiência deve ficar assim:
+
+- Não existe mais o status “Sem disponibilidade”.
+- A lógica de status fica simples:
+  - Adequado
+  - Abaixo do mínimo
+  - Em falta
+  - Sem estoque
+- Produto zerado não aparece verde.
+- Produto zerado sem ruptura aparece cinza.
+- Produto em ruptura aparece vermelho.
+- A bolinha azul embaixo dos dias desaparece.
+- A timeline fica mais limpa e mais compreensível.
+- O dia selecionado e o “Hoje” ficam discretos e elegantes.
+- Fica claro o que é total, o que está em evento e o que está realmente disponível.
+- A matriz e as abas passam sensação de sistema maduro, operacional e confiável.
+
+Faça essas alterações mantendo o design system atual do EventFlow, sem descaracterizar a identidade visual já criada.

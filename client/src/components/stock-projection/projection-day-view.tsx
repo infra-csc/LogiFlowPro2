@@ -343,7 +343,7 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
                     variant="secondary"
                     className={`text-[10px] flex-shrink-0 ${cell.status === "shortage" ? "bg-destructive/15 text-destructive" : "bg-chart-5/15 text-chart-5"}`}
                   >
-                    {cell.status === "shortage" ? "Falta" : "Baixo"}
+                    {cell.status === "shortage" ? "Em falta" : "Baixo"}
                   </Badge>
                 </button>
               ))}
@@ -384,10 +384,11 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
                     <TableHead className="text-right">Abertura</TableHead>
                     <TableHead className="text-right">Saída</TableHead>
                     <TableHead className="text-right">Entrada</TableHead>
-                    <TableHead className="text-right">Disponível</TableHead>
-                    <TableHead className="text-right">Reservado</TableHead>
-                    <TableHead className="text-right">Em trânsito</TableHead>
-                    <TableHead className="text-right">Em evento</TableHead>
+                    <TableHead className="text-right text-muted-foreground">Controlado</TableHead>
+                    <TableHead className="text-right text-muted-foreground/70">Em evento</TableHead>
+                    <TableHead className="text-right text-muted-foreground/70">Em trânsito</TableHead>
+                    <TableHead className="text-right text-muted-foreground/70">Reservado</TableHead>
+                    <TableHead className="text-right font-semibold">Disponível</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -406,19 +407,17 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
                       <TableCell className="text-right tabular-nums">{cell.opening}</TableCell>
                       <TableCell className="text-right tabular-nums text-destructive">{cell.outbound > 0 ? `-${cell.outbound}` : "0"}</TableCell>
                       <TableCell className="text-right tabular-nums text-chart-4">{cell.inbound > 0 ? `+${cell.inbound}` : "0"}</TableCell>
-                      <TableCell className="text-right tabular-nums font-semibold">{cell.available}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{cell.reserved}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{cell.inTransit}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{cell.inEvent}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{cell.available}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground/60">{cell.inEvent > 0 ? `-${cell.inEvent}` : "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground/60">{cell.inTransit > 0 ? cell.inTransit : "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground/60">{cell.reserved > 0 ? cell.reserved : "—"}</TableCell>
+                      <TableCell className={`text-right tabular-nums font-semibold ${cell.available - cell.inEvent < 0 ? "text-destructive" : ""}`}>
+                        {cell.available - cell.inEvent}
+                      </TableCell>
                       <TableCell>
-                        {(() => {
-                          const impact = cell.outbound > 0 || cell.inbound > 0 || cell.inEvent > 0 || cell.reserved > 0 || cell.inTransit > 0;
-                          return (
-                            <Badge className={`${statusBadgeClassExt(cell.status, cell.available, product.minimumStock, impact)} text-xs`}>
-                              {statusLabelExt(cell.status, cell.available, product.minimumStock, impact)}
-                            </Badge>
-                          );
-                        })()}
+                        <Badge className={`${statusBadgeClassExt(cell.status, cell.available, product.minimumStock)} text-xs`}>
+                          {statusLabelExt(cell.status, cell.available, product.minimumStock)}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   ))}

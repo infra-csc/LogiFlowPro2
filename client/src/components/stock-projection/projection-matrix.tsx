@@ -97,7 +97,7 @@ export function ProjectionMatrix({
                 <ArrowUp className="w-3 h-3 text-chart-4" /> Entrada
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-destructive" /> Falta
+                <span className="w-2 h-2 rounded-full bg-destructive" /> Em falta
               </span>
             </div>
           </div>
@@ -170,7 +170,7 @@ export function ProjectionMatrix({
                       {formatDay(dt.date)}
                     </span>
 
-                    {/* Risk indicator — dot + count */}
+                    {/* Risk indicator — dot + count (only semantic states) */}
                     {dt.shortageCount > 0 ? (
                       <span className="inline-flex items-center gap-0.5 mt-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
@@ -181,8 +181,6 @@ export function ProjectionMatrix({
                         <span className="w-1.5 h-1.5 rounded-full bg-chart-5 flex-shrink-0" />
                         <span className="text-[9px] font-bold text-chart-5 leading-none">{dt.lowCount}</span>
                       </span>
-                    ) : dt.inEventCount > 0 ? (
-                      <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary/50" />
                     ) : (
                       <span className="mt-1 h-3.5" />
                     )}
@@ -220,10 +218,6 @@ export function ProjectionMatrix({
             <span className="inline-flex items-center gap-1.5">
               <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass("shortage")}`} />
               Em falta
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-destructive/80" />
-              Sem disponibilidade
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />

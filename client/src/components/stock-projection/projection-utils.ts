@@ -7,7 +7,7 @@ import type {
 export function statusLabel(status: ProjectionDayStatus): string {
   switch (status) {
     case "shortage":
-      return "Falta";
+      return "Em falta";
     case "low":
       return "Abaixo do mínimo";
     default:
@@ -32,8 +32,8 @@ export function cellToneClass(
   minimumStock?: number,
   hasImpact?: boolean,
 ): string {
-  // Neutral: available=0, minimumStock=0, no activity → dim gray
-  if (status === "ok" && !hasImpact && available === 0 && (minimumStock ?? 0) === 0) {
+  // Neutral: available=0 → dim gray
+  if (status === "ok" && (available ?? 1) === 0) {
     return "text-muted-foreground/30 bg-muted/15";
   }
   switch (status) {
@@ -163,8 +163,8 @@ export function cellHeatClass(
   available?: number,
   minimumStock?: number,
 ): string {
-  // Neutral: available=0, minimumStock=0, no activity → dim gray (not green)
-  if (status === "ok" && !hasImpact && available === 0 && (minimumStock ?? 0) === 0) {
+  // Neutral: available=0 → dim gray (not green)
+  if (status === "ok" && (available ?? 1) === 0) {
     return "text-muted-foreground/25";
   }
   switch (status) {
@@ -212,7 +212,11 @@ export function statusDotClass(status: ProjectionDayStatus): string {
 // ─── Extended status helpers with neutral / sem-estoque detection ─────────────
 
 /**
- * Status dot with neutral detection: stock=0, min=0, no demand → gray dot.
+ * Status dot with neutral detection:
+ * - shortage → red
+ * - low → amber
+ * - ok + stock=0 → gray ("Sem estoque")
+ * - ok + stock>0 → green
  */
 export function statusDotClassExt(
   worstStatus: ProjectionDayStatus,
@@ -223,45 +227,34 @@ export function statusDotClassExt(
 ): string {
   if (worstStatus === "shortage") return "bg-destructive";
   if (worstStatus === "low") return "bg-chart-5";
-  // "Sem disponibilidade": stock=0 mas há atividade no período (não pode ser verde)
-  if (currentStock === 0 && (totalOutbound > 0 || totalInbound > 0)) {
-    return "bg-destructive/80";
-  }
-  // "Sem estoque": stock=0, min=0, sem atividade → cinza neutro
-  if (currentStock === 0 && minimumStock === 0) {
-    return "bg-muted-foreground/40";
-  }
+  // "Sem estoque": stock=0 → cinza neutro (independente de atividade)
+  if (currentStock === 0) return "bg-muted-foreground/40";
   return "bg-chart-4"; // green — realmente adequado
 }
 
 /**
- * Status label with neutral: available=0 and min=0 → "Sem estoque".
+ * Status label with neutral: available=0 → "Sem estoque".
+ * 4 possible values: Adequado · Abaixo do mínimo · Em falta · Sem estoque
  */
 export function statusLabelExt(
   status: ProjectionDayStatus,
   available?: number,
   minimumStock?: number,
-  hasOperationalImpact?: boolean,
 ): string {
-  if (status === "ok" && (available ?? 1) === 0) {
-    if (hasOperationalImpact) return "Sem disponibilidade";
-    if ((minimumStock ?? 0) === 0) return "Sem estoque";
-  }
+  if (status === "ok" && (available ?? 1) === 0) return "Sem estoque";
   return statusLabel(status);
 }
 
 /**
- * Status badge class with neutral: available=0 and min=0 → gray badge.
+ * Status badge class with neutral: available=0 → gray badge.
  */
 export function statusBadgeClassExt(
   status: ProjectionDayStatus,
   available?: number,
   minimumStock?: number,
-  hasOperationalImpact?: boolean,
 ): string {
   if (status === "ok" && (available ?? 1) === 0) {
-    if (hasOperationalImpact) return "bg-destructive/20 text-destructive border border-destructive/30";
-    if ((minimumStock ?? 0) === 0) return "bg-muted text-muted-foreground border border-border/60";
+    return "bg-muted text-muted-foreground border border-border/60";
   }
   return statusBadgeClass(status);
 }

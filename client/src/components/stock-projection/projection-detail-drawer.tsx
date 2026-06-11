@@ -91,14 +91,9 @@ function CellBody({
           <p className="text-xs text-muted-foreground">{product.sku}</p>
           <p className="font-semibold">{product.name}</p>
         </div>
-        {(() => {
-          const impact = cell.outbound > 0 || cell.inbound > 0 || cell.inEvent > 0 || cell.reserved > 0 || cell.inTransit > 0;
-          return (
-            <Badge className={`${statusBadgeClassExt(cell.status, cell.available, product.minimumStock, impact)} text-xs`}>
-              {statusLabelExt(cell.status, cell.available, product.minimumStock, impact)}
-            </Badge>
-          );
-        })()}
+        <Badge className={`${statusBadgeClassExt(cell.status, cell.available, product.minimumStock)} text-xs`}>
+          {statusLabelExt(cell.status, cell.available, product.minimumStock)}
+        </Badge>
       </div>
       <div className="rounded-md border border-border/60 p-3">
         <div className="flex items-center justify-between mb-1">
@@ -110,13 +105,25 @@ function CellBody({
         <Row label="Saída" value={cell.outbound > 0 ? `-${cell.outbound}` : "0"} tone="text-destructive" />
         <Row label="Entrada" value={cell.inbound > 0 ? `+${cell.inbound}` : "0"} tone="text-chart-4" />
         <Separator className="my-2" />
-        <Row label="Disponível" value={cell.available} tone="font-semibold" />
-        <Row label="Reservado" value={cell.reserved} />
-        <Row label="Em trânsito" value={cell.inTransit} />
-        <Row label="Em evento" value={cell.inEvent} />
-        {(cell.inEvent > 0 || cell.reserved > 0 || cell.inTransit > 0) && (
+        <Row label="Controlado" value={cell.available} tone="text-muted-foreground" />
+        {cell.inEvent > 0 && (
+          <Row label="Em evento" value={`-${cell.inEvent}`} tone="text-muted-foreground/70" />
+        )}
+        {cell.inTransit > 0 && (
+          <Row label="Em trânsito" value={cell.inTransit} tone="text-muted-foreground/70" />
+        )}
+        {cell.reserved > 0 && (
+          <Row label="Reservado" value={cell.reserved} tone="text-muted-foreground/70" />
+        )}
+        <Separator className="my-2" />
+        <Row
+          label="Disponível"
+          value={cell.available - cell.inEvent}
+          tone={`font-semibold ${cell.available - cell.inEvent < 0 ? "text-destructive" : ""}`}
+        />
+        {cell.inEvent > 0 && (
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            Em evento, reservado e em trânsito indicam comprometimentos operacionais do saldo projetado.
+            Disponível = Controlado ({cell.available}) − Em evento ({cell.inEvent}). Itens em evento já foram descontados do saldo em dias anteriores.
           </p>
         )}
       </div>
@@ -187,8 +194,8 @@ function ProductBody({
           <p className="text-xs text-muted-foreground">{product.sku}</p>
           <p className="font-semibold">{product.name}</p>
         </div>
-        <Badge className={`${statusBadgeClassExt(product.worstStatus, product.currentStock, product.minimumStock, product.totalOutbound > 0 || product.totalInbound > 0)} text-xs`}>
-          {statusLabelExt(product.worstStatus, product.currentStock, product.minimumStock, product.totalOutbound > 0 || product.totalInbound > 0)}
+        <Badge className={`${statusBadgeClassExt(product.worstStatus, product.currentStock, product.minimumStock)} text-xs`}>
+          {statusLabelExt(product.worstStatus, product.currentStock, product.minimumStock)}
         </Badge>
       </div>
 
