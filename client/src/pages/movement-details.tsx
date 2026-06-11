@@ -56,6 +56,13 @@ import {
   Trash2,
   ZoomIn,
   Play,
+  TrendingUp,
+  Calendar,
+  Info,
+  Activity,
+  Filter,
+  CheckCheck,
+  ListFilter,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -150,6 +157,7 @@ export default function MovementDetails() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [evidenceCategoryFilter, setEvidenceCategoryFilter] = useState("all");
+  const [auditFilter, setAuditFilter] = useState<"all"|"items"|"status"|"evidence">("all");
 
   // Fetch all suppliers
   const { data: suppliers = [] } = useQuery<Array<{id: string, name: string}>>({
@@ -395,6 +403,15 @@ export default function MovementDetails() {
     if (evidenceCategoryFilter === "videos") return attachments.filter(a => a.fileType === "video");
     return attachments.filter(a => a.category === evidenceCategoryFilter);
   }, [attachments, evidenceCategoryFilter]);
+
+  // Filter audit logs by type
+  const filteredAuditLogs = useMemo(() => {
+    if (auditFilter === "all") return auditLogs;
+    if (auditFilter === "items") return auditLogs.filter(l => ["item_added","item_removed","item_quantity_changed"].includes(l.action));
+    if (auditFilter === "status") return auditLogs.filter(l => l.action === "status_changed");
+    if (auditFilter === "evidence") return auditLogs.filter(l => l.action === "evidence_added");
+    return auditLogs;
+  }, [auditLogs, auditFilter]);
 
   // Map of productId → evidence count
   const evidenceByProduct = useMemo(() => {
@@ -910,113 +927,138 @@ export default function MovementDetails() {
       {!focusMode && (
         <PageSection>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {/* Status */}
             <Card className="border-border/60">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <BarChart3 className="h-4 w-4" />
+              <CardContent className="p-3 flex flex-col min-h-[88px]">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  <BarChart3 className="h-3.5 w-3.5" />
                   Status
                 </div>
-                <div className="mt-1">
+                <div className="mt-auto pt-2">
                   <StatusBadge status={movement.status} />
                 </div>
               </CardContent>
             </Card>
+
+            {/* Esperados */}
             <Card className="border-border/60">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ClipboardList className="h-4 w-4" />
+              <CardContent className="p-3 flex flex-col min-h-[88px]">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  <ClipboardList className="h-3.5 w-3.5" />
                   Esperados
                 </div>
-                <div className="mt-1 text-xl font-semibold">{totalExpected}</div>
+                <div className="mt-auto pt-1">
+                  <div className="text-2xl font-bold tabular-nums">{totalExpected}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">itens na ordem</div>
+                </div>
               </CardContent>
             </Card>
-            <Card className="border-border/60">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <PackageCheck className="h-4 w-4" />
+
+            {/* Carregados */}
+            <Card className={`border-border/60 ${totalExpected > 0 && totalLoaded >= totalExpected ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}>
+              <CardContent className="p-3 flex flex-col min-h-[88px]">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  <PackageCheck className="h-3.5 w-3.5" />
                   Carregados
                 </div>
-                <div className="mt-1 text-xl font-semibold">{totalLoaded}</div>
+                <div className="mt-auto pt-1">
+                  <div className={`text-2xl font-bold tabular-nums ${totalExpected > 0 && totalLoaded >= totalExpected ? "text-emerald-500" : ""}`}>{totalLoaded}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">unidades</div>
+                </div>
               </CardContent>
             </Card>
-            <Card className="border-border/60">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <AlertTriangle className="h-4 w-4" />
+
+            {/* Pendentes */}
+            <Card className={`border-border/60 transition-colors ${totalPending > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
+              <CardContent className="p-3 flex flex-col min-h-[88px]">
+                <div className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${totalPending > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+                  <AlertTriangle className="h-3.5 w-3.5" />
                   Pendentes
                 </div>
-                <div className="mt-1 text-xl font-semibold">{totalPending}</div>
+                <div className="mt-auto pt-1">
+                  <div className={`text-2xl font-bold tabular-nums ${totalPending > 0 ? "text-amber-500" : ""}`}>{totalPending}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">faltam carregar</div>
+                </div>
               </CardContent>
             </Card>
-            <Card className="border-border/60">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Plus className="h-4 w-4" />
+
+            {/* Excedentes */}
+            <Card className={`border-border/60 transition-colors ${totalExceeded > 0 ? "border-rose-500/40 bg-rose-500/5" : ""}`}>
+              <CardContent className="p-3 flex flex-col min-h-[88px]">
+                <div className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${totalExceeded > 0 ? "text-rose-500" : "text-muted-foreground"}`}>
+                  <Plus className="h-3.5 w-3.5" />
                   Excedentes
                 </div>
-                <div className={`mt-1 text-xl font-semibold ${totalExceeded > 0 ? "text-rose-500" : ""}`}>
-                  {totalExceeded}
+                <div className="mt-auto pt-1">
+                  <div className={`text-2xl font-bold tabular-nums ${totalExceeded > 0 ? "text-rose-500" : ""}`}>{totalExceeded}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">além do previsto</div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Progresso */}
             <Card className="border-border/60">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <BarChart3 className="h-4 w-4" />
+              <CardContent className="p-3 flex flex-col min-h-[88px]">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  <TrendingUp className="h-3.5 w-3.5" />
                   Progresso
                 </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="text-xl font-semibold">{progress}%</span>
-                  <Progress value={progress} className="h-2 w-16 flex-1" />
+                <div className="mt-auto pt-1">
+                  <div className={`text-2xl font-bold tabular-nums ${progress === 100 ? "text-emerald-500" : progress >= 50 ? "text-amber-500" : progress > 0 ? "text-foreground" : "text-muted-foreground"}`}>{progress}%</div>
+                  <Progress value={Math.min(progress, 100)} className="h-1.5 mt-1.5" />
                 </div>
               </CardContent>
             </Card>
+
+            {/* Evidências (clickable) */}
             <button
-              className="text-left border rounded-lg border-border/60 hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="text-left border rounded-lg border-border/60 hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
               onClick={() => {
                 const el = document.getElementById("section-evidencias");
                 if (el) el.scrollIntoView({ behavior: "smooth" });
               }}
               data-testid="card-evidence-count"
             >
-              <div className="p-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Camera className="h-4 w-4" />
+              <div className="p-3 flex flex-col min-h-[88px]">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  <Camera className="h-3.5 w-3.5" />
                   Evidências
                 </div>
-                <div className="mt-1 text-xl font-semibold">
-                  {photoCount + videoCount}
-                </div>
-                {(photoCount > 0 || videoCount > 0) && (
-                  <div className="flex gap-2 mt-0.5">
+                <div className="mt-auto pt-1">
+                  <div className="text-2xl font-bold tabular-nums">{photoCount + videoCount}</div>
+                  <div className="flex gap-2.5 mt-0.5">
                     {photoCount > 0 && (
                       <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                        <ImageIcon className="h-3 w-3" />{photoCount}
+                        <ImageIcon className="h-3 w-3" />{photoCount} foto{photoCount !== 1 ? "s" : ""}
                       </span>
                     )}
                     {videoCount > 0 && (
                       <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                        <Film className="h-3 w-3" />{videoCount}
+                        <Film className="h-3 w-3" />{videoCount} vídeo{videoCount !== 1 ? "s" : ""}
                       </span>
                     )}
+                    {photoCount === 0 && videoCount === 0 && (
+                      <span className="text-xs text-muted-foreground">ver seção</span>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </button>
           </div>
+
           {/* Metadados */}
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" />
-              Doca: <span className="text-foreground font-medium">{movement.dock?.name || "-"}</span>
+              Doca: <span className="text-foreground font-medium">{movement.dock?.name || "—"}</span>
             </span>
             <span className="flex items-center gap-1">
               <Truck className="h-3.5 w-3.5" />
-              Veículo: <span className="text-foreground font-medium">{movement.vehiclePlate || "-"}</span>
+              Veículo: <span className="text-foreground font-medium">{movement.vehiclePlate || "—"}</span>
             </span>
             <span className="flex items-center gap-1">
               <Tag className="h-3.5 w-3.5" />
-              Tipo: <span className="text-foreground font-medium">{movement.movementTypeConfig?.name || "-"}</span>
+              Tipo: <span className="text-foreground font-medium">{movement.movementTypeConfig?.name || "—"}</span>
             </span>
             {movement.loadingOrder && (
               <span className="flex items-center gap-1">
@@ -1038,9 +1080,49 @@ export default function MovementDetails() {
                 Evento: <span className="text-foreground font-medium">{movement.events.map(e => e.name).join(", ")}</span>
               </span>
             )}
+            {movement.createdAt && (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                Criado: <span className="text-foreground font-medium">{format(new Date(movement.createdAt), "dd/MM/yy HH:mm")}</span>
+              </span>
+            )}
           </div>
         </PageSection>
       )}
+
+      {/* Alertas Operacionais */}
+      {!focusMode && (() => {
+        const hasPostCompletionEvidence = attachments.some(a => a.isPostCompletion);
+        const alerts: Array<{ type: "warning"|"error"|"info"|"muted"; icon: React.ElementType; message: string }> = [];
+        if (movement.status === "paused") alerts.push({ type: "warning", icon: PauseCircle, message: "Movimentação pausada — escaneamento temporariamente interrompido. Clique em \"Continuar\" para retomar." });
+        if (movement.status === "completed") alerts.push({ type: "info", icon: CheckCheck, message: "Movimentação finalizada — modo somente consulta. Você ainda pode adicionar evidências." });
+        if (totalPending > 0 && movement.status === "in_progress") alerts.push({ type: "warning", icon: AlertTriangle, message: `${totalPending} ${totalPending === 1 ? "item pendente" : "itens pendentes"} — carregamento ainda não concluído` });
+        if (totalExceeded > 0) alerts.push({ type: "error", icon: AlertTriangle, message: `${totalExceeded} ${totalExceeded === 1 ? "item excedeu" : "itens excederam"} a quantidade prevista` });
+        if (hasPostCompletionEvidence) alerts.push({ type: "info", icon: Camera, message: "Há evidências adicionadas após a finalização desta movimentação" });
+        if (movement.status === "in_progress" && attachments.length === 0) alerts.push({ type: "muted", icon: Camera, message: "Nenhuma evidência anexada ainda — recomendamos registrar fotos durante o carregamento" });
+        if (alerts.length === 0) return null;
+        const colorMap = {
+          warning: "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
+          error: "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400",
+          info: "bg-sky-500/10 border-sky-500/30 text-sky-600 dark:text-sky-400",
+          muted: "bg-muted/40 border-border/40 text-muted-foreground",
+        };
+        return (
+          <PageSection>
+            <div className="flex flex-col gap-2">
+              {alerts.map((alert, idx) => {
+                const Icon = alert.icon;
+                return (
+                  <div key={idx} className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-sm ${colorMap[alert.type]}`} data-testid={`alert-${alert.type}-${idx}`}>
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span>{alert.message}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </PageSection>
+        );
+      })()}
 
       {/* Scanner */}
       {!isEditable && movement?.status && (
@@ -1928,65 +2010,109 @@ export default function MovementDetails() {
         <PageSection title="Histórico" description="Registro de ações na movimentação">
           <Card className="border-border/60">
             <CardContent className="p-4">
-              <ScrollArea className="h-[320px] pr-4" style={{ scrollbarWidth: 'thin' }}>
-                <div className="space-y-2">
-                  {auditLogs.map((log) => {
-                    const getActionIcon = () => {
-                      switch (log.action) {
-                        case "item_added": return <Plus className="h-3.5 w-3.5 text-emerald-500" />;
-                        case "item_removed": return <Minus className="h-3.5 w-3.5 text-rose-500" />;
-                        case "status_changed": return <FileText className="h-3.5 w-3.5 text-sky-500" />;
-                        case "item_quantity_changed": return <FileText className="h-3.5 w-3.5 text-sky-500" />;
-                        case "evidence_added": return <Camera className="h-3.5 w-3.5 text-violet-500" />;
-                        default: return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
-                      }
-                    };
+              {/* Filter tabs */}
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {([
+                  { key: "all" as const, label: "Todos", count: auditLogs.length },
+                  { key: "items" as const, label: "Itens", count: auditLogs.filter(l => ["item_added","item_removed","item_quantity_changed"].includes(l.action)).length },
+                  { key: "status" as const, label: "Status", count: auditLogs.filter(l => l.action === "status_changed").length },
+                  { key: "evidence" as const, label: "Evidências", count: auditLogs.filter(l => l.action === "evidence_added").length },
+                ]).map(({ key, label, count }) => {
+                  if (key !== "all" && count === 0) return null;
+                  return (
+                    <Button
+                      key={key}
+                      variant={auditFilter === key ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => setAuditFilter(key)}
+                      data-testid={`filter-audit-${key}`}
+                    >
+                      {label}
+                      <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px] no-default-hover-elevate no-default-active-elevate">
+                        {count}
+                      </Badge>
+                    </Button>
+                  );
+                })}
+              </div>
 
-                    const getActionDescription = () => {
-                      const metadata = log.metadata as any;
-                      const context = log.context as any;
-                      switch (log.action) {
-                        case "item_added":
-                          return `Adicionou ${metadata?.quantity}x ${metadata?.productName}`;
-                        case "item_removed":
-                          return `Removeu ${metadata?.quantity}x ${metadata?.productName}`;
-                        case "status_changed":
-                          return `Status: ${getStatusLabel(context?.previousStatus)} → ${getStatusLabel(context?.newStatus)}`;
-                        case "item_quantity_changed":
-                          return `${metadata?.productName}: ${metadata?.previousQuantity} → ${metadata?.newQuantity}`;
-                        case "evidence_added": {
-                          const typeLabel = metadata?.fileType === "image" ? "Foto" : "Vídeo";
-                          const post = metadata?.isPostCompletion ? " (pós-conclusão)" : "";
-                          return `${typeLabel} anexada${post}: ${metadata?.fileName || ""}`;
-                        }
-                        default:
-                          return log.action;
-                      }
-                    };
-
-                    return (
-                      <div
-                        key={log.id}
-                        className="flex items-start gap-2.5 py-2 px-2 border-b last:border-b-0 border-border/40"
-                        data-testid={`audit-log-${log.id}`}
-                      >
-                        <div className="mt-0.5 flex-shrink-0">{getActionIcon()}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{getActionDescription()}</p>
-                          <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {log.actorName}
-                            </span>
-                            <span>
-                              {format(new Date(log.occurredAt), "dd/MM/yyyy HH:mm")}
-                            </span>
+              <ScrollArea className="h-[300px] pr-4" style={{ scrollbarWidth: 'thin' }}>
+                {filteredAuditLogs.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8 text-sm">Nenhum evento neste filtro</p>
+                ) : (
+                  <div className="relative pl-6">
+                    {/* Timeline vertical line */}
+                    <div className="absolute left-2 top-2 bottom-2 w-px bg-border/40" />
+                    <div className="space-y-0.5">
+                      {filteredAuditLogs.map((log, idx) => {
+                        const getActionMeta = () => {
+                          switch (log.action) {
+                            case "item_added":
+                              return { icon: <Plus className="h-3 w-3" />, color: "bg-emerald-500 text-white", label: "Item adicionado" };
+                            case "item_removed":
+                              return { icon: <Minus className="h-3 w-3" />, color: "bg-rose-500 text-white", label: "Item removido" };
+                            case "status_changed":
+                              return { icon: <Activity className="h-3 w-3" />, color: "bg-sky-500 text-white", label: "Status alterado" };
+                            case "item_quantity_changed":
+                              return { icon: <Edit className="h-3 w-3" />, color: "bg-amber-500 text-white", label: "Quantidade ajustada" };
+                            case "evidence_added":
+                              return { icon: <Camera className="h-3 w-3" />, color: "bg-violet-500 text-white", label: "Evidência adicionada" };
+                            default:
+                              return { icon: <Clock className="h-3 w-3" />, color: "bg-muted-foreground/50 text-white", label: log.action };
+                          }
+                        };
+                        const getActionDescription = () => {
+                          const metadata = log.metadata as any;
+                          const context = log.context as any;
+                          switch (log.action) {
+                            case "item_added":
+                              return `Adicionou ${metadata?.quantity}x ${metadata?.productName}`;
+                            case "item_removed":
+                              return `Removeu ${metadata?.quantity}x ${metadata?.productName}`;
+                            case "status_changed":
+                              return `${getStatusLabel(context?.previousStatus)} → ${getStatusLabel(context?.newStatus)}`;
+                            case "item_quantity_changed":
+                              return `${metadata?.productName}: ${metadata?.previousQuantity} → ${metadata?.newQuantity}`;
+                            case "evidence_added": {
+                              const typeLabel = metadata?.fileType === "image" ? "Foto" : "Vídeo";
+                              const post = metadata?.isPostCompletion ? " (pós-conclusão)" : "";
+                              return `${typeLabel} anexada${post}${metadata?.fileName ? `: ${metadata.fileName}` : ""}`;
+                            }
+                            default:
+                              return log.action;
+                          }
+                        };
+                        const meta = getActionMeta();
+                        return (
+                          <div
+                            key={log.id}
+                            className="flex items-start gap-3 py-2.5 relative"
+                            data-testid={`audit-log-${log.id}`}
+                          >
+                            {/* Icon dot on timeline */}
+                            <div className={`absolute -left-4 flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center z-10 ${meta.color}`}>
+                              {meta.icon}
+                            </div>
+                            <div className="flex-1 min-w-0 pl-1">
+                              <p className="text-sm font-medium leading-snug">{getActionDescription()}</p>
+                              <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {log.actorName}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {format(new Date(log.occurredAt), "dd/MM/yy HH:mm")}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </ScrollArea>
             </CardContent>
           </Card>
