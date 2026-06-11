@@ -364,6 +364,22 @@
   border-radius: 999px;
   background: hsl(var(--primary));
 }
+/* ─── Global dark scrollbar — prevents white native scrollbars ────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.55);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.35);
+}
+
 /* Thin dark scrollbar for stock-projection scroll containers */
 .projection-scroll {
   scrollbar-width: thin;

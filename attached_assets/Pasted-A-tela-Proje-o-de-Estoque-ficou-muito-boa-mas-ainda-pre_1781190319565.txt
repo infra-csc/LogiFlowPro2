@@ -1,0 +1,119 @@
+A tela Projeção de Estoque ficou muito boa, mas ainda precisa do acabamento final para ficar 10/10.
+
+Não refazer a tela do zero. Fazer apenas ajustes finos de UX, visual e acabamento.
+
+Pontos obrigatórios:
+
+1. Corrigir o texto do diagnóstico operacional
+Hoje aparece texto colado como:
+"Nenhum conflito de saldo detectado2 aviso(s) para revisar."
+
+Ajustar para:
+"Nenhum conflito de saldo detectado. Existem 2 avisos para revisar."
+ou
+"Nenhum conflito de saldo detectado · 2 avisos para revisar."
+
+Garantir espaçamento, pontuação e cor correta.
+
+2. Melhorar contraste da matriz
+A matriz está bonita, mas muito apagada.
+Ajustar:
+- números com melhor legibilidade;
+- datas com melhor contraste;
+- dia selecionado mais evidente;
+- hover nas linhas;
+- células com estoque zero mais claras;
+- produtos sem estoque precisam ser facilmente percebidos.
+
+Não deixar a tela poluída.
+
+3. Remover scrollbars brancas
+Substituir todas as scrollbars brancas por scrollbars dark/customizadas, finas e integradas ao tema.
+
+Verificar:
+- matriz horizontal;
+- matriz vertical;
+- timeline;
+- drawer de filtros;
+- listas internas de eventos;
+- listas internas de produtos.
+
+Não pode aparecer scrollbar branca nativa.
+
+4. Melhorar timeline de impactos diários
+A timeline deve ser mais útil operacionalmente.
+
+Cada dia deve mostrar microindicadores:
+- saída prevista;
+- entrada/retorno previsto;
+- falta;
+- abaixo do mínimo;
+- aviso;
+- evento ativo.
+
+Se o dia não tiver impacto, deixar discreto.
+Se tiver impacto, destacar visualmente.
+Tooltip do dia deve mostrar:
+- saídas;
+- entradas;
+- produtos em falta;
+- produtos abaixo do mínimo;
+- unidades em evento;
+- avisos.
+
+5. Melhorar drawer de filtros
+O drawer está bom, mas ainda parece apertado.
+
+Ajustar:
+- listas de eventos/produtos com altura melhor;
+- contador de selecionados;
+- textos mais claros;
+- botões fixos no rodapé com divisor elegante;
+- evitar scroll interno branco;
+- garantir que nada fique cortado.
+
+6. Criar bloco opcional de “Ações recomendadas”
+Quando houver avisos ou conflitos, mostrar uma seção pequena:
+"Ações recomendadas"
+
+Exemplos:
+- "Revisar 2 ordens com vínculo múltiplo de viagens."
+- "Validar origens ambíguas antes de usar a projeção como definitiva."
+- "Configurar estoque mínimo para produtos sem mínimo definido."
+
+Se não houver nada relevante, ocultar a seção.
+
+7. Melhorar aba Avisos
+Os avisos estão bons, mas devem parecer mais acionáveis.
+
+Cada aviso deve mostrar:
+- tipo do aviso;
+- impacto;
+- origem;
+- ação sugerida;
+- botão "Abrir origem".
+
+8. Manter regras
+Não alterar RBAC.
+Não alterar schema.
+Não alterar migrations.
+Não alterar permissões.
+Não alterar regras de negócio sem necessidade.
+Não reintroduzir botão Atualizar.
+A projeção deve continuar sendo recalculada automaticamente ao aplicar filtros.
+
+9. Validar
+Rodar:
+npm run check
+npm run build
+
+10. Entrega
+Informar:
+- arquivos alterados;
+- ajustes visuais feitos;
+- ajustes de UX feitos;
+- correções de scrollbar;
+- correções da matriz;
+- correções da timeline;
+- resultado do check;
+- resultado do build.

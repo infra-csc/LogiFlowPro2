@@ -25,9 +25,9 @@ interface Props {
 }
 
 const KIND_LABEL: Record<ProjectionConflict["kind"], string> = {
-  shortage: "Saldo",
-  missing_data: "Falta de dado",
-  ambiguous: "Ambiguidade",
+  shortage: "Conflito de saldo",
+  missing_data: "Dado ausente",
+  ambiguous: "Origem ambígua",
 };
 
 function LinkButtons({ links }: { links?: ProjectionLink[] }) {
@@ -63,18 +63,29 @@ function ConflictRow({
   const Icon = tone === "error" ? AlertTriangle : Info;
   const color = tone === "error" ? "text-destructive" : "text-chart-5";
   const border = tone === "error" ? "border-destructive/20 bg-destructive/5" : "border-chart-5/20 bg-chart-5/5";
+  const kindBg = tone === "error"
+    ? "bg-destructive/15 text-destructive border border-destructive/20"
+    : "bg-chart-5/15 text-chart-5 border border-chart-5/20";
+  const actionBg = tone === "error" ? "bg-destructive/10" : "bg-chart-5/10";
+
   return (
     <div className={`p-3 border ${border} rounded-md`} data-testid={`conflict-${tone}-${idx}`}>
       <div className="flex items-start gap-3">
         <Icon className={`w-4 h-4 ${color} flex-shrink-0 mt-0.5`} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="text-sm font-medium">
-              {c.productName ? c.productName : `${sourceLabel(c.source)}: ${c.sourceLabel}`}
-              {c.sku && <span className="text-muted-foreground font-normal"> · {c.sku}</span>}
+        <div className="min-w-0 flex-1 space-y-2">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold leading-tight">
+                {c.productName ? c.productName : `${sourceLabel(c.source)}: ${c.sourceLabel}`}
+                {c.sku && <span className="text-muted-foreground font-normal"> · {c.sku}</span>}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">{c.message}</div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Badge variant="secondary" className="text-xs">{KIND_LABEL[c.kind]}</Badge>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${kindBg}`}>
+                {KIND_LABEL[c.kind]}
+              </span>
               {onOpenDetail && (
                 <Button size="icon" variant="ghost" onClick={() => onOpenDetail(c)} data-testid={`button-conflict-detail-${tone}-${idx}`} aria-label="Ver detalhes">
                   <PanelRightOpen className="w-4 h-4" />
@@ -82,26 +93,44 @@ function ConflictRow({
               )}
             </div>
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">{c.message}</div>
+
+          {/* Origin — only shown when productName is already in the header */}
+          {c.productName && c.sourceLabel && (
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium">Origem:</span>{" "}
+              {sourceLabel(c.source)}{c.sourceLabel ? ` — ${c.sourceLabel}` : ""}
+            </div>
+          )}
+
+          {/* Impact metrics */}
           {((c.deficit != null && c.deficit > 0) || c.projectedBalance != null) && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs">
-              {c.projectedBalance != null && (
-                <span>Saldo previsto: <span className="tabular-nums font-medium">{c.projectedBalance}</span></span>
-              )}
-              {c.minimumStock != null && (
-                <span className="text-muted-foreground">Mínimo: <span className="tabular-nums">{c.minimumStock}</span></span>
-              )}
-              {c.deficit != null && c.deficit > 0 && (
-                <span className={color}>Déficit: <span className="tabular-nums font-medium">{c.deficit}</span></span>
-              )}
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Impacto</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                {c.projectedBalance != null && (
+                  <span>Saldo previsto: <span className="tabular-nums font-medium">{c.projectedBalance}</span></span>
+                )}
+                {c.minimumStock != null && (
+                  <span className="text-muted-foreground">Mínimo: <span className="tabular-nums">{c.minimumStock}</span></span>
+                )}
+                {c.deficit != null && c.deficit > 0 && (
+                  <span className={color}>Déficit: <span className={`tabular-nums font-bold`}>{c.deficit}</span></span>
+                )}
+              </div>
             </div>
           )}
+
+          {/* Suggested action */}
           {c.suggestedAction && (
-            <div className="flex items-start gap-1.5 mt-2 text-xs text-foreground/90">
-              <Lightbulb className="w-3.5 h-3.5 text-chart-5 flex-shrink-0 mt-0.5" />
-              <span>{c.suggestedAction}</span>
+            <div className={`flex items-start gap-1.5 rounded-md px-2.5 py-2 ${actionBg}`}>
+              <Lightbulb className={`w-3.5 h-3.5 ${color} flex-shrink-0 mt-0.5`} />
+              <div className="text-xs">
+                <span className={`font-semibold ${color}`}>Ação sugerida: </span>
+                <span className="text-foreground/85">{c.suggestedAction}</span>
+              </div>
             </div>
           )}
+
           <LinkButtons links={c.links} />
         </div>
       </div>

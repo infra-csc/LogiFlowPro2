@@ -151,11 +151,11 @@ export function dayTrend(outbound: number, inbound: number): DayTrend {
 export function cellHeatClass(status: ProjectionDayStatus, hasImpact: boolean): string {
   switch (status) {
     case "shortage":
-      return "bg-destructive/25 text-destructive font-semibold";
+      return "bg-destructive/30 text-destructive font-bold";
     case "low":
-      return "bg-chart-5/20 text-chart-5";
+      return "bg-chart-5/25 text-chart-5 font-medium";
     default:
-      return hasImpact ? "bg-chart-4/12 text-foreground" : "text-muted-foreground/50";
+      return hasImpact ? "bg-chart-4/15 text-foreground" : "text-muted-foreground/40";
   }
 }
 

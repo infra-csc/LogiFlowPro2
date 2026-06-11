@@ -173,17 +173,13 @@ function DiagnosticBanner({ result }: { result: StockProjectionResult }) {
         <CardContent className="p-3 flex items-center gap-2.5">
           <Info className="w-4 h-4 text-chart-5 flex-shrink-0" />
           <p className="text-sm text-muted-foreground">
-            Nenhum conflito de saldo detectado
+            Nenhum conflito de saldo detectado.
             {summary.productsLow > 0 && (
-              <>, mas{" "}
-                <span className="font-medium text-chart-5">{summary.productsLow} produto(s) abaixo do mínimo</span>
-              </>
+              <>{" "}<span className="font-medium text-chart-5">{summary.productsLow} produto(s) abaixo do mínimo.</span></>
             )}
-            {summary.productsLow > 0 && warnCount > 0 && " e "}
             {warnCount > 0 && (
-              <span className="font-medium text-chart-5">{warnCount} aviso(s) para revisar</span>
+              <>{" "}<span className="font-medium text-chart-5">Existem {warnCount} aviso(s) para revisar.</span></>
             )}
-            .
           </p>
         </CardContent>
       </Card>
@@ -199,6 +195,59 @@ function DiagnosticBanner({ result }: { result: StockProjectionResult }) {
           {summary.totalProducts} produto(s) analisado(s), nenhum item em falta
           {warnCount > 0 ? ` e ${warnCount} aviso(s) para revisar.` : "."}
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Recommended actions ──────────────────────────────────────────────────────
+
+function RecommendedActions({ result }: { result: StockProjectionResult }) {
+  const actions = useMemo(() => {
+    const list: string[] = [];
+    const { summary, conflicts } = result;
+
+    if (summary.productsShortage > 0) {
+      list.push(`Planejar reposição urgente para ${summary.productsShortage} produto(s) em falta no período.`);
+    }
+    if (summary.productsLow > 0) {
+      list.push(`Revisar reposição para ${summary.productsLow} produto(s) abaixo do estoque mínimo.`);
+    }
+    const hasAmbiguous = conflicts.some((c) => c.kind === "ambiguous");
+    const hasMissingData = conflicts.some((c) => c.kind === "missing_data");
+    const hasMultiTrip = conflicts.some(
+      (c) => c.links && c.links.length > 1 && c.links.some((l) => l.type === "trip"),
+    );
+
+    if (hasAmbiguous) {
+      list.push("Validar origens ambíguas antes de usar a projeção como definitiva.");
+    }
+    if (hasMissingData) {
+      list.push("Configurar estoque mínimo para produtos sem mínimo definido.");
+    }
+    if (hasMultiTrip) {
+      list.push("Revisar ordens com vínculo múltiplo de viagens.");
+    }
+    return list;
+  }, [result]);
+
+  if (actions.length === 0) return null;
+
+  return (
+    <Card className="border-chart-5/30 bg-chart-5/5" data-testid="recommended-actions">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="w-4 h-4 text-chart-5 flex-shrink-0" />
+          <p className="text-sm font-semibold text-chart-5">Ações recomendadas</p>
+        </div>
+        <ul className="space-y-1.5">
+          {actions.map((action, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+              <span className="flex-shrink-0 text-chart-5 font-bold leading-5">·</span>
+              {action}
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   );
@@ -767,6 +816,9 @@ export default function StockProjection() {
           {/* ── Diagnostic banner ── */}
           <DiagnosticBanner result={result} />
 
+          {/* ── Recommended actions ── */}
+          <RecommendedActions result={result} />
+
           {/* ── KPIs ── */}
           <div className="space-y-3">
             <div className="space-y-1.5">
@@ -915,7 +967,7 @@ export default function StockProjection() {
 
       {/* ── Advanced Filters Sheet ── */}
       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent className="w-full sm:max-w-md flex flex-col" data-testid="filters-sheet">
+        <SheetContent className="w-full sm:max-w-md flex flex-col projection-scroll" data-testid="filters-sheet">
           <SheetHeader className="flex-shrink-0">
             <SheetTitle className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4" /> Filtros Avançados
@@ -999,7 +1051,7 @@ export default function StockProjection() {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input placeholder="Buscar evento..." value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} className="pl-8 h-8 text-sm" data-testid="input-event-search" />
               </div>
-              <div className="border border-border/60 rounded-md p-1.5 max-h-40 overflow-y-auto space-y-0.5 projection-scroll" style={{ scrollbarWidth: "thin" }}>
+              <div className="border border-border/60 rounded-md p-1.5 max-h-52 overflow-y-auto space-y-0.5 projection-scroll" style={{ scrollbarWidth: "thin" }}>
                 {filteredEvents.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-3">{!events?.length ? "Nenhum evento disponível" : "Nenhum resultado"}</p>
                 ) : filteredEvents.map((event: any) => (
@@ -1030,7 +1082,7 @@ export default function StockProjection() {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input placeholder="Buscar produto..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="pl-8 h-8 text-sm" data-testid="input-product-search" />
               </div>
-              <div className="border border-border/60 rounded-md p-1.5 max-h-40 overflow-y-auto space-y-0.5 projection-scroll" style={{ scrollbarWidth: "thin" }}>
+              <div className="border border-border/60 rounded-md p-1.5 max-h-52 overflow-y-auto space-y-0.5 projection-scroll" style={{ scrollbarWidth: "thin" }}>
                 {filteredProducts.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-3">{!products?.length ? "Nenhum produto disponível" : "Nenhum resultado"}</p>
                 ) : filteredProducts.slice(0, 200).map((product: any) => (

@@ -48,6 +48,7 @@ export function ProjectionMatrix({
       let inbound = 0;
       let shortageCount = 0;
       let lowCount = 0;
+      let inEventCount = 0;
       for (const p of products) {
         const cell = p.days[idx];
         if (!cell) continue;
@@ -55,8 +56,9 @@ export function ProjectionMatrix({
         inbound += cell.inbound;
         if (cell.status === "shortage") shortageCount++;
         else if (cell.status === "low") lowCount++;
+        if (cell.inEvent > 0) inEventCount++;
       }
-      return { date: d, outbound, inbound, shortageCount, lowCount };
+      return { date: d, outbound, inbound, shortageCount, lowCount, inEventCount };
     });
   }, [rangeDays, products]);
 
@@ -114,23 +116,39 @@ export function ProjectionMatrix({
                     onClick={() => onSelectDay?.(dt.date)}
                     className={`flex flex-col items-center gap-0.5 flex-shrink-0 w-12 rounded-md px-1 py-1.5 text-center transition-colors hover-elevate ${
                       today
-                        ? "bg-primary/15"
-                        : weekend
-                          ? "bg-muted/40"
-                          : hasActivity
-                            ? "bg-muted/20"
-                            : ""
+                        ? "bg-primary/20 ring-1 ring-primary/30"
+                        : dt.shortageCount > 0
+                          ? "bg-destructive/15"
+                          : dt.lowCount > 0
+                            ? "bg-chart-5/10"
+                            : weekend
+                              ? "bg-muted/40"
+                              : hasActivity
+                                ? "bg-muted/20"
+                                : ""
                     }`}
-                    title={`${formatDay(dt.date)} — Saídas: ${dt.outbound} | Entradas: ${dt.inbound} | Faltas: ${dt.shortageCount}`}
+                    title={[
+                      formatDay(dt.date),
+                      dt.outbound > 0 ? `Saídas: ${dt.outbound}` : null,
+                      dt.inbound > 0 ? `Entradas: ${dt.inbound}` : null,
+                      dt.shortageCount > 0 ? `Em falta: ${dt.shortageCount} produto(s)` : null,
+                      dt.lowCount > 0 ? `Abaixo do mínimo: ${dt.lowCount} produto(s)` : null,
+                      dt.inEventCount > 0 ? `Em evento: ${dt.inEventCount} produto(s)` : null,
+                      !hasActivity && !hasRisk ? "Dia sem impacto" : null,
+                    ].filter(Boolean).join(" · ")}
                     data-testid={`timeline-day-${dt.date}`}
                   >
                     <span
                       className={`text-[10px] font-medium leading-none ${
                         today
                           ? "text-primary"
-                          : !hasActivity && !hasRisk
-                            ? "text-muted-foreground/35"
-                            : "text-muted-foreground"
+                          : dt.shortageCount > 0
+                            ? "text-destructive"
+                            : dt.lowCount > 0
+                              ? "text-chart-5"
+                              : !hasActivity && !hasRisk
+                                ? "text-muted-foreground/35"
+                                : "text-muted-foreground"
                       }`}
                     >
                       {weekdayShort(dt.date)}
@@ -139,38 +157,43 @@ export function ProjectionMatrix({
                       className={`text-xs font-semibold leading-none mt-0.5 ${
                         today
                           ? "text-primary"
-                          : !hasActivity && !hasRisk
-                            ? "text-muted-foreground/40"
-                            : "text-foreground"
+                          : dt.shortageCount > 0
+                            ? "text-destructive font-bold"
+                            : dt.lowCount > 0
+                              ? "text-chart-5"
+                              : !hasActivity && !hasRisk
+                                ? "text-muted-foreground/40"
+                                : "text-foreground"
                       }`}
                     >
                       {formatDay(dt.date)}
                     </span>
 
-                    {/* Risk indicator */}
+                    {/* Risk indicator — dot + count */}
                     {dt.shortageCount > 0 ? (
-                      <span className="mt-1 text-[10px] font-bold text-destructive leading-none">
-                        -{dt.shortageCount}
+                      <span className="inline-flex items-center gap-0.5 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
+                        <span className="text-[9px] font-bold text-destructive leading-none">{dt.shortageCount}</span>
                       </span>
                     ) : dt.lowCount > 0 ? (
-                      <span className="mt-1 text-[10px] font-bold text-chart-5 leading-none">
-                        ~{dt.lowCount}
+                      <span className="inline-flex items-center gap-0.5 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-chart-5 flex-shrink-0" />
+                        <span className="text-[9px] font-bold text-chart-5 leading-none">{dt.lowCount}</span>
                       </span>
+                    ) : dt.inEventCount > 0 ? (
+                      <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary/50" />
                     ) : (
-                      <span className="mt-1 h-3" />
+                      <span className="mt-1 h-3.5" />
                     )}
 
                     {/* Flow indicators */}
                     <span className="inline-flex items-center gap-0.5 mt-0.5">
-                      {dt.outbound > 0 && (
-                        <ArrowDown className="w-2.5 h-2.5 text-destructive" />
-                      )}
-                      {dt.inbound > 0 && (
-                        <ArrowUp className="w-2.5 h-2.5 text-chart-4" />
-                      )}
-                      {!hasActivity && !hasRisk && (
-                        <span className="w-2.5 h-2.5" />
-                      )}
+                      {dt.outbound > 0
+                        ? <ArrowDown className="w-2.5 h-2.5 text-destructive/70" />
+                        : <span className="w-2.5" />}
+                      {dt.inbound > 0
+                        ? <ArrowUp className="w-2.5 h-2.5 text-chart-4/70" />
+                        : <span className="w-2.5" />}
                     </span>
                   </button>
                 );
@@ -257,7 +280,7 @@ export function ProjectionMatrix({
                 {sortedProducts.map((p) => (
                   <tr
                     key={p.productId}
-                    className="border-b border-border/40 hover:bg-muted/20"
+                    className={`border-b border-border/40 hover:bg-muted/30 ${p.worstStatus === "shortage" ? "bg-destructive/5" : p.worstStatus === "low" ? "bg-chart-5/5" : ""}`}
                     data-testid={`row-matrix-${p.productId}`}
                   >
                     <td className="sticky left-0 z-10 bg-card px-3 py-2 align-top min-w-[210px]">
@@ -283,6 +306,7 @@ export function ProjectionMatrix({
                       {p.currentStock}
                     </td>
                     {p.days.map((c) => {
+                      const today = isToday(c.date);
                       const weekend = isWeekend(c.date);
                       const hasImpact = c.outbound !== 0 || c.inbound !== 0;
                       const showDeficit = c.available < 0;
@@ -296,7 +320,7 @@ export function ProjectionMatrix({
                             weekend && c.status === "ok" && !hasImpact
                               ? "bg-muted/20"
                               : ""
-                          } ${showDeficit ? "text-destructive font-semibold" : ""}`}
+                          } ${today ? "ring-1 ring-inset ring-primary/25" : ""} ${showDeficit ? "text-destructive font-bold" : ""}`}
                           data-testid={`cell-${p.productId}-${c.date}`}
                         >
                           <button
