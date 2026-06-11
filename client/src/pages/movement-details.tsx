@@ -349,7 +349,7 @@ export default function MovementDetails() {
           p.barcode?.toLowerCase().includes(query) ||
           p.name.toLowerCase().includes(query)
       )
-      .slice(0, 10); // Limit to 10 suggestions
+      .slice(0, 50);
   }, [searchQuery, products]);
 
   // Determine if the movement can be edited (items can be added/modified/deleted)

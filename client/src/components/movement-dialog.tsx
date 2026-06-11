@@ -189,7 +189,7 @@ function SearchableSelect({
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
-          <CommandList className="max-h-[260px]">
+          <CommandList className="max-h-[400px]">
             <CommandEmpty>
               <div className="flex flex-col items-center py-4 gap-2">
                 <AlertCircle className="h-5 w-5 text-muted-foreground" />
