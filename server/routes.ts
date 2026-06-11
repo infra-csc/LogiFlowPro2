@@ -85,7 +85,7 @@ async function initializeDefaultPermissions() {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 50 * 1024 * 1024, // 50MB limit (suporta vídeos)
   },
 });
 
@@ -2788,6 +2788,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch audit logs" });
     }
   });
+
+  // Movement Attachments — List
+  app.get("/api/movements/:id/attachments", requireAuth, async (req, res) => {
+    try {
+      const movement = await storage.getMovement(req.params.id);
+      if (!movement) return res.status(404).json({ error: "Movement not found" });
+      const attachments = await storage.getMovementAttachments(req.params.id);
+      res.json(attachments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch attachments" });
+    }
+  });
+
+  // Movement Attachments — Upload
+  app.post(
+    "/api/movements/:id/attachments",
+    requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]),
+    upload.single("file"),
+    async (req, res) => {
+      try {
+        const movement = await storage.getMovement(req.params.id);
+        if (!movement) return res.status(404).json({ error: "Movement not found" });
+
+        const file = req.file;
+        if (!file) return res.status(400).json({ error: "No file provided" });
+
+        const allowedMimeTypes = [
+          "image/png", "image/jpeg", "image/jpg", "image/webp",
+          "video/mp4", "video/quicktime", "video/webm",
+        ];
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+          return res.status(400).json({ error: "Unsupported file type. Allowed: PNG, JPG, WebP, MP4, MOV, WebM" });
+        }
+
+        const fileType = file.mimetype.startsWith("image/") ? "image" : "video";
+        const { category = "other", caption, productId, movementItemId } = req.body as Record<string, string>;
+        const isPostCompletion = movement.status === "completed";
+
+        const objectStorageService = new ObjectStorageService();
+        const fileUrl = await objectStorageService.uploadObjectEntity(file.buffer, file.originalname);
+
+        const attachment = await storage.createMovementAttachment({
+          movementId: req.params.id,
+          movementItemId: movementItemId || null,
+          productId: productId || null,
+          fileUrl,
+          fileName: file.originalname,
+          fileType,
+          mimeType: file.mimetype,
+          fileSize: file.size,
+          category,
+          caption: caption || null,
+          uploadedBy: req.user!.id,
+          uploadedByName: req.user!.name || req.user!.username,
+          isPostCompletion,
+        });
+
+        // Audit log
+        await storage.createMovementAuditLog({
+          movementId: req.params.id,
+          action: "evidence_added",
+          actorId: req.user?.id || null,
+          actorName: req.user?.name || "Sistema",
+          metadata: {
+            attachmentId: attachment.id,
+            fileType,
+            category,
+            fileName: file.originalname,
+            productId: productId || undefined,
+            isPostCompletion,
+          },
+        });
+
+        res.status(201).json(attachment);
+      } catch (error) {
+        console.error("Error uploading attachment:", error);
+        res.status(500).json({ error: "Failed to upload attachment" });
+      }
+    }
+  );
+
+  // Movement Attachments — Soft Delete
+  app.delete(
+    "/api/movements/:id/attachments/:attachmentId",
+    requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]),
+    async (req, res) => {
+      try {
+        const movement = await storage.getMovement(req.params.id);
+        if (!movement) return res.status(404).json({ error: "Movement not found" });
+        await storage.softDeleteMovementAttachment(req.params.attachmentId, req.params.id);
+        res.json({ ok: true });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to delete attachment" });
+      }
+    }
+  );
 
   // Update Movement Status
   app.patch("/api/movements/:id/status", requireAdmin(), async (req, res) => {

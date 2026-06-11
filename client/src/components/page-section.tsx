@@ -7,11 +7,12 @@ interface PageSectionProps {
   children: React.ReactNode;
   className?: string;
   contentClassName?: string;
+  id?: string;
 }
 
-export function PageSection({ title, description, children, className, contentClassName }: PageSectionProps) {
+export function PageSection({ title, description, children, className, contentClassName, id }: PageSectionProps) {
   return (
-    <div className={cn("space-y-4", className)}>
+    <div id={id} className={cn("space-y-4", className)}>
       {(title || description) && (
         <div>
           {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}

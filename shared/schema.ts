@@ -151,7 +151,8 @@ export const movementAuditActionEnum = pgEnum("movement_audit_action", [
   "movement_created",
   "movement_updated",
   "note_added",
-  "loading_order_linked"
+  "loading_order_linked",
+  "evidence_added"
 ]);
 
 // Product Status Control enums (prototype)
@@ -1766,3 +1767,33 @@ export type InsertProductStatus = z.infer<typeof insertProductStatusSchema>;
 
 export type Location = typeof locations.$inferSelect;
 export type InsertLocation = z.infer<typeof insertLocationSchema>;
+
+// ─── Movement Attachments ───────────────────────────────────────────────────
+
+export const movementAttachments = pgTable("movement_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  movementId: varchar("movement_id").notNull().references(() => movements.id, { onDelete: "cascade" }),
+  movementItemId: varchar("movement_item_id").references(() => movementItems.id),
+  productId: varchar("product_id").references(() => products.id),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSize: integer("file_size").notNull().default(0),
+  category: text("category").notNull().default("other"),
+  caption: text("caption"),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  uploadedByName: text("uploaded_by_name").notNull(),
+  isPostCompletion: boolean("is_post_completion").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const insertMovementAttachmentSchema = createInsertSchema(movementAttachments).omit({
+  id: true,
+  createdAt: true,
+  deletedAt: true,
+});
+
+export type MovementAttachment = typeof movementAttachments.$inferSelect;
+export type InsertMovementAttachment = z.infer<typeof insertMovementAttachmentSchema>;

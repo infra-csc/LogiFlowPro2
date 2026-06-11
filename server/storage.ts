@@ -46,6 +46,9 @@ import {
   movementTypesConfig,
   batchLots,
   inventorySnapshots,
+  movementAttachments,
+  type MovementAttachment,
+  type InsertMovementAttachment,
   type Event,
   type InsertEvent,
   type Kit,
@@ -269,6 +272,11 @@ export interface IStorage {
   // Movement Audit Logs
   createMovementAuditLog(log: InsertMovementAuditLog): Promise<MovementAuditLog>;
   getMovementAuditLogs(movementId: string): Promise<MovementAuditLog[]>;
+
+  // Movement Attachments
+  getMovementAttachments(movementId: string): Promise<MovementAttachment[]>;
+  createMovementAttachment(data: InsertMovementAttachment): Promise<MovementAttachment>;
+  softDeleteMovementAttachment(id: string, movementId: string): Promise<void>;
 
   // Inventory Movements
   getInventoryMovements(): Promise<InventoryMovement[]>;
@@ -1473,6 +1481,37 @@ export class DatabaseStorage implements IStorage {
       .from(movementAuditLogs)
       .where(eq(movementAuditLogs.movementId, movementId))
       .orderBy(desc(movementAuditLogs.occurredAt));
+  }
+
+  // Movement Attachments
+  async getMovementAttachments(movementId: string): Promise<MovementAttachment[]> {
+    return await db
+      .select()
+      .from(movementAttachments)
+      .where(
+        and(
+          eq(movementAttachments.movementId, movementId),
+          sql`${movementAttachments.deletedAt} IS NULL`
+        )
+      )
+      .orderBy(desc(movementAttachments.createdAt));
+  }
+
+  async createMovementAttachment(data: InsertMovementAttachment): Promise<MovementAttachment> {
+    const [created] = await db.insert(movementAttachments).values(data).returning();
+    return created;
+  }
+
+  async softDeleteMovementAttachment(id: string, movementId: string): Promise<void> {
+    await db
+      .update(movementAttachments)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(
+          eq(movementAttachments.id, id),
+          eq(movementAttachments.movementId, movementId)
+        )
+      );
   }
 
   // Inventory Movements

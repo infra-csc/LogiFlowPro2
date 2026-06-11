@@ -49,6 +49,13 @@ import {
   MapPin,
   Tag,
   Layers,
+  Camera,
+  ImageIcon,
+  Film,
+  Upload,
+  Trash2,
+  ZoomIn,
+  Play,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -60,7 +67,8 @@ import {
 import { useSidebar } from "@/components/ui/sidebar";
 import { format } from "date-fns";
 import { PageHeader, PageLoading, PageSection, StatusBadge } from "@/components";
-import type { Movement, MovementItem, Product, LoadingOrderItem, MovementTypeConfig, MovementAuditLog } from "@shared/schema";
+import { Textarea } from "@/components/ui/textarea";
+import type { Movement, MovementItem, Product, LoadingOrderItem, MovementTypeConfig, MovementAuditLog, MovementAttachment } from "@shared/schema";
 
 type MovementWithDetails = Movement & {
   loadingOrder?: {
@@ -130,6 +138,18 @@ export default function MovementDetails() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Evidence state
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
+  const [uploadCategory, setUploadCategory] = useState("other");
+  const [uploadCaption, setUploadCaption] = useState("");
+  const [uploadProductId, setUploadProductId] = useState("");
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [evidenceCategoryFilter, setEvidenceCategoryFilter] = useState("all");
 
   // Fetch all suppliers
   const { data: suppliers = [] } = useQuery<Array<{id: string, name: string}>>({
@@ -165,6 +185,16 @@ export default function MovementDetails() {
     queryFn: async () => {
       const res = await fetch(`/api/movements/${id}/audit-logs`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch audit logs");
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  const { data: attachments = [] } = useQuery<MovementAttachment[]>({
+    queryKey: ["/api/movements", id, "attachments"],
+    queryFn: async () => {
+      const res = await fetch(`/api/movements/${id}/attachments`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch attachments");
       return res.json();
     },
     enabled: !!id,
@@ -354,6 +384,101 @@ export default function MovementDetails() {
 
   // Determine if the movement can be edited (items can be added/modified/deleted)
   const isEditable = movement?.status === "in_progress";
+
+  // Evidence computed values
+  const photoCount = attachments.filter(a => a.fileType === "image").length;
+  const videoCount = attachments.filter(a => a.fileType === "video").length;
+
+  const filteredAttachments = useMemo(() => {
+    if (evidenceCategoryFilter === "all") return attachments;
+    if (evidenceCategoryFilter === "images") return attachments.filter(a => a.fileType === "image");
+    if (evidenceCategoryFilter === "videos") return attachments.filter(a => a.fileType === "video");
+    return attachments.filter(a => a.category === evidenceCategoryFilter);
+  }, [attachments, evidenceCategoryFilter]);
+
+  // Map of productId → evidence count
+  const evidenceByProduct = useMemo(() => {
+    const map = new Map<string, number>();
+    attachments.forEach(a => {
+      if (a.productId) map.set(a.productId, (map.get(a.productId) || 0) + 1);
+    });
+    return map;
+  }, [attachments]);
+
+  // Evidence handlers
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadFile(file);
+    const url = URL.createObjectURL(file);
+    setUploadPreviewUrl(url);
+  }
+
+  function handleUploadSubmit() {
+    if (!uploadFile) return;
+    const formData = new FormData();
+    formData.append("file", uploadFile);
+    formData.append("category", uploadCategory);
+    if (uploadCaption.trim()) formData.append("caption", uploadCaption);
+    if (uploadProductId) formData.append("productId", uploadProductId);
+    uploadAttachmentMutation.mutate(formData);
+  }
+
+  function openUploadDialog(productId?: string) {
+    setUploadFile(null);
+    setUploadPreviewUrl(null);
+    setUploadCategory("other");
+    setUploadCaption("");
+    setUploadProductId(productId || "");
+    setShowUploadDialog(true);
+  }
+
+  const uploadAttachmentMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const res = await fetch(`/api/movements/${id}/attachments`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as any).error || "Falha ao enviar arquivo");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
+      setShowUploadDialog(false);
+      setUploadFile(null);
+      setUploadPreviewUrl(null);
+      setUploadCategory("other");
+      setUploadCaption("");
+      setUploadProductId("");
+      toast({ title: "Evidência enviada", description: "Arquivo anexado com sucesso." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async (attachmentId: string) => {
+      const res = await fetch(`/api/movements/${id}/attachments/${attachmentId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Falha ao remover evidência");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "attachments"] });
+      toast({ title: "Evidência removida" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
@@ -784,7 +909,7 @@ export default function MovementDetails() {
       {/* Resumo Operacional */}
       {!focusMode && (
         <PageSection>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
             <Card className="border-border/60">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -846,6 +971,38 @@ export default function MovementDetails() {
                 </div>
               </CardContent>
             </Card>
+            <button
+              className="text-left border rounded-lg border-border/60 hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => {
+                const el = document.getElementById("section-evidencias");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }}
+              data-testid="card-evidence-count"
+            >
+              <div className="p-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Camera className="h-4 w-4" />
+                  Evidências
+                </div>
+                <div className="mt-1 text-xl font-semibold">
+                  {photoCount + videoCount}
+                </div>
+                {(photoCount > 0 || videoCount > 0) && (
+                  <div className="flex gap-2 mt-0.5">
+                    {photoCount > 0 && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                        <ImageIcon className="h-3 w-3" />{photoCount}
+                      </span>
+                    )}
+                    {videoCount > 0 && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                        <Film className="h-3 w-3" />{videoCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </button>
           </div>
           {/* Metadados */}
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -1334,9 +1491,27 @@ export default function MovementDetails() {
                             )}
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-base px-3 py-0.5 flex-shrink-0">
-                          {item.totalQuantity}x
-                        </Badge>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {evidenceByProduct.get(item.productId) && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs cursor-pointer"
+                              onClick={() => {
+                                setUploadProductId(item.productId);
+                                const el = document.getElementById("section-evidencias");
+                                if (el) el.scrollIntoView({ behavior: "smooth" });
+                              }}
+                              title="Ver evidências deste produto"
+                              data-testid={`badge-evidence-${item.productId}`}
+                            >
+                              <Camera className="h-3 w-3 mr-1" />
+                              {evidenceByProduct.get(item.productId)}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-base px-3 py-0.5">
+                            {item.totalQuantity}x
+                          </Badge>
+                        </div>
                         {movement?.status === "in_progress" && userCanManageMovementItems(user) && (
                           <div className="flex items-center gap-1">
                             <Button
@@ -1594,6 +1769,160 @@ export default function MovementDetails() {
         </DialogContent>
       </Dialog>
 
+      {/* Evidências Section */}
+      {!focusMode && (
+        <PageSection
+          id="section-evidencias"
+          title="Evidências"
+          description="Fotos e vídeos vinculados à movimentação"
+        >
+          <div className="space-y-3">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1.5">
+                {(["all", "images", "videos", "damage", "loss", "before", "after", "other"] as const).map((f) => {
+                  const labels: Record<string, string> = {
+                    all: "Todos", images: "Fotos", videos: "Vídeos",
+                    damage: "Avaria", loss: "Perda", before: "Antes", after: "Depois", other: "Outros",
+                  };
+                  const counts: Record<string, number> = {
+                    all: attachments.length,
+                    images: attachments.filter(a => a.fileType === "image").length,
+                    videos: attachments.filter(a => a.fileType === "video").length,
+                    damage: attachments.filter(a => a.category === "damage").length,
+                    loss: attachments.filter(a => a.category === "loss").length,
+                    before: attachments.filter(a => a.category === "before").length,
+                    after: attachments.filter(a => a.category === "after").length,
+                    other: attachments.filter(a => a.category === "other").length,
+                  };
+                  if (f !== "all" && counts[f] === 0) return null;
+                  return (
+                    <Button
+                      key={f}
+                      variant={evidenceCategoryFilter === f ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => setEvidenceCategoryFilter(f)}
+                      data-testid={`filter-evidence-${f}`}
+                    >
+                      {labels[f]}
+                      {counts[f] > 0 && (
+                        <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px]">
+                          {counts[f]}
+                        </Badge>
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
+              {userCanManageMovementItems(user) && (
+                <Button
+                  size="sm"
+                  onClick={() => openUploadDialog()}
+                  data-testid="button-upload-evidence"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Adicionar evidência
+                </Button>
+              )}
+            </div>
+
+            {/* Gallery grid */}
+            {filteredAttachments.length === 0 ? (
+              <Card className="border-border/60">
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  <Camera className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Nenhuma evidência registrada</p>
+                  <p className="text-sm mt-1">
+                    {userCanManageMovementItems(user)
+                      ? "Clique em 'Adicionar evidência' para anexar fotos ou vídeos."
+                      : "Evidências serão exibidas aqui quando forem adicionadas."}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {filteredAttachments.map((att) => {
+                  const linkedProduct = att.productId ? products.find(p => p.id === att.productId) : null;
+                  const categoryLabels: Record<string, string> = {
+                    damage: "Avaria", loss: "Perda", before: "Antes", after: "Depois", other: "Outro",
+                  };
+                  return (
+                    <div
+                      key={att.id}
+                      className="group border border-border/60 rounded-lg overflow-hidden hover-elevate"
+                      data-testid={`evidence-card-${att.id}`}
+                    >
+                      {/* Thumbnail / preview */}
+                      <div className="relative aspect-video bg-muted cursor-pointer" onClick={() => {
+                        if (att.fileType === "image") setLightboxUrl(att.fileUrl);
+                        else setVideoUrl(att.fileUrl);
+                      }}>
+                        {att.fileType === "image" ? (
+                          <img
+                            src={att.fileUrl}
+                            alt={att.caption || att.fileName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-muted">
+                            <Film className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          {att.fileType === "image" ? (
+                            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          ) : (
+                            <Play className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </div>
+                        {att.isPostCompletion && (
+                          <div className="absolute top-1 left-1">
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+                              Pós-conclusão
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                      {/* Metadata */}
+                      <div className="p-2 space-y-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            {categoryLabels[att.category] || att.category}
+                          </Badge>
+                          {userCanManageMovementItems(user) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteAttachmentMutation.mutate(att.id)}
+                              disabled={deleteAttachmentMutation.isPending}
+                              data-testid={`button-delete-evidence-${att.id}`}
+                              title="Remover evidência"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        {att.caption && (
+                          <p className="text-xs text-muted-foreground truncate" title={att.caption}>{att.caption}</p>
+                        )}
+                        {linkedProduct && (
+                          <p className="text-xs font-medium truncate" title={linkedProduct.name}>
+                            {linkedProduct.name}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">{att.uploadedByName}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </PageSection>
+      )}
+
       {/* Action History Section */}
       {!focusMode && auditLogs.length > 0 && (
         <PageSection title="Histórico" description="Registro de ações na movimentação">
@@ -1601,13 +1930,14 @@ export default function MovementDetails() {
             <CardContent className="p-4">
               <ScrollArea className="h-[320px] pr-4" style={{ scrollbarWidth: 'thin' }}>
                 <div className="space-y-2">
-                  {auditLogs.map((log, index) => {
+                  {auditLogs.map((log) => {
                     const getActionIcon = () => {
                       switch (log.action) {
                         case "item_added": return <Plus className="h-3.5 w-3.5 text-emerald-500" />;
                         case "item_removed": return <Minus className="h-3.5 w-3.5 text-rose-500" />;
                         case "status_changed": return <FileText className="h-3.5 w-3.5 text-sky-500" />;
                         case "item_quantity_changed": return <FileText className="h-3.5 w-3.5 text-sky-500" />;
+                        case "evidence_added": return <Camera className="h-3.5 w-3.5 text-violet-500" />;
                         default: return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
                       }
                     };
@@ -1624,6 +1954,11 @@ export default function MovementDetails() {
                           return `Status: ${getStatusLabel(context?.previousStatus)} → ${getStatusLabel(context?.newStatus)}`;
                         case "item_quantity_changed":
                           return `${metadata?.productName}: ${metadata?.previousQuantity} → ${metadata?.newQuantity}`;
+                        case "evidence_added": {
+                          const typeLabel = metadata?.fileType === "image" ? "Foto" : "Vídeo";
+                          const post = metadata?.isPostCompletion ? " (pós-conclusão)" : "";
+                          return `${typeLabel} anexada${post}: ${metadata?.fileName || ""}`;
+                        }
                         default:
                           return log.action;
                       }
@@ -1657,6 +1992,201 @@ export default function MovementDetails() {
           </Card>
         </PageSection>
       )}
+
+      {/* Upload Evidence Dialog */}
+      <Dialog open={showUploadDialog} onOpenChange={(open) => {
+        if (!open) {
+          setUploadFile(null);
+          setUploadPreviewUrl(null);
+          setUploadCategory("other");
+          setUploadCaption("");
+          setUploadProductId("");
+        }
+        setShowUploadDialog(open);
+      }}>
+        <DialogContent className="max-w-lg" data-testid="dialog-upload-evidence">
+          <DialogHeader>
+            <DialogTitle>Adicionar Evidência</DialogTitle>
+            <DialogDescription>
+              Anexe uma foto ou vídeo à movimentação
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* File picker */}
+            <div>
+              <Label className="mb-2 block">Arquivo</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp,video/mp4,video/quicktime,video/webm"
+                className="hidden"
+                onChange={handleFileSelected}
+                data-testid="input-file-evidence"
+              />
+              {!uploadFile ? (
+                <button
+                  type="button"
+                  className="w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover-elevate cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="button-pick-file"
+                >
+                  <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm font-medium">Clique para selecionar</p>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WebP, MP4, MOV, WebM</p>
+                </button>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  {uploadFile.type.startsWith("image/") && uploadPreviewUrl ? (
+                    <img src={uploadPreviewUrl} alt="Preview" className="w-full max-h-48 object-contain bg-muted" />
+                  ) : (
+                    <div className="p-4 bg-muted flex items-center gap-3">
+                      <Film className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{uploadFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(uploadFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-2 border-t border-border/40">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground"
+                      onClick={() => {
+                        setUploadFile(null);
+                        setUploadPreviewUrl(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Trocar arquivo
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Category */}
+            <div>
+              <Label htmlFor="upload-category" className="mb-2 block">Categoria</Label>
+              <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                <SelectTrigger id="upload-category" data-testid="select-evidence-category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="other">Outro</SelectItem>
+                  <SelectItem value="before">Antes da movimentação</SelectItem>
+                  <SelectItem value="after">Após a movimentação</SelectItem>
+                  <SelectItem value="damage">Avaria</SelectItem>
+                  <SelectItem value="loss">Perda / Divergência</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Product link (optional) */}
+            {consolidatedLoadedItems.length > 0 && (
+              <div>
+                <Label htmlFor="upload-product" className="mb-2 block">
+                  Produto (opcional)
+                </Label>
+                <Select value={uploadProductId || "none"} onValueChange={v => setUploadProductId(v === "none" ? "" : v)}>
+                  <SelectTrigger id="upload-product" data-testid="select-evidence-product">
+                    <SelectValue placeholder="Vincular a um produto..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum — geral</SelectItem>
+                    {consolidatedLoadedItems.map(item => {
+                      const p = products.find(x => x.id === item.productId);
+                      return p ? (
+                        <SelectItem key={item.productId} value={item.productId}>
+                          {p.name}
+                        </SelectItem>
+                      ) : null;
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Caption */}
+            <div>
+              <Label htmlFor="upload-caption" className="mb-2 block">Descrição (opcional)</Label>
+              <Textarea
+                id="upload-caption"
+                placeholder="Descreva o que a imagem mostra..."
+                value={uploadCaption}
+                onChange={(e) => setUploadCaption(e.target.value)}
+                rows={2}
+                className="resize-none"
+                data-testid="input-evidence-caption"
+              />
+            </div>
+
+            {movement?.status === "completed" && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Esta movimentação está finalizada. A evidência será marcada como "pós-conclusão".
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowUploadDialog(false)}
+              data-testid="button-cancel-upload-evidence"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={!uploadFile || uploadAttachmentMutation.isPending}
+              data-testid="button-confirm-upload-evidence"
+            >
+              {uploadAttachmentMutation.isPending ? "Enviando..." : "Enviar evidência"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lightbox Dialog */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
+        <DialogContent className="max-w-4xl p-2" data-testid="dialog-lightbox">
+          <DialogHeader className="px-2 pt-2 pb-0">
+            <DialogTitle className="sr-only">Visualização de imagem</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center bg-muted/50 rounded-md overflow-hidden">
+            {lightboxUrl && (
+              <img
+                src={lightboxUrl}
+                alt="Evidência"
+                className="max-h-[80vh] max-w-full object-contain"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Video Player Dialog */}
+      <Dialog open={!!videoUrl} onOpenChange={(open) => { if (!open) setVideoUrl(null); }}>
+        <DialogContent className="max-w-3xl p-2" data-testid="dialog-video-player">
+          <DialogHeader className="px-2 pt-2 pb-0">
+            <DialogTitle className="sr-only">Reprodução de vídeo</DialogTitle>
+          </DialogHeader>
+          <div className="bg-black rounded-md overflow-hidden">
+            {videoUrl && (
+              <video
+                src={videoUrl}
+                controls
+                autoPlay
+                className="w-full max-h-[75vh]"
+                data-testid="video-evidence-player"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

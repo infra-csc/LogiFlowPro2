@@ -1,0 +1,348 @@
+Quero refinar completamente a tela de detalhe da movimentação no app EventFlow, deixando ela muito mais completa, operacional e visualmente clara.
+
+Objetivo da tela:
+Essa tela é usada durante o carregamento de uma movimentação. Ela precisa ser prática para operação, boa para conferência, boa para auditoria e fácil de entender rapidamente. Hoje ela está funcional, mas ainda está simples e com muito espaço vazio. Quero uma tela mais robusta, mais útil e com aparência mais profissional.
+
+Diretrizes gerais:
+- Manter o visual dark mode do sistema.
+- Seguir o mesmo padrão visual das outras telas mais recentes do app.
+- Melhorar densidade de informação sem poluir.
+- Priorizar clareza operacional.
+- Pensar em uso real durante carregamento, inclusive com conferência rápida.
+
+------------------------------------------------------------------
+1. CABEÇALHO DA MOVIMENTAÇÃO
+------------------------------------------------------------------
+
+No topo da tela, mostrar um cabeçalho mais completo com:
+
+- Nome da movimentação
+- Código da movimentação
+- Status atual
+- Tipo da movimentação
+- Evento relacionado
+- Ordem relacionada
+- Veículo
+- Doca
+- Responsável atual, se houver
+- Data/hora de criação
+- Data/hora de início
+- Data/hora de pausa, quando existir
+- Data/hora de finalização, quando existir
+
+Ações no topo:
+- Editar status
+- Pausar
+- Retomar
+- Finalizar
+- Voltar
+- Expandir/abrir em tela cheia, se fizer sentido
+
+Regras:
+- Se a movimentação estiver concluída, bloquear alterações operacionais, mas manter consulta e anexos de evidência habilitados.
+- Se estiver pausada, deixar isso muito claro visualmente.
+
+------------------------------------------------------------------
+2. CARDS DE RESUMO
+------------------------------------------------------------------
+
+Manter cards de resumo, mas deixar mais completos e claros:
+
+Cards principais:
+- Status
+- Esperados
+- Carregados
+- Pendentes
+- Excedentes
+- Progresso (%)
+
+Adicionar também:
+- Itens com divergência
+- Total de evidências (fotos e vídeos)
+- Última atualização
+- Responsável da última ação
+
+Melhorias visuais:
+- Cards mais consistentes em altura
+- Números com maior destaque
+- Subtexto explicando rapidamente o indicador
+- Cores bem definidas:
+  - Verde = concluído / ok
+  - Amarelo = atenção
+  - Vermelho = divergência / pendente importante
+  - Azul apenas para ações e destaque neutro, não como indicador de status
+
+------------------------------------------------------------------
+3. BLOCO DE ALERTAS OPERACIONAIS
+------------------------------------------------------------------
+
+Abaixo dos cards, criar uma área de alertas operacionais quando necessário.
+
+Exibir mensagens como:
+- Existem itens pendentes
+- Existem itens excedidos
+- Há evidências adicionadas após a finalização
+- Movimentação pausada
+- Divergência entre esperado e carregado
+- Nenhuma evidência anexada ainda
+
+Esses alertas devem ser bem visuais, mas sem exagero.
+
+------------------------------------------------------------------
+4. SCANNER / REGISTRO DE PRODUTOS
+------------------------------------------------------------------
+
+A área “Scanner de Produtos” precisa ser mais útil.
+
+Melhorar esse bloco com:
+- Campo principal para digitar SKU, código de barras ou nome
+- Botão de busca
+- Indicação visual de auto-focus ativado
+- Atalho para leitor de código de barras, se existir
+- Feedback claro ao bipar / localizar produto
+- Mostrar resultado encontrado de forma imediata
+- Permitir ações rápidas:
+  - Adicionar +1
+  - Adicionar quantidade manual
+  - Marcar como completo
+  - Registrar excedente, se carregar além do esperado
+
+Se o produto não existir na ordem:
+- Exibir aviso claro
+- Permitir registrar como item excedente apenas se o perfil tiver permissão
+
+------------------------------------------------------------------
+5. SEÇÃO DE ITENS — MUITO MAIS COMPLETA
+------------------------------------------------------------------
+
+Quero melhorar bastante a área de itens.
+
+Hoje há dois blocos:
+- Itens da Ordem
+- Itens Carregados
+
+Quero manter essa lógica, mas mais organizada.
+
+Estrutura ideal:
+Lado esquerdo:
+- Itens esperados / itens da ordem
+
+Lado direito:
+- Itens carregados / conferidos
+
+Cada lado com:
+- Busca própria
+- Filtros por status
+- Contadores no cabeçalho
+
+Filtros dos itens esperados:
+- Todos
+- Pendentes
+- Completos
+- Excedidos
+- Divergência
+- Sem movimentação
+
+Filtros dos itens carregados:
+- Todos
+- Últimos carregados
+- Excedentes
+- Com evidência
+- Com observação
+
+Cada item deve aparecer como card ou linha expandível com:
+- Nome do produto
+- Código / SKU
+- Quantidade esperada
+- Quantidade carregada
+- Quantidade pendente
+- Percentual de progresso
+- Barra de progresso
+- Status visual
+- Observação, se existir
+- Se há foto/vídeo vinculado
+- Usuário da última alteração
+- Horário da última alteração
+
+Ações por item:
+- Adicionar +1
+- Remover -1
+- Editar quantidade manualmente
+- Abrir detalhes
+- Adicionar observação
+- Anexar foto/vídeo
+- Marcar divergência
+- Excluir lançamento, se permitido
+
+Se o item estiver completo:
+- Mostrar badge “Completo”
+
+Se houver diferença:
+- Mostrar badge “Divergência”
+
+Se estiver acima do esperado:
+- Mostrar badge “Excedente”
+
+------------------------------------------------------------------
+6. DETALHE DO ITEM
+------------------------------------------------------------------
+
+Ao clicar em um item, abrir um painel lateral ou modal com detalhes do item.
+
+Esse detalhe deve mostrar:
+- Nome
+- SKU/código
+- Quantidade esperada
+- Quantidade carregada
+- Quantidade pendente
+- Quantidade excedente
+- Histórico do item
+- Observações
+- Evidências anexadas
+- Quem lançou cada movimentação
+- Data/hora de cada ação
+
+Ações dentro do detalhe:
+- Ajustar quantidade
+- Adicionar observação
+- Anexar evidências
+- Ver histórico completo
+
+------------------------------------------------------------------
+7. EVIDÊNCIAS — FOTO E VÍDEO
+------------------------------------------------------------------
+
+Adicionar uma seção/aba chamada “Evidências” dentro da movimentação.
+
+As evidências podem ser vinculadas:
+1. À movimentação inteira
+2. A um item específico
+3. A uma divergência
+
+Permitir anexar:
+- Fotos: PNG, JPG, JPEG, WebP
+- Vídeos: MP4, MOV, WebM
+
+Campos da evidência:
+- Arquivo
+- Tipo automático: foto ou vídeo
+- Categoria
+- Produto relacionado, opcional
+- Observação
+- Usuário que anexou
+- Data/hora do envio
+
+Categorias sugeridas:
+- Antes do carregamento
+- Durante o carregamento
+- Depois do carregamento
+- Veículo
+- Doca
+- Produto específico
+- Divergência
+- Documento/canhoto
+- Outro
+
+Regras:
+- Permitir múltiplos anexos
+- Mostrar preview
+- Fotos com visualização ampliada
+- Vídeos com player
+- Mostrar contador de fotos e vídeos no resumo
+- Registrar anexos no histórico
+- Mesmo com movimentação concluída, permitir anexar evidência pós-carregamento
+- Quando anexado após conclusão, registrar isso claramente no histórico
+
+Na tela principal, mostrar um card/resumo:
+- Evidências: X fotos / Y vídeos
+
+Também mostrar um pequeno ícone nos itens que já possuem evidência vinculada.
+
+------------------------------------------------------------------
+8. HISTÓRICO DA MOVIMENTAÇÃO
+------------------------------------------------------------------
+
+A seção de histórico precisa ficar melhor.
+
+Hoje está simples. Quero transformar em uma timeline mais clara.
+
+Exibir eventos como:
+- Movimentação criada
+- Status alterado
+- Item adicionado
+- Item removido
+- Quantidade ajustada
+- Pausa iniciada
+- Retomada
+- Finalização
+- Foto anexada
+- Vídeo anexado
+- Observação adicionada
+- Divergência registrada
+
+Cada linha do histórico deve mostrar:
+- Ícone do tipo de ação
+- Descrição clara
+- Usuário
+- Data/hora
+- Item relacionado, se houver
+- Quantidade envolvida, se houver
+
+Permitir filtro por tipo de histórico:
+- Todos
+- Operações
+- Status
+- Itens
+- Evidências
+- Observações
+
+------------------------------------------------------------------
+9. REGRAS OPERACIONAIS IMPORTANTES
+------------------------------------------------------------------
+
+Aplicar estas regras:
+
+- Não permitir quantidade carregada negativa
+- Se ultrapassar o esperado, registrar como excedente
+- Se estiver concluída, não permitir edição operacional, apenas consulta e evidências
+- Se houver divergência, destacar isso visualmente
+- Se finalizar sem evidência, permitir, mas exibir aviso de confirmação
+- Se houver item pendente, confirmar antes de finalizar
+- Se houver excedente, confirmar antes de finalizar
+- Se houver alterações após conclusão, registrar isso no histórico
+
+------------------------------------------------------------------
+10. MELHORIAS DE UX / VISUAL
+------------------------------------------------------------------
+
+Quero melhorias visuais fortes nessa tela:
+
+- Reduzir sensação de “vazio”
+- Melhor distribuir os blocos
+- Melhor aproveitamento horizontal
+- Cards e painéis mais bem alinhados
+- Tabelas/listas mais legíveis
+- Mais contraste entre cabeçalho, filtros e conteúdo
+- Tornar a leitura mais rápida para operação
+- Melhor hierarquia visual entre resumo, ação, itens e histórico
+- Botões de ação mais claros
+- Deixar visualmente óbvio o que é esperado, carregado, pendente e excedente
+
+Importante:
+- A tela precisa parecer mais “produto pronto”, menos “CRUD simples”
+- Precisa estar mais próxima de uma tela operacional profissional
+
+------------------------------------------------------------------
+11. O QUE ESPERO COMO ENTREGA
+------------------------------------------------------------------
+
+Quero que você:
+- Reestruture essa tela inteira mantendo os dados atuais
+- Melhore layout, organização e hierarquia
+- Adicione a seção de evidências com foto e vídeo
+- Melhore a área de scanner
+- Melhore a listagem dos itens
+- Melhore o histórico
+- Deixe a tela mais completa, bonita e funcional
+- Preserve o padrão visual dark do EventFlow
+- Entregue algo com aparência 10/10, pronto para uso real
