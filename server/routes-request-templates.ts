@@ -57,7 +57,7 @@ export function registerRequestTemplateRoutes(app: Express) {
   });
 
   // Create template (admin only)
-  app.post("/api/request-templates", requireAdmin, async (req: Request, res: Response) => {
+  app.post("/api/request-templates", requireAdmin(), async (req: Request, res: Response) => {
     try {
       const data = insertRequestAreaTemplateSchema.parse({
         ...req.body,
@@ -71,7 +71,7 @@ export function registerRequestTemplateRoutes(app: Express) {
   });
 
   // Update template (admin only)
-  app.patch("/api/request-templates/:id", requireAdmin, async (req: Request, res: Response) => {
+  app.patch("/api/request-templates/:id", requireAdmin(), async (req: Request, res: Response) => {
     try {
       const [existing] = await db
         .select()
@@ -92,7 +92,7 @@ export function registerRequestTemplateRoutes(app: Express) {
   });
 
   // Delete template (admin only)
-  app.delete("/api/request-templates/:id", requireAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/request-templates/:id", requireAdmin(), async (req: Request, res: Response) => {
     try {
       const [existing] = await db
         .select()
@@ -108,7 +108,7 @@ export function registerRequestTemplateRoutes(app: Express) {
   });
 
   // Add item to template (admin only)
-  app.post("/api/request-templates/:id/items", requireAdmin, async (req: Request, res: Response) => {
+  app.post("/api/request-templates/:id/items", requireAdmin(), async (req: Request, res: Response) => {
     try {
       const [template] = await db
         .select()
@@ -144,7 +144,7 @@ export function registerRequestTemplateRoutes(app: Express) {
   });
 
   // Update item default quantity (admin only)
-  app.patch("/api/request-templates/:id/items/:itemId", requireAdmin, async (req: Request, res: Response) => {
+  app.patch("/api/request-templates/:id/items/:itemId", requireAdmin(), async (req: Request, res: Response) => {
     try {
       const { defaultQuantity } = req.body;
       const [updated] = await db
@@ -160,7 +160,7 @@ export function registerRequestTemplateRoutes(app: Express) {
   });
 
   // Delete item from template (admin only)
-  app.delete("/api/request-templates/:id/items/:itemId", requireAdmin, async (req: Request, res: Response) => {
+  app.delete("/api/request-templates/:id/items/:itemId", requireAdmin(), async (req: Request, res: Response) => {
     try {
       await db
         .delete(requestAreaTemplateItems)
