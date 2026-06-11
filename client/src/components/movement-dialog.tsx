@@ -46,7 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { userCanCreateMovement, userCanEditMovement } from "@/lib/authz";
-import type { LoadingOrder, Dock, Event, Trip, Movement, MovementTypeConfig, MaterialRequest } from "@shared/schema";
+import type { LoadingOrder, Dock, Event, Trip, Movement, MovementTypeConfig, MaterialRequest, Product } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -64,6 +64,8 @@ import {
   Tag,
   FileText,
   Info,
+  Minus,
+  Plus,
 } from "lucide-react";
 
 const formSchema = z.object({
@@ -74,7 +76,11 @@ const formSchema = z.object({
   loadingOrderId: z.string().optional(),
   requestId: z.string().optional(),
   vehiclePlate: z.string().optional(),
-  dockId: z.string().min(1, "Doca é obrigatória"),
+  dockId: z.string().optional(),
+  productItems: z.array(z.object({
+    productId: z.string(),
+    quantity: z.number().int().positive(),
+  })).optional().default([]),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -252,6 +258,10 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     queryKey: ["/api/movement-types-config"],
   });
 
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+  });
+
   const activeMovementTypes = useMemo(() => movementTypes.filter((mt) => mt.active), [movementTypes]);
 
   const form = useForm<FormData>({
@@ -264,7 +274,8 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
       loadingOrderId: undefined,
       requestId: undefined,
       vehiclePlate: undefined,
-      dockId: "",
+      dockId: undefined,
+      productItems: [],
     },
   });
 
@@ -281,7 +292,8 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
         loadingOrderId: movement.loadingOrderId ?? undefined,
         requestId: movement.requestId ?? undefined,
         vehiclePlate: movement.vehiclePlate ?? undefined,
-        dockId: movement.dockId || "",
+        dockId: movement.dockId ?? undefined,
+        productItems: [],
       });
       setLinkType(movement.requestId ? "request" : "order");
     }
@@ -298,7 +310,8 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
         loadingOrderId: undefined,
         requestId: undefined,
         vehiclePlate: undefined,
-        dockId: "",
+        dockId: undefined,
+        productItems: [],
       });
       setLinkType("order");
     }
@@ -329,7 +342,8 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
         loadingOrderId: undefined,
         requestId: undefined,
         vehiclePlate: undefined,
-        dockId: "",
+        dockId: undefined,
+        productItems: [],
       });
       setLinkType("order");
     },
@@ -376,6 +390,8 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
       loadingOrderId: linkType === "order" ? (data.loadingOrderId || null) : null,
       requestId: linkType === "request" ? (data.requestId || null) : null,
       vehiclePlate: data.vehiclePlate || undefined,
+      dockId: data.dockId || undefined,
+      productItems: isEditMode ? [] : (data.productItems || []),
     };
 
     if (isEditMode) {
@@ -665,12 +681,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                               })}
                             </div>
                           )}
-                          {selectedEventIds.length === 0 ? (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Info className="h-3 w-3" />
-                              Selecione um evento para ver planos de viagens disponíveis
-                            </p>
-                          ) : unselectedTrips.length > 0 ? (
+                          {unselectedTrips.length > 0 ? (
                             <FormControl>
                               <SearchableSelect
                                 value=""
@@ -697,7 +708,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                             </FormControl>
                           ) : selectedTripsList.length === 0 ? (
                             <p className="text-xs text-muted-foreground">
-                              Nenhum plano de viagens disponível para os eventos selecionados
+                              Nenhum plano de viagens disponível
                             </p>
                           ) : (
                             <p className="text-xs text-muted-foreground">
@@ -898,7 +909,142 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                 )}
               </div>
 
-              {/* Section 3: Operação */}
+              {/* Section 3: Itens (only on create) */}
+              {!isEditMode && (
+                <>
+                  <SectionTitle icon={Package} title="Itens" />
+                  <FormField
+                    control={form.control}
+                    name="productItems"
+                    render={({ field }) => {
+                      const items: { productId: string; quantity: number }[] = field.value || [];
+                      const usedIds = items.map((i) => i.productId);
+                      const productOptions = products
+                        .filter((p) => !usedIds.includes(p.id))
+                        .map((p) => ({
+                          value: p.id,
+                          label: `${p.name} (${p.sku})`,
+                          searchText: `${p.name} ${p.sku}`.toLowerCase(),
+                        }));
+
+                      return (
+                        <FormItem>
+                          <div className="space-y-2">
+                            {items.length > 0 && (
+                              <div className="space-y-1">
+                                {items.map((item, idx) => {
+                                  const prod = products.find((p) => p.id === item.productId);
+                                  return (
+                                    <div
+                                      key={item.productId}
+                                      className="flex items-center gap-2 rounded-md border border-border/60 bg-card px-3 py-2"
+                                    >
+                                      <span className="flex-1 text-sm font-medium truncate">
+                                        {prod ? `${prod.name} (${prod.sku})` : item.productId}
+                                      </span>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          disabled={item.quantity <= 1}
+                                          onClick={() => {
+                                            const updated = items.map((it, i) =>
+                                              i === idx ? { ...it, quantity: it.quantity - 1 } : it
+                                            );
+                                            field.onChange(updated);
+                                          }}
+                                          data-testid={`button-dec-qty-${idx}`}
+                                        >
+                                          <Minus className="h-3 w-3" />
+                                        </Button>
+                                        <span className="w-8 text-center text-sm font-medium tabular-nums">
+                                          {item.quantity}
+                                        </span>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={() => {
+                                            const updated = items.map((it, i) =>
+                                              i === idx ? { ...it, quantity: it.quantity + 1 } : it
+                                            );
+                                            field.onChange(updated);
+                                          }}
+                                          data-testid={`button-inc-qty-${idx}`}
+                                        >
+                                          <Plus className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 text-destructive"
+                                          onClick={() => {
+                                            field.onChange(items.filter((_, i) => i !== idx));
+                                          }}
+                                          data-testid={`button-remove-item-${idx}`}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {productOptions.length > 0 ? (
+                              <FormControl>
+                                <SearchableSelect
+                                  value=""
+                                  onChange={(val) => {
+                                    if (val) {
+                                      field.onChange([...items, { productId: val, quantity: 1 }]);
+                                    }
+                                  }}
+                                  options={productOptions}
+                                  placeholder="Adicionar produto..."
+                                  searchPlaceholder="Buscar produto por nome ou SKU..."
+                                  emptyText="Nenhum produto encontrado"
+                                  dataTestid="select-product-item"
+                                  renderItem={(option) => {
+                                    const prod = products.find((p) => p.id === option.value);
+                                    return (
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-medium">{prod?.name}</span>
+                                        <span className="text-[10px] text-muted-foreground">{prod?.sku}</span>
+                                      </div>
+                                    );
+                                  }}
+                                  renderSelected={() => (
+                                    <span className="text-muted-foreground">Adicionar produto...</span>
+                                  )}
+                                />
+                              </FormControl>
+                            ) : items.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">
+                                Nenhum produto cadastrado
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                Todos os produtos foram adicionados
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Opcional — pré-popula a lista de itens da movimentação.
+                            </p>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+                </>
+              )}
+
+              {/* Section 4: Operação */}
               <SectionTitle icon={Truck} title="Operação" />
               <div className="space-y-4">
                 <FormField
@@ -935,14 +1081,14 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
 
                     return (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Doca *</FormLabel>
+                        <FormLabel className="text-sm font-medium">Doca (opcional)</FormLabel>
                         <FormControl>
                           {docks.length > 8 ? (
                             <SearchableSelect
-                              value={field.value}
-                              onChange={field.onChange}
+                              value={field.value ?? ""}
+                              onChange={(val) => field.onChange(val || undefined)}
                               options={dockOptions}
-                              placeholder="Selecione uma doca"
+                              placeholder="Selecione uma doca (opcional)"
                               searchPlaceholder="Buscar doca por nome..."
                               emptyText="Nenhuma doca encontrada"
                               dataTestid="select-dock"
@@ -951,15 +1097,15 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                                 return dock ? (
                                   <span className="truncate">{dock.name}</span>
                                 ) : (
-                                  <span className="text-muted-foreground">Selecione uma doca</span>
+                                  <span className="text-muted-foreground">Selecione uma doca (opcional)</span>
                                 );
                               }}
                             />
                           ) : (
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
                               <FormControl>
                                 <SelectTrigger data-testid="select-dock" className="h-10 bg-card">
-                                  <SelectValue placeholder="Selecione uma doca" />
+                                  <SelectValue placeholder="Selecione uma doca (opcional)" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -974,7 +1120,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                         </FormControl>
                         {docks.length === 0 && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            Nenhuma doca cadastrada. Cadastre uma doca antes de criar a movimentação.
+                            Nenhuma doca cadastrada.
                           </p>
                         )}
                         <FormMessage />
@@ -1060,6 +1206,15 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           <Warehouse className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="text-xs text-muted-foreground">Doca:</span>
                           <span className="text-xs font-medium">{selectedDock.name}</span>
+                        </div>
+                      )}
+                      {!isEditMode && (watchedValues.productItems || []).length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-xs text-muted-foreground">Itens:</span>
+                          <span className="text-xs font-medium">
+                            {(watchedValues.productItems || []).length} produto{(watchedValues.productItems || []).length !== 1 ? "s" : ""}
+                          </span>
                         </div>
                       )}
                     </CardContent>

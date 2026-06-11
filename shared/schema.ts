@@ -1303,7 +1303,11 @@ export const insertMovementSchema = createInsertSchema(movements).omit({
 
 export const insertMovementWithEventsSchema = insertMovementSchema.extend({
   eventIds: z.array(z.string()).optional().default([]),
-  tripIds: z.array(z.string()).optional()
+  tripIds: z.array(z.string()).optional(),
+  productItems: z.array(z.object({
+    productId: z.string(),
+    quantity: z.number().int().positive(),
+  })).optional().default([]),
 }).refine(
   (data) => !(data.loadingOrderId && data.requestId),
   {

@@ -2440,15 +2440,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
 
       const data = insertMovementWithEventsSchema.parse(req.body);
+      const { productItems, ...movementData } = data;
       
       // A movement may be linked to a loading order OR a request, never both
-      if (data.loadingOrderId && data.requestId) {
+      if (movementData.loadingOrderId && movementData.requestId) {
         return res.status(400).json({ error: "Vincule a uma ordem de carregamento OU a uma requisição, não a ambas." });
       }
 
       // Validate loading order if provided
-      if (data.loadingOrderId) {
-        const order = await storage.getLoadingOrder(data.loadingOrderId);
+      if (movementData.loadingOrderId) {
+        const order = await storage.getLoadingOrder(movementData.loadingOrderId);
         if (!order) {
           return res.status(404).json({ error: "Loading order not found" });
         }
@@ -2458,16 +2459,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate material request if provided (alternative to loading order)
-      if (data.requestId) {
-        const request = await storage.getMaterialRequest(data.requestId);
+      if (movementData.requestId) {
+        const request = await storage.getMaterialRequest(movementData.requestId);
         if (!request) {
           return res.status(404).json({ error: "Request not found" });
         }
       }
       
       // Validate events exist
-      if (data.eventIds && data.eventIds.length > 0) {
-        for (const eventId of data.eventIds) {
+      if (movementData.eventIds && movementData.eventIds.length > 0) {
+        for (const eventId of movementData.eventIds) {
           const event = await storage.getEvent(eventId);
           if (!event) {
             return res.status(404).json({ error: `Event not found: ${eventId}` });
@@ -2476,11 +2477,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validate trips exist
-      if (data.tripIds && data.tripIds.length > 0) {
-        for (const tripId of data.tripIds) {
+      if (movementData.tripIds && movementData.tripIds.length > 0) {
+        for (const tripId of movementData.tripIds) {
           const trip = await storage.getTrip(tripId);
           if (!trip) {
             return res.status(404).json({ error: `Trip not found: ${tripId}` });
+          }
+        }
+      }
+
+      // Validate product items if provided
+      if (productItems && productItems.length > 0) {
+        for (const item of productItems) {
+          const product = await storage.getProduct(item.productId);
+          if (!product) {
+            return res.status(404).json({ error: `Product not found: ${item.productId}` });
           }
         }
       }
@@ -2498,10 +2509,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdBy = req.user!.id;
       
       const movement = await storage.createMovementWithEvents({
-        ...data,
+        ...movementData,
         movementNumber,
         createdBy,
       } as any);
+
+      // Create pre-defined product items if provided
+      if (productItems && productItems.length > 0) {
+        for (const item of productItems) {
+          await storage.createMovementItem({
+            movementId: movement.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            scanned: false,
+          });
+        }
+      }
+
       res.status(201).json(movement);
     } catch (error) {
       console.error("Movement creation error:", error);
