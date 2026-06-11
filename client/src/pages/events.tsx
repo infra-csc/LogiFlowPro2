@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
@@ -6,6 +6,7 @@ import {
   MapPin,
   Building2,
   Edit,
+  Trash2,
   Search,
   X,
   Clock,
@@ -31,12 +32,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Event } from "@shared/schema";
 import { EventDialog } from "@/components/event-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { userIsAdmin } from "@/lib/authz";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type WindowStatus = "open" | "future" | "closed" | "none";
 
@@ -90,16 +103,32 @@ function fmtDate(val: string | Date | null | undefined) {
 
 export default function Events() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const canWrite = userIsAdmin(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
+  const [deleteTarget, setDeleteTarget] = useState<Event | undefined>();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [windowFilter, setWindowFilter] = useState("all");
 
   const { data: events, isLoading } = useQuery<Event[]>({
     queryKey: ["/api/events"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/events/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      toast({ title: "Evento excluído com sucesso." });
+      setDeleteTarget(undefined);
+    },
+    onError: () => {
+      toast({ title: "Erro ao excluir evento.", variant: "destructive" });
+      setDeleteTarget(undefined);
+    },
   });
 
   const handleEdit = (e: Event) => {
@@ -313,16 +342,27 @@ export default function Events() {
                       )}
                     </div>
                     {canWrite && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="-mr-1 -mt-1 shrink-0"
-                        onClick={(e) => { e.stopPropagation(); handleEdit(event); }}
-                        data-testid={`button-edit-event-${event.id}`}
-                        aria-label={`Editar ${event.name}`}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1 -mr-1 -mt-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); handleEdit(event); }}
+                          data-testid={`button-edit-event-${event.id}`}
+                          aria-label={`Editar ${event.name}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(event); }}
+                          data-testid={`button-delete-event-${event.id}`}
+                          aria-label={`Excluir ${event.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
 
@@ -374,6 +414,30 @@ export default function Events() {
       )}
 
       <EventDialog open={showDialog} onOpenChange={handleClose} event={selectedEvent} />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(undefined); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir evento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível. O evento{" "}
+              <span className="font-semibold text-foreground">{deleteTarget?.name}</span>{" "}
+              e todos os dados relacionados serão permanentemente excluídos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Excluindo…" : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

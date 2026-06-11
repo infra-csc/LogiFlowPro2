@@ -940,6 +940,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/events/:id", requireAuth, requireAdmin({ message: "Apenas administradores podem excluir eventos" }), async (req, res) => {
+    try {
+      await storage.deleteEvent(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Erro ao excluir evento" });
+    }
+  });
+
   // Kits
   app.get("/api/kits", requireAuth, async (req, res) => {
     try {
