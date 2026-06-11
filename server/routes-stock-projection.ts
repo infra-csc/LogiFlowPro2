@@ -779,20 +779,21 @@ export function registerStockProjectionRoutes(app: Express) {
       for (const acc of considered)
         for (const pid of Array.from(acc.grossByProduct.keys())) allProductIdSet.add(pid);
 
-      const allProductIds = Array.from(allProductIdSet);
-      const productRows = allProductIds.length
-        ? await db
-            .select({
-              id: products.id,
-              sku: products.sku,
-              name: products.name,
-              unit: products.unit,
-              currentStock: products.currentStock,
-              minimumStock: products.minimumStock,
-            })
-            .from(products)
-            .where(inArray(products.id, allProductIds))
-        : [];
+      // Fetch ALL products (the projection must show the full catalog, not only impacted products).
+      // If a product-level filter is active, restrict to those; otherwise include everything.
+      const catalogQuery = db
+        .select({
+          id: products.id,
+          sku: products.sku,
+          name: products.name,
+          unit: products.unit,
+          currentStock: products.currentStock,
+          minimumStock: products.minimumStock,
+        })
+        .from(products);
+      const productRows = productFilter
+        ? await catalogQuery.where(inArray(products.id, Array.from(productFilter)))
+        : await catalogQuery;
       const productMap = new Map(productRows.map((p) => [p.id, p]));
 
       // Materialize considered movements (resolve product names + situation).
@@ -832,32 +833,8 @@ export function registerStockProjectionRoutes(app: Express) {
       if (include.requests) baseSources.push("requisições aprovadas");
       const calculationBase = `Saldo atual dos produtos + ${baseSources.join(", ") || "nenhuma fonte"} no período de ${startDate} a ${endDate}.`;
 
-      if (flowProductIdSet.size === 0) {
-        const missingCount = conflicts.filter((c) => c.kind === "missing_data").length;
-        if (missingCount > 0) warnings.push(`${missingCount} origem(ns) ignorada(s) por falta de data.`);
-        const empty: StockProjectionResult = {
-          generatedAt: new Date().toISOString(),
-          calculationBase,
-          filters: params,
-          rangeDays,
-          summary: {
-            totalProducts: 0,
-            productsShortage: 0,
-            productsLow: 0,
-            productsOk: 0,
-            peakShortageDate: null,
-            totalOutbound: 0,
-            totalInbound: 0,
-            totalReserved: 0,
-            totalInEvent: 0,
-          },
-          products: [],
-          conflicts,
-          consideredMovements,
-          warnings,
-        };
-        return res.json(empty);
-      }
+      // No early return for empty flows — the projection always shows all catalog products
+      // (with flat zero-activity lines when they have no flows in the period).
 
       const flowsByProduct = new Map<string, Flow[]>();
       for (const f of flows) {
@@ -890,7 +867,7 @@ export function registerStockProjectionRoutes(app: Express) {
         }
       };
 
-      for (const productId of Array.from(flowProductIdSet)) {
+      for (const productId of Array.from(productMap.keys())) {
         const p = productMap.get(productId);
         if (!p) continue;
         const productFlows = flowsByProduct.get(productId) || [];
