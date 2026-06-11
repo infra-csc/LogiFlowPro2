@@ -247,7 +247,7 @@ export const events = pgTable("events", {
   name: text("name").notNull(),
   client: text("client").notNull(),
   location: text("location").notNull(),
-  setupDate: timestamp("setup_date").notNull(),
+  setupDate: timestamp("setup_date"),
   eventDate: timestamp("event_date").notNull(),
   teardownDate: timestamp("teardown_date").notNull(),
   requestWindowStart: timestamp("request_window_start"),
@@ -1158,7 +1158,7 @@ export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => 
 
 // Zod schemas for validation
 export const insertEventSchema = createInsertSchema(events, {
-  setupDate: z.coerce.date(),
+  setupDate: z.coerce.date().optional().nullable(),
   eventDate: z.coerce.date(),
   teardownDate: z.coerce.date(),
   requestWindowStart: z.coerce.date().optional().nullable(),
