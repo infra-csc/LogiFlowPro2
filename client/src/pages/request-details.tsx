@@ -126,7 +126,12 @@ export default function RequestDetails() {
     queryKey: ["/api/products"],
   });
 
-  const { data: kits = [], isLoading: kitsLoading } = useQuery<{ id: string; name: string; description?: string }[]>({
+  const { data: kits = [], isLoading: kitsLoading } = useQuery<{
+    id: string;
+    name: string;
+    description?: string;
+    parameters: { name: string; type: "number" | "select"; unit?: string; options?: string[] }[];
+  }[]>({
     queryKey: ["/api/kits"],
   });
 

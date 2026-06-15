@@ -27,10 +27,18 @@ export type Product = {
   currentStock?: number;
 };
 
+type KitParameter = {
+  name: string;
+  type: "number" | "select";
+  unit?: string;
+  options?: string[];
+};
+
 type Kit = {
   id: string;
   name: string;
   description?: string;
+  parameters: KitParameter[];
 };
 
 type BomLine = {
@@ -330,11 +338,9 @@ export function AddItemDialog({
         const res = await apiRequest("GET", `/api/kits/${kit.id}/bom`);
         const bomData: BomLine[] = await res.json();
 
-        // Detect all variable names across BOM formulas
-        const allVarNames = new Set<string>();
-        bomData.forEach((line) => extractVariables(line.quantityFormula).forEach((v) => allVarNames.add(v)));
+        // Use parameters declared in the kit catalog (not auto-extracted from formulas)
         const parameters: Record<string, number> = {};
-        allVarNames.forEach((v) => { parameters[v] = 0; });
+        (kit.parameters ?? []).forEach((p) => { parameters[p.name] = 0; });
 
         const bomLines = bomData.map((line) => {
           const product = products.find((p) => p.id === line.productId);
