@@ -1574,9 +1574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       for (const item of items) {
-        if (!item.productId) return res.status(400).json({ error: "productId obrigatório em todos os itens" });
+        if (!item.productId && !item.kitId) return res.status(400).json({ error: "Cada item deve ter productId ou kitId" });
         const qty = parseInt(item.quantity);
-        if (isNaN(qty) || qty < 1) return res.status(400).json({ error: `Quantidade inválida para produto ${item.productId}` });
+        if (isNaN(qty) || qty < 1) return res.status(400).json({ error: `Quantidade inválida para item ${item.productId ?? item.kitId}` });
       }
 
       const existingItems = await storage.getRequestItems(req.params.id);
@@ -1584,14 +1584,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const item of items) {
         const qty = parseInt(item.quantity);
-        const existing = (existingItems as any[]).find((e: any) => e.productId === item.productId);
+        let existing: any = null;
+        if (item.kitId && !item.productId) {
+          existing = (existingItems as any[]).find((e: any) => !e.productId && e.kitId === item.kitId);
+        } else if (item.productId) {
+          existing = (existingItems as any[]).find((e: any) => e.productId === item.productId);
+        }
         if (existing) {
           const updated = await storage.updateRequestItem(existing.id, { quantity: existing.quantity + qty });
           results.push({ ...updated, action: "merged" });
         } else {
           const created = await storage.createRequestItem({
             requestId: req.params.id,
-            productId: item.productId,
+            productId: item.productId || undefined,
             quantity: qty,
             notes: item.notes || undefined,
             kitId: item.kitId || undefined,

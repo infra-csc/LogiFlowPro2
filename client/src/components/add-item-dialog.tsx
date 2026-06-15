@@ -43,11 +43,14 @@ type BomLine = {
 
 type CartItem = {
   localId: string;
-  productId: string;
-  productName: string;
-  sku: string;
-  unit: string;
-  ownership: string;
+  // product items
+  productId?: string;
+  productName?: string;
+  sku?: string;
+  unit?: string;
+  ownership?: string;
+  // kit-as-whole items
+  isKitItem?: boolean;
   quantity: number;
   notes: string;
   showNotes: boolean;
@@ -121,13 +124,19 @@ function CartRow({
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium truncate">{item.productName}</span>
-            <span className="text-xs font-mono text-muted-foreground">{item.sku}</span>
-            {item.fromKitName && (
-              <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 no-default-hover-elevate">
-                <Boxes className="h-2.5 w-2.5 mr-0.5" />
-                {item.fromKitName}
-              </Badge>
+            {item.isKitItem ? (
+              <>
+                <Boxes className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                <span className="text-sm font-medium">{item.fromKitName}</span>
+                <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 no-default-hover-elevate">
+                  Kit
+                </Badge>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-medium truncate">{item.productName}</span>
+                <span className="text-xs font-mono text-muted-foreground">{item.sku}</span>
+              </>
             )}
           </div>
           {item.showNotes && (
@@ -171,7 +180,9 @@ function CartRow({
           >
             <Plus className="h-2.5 w-2.5" />
           </button>
-          <span className="text-[10px] text-muted-foreground w-8 truncate">{item.unit}</span>
+          <span className="text-[10px] text-muted-foreground w-8 truncate">
+            {item.isKitItem ? "kit(s)" : item.unit}
+          </span>
           <button
             onClick={() => onRemove(item.localId)}
             className="p-1 text-muted-foreground hover:text-destructive transition-colors ml-0.5"
@@ -222,19 +233,18 @@ export function AddItemDialog({
     return kits.filter((k) => k.name.toLowerCase().includes(q));
   }, [kits, kitSearch]);
 
-  const cartProductIds = useMemo(() => new Set(cart.map((i) => i.productId)), [cart]);
+  const cartProductIds = useMemo(() => new Set(cart.filter((i) => !i.isKitItem).map((i) => i.productId as string)), [cart]);
   const isInCart = useCallback((id: string) => cartProductIds.has(id), [cartProductIds]);
+  const isKitInCart = useCallback((id: string) => cart.some((i) => i.isKitItem && i.fromKitId === id), [cart]);
   const isAlreadyInRequest = useCallback(
     (id: string) => existingItems.some((e) => e.productId === id),
     [existingItems]
   );
 
-  const totalUnits = useMemo(() => cart.reduce((s, i) => s + i.quantity, 0), [cart]);
-  const kitsInCart = useMemo(() => {
-    const ids = new Set<string>();
-    cart.forEach((i) => { if (i.fromKitId) ids.add(i.fromKitId); });
-    return ids.size;
-  }, [cart]);
+  const productItemsCount = useMemo(() => cart.filter((i) => !i.isKitItem).length, [cart]);
+  const kitItemsCount = useMemo(() => cart.filter((i) => i.isKitItem).length, [cart]);
+  const totalUnits = useMemo(() => cart.filter((i) => !i.isKitItem).reduce((s, i) => s + i.quantity, 0), [cart]);
+  const kitsInCart = kitItemsCount;
 
   /* ── Cart actions ── */
 
@@ -366,53 +376,42 @@ export function AddItemDialog({
   const addKitToCart = useCallback(
     (kitId: string) => {
       const expansion = kitExpansions[kitId];
-      if (!expansion || expansion.bomLines.length === 0) return;
+      if (!expansion) return;
 
       setCart((prev) => {
-        const next = [...prev];
-        for (const line of expansion.bomLines) {
-          if (line.finalQty < 1) continue;
-          const idx = next.findIndex((i) => i.productId === line.productId);
-          if (idx >= 0) {
-            next[idx] = { ...next[idx], quantity: next[idx].quantity + line.finalQty };
-          } else {
-            const product = products.find((p) => p.id === line.productId);
-            next.push({
-              localId: nextId(),
-              productId: line.productId,
-              productName: line.productName,
-              sku: line.sku,
-              unit: line.unit,
-              ownership: product?.ownership ?? "owned",
-              quantity: line.finalQty,
-              notes: line.notes,
-              showNotes: !!line.notes,
-              fromKitId: kitId,
-              fromKitName: expansion.kitName,
-            });
-          }
-        }
-        return next;
+        // Replace existing kit item for this kit (if any), or add new
+        const withoutThisKit = prev.filter((i) => !(i.isKitItem && i.fromKitId === kitId));
+        return [
+          ...withoutThisKit,
+          {
+            localId: nextId(),
+            isKitItem: true,
+            fromKitId: kitId,
+            fromKitName: expansion.kitName,
+            quantity: expansion.multiplier,
+            notes: "",
+            showNotes: false,
+          },
+        ];
       });
 
       toast({
         title: `Kit "${expansion.kitName}" adicionado`,
-        description: `${expansion.bomLines.length} item(ns) adicionado(s) à seleção`,
+        description: `${expansion.multiplier} kit(s) adicionado(s) à requisição`,
       });
     },
-    [kitExpansions, products, toast]
+    [kitExpansions, toast]
   );
 
   /* ── Batch submit ── */
 
   const batchMutation = useMutation({
     mutationFn: async () => {
-      const items = cart.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        notes: item.notes || undefined,
-        kitId: item.fromKitId || undefined,
-      }));
+      const items = cart.map((item) =>
+        item.isKitItem
+          ? { kitId: item.fromKitId, quantity: item.quantity, notes: item.notes || undefined }
+          : { productId: item.productId, quantity: item.quantity, notes: item.notes || undefined }
+      );
       const res = await apiRequest("POST", `/api/requests/${requestId}/items/batch`, { items });
       if (!res.ok) {
         const err = await res.json();
@@ -422,9 +421,14 @@ export function AddItemDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests", requestId, "items"] });
+      const kitCount = cart.filter((i) => i.isKitItem).length;
+      const prodCount = cart.filter((i) => !i.isKitItem).length;
+      const parts: string[] = [];
+      if (kitCount > 0) parts.push(`${kitCount} kit(s)`);
+      if (prodCount > 0) parts.push(`${prodCount} produto(s)`);
       toast({
         title: "Materiais adicionados à requisição",
-        description: `${cart.length} item(ns) processado(s)`,
+        description: parts.join(" e ") + " processado(s)",
       });
       handleClose();
     },
@@ -598,14 +602,14 @@ export function AddItemDialog({
                 )}
 
                 {/* Selected products in cart */}
-                {cart.filter((i) => !i.fromKitId).length > 0 && (
+                {cart.filter((i) => !i.isKitItem).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                       Selecionados — edite quantidade e observação
                     </p>
                     <div className="space-y-1.5">
                       {cart
-                        .filter((i) => !i.fromKitId)
+                        .filter((i) => !i.isKitItem)
                         .map((item) => (
                           <CartRow
                             key={item.localId}
@@ -756,11 +760,19 @@ export function AddItemDialog({
                                 size="sm"
                                 className="w-full h-8 text-xs gap-1.5"
                                 onClick={() => addKitToCart(kit.id)}
-                                disabled={expansion.bomLines.length === 0}
                                 data-testid={`button-add-kit-${kit.id}`}
                               >
-                                <Plus className="h-3.5 w-3.5" />
-                                Adicionar {expansion.bomLines.length} item{expansion.bomLines.length !== 1 ? "s" : ""} à seleção
+                                {isKitInCart(kit.id) ? (
+                                  <>
+                                    <Check className="h-3.5 w-3.5" />
+                                    Atualizar kit na seleção
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Adicionar kit à seleção
+                                  </>
+                                )}
                               </Button>
                             </div>
                           )}
@@ -771,14 +783,14 @@ export function AddItemDialog({
                 )}
 
                 {/* Kit items in cart */}
-                {cart.filter((i) => i.fromKitId).length > 0 && (
+                {cart.filter((i) => i.isKitItem).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                      Itens de kits adicionados
+                      Kits selecionados
                     </p>
                     <div className="space-y-1.5">
                       {cart
-                        .filter((i) => i.fromKitId)
+                        .filter((i) => i.isKitItem)
                         .map((item) => (
                           <CartRow
                             key={item.localId}
@@ -803,11 +815,15 @@ export function AddItemDialog({
                 <span>Nenhum item selecionado</span>
               ) : (
                 <span>
-                  <span className="font-semibold text-foreground">{cart.length}</span> produto{cart.length !== 1 ? "s" : ""}
-                  {kitsInCart > 0 && (
-                    <> · <span className="font-semibold text-foreground">{kitsInCart}</span> kit{kitsInCart !== 1 ? "s" : ""}</>
+                  {productItemsCount > 0 && (
+                    <><span className="font-semibold text-foreground">{productItemsCount}</span> produto{productItemsCount !== 1 ? "s" : ""}{" "}</>
                   )}
-                  {" "}· <span className="font-semibold text-foreground">{totalUnits}</span> unidades totais
+                  {kitItemsCount > 0 && (
+                    <>{productItemsCount > 0 ? "· " : ""}<span className="font-semibold text-foreground">{kitItemsCount}</span> kit{kitItemsCount !== 1 ? "s" : ""}{" "}</>
+                  )}
+                  {totalUnits > 0 && (
+                    <>· <span className="font-semibold text-foreground">{totalUnits}</span> unid. (produtos)</>
+                  )}
                 </span>
               )}
             </div>

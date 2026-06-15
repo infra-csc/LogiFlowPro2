@@ -49,12 +49,12 @@ const itemStatusBg: Record<string, string> = {
 type RequestItem = {
   id: string;
   requestId: string;
-  productId: string;
+  productId?: string | null;
   quantity: number;
   approvalStatus: string;
   approvedQuantity?: number;
   rejectionReason?: string;
-  kitId?: string;
+  kitId?: string | null;
   kitParameters?: any;
   notes?: string;
   product?: {
@@ -564,20 +564,27 @@ export default function RequestDetails() {
                             </div>
                           )}
                           <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-primary shrink-0">
-                            <Package className="h-5 w-5" />
+                            {item.kitId && !item.productId ? (
+                              <Boxes className="h-5 w-5 text-purple-500" />
+                            ) : (
+                              <Package className="h-5 w-5" />
+                            )}
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-sm text-foreground">
-                              {item.kit ? item.kit.name : item.product?.name}
+                              {item.kitId && !item.productId
+                                ? item.kit?.name ?? "Kit"
+                                : item.product?.name}
                             </p>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                                {item.product?.sku ?? "—"}
-                              </span>
-                              {item.kitId && item.kit && (
+                              {item.kitId && !item.productId ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30">
                                   <Boxes className="h-2.5 w-2.5" />
-                                  Kit: {item.kit.name}
+                                  Kit
+                                </span>
+                              ) : (
+                                <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                                  {item.product?.sku ?? "—"}
                                 </span>
                               )}
                               {!canEdit && item.approvalStatus && (
@@ -739,7 +746,7 @@ export default function RequestDetails() {
         requestId={id!}
         products={products}
         kits={kits}
-        existingItems={items.map((i) => ({ productId: i.productId, quantity: i.quantity }))}
+        existingItems={items.filter((i) => i.productId).map((i) => ({ productId: i.productId as string, quantity: i.quantity }))}
         productsLoading={productsLoading}
         kitsLoading={kitsLoading}
       />
