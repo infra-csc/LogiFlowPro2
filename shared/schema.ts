@@ -372,7 +372,7 @@ export const vehicleTypes = pgTable("vehicle_types", {
 // Vehicles table
 export const vehicles = pgTable("vehicles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  plate: text("plate").notNull().unique(),
+  plate: text("plate").unique(),
   vehicleTypeId: varchar("vehicle_type_id").references(() => vehicleTypes.id),
   type: text("type").notNull(), // Manter por compatibilidade
   model: text("model"), // Modelo do veículo

@@ -23,7 +23,6 @@ import { EmptyState } from "@/components/empty-state";
 import { FilterBar } from "@/components/filter-bar";
 
 const vehicleFormSchema = insertVehicleSchema.extend({
-  plate: z.string().min(1, "Placa é obrigatória"),
   type: z.string().min(1, "Tipo é obrigatório"),
 });
 type InsertVehicle = z.infer<typeof vehicleFormSchema>;
@@ -164,7 +163,7 @@ export default function Vehicles() {
   const filteredVehicles = (vehicles ?? []).filter((v) => {
     const q = search.toLowerCase();
     return (
-      v.plate.toLowerCase().includes(q) ||
+      (v.plate ?? "").toLowerCase().includes(q) ||
       (v.type && v.type.toLowerCase().includes(q)) ||
       (v.model && v.model.toLowerCase().includes(q)) ||
       getVehicleTypeName(v.vehicleTypeId).toLowerCase().includes(q)
@@ -212,12 +211,14 @@ export default function Vehicles() {
                       name="plate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Placa</FormLabel>
+                          <FormLabel>Placa <span className="text-muted-foreground text-xs">(opcional)</span></FormLabel>
                           <FormControl>
                             <Input
                               placeholder="ABC-1234"
                               data-testid="input-vehicle-plate"
                               {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value || undefined)}
                             />
                           </FormControl>
                           <FormMessage />
