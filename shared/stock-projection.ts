@@ -28,6 +28,41 @@ export interface StockProjectionParams {
   onlyShortages?: boolean;
   /** When true, only return products touched by at least one flow. */
   onlyImpacted?: boolean;
+  /**
+   * When true, for each event override request outDate/inDate to use
+   * the event's first-trip departure and last-trip return dates instead of
+   * event setupDate/teardownDate.
+   */
+  useEventTripDates?: boolean;
+}
+
+// ── Events-with-trips query result ────────────────────────────────────────────
+
+export interface EventTripItem {
+  id: string;
+  description: string | null;
+  status: string;
+  /** yyyy-MM-dd or null */
+  departureDate: string | null;
+  /** yyyy-MM-dd or null */
+  returnDate: string | null;
+}
+
+export interface EventTripSummary {
+  id: string;
+  name: string;
+  /** Earliest departure across all trips in range, yyyy-MM-dd or null */
+  firstDepartureDate: string | null;
+  /** Latest return across all trips in range, yyyy-MM-dd or null */
+  lastReturnDate: string | null;
+  trips: EventTripItem[];
+  requestCount: number;
+}
+
+export interface EventsWithTripsResult {
+  startDate: string;
+  endDate: string;
+  events: EventTripSummary[];
 }
 
 export type ProjectionDayStatus = "ok" | "low" | "shortage";

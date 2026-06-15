@@ -32,6 +32,8 @@ import type {
   ConsideredMovement,
   ConsideredMovementProduct,
   ConsideredSituation,
+  EventTripSummary,
+  EventsWithTripsResult,
 } from "@shared/stock-projection";
 
 // --- Date helpers (bucket everything by UTC calendar day) ---------------------
@@ -144,6 +146,37 @@ export function registerStockProjectionRoutes(app: Express) {
         .where(eventFilter ? inArray(events.id, eventFilter) : undefined);
       const eventMap = new Map(eventRows.map((e) => [e.id, e]));
       const scopeEventIds = eventRows.map((e) => e.id);
+
+      // ── useEventTripDates: pre-compute first/last trip dates per event ────────
+      const firstDepartureByEvent = new Map<string, Date>();
+      const lastReturnByEvent = new Map<string, Date>();
+      if (params.useEventTripDates && scopeEventIds.length > 0) {
+        const tripDateRows = await db
+          .select({
+            eventId: trips.eventId,
+            departure: trips.departureDateTime,
+            loadingStart: trips.loadingStartTime,
+            scheduledStart: trips.scheduledStart,
+            unloadingEnd: trips.unloadingEndTime,
+            unloadingStart: trips.unloadingStartTime,
+            scheduledEnd: trips.scheduledEnd,
+          })
+          .from(trips)
+          .where(inArray(trips.eventId, scopeEventIds));
+
+        for (const t of tripDateRows) {
+          const dep = t.departure || t.loadingStart || t.scheduledStart;
+          const ret = t.unloadingEnd || t.unloadingStart || t.scheduledEnd;
+          if (dep) {
+            const cur = firstDepartureByEvent.get(t.eventId);
+            if (!cur || dep < cur) firstDepartureByEvent.set(t.eventId, dep);
+          }
+          if (ret) {
+            const cur = lastReturnByEvent.get(t.eventId);
+            if (!cur || ret > cur) lastReturnByEvent.set(t.eventId, ret);
+          }
+        }
+      }
 
       // Quantity-aware precedence keyed by `${eventId}::${productId}`.
       // Higher-precedence sources (outbound movements > committed transport
@@ -682,8 +715,14 @@ export function registerStockProjectionRoutes(app: Express) {
           const ev = eventMap.get(r.eventId);
           const items = itemsByRequest.get(r.id) || [];
           if (items.length === 0) continue;
-          const outDate = ev?.setupDate || null;
-          const inDate = ev?.teardownDate || null;
+          const outDate =
+            (params.useEventTripDates && firstDepartureByEvent.get(r.eventId)) ||
+            ev?.setupDate ||
+            null;
+          const inDate =
+            (params.useEventTripDates && lastReturnByEvent.get(r.eventId)) ||
+            ev?.teardownDate ||
+            null;
           const label = `${ev?.name || "Evento"} · ${r.area}`;
 
           const acc: ConsideredAcc = {
@@ -1110,6 +1149,101 @@ export function registerStockProjectionRoutes(app: Express) {
     } catch (error: any) {
       console.error("Stock projection error:", error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── GET /api/reports/events-with-trips ──────────────────────────────────────
+  app.get("/api/reports/events-with-trips", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query as Record<string, string>;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "startDate e endDate são obrigatórios" });
+      }
+
+      const rangeStart = parseDayKey(startDate);
+      const rangeEnd = new Date(`${endDate}T23:59:59.999Z`);
+
+      const allTrips = await db
+        .select({
+          id: trips.id,
+          description: trips.description,
+          eventId: trips.eventId,
+          status: trips.status,
+          departure: trips.departureDateTime,
+          loadingStart: trips.loadingStartTime,
+          scheduledStart: trips.scheduledStart,
+          unloadingEnd: trips.unloadingEndTime,
+          unloadingStart: trips.unloadingStartTime,
+          scheduledEnd: trips.scheduledEnd,
+        })
+        .from(trips);
+
+      const tripsByEvent = new Map<string, typeof allTrips>();
+      for (const t of allTrips) {
+        const dep = t.departure || t.loadingStart || t.scheduledStart;
+        const ret = t.unloadingEnd || t.unloadingStart || t.scheduledEnd;
+        const depInRange = dep && dep >= rangeStart && dep <= rangeEnd;
+        const retInRange = ret && ret >= rangeStart && ret <= rangeEnd;
+        const spansRange = dep && ret && dep <= rangeEnd && ret >= rangeStart;
+        if (!depInRange && !retInRange && !spansRange) continue;
+        if (!tripsByEvent.has(t.eventId)) tripsByEvent.set(t.eventId, []);
+        tripsByEvent.get(t.eventId)!.push(t);
+      }
+
+      if (tripsByEvent.size === 0) {
+        return res.json({ startDate, endDate, events: [] } as EventsWithTripsResult);
+      }
+
+      const scopeEventIds = Array.from(tripsByEvent.keys());
+
+      const [eventRows, reqRows] = await Promise.all([
+        db.select({ id: events.id, name: events.name })
+          .from(events)
+          .where(inArray(events.id, scopeEventIds)),
+        db.select({ eventId: materialRequests.eventId, id: materialRequests.id })
+          .from(materialRequests)
+          .where(inArray(materialRequests.eventId, scopeEventIds)),
+      ]);
+
+      const reqCountByEvent = new Map<string, number>();
+      for (const r of reqRows) {
+        reqCountByEvent.set(r.eventId, (reqCountByEvent.get(r.eventId) || 0) + 1);
+      }
+
+      const result: EventTripSummary[] = eventRows.map((ev) => {
+        const evTrips = tripsByEvent.get(ev.id) || [];
+        let firstDep: Date | null = null;
+        let lastRet: Date | null = null;
+        for (const t of evTrips) {
+          const dep = t.departure || t.loadingStart || t.scheduledStart;
+          const ret = t.unloadingEnd || t.unloadingStart || t.scheduledEnd;
+          if (dep && (!firstDep || dep < firstDep)) firstDep = dep;
+          if (ret && (!lastRet || ret > lastRet)) lastRet = ret;
+        }
+        return {
+          id: ev.id,
+          name: ev.name,
+          firstDepartureDate: firstDep ? toDayKey(firstDep) : null,
+          lastReturnDate: lastRet ? toDayKey(lastRet) : null,
+          trips: evTrips.map((t) => {
+            const dep = t.departure || t.loadingStart || t.scheduledStart;
+            const ret = t.unloadingEnd || t.unloadingStart || t.scheduledEnd;
+            return {
+              id: t.id,
+              description: t.description,
+              status: t.status,
+              departureDate: dep ? toDayKey(dep) : null,
+              returnDate: ret ? toDayKey(ret) : null,
+            };
+          }),
+          requestCount: reqCountByEvent.get(ev.id) || 0,
+        };
+      });
+
+      return res.json({ startDate, endDate, events: result } as EventsWithTripsResult);
+    } catch (error: any) {
+      console.error("events-with-trips error:", error);
+      return res.status(500).json({ error: "Erro ao buscar eventos com viagens" });
     }
   });
 }

@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import * as XLSX from "xlsx";
 import {
   AlertTriangle,
   Search,
@@ -24,12 +25,16 @@ import {
   Zap,
   Clock,
   Calendar,
+  FileDown,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -51,6 +56,7 @@ import type {
   ProjectionDayCell,
   ProjectionProduct,
   ProjectionConflict,
+  EventTripSummary,
 } from "@shared/stock-projection";
 import { ProjectionMatrix } from "@/components/stock-projection/projection-matrix";
 import { ProjectionDayView } from "@/components/stock-projection/projection-day-view";
@@ -80,6 +86,7 @@ interface GenerateParams {
   sources: SourceFlags;
   onlyShortages: boolean;
   onlyImpacted: boolean;
+  useEventTripDates?: boolean;
 }
 
 type StatusFilter = ProjectionDayStatus | null;
@@ -557,6 +564,13 @@ export default function StockProjection() {
   const [detail, setDetail] = useState<DetailTarget | null>(null);
   const [selectedDayForNav, setSelectedDayForNav] = useState<string | undefined>(undefined);
 
+  // ── Modo Evento-Viagem ──────────────────────────────────────────────────────
+  const [useEventTripDates, setUseEventTripDates] = useState(false);
+  const [eventsWithTrips, setEventsWithTrips] = useState<EventTripSummary[]>([]);
+  const [loadingEventsWithTrips, setLoadingEventsWithTrips] = useState(false);
+  const [excludedEventIds, setExcludedEventIds] = useState<string[]>([]);
+  const [expandedTripEventIds, setExpandedTripEventIds] = useState<string[]>([]);
+
   const { data: events } = useQuery<any[]>({ queryKey: ["/api/events"] });
   const { data: products } = useQuery<any[]>({ queryKey: ["/api/products"] });
 
@@ -601,6 +615,75 @@ export default function StockProjection() {
 
   const hasData = result && result.products.length > 0;
 
+  // ── Modo Evento-Viagem helpers ────────────────────────────────────────────────
+  const fetchEventsWithTrips = useCallback(async (start: string, end: string) => {
+    if (!start || !end || start > end) return;
+    setLoadingEventsWithTrips(true);
+    try {
+      const resp = await apiRequest("GET", `/api/reports/events-with-trips?startDate=${start}&endDate=${end}`);
+      const data = await resp.json();
+      const fetched: EventTripSummary[] = data.events || [];
+      setEventsWithTrips(fetched);
+      setExcludedEventIds([]);
+    } catch {
+      setEventsWithTrips([]);
+    } finally {
+      setLoadingEventsWithTrips(false);
+    }
+  }, []);
+
+  function exportExcel() {
+    if (!result) return;
+
+    // Build per-event per-product in-transit quantities from consideredMovements
+    const eventOrderedIds: string[] = [];
+    const eventNamesMap = new Map<string, string>();
+    const inTransitByEventProduct = new Map<string, Map<string, number>>();
+
+    for (const cm of result.consideredMovements) {
+      if (cm.direction !== "outbound") continue;
+      if (!cm.eventId || !cm.eventName) continue;
+      if (!eventNamesMap.has(cm.eventId)) {
+        eventOrderedIds.push(cm.eventId);
+        eventNamesMap.set(cm.eventId, cm.eventName);
+      }
+      if (!inTransitByEventProduct.has(cm.eventId)) {
+        inTransitByEventProduct.set(cm.eventId, new Map());
+      }
+      const prodMap = inTransitByEventProduct.get(cm.eventId)!;
+      for (const p of cm.products) {
+        prodMap.set(p.productId, (prodMap.get(p.productId) || 0) + p.qty);
+      }
+    }
+
+    const eventColHeaders = eventOrderedIds.map((id) => `Em Trânsito — ${eventNamesMap.get(id)}`);
+    const headers = ["Produto", "SKU", "Estoque Atual", ...eventColHeaders, "Saldo Final"];
+
+    const rows = result.products.map((p) => {
+      const lastDay = p.days[p.days.length - 1];
+      const finalBalance = lastDay?.available ?? p.minAvailable;
+      return [
+        p.name,
+        p.sku,
+        p.currentStock,
+        ...eventOrderedIds.map((eid) => inTransitByEventProduct.get(eid)?.get(p.productId) ?? 0),
+        finalBalance,
+      ];
+    });
+
+    const wsData = [headers, ...rows];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    // Auto-width columns
+    const colWidths = headers.map((h, i) => {
+      const maxLen = Math.max(h.length, ...rows.map((r) => String(r[i] ?? "").length));
+      return { wch: Math.min(maxLen + 2, 40) };
+    });
+    ws["!cols"] = colWidths;
+    XLSX.utils.book_append_sheet(wb, ws, "Simulação de Estoque");
+    XLSX.writeFile(wb, `simulacao-estoque-${result.filters.startDate}-${result.filters.endDate}.xlsx`);
+  }
+
   // ── Core generate function (accepts explicit params — no state deps) ─────────
   async function generateWith(params: GenerateParams) {
     const anySrc =
@@ -620,6 +703,7 @@ export default function StockProjection() {
         include: params.sources,
         onlyShortages: params.onlyShortages,
         onlyImpacted: params.onlyImpacted,
+        useEventTripDates: params.useEventTripDates ?? false,
       };
       const response = await apiRequest("POST", "/api/reports/stock-projection", payload);
       const data = (await response.json()) as StockProjectionResult;
@@ -636,7 +720,10 @@ export default function StockProjection() {
   }
 
   function handleGenerate() {
-    generateWith({ startDate, endDate, eventIds: selectedEventIds, productIds: selectedProductIds, sources, onlyShortages, onlyImpacted });
+    const effectiveEventIds = useEventTripDates
+      ? eventsWithTrips.filter((e) => !excludedEventIds.includes(e.id)).map((e) => e.id)
+      : selectedEventIds;
+    generateWith({ startDate, endDate, eventIds: effectiveEventIds, productIds: selectedProductIds, sources, onlyShortages, onlyImpacted, useEventTripDates });
   }
 
   function handleApplyFilters() {
@@ -731,6 +818,17 @@ export default function StockProjection() {
           <X className="w-3.5 h-3.5 mr-1.5" />
           Limpar
         </Button>
+        {hasData && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportExcel}
+            data-testid="button-export-excel"
+          >
+            <FileDown className="w-3.5 h-3.5 mr-1.5" />
+            Exportar Excel
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -976,6 +1074,144 @@ export default function StockProjection() {
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto py-4 space-y-5 projection-scroll" style={{ scrollbarWidth: "thin" }}>
+            {/* ── Modo Evento-Viagem ─────────────────────────────────────────── */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-primary/70" /> Modo Evento-Viagem
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Escopo automático por eventos com viagens no período
+                  </p>
+                </div>
+                <Switch
+                  checked={useEventTripDates}
+                  onCheckedChange={(v) => {
+                    setUseEventTripDates(v);
+                    if (v) fetchEventsWithTrips(startDate, endDate);
+                    else { setEventsWithTrips([]); setExcludedEventIds([]); }
+                  }}
+                  data-testid="switch-trip-mode"
+                />
+              </div>
+
+              {useEventTripDates && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Saída = 1ª viagem · Retorno = última viagem por evento
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1.5"
+                      onClick={() => fetchEventsWithTrips(startDate, endDate)}
+                      disabled={loadingEventsWithTrips}
+                      data-testid="button-refresh-events-trips"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loadingEventsWithTrips ? "animate-spin" : ""}`} />
+                    </Button>
+                  </div>
+
+                  {loadingEventsWithTrips ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      Buscando eventos com viagens…
+                    </div>
+                  ) : eventsWithTrips.length === 0 ? (
+                    <div className="text-xs text-muted-foreground text-center p-3 border border-border/60 rounded-md">
+                      Nenhum evento com viagens no período selecionado
+                    </div>
+                  ) : (
+                    <div className="border border-border/60 rounded-md divide-y divide-border/40 max-h-60 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+                      {eventsWithTrips.map((ev) => {
+                        const isExcluded = excludedEventIds.includes(ev.id);
+                        const isExpanded = expandedTripEventIds.includes(ev.id);
+                        return (
+                          <div key={ev.id} className={`p-2 transition-opacity ${isExcluded ? "opacity-40" : ""}`}>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={!isExcluded}
+                                onCheckedChange={(v) =>
+                                  setExcludedEventIds((prev) =>
+                                    v ? prev.filter((x) => x !== ev.id) : [...prev, ev.id],
+                                  )
+                                }
+                                data-testid={`checkbox-event-trip-${ev.id}`}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">{ev.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {ev.firstDepartureDate && ev.lastReturnDate
+                                    ? `${ev.firstDepartureDate} → ${ev.lastReturnDate}`
+                                    : ev.firstDepartureDate
+                                      ? `Saída ${ev.firstDepartureDate}`
+                                      : "Sem datas de viagem"}
+                                  {ev.requestCount > 0 && ` · ${ev.requestCount} req.`}
+                                </div>
+                              </div>
+                              {ev.trips.length > 0 && (
+                                <button
+                                  className="flex items-center gap-0.5 text-xs text-muted-foreground px-1 py-0.5 hover-elevate rounded"
+                                  onClick={() =>
+                                    setExpandedTripEventIds((prev) =>
+                                      isExpanded ? prev.filter((x) => x !== ev.id) : [...prev, ev.id],
+                                    )
+                                  }
+                                >
+                                  <span>{ev.trips.length}v</span>
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-3 h-3" />
+                                  ) : (
+                                    <ChevronDown className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                            {isExpanded && ev.trips.length > 0 && (
+                              <div className="mt-1.5 ml-6 space-y-1">
+                                {ev.trips.map((t) => (
+                                  <div
+                                    key={t.id}
+                                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                                  >
+                                    <Truck className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{t.description || "Viagem"}</span>
+                                    <span className="ml-auto whitespace-nowrap shrink-0">
+                                      {t.departureDate ?? "?"} → {t.returnDate ?? "?"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {eventsWithTrips.length > 0 && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {eventsWithTrips.length - excludedEventIds.length} de {eventsWithTrips.length} evento(s) incluídos
+                      </span>
+                      {excludedEventIds.length > 0 && (
+                        <button
+                          className="text-primary hover-elevate rounded px-1"
+                          onClick={() => setExcludedEventIds([])}
+                        >
+                          Incluir todos
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <Separator />
+
             {/* Período */}
             <section className="space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2">
