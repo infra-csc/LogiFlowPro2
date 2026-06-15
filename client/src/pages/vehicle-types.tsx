@@ -106,7 +106,7 @@ export default function VehicleTypes() {
         description="Gerencie os tipos de veículos e suas capacidades"
       >
         {canManage && (
-        <Dialog open={isCreateOpen} onOpenChange={handleCloseDialog}>
+        <Dialog open={isCreateOpen} onOpenChange={(open) => open ? setIsCreateOpen(true) : handleCloseDialog()}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-vehicle-type">
               <Plus className="h-4 w-4 mr-2" />
