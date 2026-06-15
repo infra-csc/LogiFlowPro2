@@ -409,7 +409,7 @@ export const drivers = pgTable("drivers", {
 export const docks = pgTable("docks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  capacity: integer("capacity").notNull().default(1),
+  capacity: integer("capacity").notNull().default(2),
   restrictions: text("restrictions"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`)
 });

@@ -34,7 +34,7 @@ export default function Docks() {
     resolver: zodResolver(insertDockSchema),
     defaultValues: {
       name: "",
-      capacity: 1,
+      capacity: 2,
       restrictions: "",
     },
   });
