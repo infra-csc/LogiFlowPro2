@@ -254,6 +254,10 @@ export default function RequestDetails() {
   const isOwner = user && request.requestedBy === user.id;
   const isAdmin = user && (user as any).isAdmin === true;
   const canEdit = request.status === "draft" && (isOwner || isAdmin);
+  // Admin can delete any non-approved request; owner can only delete their own draft
+  const canDelete = isAdmin
+    ? request.status !== "approved"
+    : request.status === "draft" && !!isOwner;
 
   const handleDelete = () => {
     deleteMutation.mutate();
@@ -343,17 +347,17 @@ export default function RequestDetails() {
               Duplicar
             </Button>
           )}
+          {canDelete && (
+            <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} data-testid="button-delete-request">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir
+            </Button>
+          )}
           {canEdit && (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} data-testid="button-delete-request">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
-              </Button>
-              <Button size="sm" onClick={handleSubmit} disabled={items.length === 0} data-testid="button-submit-approval">
-                <Send className="h-4 w-4 mr-2" />
-                Enviar
-              </Button>
-            </>
+            <Button size="sm" onClick={handleSubmit} disabled={items.length === 0} data-testid="button-submit-approval">
+              <Send className="h-4 w-4 mr-2" />
+              Enviar
+            </Button>
           )}
         </ActionBar>
       </PageHeader>

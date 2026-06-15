@@ -1394,17 +1394,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Não autenticado" });
       }
 
-      // Get the current request to check ownership
       const currentRequest = await storage.getMaterialRequest(req.params.id);
       if (!currentRequest) {
         return res.status(404).json({ error: "Request not found" });
       }
 
-      // Check ownership (only owner can delete their draft requests)
-      if (!(await canEditResource(req.user, currentRequest.requestedBy))) {
-        return res.status(403).json({ 
+      // Fully-approved requests are locked — nobody can delete them
+      if (currentRequest.status === "approved") {
+        return res.status(403).json({
           error: "Acesso negado",
-          message: "Apenas o criador pode excluir esta requisição"
+          message: "Requisições aprovadas não podem ser excluídas",
+        });
+      }
+
+      const isUserAdmin = await isAdmin(req.user);
+      if (isUserAdmin) {
+        // Admins can delete any non-approved request regardless of owner
+        await storage.deleteMaterialRequest(req.params.id);
+        return res.status(204).send();
+      }
+
+      // Non-admins: must own the request and it must still be a draft
+      if (!(await canEditResource(req.user, currentRequest.requestedBy))) {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Apenas o criador pode excluir esta requisição",
+        });
+      }
+      if (currentRequest.status !== "draft") {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Apenas rascunhos podem ser excluídos",
         });
       }
 
