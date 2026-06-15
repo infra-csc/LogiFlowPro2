@@ -19,10 +19,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Kit, InsertKit, Product, BomLine } from "@shared/schema";
-import { Plus, Trash2, Image as ImageIcon, Boxes, Package } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Trash2, Image as ImageIcon, Boxes, Package } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ObjectUploader, type ObjectUploaderResult } from "@/components/ObjectUploader";
 
 interface KitDialogProps {
@@ -37,6 +50,74 @@ type Parameter = {
   unit?: string;
   options?: string[];
 };
+
+function ProductCombobox({
+  products,
+  value,
+  onChange,
+  testId,
+}: {
+  products: Product[] | undefined;
+  value: string;
+  onChange: (value: string) => void;
+  testId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = products?.find((p) => p.id === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="h-8 w-full justify-between text-sm font-normal px-2"
+          data-testid={testId}
+        >
+          <span className="truncate">
+            {selected ? (
+              <>
+                {selected.name}{" "}
+                <span className="text-muted-foreground font-mono text-xs">({selected.sku})</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Selecionar produto...</span>
+            )}
+          </span>
+          <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[340px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar por nome ou SKU..." className="h-9" />
+          <CommandList>
+            <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+            {products?.map((product) => (
+              <CommandItem
+                key={product.id}
+                value={`${product.name} ${product.sku}`}
+                onSelect={() => {
+                  onChange(product.id);
+                  setOpen(false);
+                }}
+              >
+                <Check
+                  className={cn("mr-2 h-3.5 w-3.5 shrink-0", value === product.id ? "opacity-100" : "opacity-0")}
+                />
+                <span className="flex-1 truncate">{product.name}</span>
+                <span className="ml-2 font-mono text-xs text-muted-foreground shrink-0">
+                  {product.sku}
+                </span>
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -501,24 +582,12 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
                     >
                       <div className="col-span-6 space-y-1">
                         <Label className="text-xs">Produto</Label>
-                        <Select
+                        <ProductCombobox
+                          products={products}
                           value={line.productId}
-                          onValueChange={(value) => updateBomLine(index, "productId", value)}
-                        >
-                          <SelectTrigger className="h-8 text-sm" data-testid={`select-bom-product-${index}`}>
-                            <SelectValue placeholder="Selecionar produto..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products?.map((product) => (
-                              <SelectItem key={product.id} value={product.id}>
-                                {product.name}{" "}
-                                <span className="text-muted-foreground font-mono text-xs">
-                                  ({product.sku})
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          onChange={(value) => updateBomLine(index, "productId", value)}
+                          testId={`select-bom-product-${index}`}
+                        />
                         {selectedProduct && (
                           <p className="font-mono text-[10px] text-muted-foreground">
                             {selectedProduct.sku} · {selectedProduct.unit}
