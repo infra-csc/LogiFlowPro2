@@ -51,6 +51,7 @@ type CartItem = {
   ownership?: string;
   // kit-as-whole items
   isKitItem?: boolean;
+  kitParameters?: Record<string, number>;
   quantity: number;
   notes: string;
   showNotes: boolean;
@@ -62,11 +63,13 @@ type KitExpansion = {
   kitId: string;
   kitName: string;
   multiplier: number;
+  parameters: Record<string, number>;
   bomLines: Array<{
     productId: string;
     productName: string;
     sku: string;
     unit: string;
+    formula: string;
     baseQty: number;
     finalQty: number;
     notes: string;
@@ -91,6 +94,26 @@ export type AddItemDialogProps = {
 function parseBaseQty(formula: string): number {
   const n = parseFloat(formula.trim());
   return isNaN(n) ? 1 : Math.max(1, Math.round(n));
+}
+
+function extractVariables(formula: string): string[] {
+  const tokens = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) ?? [];
+  return Array.from(new Set(tokens));
+}
+
+function calcFinalQty(formula: string, multiplier: number, parameters: Record<string, number>): number {
+  try {
+    let f = formula.trim();
+    for (const [name, val] of Object.entries(parameters)) {
+      f = f.replace(new RegExp(`\\b${name}\\b`, 'g'), String(val));
+    }
+    const sanitized = f.replace(/[^0-9+\-*/().\s]/g, '');
+    if (sanitized !== f) return 0;
+    const result = Function('"use strict"; return (' + sanitized + ')')() as number;
+    return Math.max(0, Math.round(result * multiplier));
+  } catch {
+    return 0;
+  }
 }
 
 function ownershipLabel(o: string): string {
@@ -296,6 +319,7 @@ export function AddItemDialog({
           kitId: kit.id,
           kitName: kit.name,
           multiplier: 1,
+          parameters: {},
           bomLines: [],
           isLoading: true,
           isExpanded: true,
@@ -306,6 +330,12 @@ export function AddItemDialog({
         const res = await apiRequest("GET", `/api/kits/${kit.id}/bom`);
         const bomData: BomLine[] = await res.json();
 
+        // Detect all variable names across BOM formulas
+        const allVarNames = new Set<string>();
+        bomData.forEach((line) => extractVariables(line.quantityFormula).forEach((v) => allVarNames.add(v)));
+        const parameters: Record<string, number> = {};
+        allVarNames.forEach((v) => { parameters[v] = 0; });
+
         const bomLines = bomData.map((line) => {
           const product = products.find((p) => p.id === line.productId);
           const baseQty = parseBaseQty(line.quantityFormula);
@@ -314,15 +344,16 @@ export function AddItemDialog({
             productName: product?.name ?? "Produto desconhecido",
             sku: product?.sku ?? "—",
             unit: product?.unit ?? "unid",
+            formula: line.quantityFormula,
             baseQty,
-            finalQty: baseQty,
+            finalQty: calcFinalQty(line.quantityFormula, 1, parameters),
             notes: line.notes ?? "",
           };
         });
 
         setKitExpansions((prev) => ({
           ...prev,
-          [kit.id]: { ...prev[kit.id], bomLines, isLoading: false },
+          [kit.id]: { ...prev[kit.id], bomLines, parameters, isLoading: false },
         }));
       } catch {
         setKitExpansions((prev) => {
@@ -338,17 +369,38 @@ export function AddItemDialog({
 
   const updateKitMultiplier = useCallback((kitId: string, mult: number) => {
     const m = Math.max(1, mult);
-    setKitExpansions((prev) => ({
-      ...prev,
-      [kitId]: {
-        ...prev[kitId],
-        multiplier: m,
-        bomLines: prev[kitId].bomLines.map((l) => ({
-          ...l,
-          finalQty: l.baseQty * m,
-        })),
-      },
-    }));
+    setKitExpansions((prev) => {
+      const exp = prev[kitId];
+      return {
+        ...prev,
+        [kitId]: {
+          ...exp,
+          multiplier: m,
+          bomLines: exp.bomLines.map((l) => ({
+            ...l,
+            finalQty: calcFinalQty(l.formula, m, exp.parameters),
+          })),
+        },
+      };
+    });
+  }, []);
+
+  const updateKitParameter = useCallback((kitId: string, paramName: string, value: number) => {
+    setKitExpansions((prev) => {
+      const exp = prev[kitId];
+      const newParams = { ...exp.parameters, [paramName]: value };
+      return {
+        ...prev,
+        [kitId]: {
+          ...exp,
+          parameters: newParams,
+          bomLines: exp.bomLines.map((l) => ({
+            ...l,
+            finalQty: calcFinalQty(l.formula, exp.multiplier, newParams),
+          })),
+        },
+      };
+    });
   }, []);
 
   const updateBomLineQty = useCallback((kitId: string, productId: string, qty: number) => {
@@ -378,8 +430,9 @@ export function AddItemDialog({
       const expansion = kitExpansions[kitId];
       if (!expansion) return;
 
+      const hasParams = Object.keys(expansion.parameters).length > 0;
+
       setCart((prev) => {
-        // Replace existing kit item for this kit (if any), or add new
         const withoutThisKit = prev.filter((i) => !(i.isKitItem && i.fromKitId === kitId));
         return [
           ...withoutThisKit,
@@ -389,6 +442,7 @@ export function AddItemDialog({
             fromKitId: kitId,
             fromKitName: expansion.kitName,
             quantity: expansion.multiplier,
+            kitParameters: hasParams ? { ...expansion.parameters } : undefined,
             notes: "",
             showNotes: false,
           },
@@ -409,7 +463,14 @@ export function AddItemDialog({
     mutationFn: async () => {
       const items = cart.map((item) =>
         item.isKitItem
-          ? { kitId: item.fromKitId, quantity: item.quantity, notes: item.notes || undefined }
+          ? {
+              kitId: item.fromKitId,
+              quantity: item.quantity,
+              notes: item.notes || undefined,
+              kitParameters: item.kitParameters && Object.keys(item.kitParameters).length > 0
+                ? item.kitParameters
+                : undefined,
+            }
           : { productId: item.productId, quantity: item.quantity, notes: item.notes || undefined }
       );
       const res = await apiRequest("POST", `/api/requests/${requestId}/items/batch`, { items });
@@ -709,6 +770,34 @@ export function AddItemDialog({
                                 </div>
                               </div>
 
+                              {/* Parameters section — only when kit has variable formulas */}
+                              {Object.keys(expansion.parameters).length > 0 && (
+                                <div className="bg-amber-500/5 border border-amber-500/20 rounded-md p-2.5 space-y-2">
+                                  <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                                    Parâmetros do kit
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                    {Object.keys(expansion.parameters).map((param) => (
+                                      <div key={param} className="flex items-center gap-2">
+                                        <label className="text-xs text-muted-foreground capitalize flex-1 truncate">
+                                          {param}
+                                        </label>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={expansion.parameters[param]}
+                                          onChange={(e) =>
+                                            updateKitParameter(kit.id, param, parseInt(e.target.value) || 0)
+                                          }
+                                          className="w-20 h-7 text-center text-xs px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                          data-testid={`input-kit-param-${kit.id}-${param}`}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                               {/* BOM lines */}
                               {expansion.bomLines.length === 0 ? (
                                 <p className="text-xs text-muted-foreground py-1">Este kit não tem itens no BOM.</p>
@@ -718,7 +807,9 @@ export function AddItemDialog({
                                   <div className="grid grid-cols-[1fr_56px_100px_60px_20px] gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1">
                                     <span>Produto</span>
                                     <span>SKU</span>
-                                    <span className="text-center">Base × Kits</span>
+                                    <span className="text-center">
+                                      {Object.keys(expansion.parameters).length > 0 ? "Fórmula" : "Base × Kits"}
+                                    </span>
                                     <span className="text-center">Final</span>
                                     <span />
                                   </div>
@@ -732,15 +823,17 @@ export function AddItemDialog({
                                         <p className="text-[10px] text-muted-foreground">{line.unit}</p>
                                       </div>
                                       <span className="text-xs font-mono text-muted-foreground truncate">{line.sku}</span>
-                                      <span className="text-xs text-muted-foreground text-center">
-                                        {line.baseQty} × {expansion.multiplier}
+                                      <span className="text-xs text-muted-foreground text-center font-mono truncate" title={line.formula}>
+                                        {Object.keys(expansion.parameters).length > 0
+                                          ? line.formula
+                                          : `${line.baseQty} × ${expansion.multiplier}`}
                                       </span>
                                       <Input
                                         type="number"
-                                        min="1"
+                                        min="0"
                                         value={line.finalQty}
                                         onChange={(e) =>
-                                          updateBomLineQty(kit.id, line.productId, parseInt(e.target.value) || 1)
+                                          updateBomLineQty(kit.id, line.productId, parseInt(e.target.value) || 0)
                                         }
                                         className="h-6 text-center text-xs px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       />
