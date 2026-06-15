@@ -72,6 +72,7 @@ type KitExpansion = {
   kitName: string;
   multiplier: number;
   parameters: Record<string, number>;
+  excludedItems: string[];
   bomLines: Array<{
     productId: string;
     productName: string;
@@ -336,6 +337,7 @@ export function AddItemDialog({
           kitName: kit.name,
           multiplier: 1,
           parameters: {},
+          excludedItems: [],
           bomLines: [],
           isLoading: true,
           isExpanded: true,
@@ -399,7 +401,9 @@ export function AddItemDialog({
           multiplier: m,
           bomLines: exp.bomLines.map((l) => ({
             ...l,
-            finalQty: calcFinalQty(l.formula, m, exp.parameters, l.productId),
+            finalQty: exp.excludedItems.includes(l.productId)
+              ? 0
+              : calcFinalQty(l.formula, m, exp.parameters, l.productId),
           })),
         },
       };
@@ -417,7 +421,32 @@ export function AddItemDialog({
           parameters: newParams,
           bomLines: exp.bomLines.map((l) => ({
             ...l,
-            finalQty: calcFinalQty(l.formula, exp.multiplier, newParams, l.productId),
+            finalQty: exp.excludedItems.includes(l.productId)
+              ? 0
+              : calcFinalQty(l.formula, exp.multiplier, newParams, l.productId),
+          })),
+        },
+      };
+    });
+  }, []);
+
+  const toggleExcludeKitItem = useCallback((kitId: string, paramKey: string) => {
+    setKitExpansions((prev) => {
+      const exp = prev[kitId];
+      const isExcluded = exp.excludedItems.includes(paramKey);
+      const excludedItems = isExcluded
+        ? exp.excludedItems.filter((k) => k !== paramKey)
+        : [...exp.excludedItems, paramKey];
+      return {
+        ...prev,
+        [kitId]: {
+          ...exp,
+          excludedItems,
+          bomLines: exp.bomLines.map((l) => ({
+            ...l,
+            finalQty: excludedItems.includes(l.productId)
+              ? 0
+              : calcFinalQty(l.formula, exp.multiplier, exp.parameters, l.productId),
           })),
         },
       };
@@ -797,30 +826,60 @@ export function AddItemDialog({
                                   <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                                     Quantidades a definir
                                   </p>
-                                  <div className="grid grid-cols-1 gap-y-1.5">
+                                  <div className="space-y-1.5">
                                     {Object.keys(expansion.parameters).map((param) => {
-                                      // If param key matches a bomLine productId → show product name + unit
                                       const bomLine = expansion.bomLines.find((l) => l.productId === param);
                                       const label = bomLine ? bomLine.productName : param;
                                       const unit = bomLine ? bomLine.unit : undefined;
+                                      const isExcluded = expansion.excludedItems.includes(param);
                                       return (
-                                        <div key={param} className="flex items-center gap-2">
-                                          <label className="text-xs text-muted-foreground flex-1 truncate">
+                                        <div
+                                          key={param}
+                                          className={cn(
+                                            "flex items-center gap-2 rounded-md px-2 py-1.5 border transition-colors",
+                                            isExcluded
+                                              ? "border-border/30 bg-muted/20 opacity-50"
+                                              : "border-transparent"
+                                          )}
+                                        >
+                                          <label
+                                            className={cn(
+                                              "text-xs flex-1 truncate",
+                                              isExcluded ? "line-through text-muted-foreground" : "text-muted-foreground"
+                                            )}
+                                          >
                                             {label}
                                             {unit && (
-                                              <span className="text-[10px] text-muted-foreground/60 ml-1">({unit})</span>
+                                              <span className="text-[10px] opacity-60 ml-1">({unit})</span>
                                             )}
                                           </label>
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            value={expansion.parameters[param]}
-                                            onChange={(e) =>
-                                              updateKitParameter(kit.id, param, parseInt(e.target.value) || 0)
-                                            }
-                                            className="w-20 h-7 text-center text-xs px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            data-testid={`input-kit-param-${kit.id}-${param}`}
-                                          />
+                                          {isExcluded ? (
+                                            <span className="text-[10px] text-muted-foreground italic mr-1">não incluído</span>
+                                          ) : (
+                                            <Input
+                                              type="number"
+                                              min="0"
+                                              value={expansion.parameters[param]}
+                                              onChange={(e) =>
+                                                updateKitParameter(kit.id, param, parseInt(e.target.value) || 0)
+                                              }
+                                              className="w-20 h-7 text-center text-xs px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                              data-testid={`input-kit-param-${kit.id}-${param}`}
+                                            />
+                                          )}
+                                          <button
+                                            onClick={() => toggleExcludeKitItem(kit.id, param)}
+                                            className={cn(
+                                              "shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition-colors leading-none",
+                                              isExcluded
+                                                ? "border-border text-muted-foreground hover:text-foreground"
+                                                : "border-destructive/40 text-destructive/70 hover:text-destructive hover:border-destructive"
+                                            )}
+                                            title={isExcluded ? "Incluir este item" : "Não preciso deste item"}
+                                            data-testid={`button-exclude-param-${kit.id}-${param}`}
+                                          >
+                                            {isExcluded ? "incluir" : "excluir"}
+                                          </button>
                                         </div>
                                       );
                                     })}
@@ -843,13 +902,19 @@ export function AddItemDialog({
                                   </div>
                                   {expansion.bomLines.map((line) => {
                                     const hasParams = Object.keys(expansion.parameters).length > 0;
+                                    const isExcluded = expansion.excludedItems.includes(line.productId);
                                     const baseCalc = hasParams
                                       ? calcFinalQty(line.formula, 1, expansion.parameters, line.productId)
                                       : line.baseQty;
                                     return (
                                     <div
                                       key={line.productId}
-                                      className="grid grid-cols-[1fr_56px_100px_60px_20px] gap-2 items-center bg-background rounded-md px-2 py-1.5 border border-border/40"
+                                      className={cn(
+                                        "grid grid-cols-[1fr_56px_100px_60px_20px] gap-2 items-center bg-background rounded-md px-2 py-1.5 border",
+                                        isExcluded
+                                          ? "border-border/20 opacity-40"
+                                          : "border-border/40"
+                                      )}
                                     >
                                       <div className="min-w-0">
                                         <p className="text-xs font-medium truncate">{line.productName}</p>
