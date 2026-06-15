@@ -399,3 +399,14 @@
 .projection-scroll::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.4);
 }
+
+/* Uppy DashboardModal must sit above Radix UI dialogs (z-index ~50) */
+.uppy-Dashboard--modal {
+  z-index: 10000 !important;
+}
+.uppy-Dashboard--modal .uppy-Dashboard-overlay {
+  z-index: 10000 !important;
+}
+.uppy-Dashboard--modal .uppy-Dashboard-inner {
+  z-index: 10001 !important;
+}
