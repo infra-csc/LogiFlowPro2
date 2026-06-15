@@ -409,7 +409,7 @@ export function AddItemDialog({
       [kitId]: {
         ...prev[kitId],
         bomLines: prev[kitId].bomLines.map((l) =>
-          l.productId === productId ? { ...l, finalQty: Math.max(1, qty) } : l
+          l.productId === productId ? { ...l, finalQty: Math.max(0, qty) } : l
         ),
       },
     }));
@@ -807,13 +807,16 @@ export function AddItemDialog({
                                   <div className="grid grid-cols-[1fr_56px_100px_60px_20px] gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1">
                                     <span>Produto</span>
                                     <span>SKU</span>
-                                    <span className="text-center">
-                                      {Object.keys(expansion.parameters).length > 0 ? "Fórmula" : "Base × Kits"}
-                                    </span>
+                                    <span className="text-center">Base × Kits</span>
                                     <span className="text-center">Final</span>
                                     <span />
                                   </div>
-                                  {expansion.bomLines.map((line) => (
+                                  {expansion.bomLines.map((line) => {
+                                    const hasParams = Object.keys(expansion.parameters).length > 0;
+                                    const baseCalc = hasParams
+                                      ? calcFinalQty(line.formula, 1, expansion.parameters)
+                                      : line.baseQty;
+                                    return (
                                     <div
                                       key={line.productId}
                                       className="grid grid-cols-[1fr_56px_100px_60px_20px] gap-2 items-center bg-background rounded-md px-2 py-1.5 border border-border/40"
@@ -823,10 +826,11 @@ export function AddItemDialog({
                                         <p className="text-[10px] text-muted-foreground">{line.unit}</p>
                                       </div>
                                       <span className="text-xs font-mono text-muted-foreground truncate">{line.sku}</span>
-                                      <span className="text-xs text-muted-foreground text-center font-mono truncate" title={line.formula}>
-                                        {Object.keys(expansion.parameters).length > 0
-                                          ? line.formula
-                                          : `${line.baseQty} × ${expansion.multiplier}`}
+                                      <span
+                                        className="text-xs text-muted-foreground text-center font-mono truncate"
+                                        title={hasParams ? line.formula : undefined}
+                                      >
+                                        {baseCalc} × {expansion.multiplier}
                                       </span>
                                       <Input
                                         type="number"
@@ -845,7 +849,8 @@ export function AddItemDialog({
                                         <X className="h-3 w-3" />
                                       </button>
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               )}
 
