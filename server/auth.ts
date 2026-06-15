@@ -193,7 +193,19 @@ export function setupAuth(app: Express): void {
       const roleNames = userRoleRecords.map(r => r.roleName);
       // Single source of truth — see server/ownership.ts:isAdminRoleName().
       const { isAdminRoleName } = await import("./ownership");
-      const isAdminUser = roleNames.some(isAdminRoleName);
+      const roleIsAdmin = roleNames.some(isAdminRoleName);
+
+      // Emergency fallback: if EMERGENCY_ADMIN_USERNAME matches, treat as admin
+      // even without a role in the DB. Logs a warning every time it triggers.
+      const emergencyUsername = process.env.EMERGENCY_ADMIN_USERNAME;
+      const isEmergencyAdmin = !!(emergencyUsername && req.user!.username === emergencyUsername);
+      if (isEmergencyAdmin) {
+        console.warn(
+          `[authz] EMERGENCY_ADMIN_USERNAME: isAdmin=true granted to ${req.user!.username} (id=${req.user!.id}) via /api/user`
+        );
+      }
+
+      const isAdminUser = roleIsAdmin || isEmergencyAdmin;
 
       res.json({
         ...req.user,
