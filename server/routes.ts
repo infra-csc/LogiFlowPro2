@@ -1778,6 +1778,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.patch(
+    "/api/vehicles/:id",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem editar veículos",
+    }),
+    async (req, res) => {
+      try {
+        const data = insertVehicleSchema.partial().parse(req.body);
+        const vehicle = await storage.updateVehicle(req.params.id, data);
+        res.json(vehicle);
+      } catch (error) {
+        res.status(400).json({ error: "Invalid vehicle data" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/vehicles/:id",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem excluir veículos",
+    }),
+    async (req, res) => {
+      try {
+        await storage.deleteVehicle(req.params.id);
+        res.status(204).send();
+      } catch (error) {
+        res.status(500).json({ error: "Failed to delete vehicle" });
+      }
+    }
+  );
+
   // Drivers
   app.get("/api/drivers", requireAuth, async (req, res) => {
     try {
@@ -1895,6 +1926,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(201).json(dock);
       } catch (error) {
         res.status(400).json({ error: "Invalid dock data" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/docks/:id",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem editar docas",
+    }),
+    async (req, res) => {
+      try {
+        const data = insertDockSchema.partial().parse(req.body);
+        const dock = await storage.updateDock(req.params.id, data);
+        res.json(dock);
+      } catch (error) {
+        res.status(400).json({ error: "Invalid dock data" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/docks/:id",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem excluir docas",
+    }),
+    async (req, res) => {
+      try {
+        await storage.deleteDock(req.params.id);
+        res.status(204).send();
+      } catch (error) {
+        res.status(500).json({ error: "Failed to delete dock" });
       }
     }
   );

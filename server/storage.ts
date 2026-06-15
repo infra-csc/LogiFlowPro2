@@ -195,6 +195,7 @@ export interface IStorage {
   getVehicle(id: string): Promise<Vehicle | undefined>;
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
   updateVehicle(id: string, vehicle: Partial<InsertVehicle>): Promise<Vehicle>;
+  deleteVehicle(id: string): Promise<void>;
 
   // Drivers
   getDrivers(): Promise<Driver[]>;
@@ -208,6 +209,7 @@ export interface IStorage {
   getDock(id: string): Promise<Dock | undefined>;
   createDock(dock: InsertDock): Promise<Dock>;
   updateDock(id: string, dock: Partial<InsertDock>): Promise<Dock>;
+  deleteDock(id: string): Promise<void>;
 
   // Trips
   getTrips(): Promise<Trip[]>;
@@ -810,6 +812,10 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async deleteVehicle(id: string): Promise<void> {
+    await db.delete(vehicles).where(eq(vehicles.id, id));
+  }
+
   // Drivers
   async getDrivers(): Promise<Driver[]> {
     return await db.select().from(drivers).orderBy(desc(drivers.createdAt));
@@ -852,6 +858,10 @@ export class DatabaseStorage implements IStorage {
   async updateDock(id: string, dock: Partial<InsertDock>): Promise<Dock> {
     const [updated] = await db.update(docks).set(dock).where(eq(docks.id, id)).returning();
     return updated;
+  }
+
+  async deleteDock(id: string): Promise<void> {
+    await db.delete(docks).where(eq(docks.id, id));
   }
 
   // Trips
