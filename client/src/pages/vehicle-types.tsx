@@ -17,6 +17,8 @@ import type { z } from "zod";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
+import { useAuth } from "@/hooks/use-auth";
+import { userIsAdmin } from "@/lib/authz";
 
 type InsertVehicleType = z.infer<typeof insertVehicleTypeSchema>;
 
@@ -24,6 +26,8 @@ export default function VehicleTypes() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingType, setEditingType] = useState<VehicleType | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canManage = userIsAdmin(user);
   const { data: vehicleTypes, isLoading } = useQuery<VehicleType[]>({ queryKey: ["/api/vehicle-types"] });
 
   const form = useForm<InsertVehicleType>({
@@ -101,6 +105,7 @@ export default function VehicleTypes() {
         title="Tipos de Veículos"
         description="Gerencie os tipos de veículos e suas capacidades"
       >
+        {canManage && (
         <Dialog open={isCreateOpen} onOpenChange={handleCloseDialog}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-vehicle-type">
@@ -356,6 +361,7 @@ export default function VehicleTypes() {
             </Form>
           </DialogContent>
         </Dialog>
+        )}
       </PageHeader>
 
       {isLoading ? (
@@ -366,8 +372,8 @@ export default function VehicleTypes() {
             <Card 
               key={type.id} 
               data-testid={`vehicle-type-card-${type.id}`}
-              className="hover-elevate border-border/60 cursor-pointer"
-              onClick={() => handleEdit(type)}
+              className={`border-border/60 ${canManage ? "hover-elevate cursor-pointer" : ""}`}
+              onClick={() => canManage && handleEdit(type)}
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center gap-2 font-semibold text-base">
@@ -433,7 +439,9 @@ export default function VehicleTypes() {
         <EmptyState
           icon={Truck}
           title="Nenhum tipo de veículo"
-          description="Crie o primeiro tipo de veículo clicando no botão acima."
+          description={canManage
+            ? "Crie o primeiro tipo de veículo clicando no botão acima."
+            : "Nenhum tipo de veículo cadastrado. Solicite a um administrador."}
         />
       )}
     </div>
