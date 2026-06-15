@@ -77,7 +77,7 @@ export default function Docks() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async () => apiRequest("DELETE", `/api/docks/${deleteDock!.id}`),
+    mutationFn: async (dockId: string) => apiRequest("DELETE", `/api/docks/${dockId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/docks"] });
       toast({ title: "Doca excluída", description: "A doca foi removida do sistema." });
@@ -302,7 +302,7 @@ export default function Docks() {
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-delete-dock">Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteMutation.mutate()}
+              onClick={() => { if (deleteDock) deleteMutation.mutate(deleteDock.id); }}
               disabled={deleteMutation.isPending}
               data-testid="button-confirm-delete-dock"
             >
