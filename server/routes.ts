@@ -1797,7 +1797,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }),
     async (req, res) => {
       try {
-        const data = insertVehicleSchema.parse(req.body);
+        const raw = { ...req.body, plate: req.body.plate || null };
+        const data = insertVehicleSchema.parse(raw);
         const vehicle = await storage.createVehicle(data);
         res.status(201).json(vehicle);
       } catch (error: any) {
@@ -1820,7 +1821,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }),
     async (req, res) => {
       try {
-        const data = insertVehicleSchema.partial().parse(req.body);
+        const raw = { ...req.body, ...("plate" in req.body ? { plate: req.body.plate || null } : {}) };
+        const data = insertVehicleSchema.partial().parse(raw);
         const vehicle = await storage.updateVehicle(req.params.id, data);
         res.json(vehicle);
       } catch (error: any) {

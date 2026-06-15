@@ -52,7 +52,7 @@ export default function Vehicles() {
   const form = useForm<InsertVehicle>({
     resolver: zodResolver(vehicleFormSchema),
     defaultValues: {
-      plate: "",
+      plate: undefined,
       vehicleTypeId: undefined,
       type: "",
       model: undefined,
