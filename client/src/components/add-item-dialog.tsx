@@ -109,7 +109,15 @@ function extractVariables(formula: string): string[] {
   return Array.from(new Set(tokens));
 }
 
-function calcFinalQty(formula: string, multiplier: number, parameters: Record<string, number>): number {
+function calcFinalQty(
+  formula: string,
+  multiplier: number,
+  parameters: Record<string, number>,
+  productId?: string,
+): number {
+  if (formula.trim() === '?') {
+    return Math.max(0, Math.round((parameters[productId ?? ''] ?? 0) * multiplier));
+  }
   try {
     let f = formula.trim();
     for (const [name, val] of Object.entries(parameters)) {
@@ -338,9 +346,16 @@ export function AddItemDialog({
         const res = await apiRequest("GET", `/api/kits/${kit.id}/bom`);
         const bomData: BomLine[] = await res.json();
 
-        // Use parameters declared in the kit catalog (not auto-extracted from formulas)
+        // 1. Abstract parameters declared in kit catalog
         const parameters: Record<string, number> = {};
         (kit.parameters ?? []).forEach((p) => { parameters[p.name] = 0; });
+
+        // 2. Per-product variable quantities (formula === '?')
+        bomData.forEach((line) => {
+          if (line.quantityFormula.trim() === '?') {
+            parameters[line.productId] = 0;
+          }
+        });
 
         const bomLines = bomData.map((line) => {
           const product = products.find((p) => p.id === line.productId);
@@ -352,7 +367,7 @@ export function AddItemDialog({
             unit: product?.unit ?? "unid",
             formula: line.quantityFormula,
             baseQty,
-            finalQty: calcFinalQty(line.quantityFormula, 1, parameters),
+            finalQty: calcFinalQty(line.quantityFormula, 1, parameters, line.productId),
             notes: line.notes ?? "",
           };
         });
@@ -384,7 +399,7 @@ export function AddItemDialog({
           multiplier: m,
           bomLines: exp.bomLines.map((l) => ({
             ...l,
-            finalQty: calcFinalQty(l.formula, m, exp.parameters),
+            finalQty: calcFinalQty(l.formula, m, exp.parameters, l.productId),
           })),
         },
       };
@@ -402,7 +417,7 @@ export function AddItemDialog({
           parameters: newParams,
           bomLines: exp.bomLines.map((l) => ({
             ...l,
-            finalQty: calcFinalQty(l.formula, exp.multiplier, newParams),
+            finalQty: calcFinalQty(l.formula, exp.multiplier, newParams, l.productId),
           })),
         },
       };
@@ -776,30 +791,39 @@ export function AddItemDialog({
                                 </div>
                               </div>
 
-                              {/* Parameters section — only when kit has variable formulas */}
+                              {/* Parameters section — only when kit has variable items or formulas */}
                               {Object.keys(expansion.parameters).length > 0 && (
                                 <div className="bg-amber-500/5 border border-amber-500/20 rounded-md p-2.5 space-y-2">
                                   <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                                    Parâmetros do kit
+                                    Quantidades a definir
                                   </p>
-                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                                    {Object.keys(expansion.parameters).map((param) => (
-                                      <div key={param} className="flex items-center gap-2">
-                                        <label className="text-xs text-muted-foreground capitalize flex-1 truncate">
-                                          {param}
-                                        </label>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          value={expansion.parameters[param]}
-                                          onChange={(e) =>
-                                            updateKitParameter(kit.id, param, parseInt(e.target.value) || 0)
-                                          }
-                                          className="w-20 h-7 text-center text-xs px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                          data-testid={`input-kit-param-${kit.id}-${param}`}
-                                        />
-                                      </div>
-                                    ))}
+                                  <div className="grid grid-cols-1 gap-y-1.5">
+                                    {Object.keys(expansion.parameters).map((param) => {
+                                      // If param key matches a bomLine productId → show product name + unit
+                                      const bomLine = expansion.bomLines.find((l) => l.productId === param);
+                                      const label = bomLine ? bomLine.productName : param;
+                                      const unit = bomLine ? bomLine.unit : undefined;
+                                      return (
+                                        <div key={param} className="flex items-center gap-2">
+                                          <label className="text-xs text-muted-foreground flex-1 truncate">
+                                            {label}
+                                            {unit && (
+                                              <span className="text-[10px] text-muted-foreground/60 ml-1">({unit})</span>
+                                            )}
+                                          </label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            value={expansion.parameters[param]}
+                                            onChange={(e) =>
+                                              updateKitParameter(kit.id, param, parseInt(e.target.value) || 0)
+                                            }
+                                            className="w-20 h-7 text-center text-xs px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            data-testid={`input-kit-param-${kit.id}-${param}`}
+                                          />
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               )}
@@ -820,7 +844,7 @@ export function AddItemDialog({
                                   {expansion.bomLines.map((line) => {
                                     const hasParams = Object.keys(expansion.parameters).length > 0;
                                     const baseCalc = hasParams
-                                      ? calcFinalQty(line.formula, 1, expansion.parameters)
+                                      ? calcFinalQty(line.formula, 1, expansion.parameters, line.productId)
                                       : line.baseQty;
                                     return (
                                     <div

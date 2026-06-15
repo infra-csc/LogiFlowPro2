@@ -34,7 +34,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Kit, InsertKit, Product, BomLine } from "@shared/schema";
-import { Check, ChevronsUpDown, Plus, Trash2, Image as ImageIcon, Boxes, Package } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Trash2, Image as ImageIcon, Boxes, Package, Sliders } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ObjectUploader, type ObjectUploaderResult } from "@/components/ObjectUploader";
 
@@ -297,11 +297,6 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
       setNameError("Informe o nome do kit.");
       return;
     }
-    if (parameters.length === 0) {
-      toast({ description: "Adicione ao menos um parâmetro antes de salvar.", variant: "destructive" });
-      return;
-    }
-
     const submitData: InsertKit = {
       name: formData.name.trim(),
       description: formData.description?.trim() || undefined,
@@ -595,16 +590,46 @@ export function KitDialog({ open, onOpenChange, kit }: KitDialogProps) {
                         )}
                       </div>
                       <div className="col-span-5 space-y-1">
-                        <Label className="text-xs">Fórmula de Quantidade</Label>
-                        <Input
-                          value={line.quantityFormula}
-                          onChange={(e) => updateBomLine(index, "quantityFormula", e.target.value)}
-                          placeholder="Ex: largura * altura / 2"
-                          className="h-8 text-sm font-mono"
-                          data-testid={`input-bom-formula-${index}`}
-                        />
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Quantidade</Label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateBomLine(
+                                index,
+                                "quantityFormula",
+                                line.quantityFormula === "?" ? "1" : "?"
+                              )
+                            }
+                            className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded border transition-colors leading-none",
+                              line.quantityFormula === "?"
+                                ? "bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-400"
+                                : "border-border text-muted-foreground hover:text-foreground"
+                            )}
+                            data-testid={`button-toggle-variable-${index}`}
+                          >
+                            <Sliders className="inline h-2.5 w-2.5 mr-0.5" />
+                            {line.quantityFormula === "?" ? "variável" : "tornar variável"}
+                          </button>
+                        </div>
+                        {line.quantityFormula === "?" ? (
+                          <div className="h-8 rounded-md border border-amber-500/30 bg-amber-500/5 flex items-center px-3">
+                            <span className="text-xs text-amber-600 dark:text-amber-400">
+                              Solicitante define na requisição
+                            </span>
+                          </div>
+                        ) : (
+                          <Input
+                            value={line.quantityFormula}
+                            onChange={(e) => updateBomLine(index, "quantityFormula", e.target.value)}
+                            placeholder="Ex: 4  ou  tenda * 2"
+                            className="h-8 text-sm font-mono"
+                            data-testid={`input-bom-formula-${index}`}
+                          />
+                        )}
                       </div>
-                      <div className="col-span-1 flex justify-end">
+                      <div className="col-span-1 flex justify-end items-end pb-0.5">
                         <Button
                           type="button"
                           variant="ghost"

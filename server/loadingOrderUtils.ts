@@ -69,7 +69,8 @@ async function expandKit(
     const effectiveQuantity = calculateEffectiveQuantity(
       line.quantityFormula,
       kitQuantity,
-      parameters
+      parameters,
+      line.productId
     );
 
     if (effectiveQuantity > 0) {
@@ -91,8 +92,13 @@ async function expandKit(
 function calculateEffectiveQuantity(
   quantityFormula: string,
   kitQuantity: number,
-  parameters: Record<string, number>
+  parameters: Record<string, number>,
+  productId?: string
 ): number {
+  if (quantityFormula.trim() === '?') {
+    const qty = parameters[productId ?? ''] ?? 0;
+    return Math.round(qty * kitQuantity);
+  }
   try {
     let formula = quantityFormula.trim();
     
