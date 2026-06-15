@@ -16,13 +16,28 @@ import type { Vehicle, VehicleType } from "@shared/schema";
 import { insertVehicleSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
-import type { z } from "zod";
+import { z } from "zod";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar } from "@/components/filter-bar";
 
-type InsertVehicle = z.infer<typeof insertVehicleSchema>;
+const vehicleFormSchema = insertVehicleSchema.extend({
+  plate: z.string().min(1, "Placa é obrigatória"),
+  type: z.string().min(1, "Tipo é obrigatório"),
+});
+type InsertVehicle = z.infer<typeof vehicleFormSchema>;
+
+function parseApiError(err: Error): string {
+  try {
+    const match = err.message.match(/^(\d+): ([\s\S]+)$/);
+    if (match) {
+      const parsed = JSON.parse(match[2]);
+      return parsed.error ?? err.message;
+    }
+  } catch {}
+  return err.message;
+}
 
 export default function Vehicles() {
   const { user } = useAuth();
@@ -36,7 +51,7 @@ export default function Vehicles() {
   const { data: vehicleTypes } = useQuery<VehicleType[]>({ queryKey: ["/api/vehicle-types"] });
 
   const form = useForm<InsertVehicle>({
-    resolver: zodResolver(insertVehicleSchema),
+    resolver: zodResolver(vehicleFormSchema),
     defaultValues: {
       plate: "",
       vehicleTypeId: undefined,
@@ -76,7 +91,7 @@ export default function Vehicles() {
     onError: (error: Error) => {
       toast({
         title: editingVehicle ? "Erro ao atualizar veículo" : "Erro ao criar veículo",
-        description: error.message,
+        description: parseApiError(error),
         variant: "destructive",
       });
     },

@@ -1800,8 +1800,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const data = insertVehicleSchema.parse(req.body);
         const vehicle = await storage.createVehicle(data);
         res.status(201).json(vehicle);
-      } catch (error) {
-        res.status(400).json({ error: "Invalid vehicle data" });
+      } catch (error: any) {
+        console.error("[POST /api/vehicles] error:", error);
+        if (error?.name === "ZodError") {
+          return res.status(422).json({ error: "Dados inválidos", details: error.errors });
+        }
+        if (error?.code === "23505") {
+          return res.status(409).json({ error: "Já existe um veículo com essa placa." });
+        }
+        res.status(400).json({ error: "Erro ao criar veículo." });
       }
     }
   );
@@ -1816,8 +1823,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const data = insertVehicleSchema.partial().parse(req.body);
         const vehicle = await storage.updateVehicle(req.params.id, data);
         res.json(vehicle);
-      } catch (error) {
-        res.status(400).json({ error: "Invalid vehicle data" });
+      } catch (error: any) {
+        console.error("[PATCH /api/vehicles/:id] error:", error);
+        if (error?.name === "ZodError") {
+          return res.status(422).json({ error: "Dados inválidos", details: error.errors });
+        }
+        if (error?.code === "23505") {
+          return res.status(409).json({ error: "Já existe um veículo com essa placa." });
+        }
+        res.status(400).json({ error: "Erro ao atualizar veículo." });
       }
     }
   );
