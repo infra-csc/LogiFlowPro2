@@ -1,16 +1,11 @@
-// From blueprint: javascript_object_storage
-import { useState } from "react";
-import { createPortal } from "react-dom";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
-import Uppy from "@uppy/core";
-import { DashboardModal } from "@uppy/react";
-import XHRUpload from "@uppy/xhr-upload";
-import type { Meta, UploadResult } from "@uppy/core";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
-// Match Uppy's default generics so the prop type aligns with what the
-// underlying `complete` event actually emits (UploadResult<Meta, Body>).
-export type ObjectUploaderResult = UploadResult<Meta, Record<string, never>>;
+export interface ObjectUploaderResult {
+  successful: Array<{ response?: { body?: { url?: string } } }>;
+}
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
@@ -19,65 +14,90 @@ interface ObjectUploaderProps {
   buttonClassName?: string;
   buttonVariant?: "default" | "outline" | "secondary" | "ghost" | "destructive";
   children: ReactNode;
+  accept?: string;
 }
 
 /**
- * A file upload component that renders as a button and provides a modal interface for
- * file management. The DashboardModal is portaled to document.body so it always
- * appears above any parent dialog/sheet (avoids stacking-context issues).
+ * Simple file upload component — uses a hidden <input type="file"> to avoid
+ * portal / focus-trap conflicts with Radix UI dialogs. Uploads via XHR to
+ * /api/objects/upload and calls onComplete with a result shaped like Uppy's.
  */
 export function ObjectUploader({
-  maxNumberOfFiles = 1,
-  maxFileSize = 10485760, // 10MB default
+  maxFileSize = 10485760,
   onComplete,
   buttonClassName,
   buttonVariant = "outline",
   children,
+  accept = "image/png,image/jpeg,image/webp",
 }: ObjectUploaderProps) {
-  const [showModal, setShowModal] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
 
-  const [uppy] = useState(() =>
-    new Uppy({
-      restrictions: {
-        maxNumberOfFiles,
-        maxFileSize,
-      },
-      autoProceed: false,
-    })
-      .use(XHRUpload, {
-        endpoint: "/api/objects/upload",
-        fieldName: "file",
-        formData: true,
-        withCredentials: true,
-      })
-      .on("complete", (result) => {
-        onComplete?.(result);
-        setShowModal(false);
-      })
-  );
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const modal = (
-    <DashboardModal
-      uppy={uppy}
-      open={showModal}
-      onRequestClose={() => setShowModal(false)}
-      proudlyDisplayPoweredByUppy={false}
-    />
-  );
+    if (file.size > maxFileSize) {
+      toast({
+        description: `Arquivo muito grande. Máximo: ${Math.round(maxFileSize / 1024 / 1024)} MB.`,
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/objects/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload falhou: ${response.statusText}`);
+      }
+
+      const body = await response.json();
+
+      onComplete?.({
+        successful: [{ response: { body: { url: body.url } } }],
+      });
+    } catch (err) {
+      toast({
+        description: "Erro ao enviar arquivo. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   return (
     <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={handleFileChange}
+        data-testid="input-file-upload"
+      />
       <Button
-        onClick={() => setShowModal(true)}
+        onClick={() => inputRef.current?.click()}
         className={buttonClassName}
         variant={buttonVariant}
         type="button"
+        disabled={uploading}
         data-testid="button-upload-file"
       >
-        {children}
+        {uploading ? "Enviando..." : children}
       </Button>
-
-      {createPortal(modal, document.body)}
     </>
   );
 }
