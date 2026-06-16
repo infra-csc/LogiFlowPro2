@@ -4290,6 +4290,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEMPORARY — remove after use
+  app.post("/api/admin/clear-event-dates", requireAdmin({ message: "Admin only" }), async (req, res) => {
+    try {
+      const { pool } = await import("./db");
+      const r = await pool.query(`
+        UPDATE events
+        SET setup_date = NULL,
+            teardown_date = event_date
+      `);
+      const check = await pool.query(`
+        SELECT COUNT(*) FILTER (WHERE setup_date IS NOT NULL) as with_setup,
+               COUNT(*) FILTER (WHERE teardown_date != event_date) as with_diff_teardown
+        FROM events
+      `);
+      res.json({ ok: true, rows_updated: r.rowCount, remaining: check.rows[0] });
+    } catch (error) {
+      console.error("clear-event-dates error:", error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
