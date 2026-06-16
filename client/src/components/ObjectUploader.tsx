@@ -1,5 +1,6 @@
 // From blueprint: javascript_object_storage
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import Uppy from "@uppy/core";
 import { DashboardModal } from "@uppy/react";
@@ -22,7 +23,8 @@ interface ObjectUploaderProps {
 
 /**
  * A file upload component that renders as a button and provides a modal interface for
- * file management.
+ * file management. The DashboardModal is portaled to document.body so it always
+ * appears above any parent dialog/sheet (avoids stacking-context issues).
  */
 export function ObjectUploader({
   maxNumberOfFiles = 1,
@@ -33,6 +35,7 @@ export function ObjectUploader({
   children,
 }: ObjectUploaderProps) {
   const [showModal, setShowModal] = useState(false);
+
   const [uppy] = useState(() =>
     new Uppy({
       restrictions: {
@@ -53,10 +56,19 @@ export function ObjectUploader({
       })
   );
 
+  const modal = (
+    <DashboardModal
+      uppy={uppy}
+      open={showModal}
+      onRequestClose={() => setShowModal(false)}
+      proudlyDisplayPoweredByUppy={false}
+    />
+  );
+
   return (
-    <div>
-      <Button 
-        onClick={() => setShowModal(true)} 
+    <>
+      <Button
+        onClick={() => setShowModal(true)}
         className={buttonClassName}
         variant={buttonVariant}
         type="button"
@@ -65,12 +77,7 @@ export function ObjectUploader({
         {children}
       </Button>
 
-      <DashboardModal
-        uppy={uppy}
-        open={showModal}
-        onRequestClose={() => setShowModal(false)}
-        proudlyDisplayPoweredByUppy={false}
-      />
-    </div>
+      {createPortal(modal, document.body)}
+    </>
   );
 }
