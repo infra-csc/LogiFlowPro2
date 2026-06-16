@@ -89,7 +89,7 @@ function ProductCombobox({
           <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[340px] p-0" align="start">
+      <PopoverContent className="w-[480px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Buscar por nome ou SKU..." className="h-9" />
           <CommandList>
@@ -106,7 +106,7 @@ function ProductCombobox({
                 <Check
                   className={cn("mr-2 h-3.5 w-3.5 shrink-0", value === product.id ? "opacity-100" : "opacity-0")}
                 />
-                <span className="flex-1 truncate">{product.name}</span>
+                <span className="flex-1">{product.name}</span>
                 <span className="ml-2 font-mono text-xs text-muted-foreground shrink-0">
                   {product.sku}
                 </span>
