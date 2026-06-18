@@ -49,7 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: Omit<User, "password">) => {
-      queryClient.setQueryData(["/api/user"], user);
+      // Invalidate instead of setQueryData so GET /api/user is refetched
+      // with the full payload (roles + isAdmin) rather than the bare login response.
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Login realizado com sucesso",
         description: `Bem-vindo, ${user.name}!`,
