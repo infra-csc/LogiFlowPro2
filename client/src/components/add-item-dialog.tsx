@@ -758,192 +758,160 @@ export function AddItemDialog({
                       return (
                         <div
                           key={kit.id}
-                          className="border border-border/60 rounded-lg overflow-hidden"
+                          className={cn(
+                            "border rounded-lg overflow-hidden transition-colors",
+                            isExpanded ? "border-primary/40 bg-primary/5" : "border-border/60"
+                          )}
                           data-testid={`kit-card-${kit.id}`}
                         >
-                          {/* Kit row */}
-                          <div className="flex items-center gap-3 p-3">
-                            <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                              <Boxes className="h-4 w-4 text-muted-foreground" />
+                          {/* Kit row — whole row is clickable */}
+                          <div
+                            className="flex items-center gap-3 p-3 cursor-pointer select-none"
+                            onClick={() => toggleKitExpansion(kit)}
+                            data-testid={`button-expand-kit-${kit.id}`}
+                          >
+                            <div className={cn(
+                              "w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 transition-colors",
+                              isExpanded ? "bg-primary/20" : "bg-muted"
+                            )}>
+                              {isLoading
+                                ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                : <Boxes className={cn("h-4 w-4", isExpanded ? "text-primary" : "text-muted-foreground")} />
+                              }
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold">{kit.name}</p>
+                              <p className={cn("text-sm font-semibold", isExpanded && "text-primary")}>{kit.name}</p>
                               {kit.description && (
                                 <p className="text-xs text-muted-foreground truncate">{kit.description}</p>
                               )}
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => toggleKitExpansion(kit)}
-                              className="flex-shrink-0 h-7 text-xs gap-1"
-                              data-testid={`button-expand-kit-${kit.id}`}
-                            >
-                              {isLoading ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : isExpanded ? (
-                                <ChevronDown className="h-3.5 w-3.5" />
-                              ) : (
-                                <ChevronRight className="h-3.5 w-3.5" />
-                              )}
-                              {isExpanded ? "Recolher" : "Visualizar"}
-                            </Button>
+                            {isKitInCart(kit.id) && (
+                              <Badge variant="outline" className="text-[10px] h-5 gap-0.5 border-primary/40 text-primary no-default-hover-elevate">
+                                <Check className="h-2.5 w-2.5" />
+                                Selecionado
+                              </Badge>
+                            )}
+                            {isExpanded
+                              ? <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              : <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            }
                           </div>
 
                           {/* BOM expansion */}
                           {isExpanded && expansion && !isLoading && (
-                            <div className="border-t border-border/40 p-3 bg-muted/20 space-y-3">
+                            <div className="border-t border-border/40 p-3 space-y-3">
                               {/* Multiplier */}
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs text-muted-foreground font-medium">Quantidade de kits:</span>
-                                <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-foreground">Quantos kits?</span>
+                                <div className="flex items-center gap-1 ml-1">
                                   <button
                                     onClick={() => updateKitMultiplier(kit.id, expansion.multiplier - 1)}
-                                    className="w-6 h-6 rounded border border-border/60 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                    className="w-7 h-7 rounded border border-border/60 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                                   >
-                                    <Minus className="h-2.5 w-2.5" />
+                                    <Minus className="h-3 w-3" />
                                   </button>
                                   <Input
                                     type="number"
                                     min="1"
                                     value={expansion.multiplier}
                                     onChange={(e) => updateKitMultiplier(kit.id, parseInt(e.target.value) || 1)}
-                                    className="w-14 h-7 text-center text-sm px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    className="w-14 h-7 text-center text-sm font-semibold px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     data-testid={`input-kit-multiplier-${kit.id}`}
                                   />
                                   <button
                                     onClick={() => updateKitMultiplier(kit.id, expansion.multiplier + 1)}
-                                    className="w-6 h-6 rounded border border-border/60 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                    className="w-7 h-7 rounded border border-border/60 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                                   >
-                                    <Plus className="h-2.5 w-2.5" />
+                                    <Plus className="h-3 w-3" />
                                   </button>
                                 </div>
                               </div>
 
-                              {/* Parameters section — only when kit has variable items or formulas */}
-                              {Object.keys(expansion.parameters).length > 0 && (
-                                <div className="bg-amber-500/5 border border-amber-500/20 rounded-md p-2.5 space-y-2">
-                                  <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                                    Quantidades a definir
-                                  </p>
-                                  <div className="space-y-1.5">
-                                    {Object.keys(expansion.parameters).map((param) => {
-                                      const bomLine = expansion.bomLines.find((l) => l.productId === param);
-                                      const label = bomLine ? bomLine.productName : param;
-                                      const unit = bomLine ? bomLine.unit : undefined;
-                                      const isExcluded = expansion.excludedItems.includes(param);
-                                      return (
-                                        <div
-                                          key={param}
-                                          className={cn(
-                                            "flex items-center gap-2 rounded-md px-2 py-1.5 border transition-colors",
-                                            isExcluded
-                                              ? "border-border/30 bg-muted/20 opacity-50"
-                                              : "border-transparent"
-                                          )}
-                                        >
-                                          <label
-                                            className={cn(
-                                              "text-xs flex-1 truncate",
-                                              isExcluded ? "line-through text-muted-foreground" : "text-muted-foreground"
-                                            )}
-                                          >
-                                            {label}
-                                            {unit && (
-                                              <span className="text-[10px] opacity-60 ml-1">({unit})</span>
-                                            )}
-                                          </label>
-                                          {isExcluded ? (
-                                            <span className="text-[10px] text-muted-foreground italic mr-1">não incluído</span>
-                                          ) : (
-                                            <Input
-                                              type="number"
-                                              min="0"
-                                              value={expansion.parameters[param]}
-                                              onChange={(e) =>
-                                                updateKitParameter(kit.id, param, parseInt(e.target.value) || 0)
-                                              }
-                                              className="w-20 h-7 text-center text-xs px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                              data-testid={`input-kit-param-${kit.id}-${param}`}
-                                            />
-                                          )}
-                                          <button
-                                            onClick={() => toggleExcludeKitItem(kit.id, param)}
-                                            className={cn(
-                                              "shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition-colors leading-none",
-                                              isExcluded
-                                                ? "border-border text-muted-foreground hover:text-foreground"
-                                                : "border-destructive/40 text-destructive/70 hover:text-destructive hover:border-destructive"
-                                            )}
-                                            title={isExcluded ? "Incluir este item" : "Não preciso deste item"}
-                                            data-testid={`button-exclude-param-${kit.id}-${param}`}
-                                          >
-                                            {isExcluded ? "incluir" : "excluir"}
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* BOM lines */}
+                              {/* Unified item list */}
                               {expansion.bomLines.length === 0 ? (
-                                <p className="text-xs text-muted-foreground py-1">Este kit não tem itens no BOM.</p>
+                                <p className="text-xs text-muted-foreground py-2 text-center">Este kit não tem itens cadastrados.</p>
                               ) : (
-                                <div className="space-y-1">
+                                <div className="rounded-md border border-border/40 overflow-hidden">
                                   {/* Header */}
-                                  <div className="grid grid-cols-[1fr_56px_100px_60px_20px] gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1">
+                                  <div className="grid grid-cols-[20px_1fr_72px_36px] gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5 bg-muted/40 border-b border-border/30">
+                                    <span />
                                     <span>Produto</span>
-                                    <span>SKU</span>
-                                    <span className="text-center">Base × Kits</span>
-                                    <span className="text-center">Final</span>
+                                    <span className="text-center">Quantidade</span>
                                     <span />
                                   </div>
-                                  {expansion.bomLines.map((line) => {
-                                    const hasParams = Object.keys(expansion.parameters).length > 0;
+                                  {expansion.bomLines.map((line, idx) => {
+                                    const isVariable = line.formula.trim() === '?';
                                     const isExcluded = expansion.excludedItems.includes(line.productId);
-                                    const baseCalc = hasParams
-                                      ? calcFinalQty(line.formula, 1, expansion.parameters, line.productId)
-                                      : line.baseQty;
+                                    const needsQty = isVariable && !isExcluded && line.finalQty === 0;
                                     return (
-                                    <div
-                                      key={line.productId}
-                                      className={cn(
-                                        "grid grid-cols-[1fr_56px_100px_60px_20px] gap-2 items-center bg-background rounded-md px-2 py-1.5 border",
-                                        isExcluded
-                                          ? "border-border/20 opacity-40"
-                                          : "border-border/40"
-                                      )}
-                                    >
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-medium truncate">{line.productName}</p>
-                                        <p className="text-[10px] text-muted-foreground">{line.unit}</p>
+                                      <div
+                                        key={line.productId}
+                                        className={cn(
+                                          "grid grid-cols-[20px_1fr_72px_36px] gap-2 items-center px-3 py-2 transition-colors",
+                                          idx > 0 && "border-t border-border/20",
+                                          isExcluded ? "opacity-40" : needsQty ? "bg-amber-500/5" : ""
+                                        )}
+                                      >
+                                        {/* Checkbox */}
+                                        <button
+                                          onClick={() => toggleExcludeKitItem(kit.id, line.productId)}
+                                          className={cn(
+                                            "w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors",
+                                            isExcluded
+                                              ? "border-border/50 bg-transparent"
+                                              : "border-primary bg-primary"
+                                          )}
+                                          title={isExcluded ? "Incluir este item" : "Excluir este item"}
+                                          data-testid={`button-exclude-param-${kit.id}-${line.productId}`}
+                                        >
+                                          {!isExcluded && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                                        </button>
+
+                                        {/* Product info */}
+                                        <div className="min-w-0">
+                                          <p className={cn("text-xs font-medium leading-snug", isExcluded && "line-through text-muted-foreground")}>
+                                            {line.productName}
+                                          </p>
+                                          <p className="text-[10px] text-muted-foreground">
+                                            {line.sku} · {line.unit}
+                                            {isVariable && !isExcluded && (
+                                              <span className="ml-1 text-amber-600 dark:text-amber-400">— informe a quantidade</span>
+                                            )}
+                                          </p>
+                                        </div>
+
+                                        {/* Quantity */}
+                                        <div className="flex flex-col items-center gap-0.5">
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            value={line.finalQty}
+                                            onChange={(e) =>
+                                              updateBomLineQty(kit.id, line.productId, parseInt(e.target.value) || 0)
+                                            }
+                                            disabled={isExcluded}
+                                            className={cn(
+                                              "h-7 text-center text-xs font-semibold px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                              needsQty && "border-amber-500/60 focus-visible:ring-amber-500/30"
+                                            )}
+                                            data-testid={`input-kit-param-${kit.id}-${line.productId}`}
+                                          />
+                                          {!isVariable && !isExcluded && (
+                                            <span className="text-[9px] text-muted-foreground/60 leading-none">
+                                              {line.baseQty}×{expansion.multiplier}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Remove */}
+                                        <button
+                                          onClick={() => removeBomLine(kit.id, line.productId)}
+                                          className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                                          title="Remover do kit"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
                                       </div>
-                                      <span className="text-xs font-mono text-muted-foreground truncate">{line.sku}</span>
-                                      <span
-                                        className="text-xs text-muted-foreground text-center font-mono truncate"
-                                        title={hasParams ? line.formula : undefined}
-                                      >
-                                        {baseCalc} × {expansion.multiplier}
-                                      </span>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        value={line.finalQty}
-                                        onChange={(e) =>
-                                          updateBomLineQty(kit.id, line.productId, parseInt(e.target.value) || 0)
-                                        }
-                                        className="h-6 text-center text-xs px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                      />
-                                      <button
-                                        onClick={() => removeBomLine(kit.id, line.productId)}
-                                        className="text-muted-foreground hover:text-destructive transition-colors"
-                                        title="Remover este item do kit"
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    </div>
                                     );
                                   })}
                                 </div>
@@ -951,19 +919,19 @@ export function AddItemDialog({
 
                               <Button
                                 size="sm"
-                                className="w-full h-8 text-xs gap-1.5"
+                                className="w-full gap-1.5"
                                 onClick={() => addKitToCart(kit.id)}
                                 data-testid={`button-add-kit-${kit.id}`}
                               >
                                 {isKitInCart(kit.id) ? (
                                   <>
                                     <Check className="h-3.5 w-3.5" />
-                                    Atualizar kit na seleção
+                                    Atualizar seleção
                                   </>
                                 ) : (
                                   <>
                                     <Plus className="h-3.5 w-3.5" />
-                                    Adicionar kit à seleção
+                                    Adicionar à requisição
                                   </>
                                 )}
                               </Button>
