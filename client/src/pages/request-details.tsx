@@ -262,6 +262,10 @@ export default function RequestDetails() {
   const isOwner = user && request.requestedBy === user.id;
   const isAdmin = user && (user as any).isAdmin === true;
   const canEdit = request.status === "draft" && (isOwner || isAdmin);
+  // Admin can rename/edit metadata on draft OR pending_approval; owner only on draft
+  const canRename = isAdmin
+    ? ["draft", "pending_approval"].includes(request.status)
+    : canEdit;
   // Admin can delete any non-approved request; owner can only delete their own draft
   const canDelete = isAdmin
     ? request.status !== "approved"
@@ -355,7 +359,7 @@ export default function RequestDetails() {
               Duplicar
             </Button>
           )}
-          {canEdit && (
+          {canRename && (
             <Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)} data-testid="button-edit-request">
               <Pencil className="h-4 w-4 mr-2" />
               Editar
