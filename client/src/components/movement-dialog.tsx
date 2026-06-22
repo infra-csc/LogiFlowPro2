@@ -515,9 +515,21 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           />
                         </FormControl>
                         {selectedType && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {movementTypeHint(selectedType.name)}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            {selectedType.nature === "inbound" && (
+                              <Badge variant="outline" className="text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                                Entrada
+                              </Badge>
+                            )}
+                            {selectedType.nature === "outbound" && (
+                              <Badge variant="outline" className="text-xs px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                                Saída
+                              </Badge>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {movementTypeHint(selectedType.name)}
+                            </p>
+                          </div>
                         )}
                         <FormMessage />
                       </FormItem>

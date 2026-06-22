@@ -50,6 +50,26 @@ const formatDuration = (minutes?: number | null) => {
   return `${mins}min`;
 };
 
+// Nature badge: Entrada (inbound) or Saída (outbound)
+function NatureBadge({ nature }: { nature?: string | null }) {
+  if (!nature) return null;
+  if (nature === "inbound") {
+    return (
+      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+        Entrada
+      </Badge>
+    );
+  }
+  if (nature === "outbound") {
+    return (
+      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+        Saída
+      </Badge>
+    );
+  }
+  return null;
+}
+
 // Movement type label translation (fallback when movementTypeConfig.name is missing)
 function movementTypeLabel(type: string | null): string {
   const labels: Record<string, string> = {
@@ -493,6 +513,7 @@ export default function Movements() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <StatusBadge status={movement.status} />
+                          <NatureBadge nature={movement.movementTypeConfig?.nature} />
                           <span className="text-xs text-muted-foreground font-mono">
                             {movement.movementNumber || "—"}
                           </span>

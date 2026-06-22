@@ -1043,9 +1043,21 @@ export default function MovementDetails() {
               <Truck className="h-3.5 w-3.5" />
               Veículo: <span className="text-foreground font-medium">{movement.vehiclePlate || "—"}</span>
             </span>
-            <span className="flex items-center gap-1">
-              <Tag className="h-3.5 w-3.5" />
-              Tipo: <span className="text-foreground font-medium">{movement.movementTypeConfig?.name || "—"}</span>
+            <span className="flex items-center gap-2 flex-wrap">
+              <span className="flex items-center gap-1">
+                <Tag className="h-3.5 w-3.5" />
+                Tipo: <span className="text-foreground font-medium">{movement.movementTypeConfig?.name || "—"}</span>
+              </span>
+              {movement.movementTypeConfig?.nature === "inbound" && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                  Entrada
+                </Badge>
+              )}
+              {movement.movementTypeConfig?.nature === "outbound" && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                  Saída
+                </Badge>
+              )}
             </span>
             {movement.loadingOrder && (
               <span className="flex items-center gap-1">
