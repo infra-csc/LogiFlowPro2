@@ -636,7 +636,7 @@ export function AddItemDialog({
         </div>
 
         {/* Scrollable body */}
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
           <div className="px-6 pb-4">
             {/* ── PRODUCTS TAB ── */}
             {activeTab === "products" && (
@@ -688,12 +688,6 @@ export function AddItemDialog({
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               <span className="text-xs font-mono text-muted-foreground">{product.sku}</span>
                               <span className="text-xs text-muted-foreground">{product.unit}</span>
-                              <Badge
-                                variant="outline"
-                                className={cn("text-[10px] h-4 px-1.5 no-default-hover-elevate", ownershipClass(product.ownership))}
-                              >
-                                {ownershipLabel(product.ownership)}
-                              </Badge>
                               {alreadyInRequest && (
                                 <span className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
                                   <AlertTriangle className="h-2.5 w-2.5" />
@@ -1029,7 +1023,7 @@ export function AddItemDialog({
               </>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Footer */}
         <div className="border-t border-border bg-muted/30 px-6 py-3.5 flex-shrink-0">
