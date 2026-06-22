@@ -457,15 +457,24 @@ export function AddItemDialog({
   }, []);
 
   const updateBomLineQty = useCallback((kitId: string, productId: string, qty: number) => {
-    setKitExpansions((prev) => ({
-      ...prev,
-      [kitId]: {
-        ...prev[kitId],
-        bomLines: prev[kitId].bomLines.map((l) =>
-          l.productId === productId ? { ...l, finalQty: Math.max(0, qty) } : l
-        ),
-      },
-    }));
+    setKitExpansions((prev) => {
+      const exp = prev[kitId];
+      const newQty = Math.max(0, qty);
+      // Also keep parameters in sync so addKitToCart saves the correct values
+      const newParams = Object.prototype.hasOwnProperty.call(exp.parameters, productId)
+        ? { ...exp.parameters, [productId]: newQty }
+        : exp.parameters;
+      return {
+        ...prev,
+        [kitId]: {
+          ...exp,
+          parameters: newParams,
+          bomLines: exp.bomLines.map((l) =>
+            l.productId === productId ? { ...l, finalQty: newQty } : l
+          ),
+        },
+      };
+    });
   }, []);
 
   const removeBomLine = useCallback((kitId: string, productId: string) => {

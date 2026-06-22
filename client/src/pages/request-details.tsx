@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X, Boxes } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X, Boxes, Loader2 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
@@ -197,6 +197,9 @@ export default function RequestDetails() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<string>("");
   const [editNotes, setEditNotes] = useState<string>("");
+  const [kitEditBom, setKitEditBom] = useState<Array<{ productId: string; productName: string; unit: string }>>([]);
+  const [kitEditVariableQtys, setKitEditVariableQtys] = useState<Record<string, number>>({});
+  const [kitEditLoading, setKitEditLoading] = useState(false);
 
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
@@ -212,13 +215,15 @@ export default function RequestDetails() {
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: async ({ itemId, quantity, notes }: { itemId: string; quantity: number; notes?: string }) => {
-      return apiRequest("PATCH", `/api/request-items/${itemId}`, { quantity, notes });
+    mutationFn: async ({ itemId, quantity, notes, kitParameters }: { itemId: string; quantity: number; notes?: string; kitParameters?: Record<string, number> }) => {
+      return apiRequest("PATCH", `/api/request-items/${itemId}`, { quantity, notes, kitParameters });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests", id, "items"] });
       toast({ title: "Item atualizado", description: "Quantidade e observações atualizadas" });
       setEditingItemId(null);
+      setKitEditBom([]);
+      setKitEditVariableQtys({});
     },
     onError: () => {
       toast({ variant: "destructive", title: "Erro ao atualizar", description: "Não foi possível atualizar o item" });
@@ -621,9 +626,12 @@ export default function RequestDetails() {
                         {/* Right: quantity + actions (compact) */}
                         <div className="flex items-center gap-4 sm:text-right">
                           {editingItemId === item.id ? (
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <div className="flex items-center gap-2">
-                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Quantidade</label>
+                            <div className="flex flex-col gap-3 items-end">
+                              {/* Multiplier row */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                                  {item.kitId && !item.productId ? "Qtd. de kits" : "Quantidade"}
+                                </label>
                                 <input
                                   type="number"
                                   min="1"
@@ -633,32 +641,60 @@ export default function RequestDetails() {
                                   data-testid={`input-edit-quantity-${item.id}`}
                                 />
                                 <span className="text-xs text-muted-foreground">{item.product?.unit || "unid"}</span>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      const qty = parseInt(editQuantity);
+                                      if (isNaN(qty) || qty < 1) {
+                                        toast({ variant: "destructive", title: "Erro", description: "Quantidade deve ser maior que zero" });
+                                        return;
+                                      }
+                                      const kitParams = item.kitId && !item.productId && Object.keys(kitEditVariableQtys).length > 0
+                                        ? kitEditVariableQtys
+                                        : undefined;
+                                      updateItemMutation.mutate({ itemId: item.id, quantity: qty, notes: editNotes || undefined, kitParameters: kitParams });
+                                    }}
+                                    data-testid={`button-save-item-${item.id}`}
+                                  >
+                                    <Check className="h-4 w-4 text-chart-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => { setEditingItemId(null); setKitEditBom([]); setKitEditVariableQtys({}); }}
+                                    data-testid={`button-cancel-edit-item-${item.id}`}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    const qty = parseInt(editQuantity);
-                                    if (isNaN(qty) || qty < 1) {
-                                      toast({ variant: "destructive", title: "Erro", description: "Quantidade deve ser maior que zero" });
-                                      return;
-                                    }
-                                    updateItemMutation.mutate({ itemId: item.id, quantity: qty, notes: editNotes || undefined });
-                                  }}
-                                  data-testid={`button-save-item-${item.id}`}
-                                >
-                                  <Check className="h-4 w-4 text-chart-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setEditingItemId(null)}
-                                  data-testid={`button-cancel-edit-item-${item.id}`}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              {/* Variable kit items */}
+                              {item.kitId && !item.productId && (
+                                kitEditLoading ? (
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground w-full">
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando itens variáveis...
+                                  </div>
+                                ) : kitEditBom.length > 0 ? (
+                                  <div className="w-full rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Itens variáveis</p>
+                                    {kitEditBom.map((bom) => (
+                                      <div key={bom.productId} className="flex items-center gap-2">
+                                        <span className="text-xs flex-1 truncate">{bom.productName}</span>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={kitEditVariableQtys[bom.productId] ?? 0}
+                                          onChange={(e) => setKitEditVariableQtys((prev) => ({ ...prev, [bom.productId]: parseInt(e.target.value) || 0 }))}
+                                          className="w-16 h-7 px-2 rounded-md bg-background border border-border text-sm font-semibold text-center focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <span className="text-xs text-muted-foreground w-10 truncate">{bom.unit}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null
+                              )}
                             </div>
                           ) : (
                             <>
@@ -687,10 +723,34 @@ export default function RequestDetails() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => {
+                                    onClick={async () => {
                                       setEditingItemId(item.id);
                                       setEditQuantity(String(item.quantity));
                                       setEditNotes(item.notes || "");
+                                      setKitEditBom([]);
+                                      setKitEditVariableQtys({});
+                                      if (item.kitId && !item.productId) {
+                                        setKitEditLoading(true);
+                                        try {
+                                          const res = await apiRequest("GET", `/api/kits/${item.kitId}/bom`);
+                                          const bom: Array<{ productId: string; quantityFormula: string }> = await res.json();
+                                          const varLines = bom.filter((l) => l.quantityFormula.trim() === '?');
+                                          if (varLines.length > 0) {
+                                            setKitEditBom(varLines.map((l) => ({
+                                              productId: l.productId,
+                                              productName: products.find((p) => p.id === l.productId)?.name ?? l.productId,
+                                              unit: (products as any[]).find((p) => p.id === l.productId)?.unit ?? "unid",
+                                            })));
+                                            const qtys: Record<string, number> = {};
+                                            varLines.forEach((l) => {
+                                              qtys[l.productId] = ((item as any).kitParameters)?.[l.productId] ?? 0;
+                                            });
+                                            setKitEditVariableQtys(qtys);
+                                          }
+                                        } finally {
+                                          setKitEditLoading(false);
+                                        }
+                                      }
                                     }}
                                     data-testid={`button-edit-item-${item.id}`}
                                   >

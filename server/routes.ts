@@ -1646,7 +1646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { quantity, notes } = req.body;
+      const { quantity, notes, kitParameters } = req.body;
       const updateData: Partial<z.infer<typeof insertRequestItemSchema>> = {};
       if (quantity !== undefined) {
         const qty = parseInt(quantity);
@@ -1657,6 +1657,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (notes !== undefined) {
         updateData.notes = notes || null;
+      }
+      if (kitParameters !== undefined) {
+        updateData.kitParameters = kitParameters;
       }
 
       const updated = await storage.updateRequestItem(req.params.id, updateData);
