@@ -18,6 +18,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AddItemDialog } from "@/components/add-item-dialog";
 import { DuplicateRequestDialog } from "@/components/duplicate-request-dialog";
+import { RequestDialog } from "@/components/request-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Event } from "@shared/schema";
@@ -80,6 +81,7 @@ type MaterialRequest = {
   approvedAt?: string;
   cutoffTime?: string;
   notes?: string;
+  rejectionReason?: string | null;
   createdAt: string;
   event?: {
     id: string;
@@ -102,6 +104,7 @@ export default function RequestDetails() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteItemDialog, setShowDeleteItemDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [showDeleteBatchDialog, setShowDeleteBatchDialog] = useState(false);
@@ -350,6 +353,12 @@ export default function RequestDetails() {
             <Button variant="outline" size="sm" onClick={() => setShowDuplicateDialog(true)} data-testid="button-duplicate-request">
               <Copy className="h-4 w-4 mr-2" />
               Duplicar
+            </Button>
+          )}
+          {canEdit && (
+            <Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)} data-testid="button-edit-request">
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar
             </Button>
           )}
           {canDelete && (
@@ -758,6 +767,7 @@ export default function RequestDetails() {
 
       {/* Duplicate */}
       <DuplicateRequestDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog} requestId={id!} currentArea={request.area} itemCount={items.length} />
+      <RequestDialog open={showEditDialog} onOpenChange={setShowEditDialog} request={request as any} />
 
       {/* Delete Item Confirmation */}
       <AlertDialog open={showDeleteItemDialog} onOpenChange={setShowDeleteItemDialog}>
