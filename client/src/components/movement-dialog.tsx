@@ -66,7 +66,15 @@ import {
   Info,
   Minus,
   Plus,
+  Calendar,
+  Clock,
+  User,
+  Navigation,
+  ChevronRight,
+  Building2,
 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -84,6 +92,21 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+type TripWithRelations = Trip & {
+  event?: Event | null;
+  vehicle?: { id: string; plate: string; model?: string | null } | null;
+  vehicleType?: { id: string; name: string; capacity?: number | null } | null;
+  driver?: { id: string; name: string; phone?: string | null } | null;
+  dock?: { id: string; name: string } | null;
+  destinations?: Array<{
+    id: string;
+    location: string;
+    arrivalDateTime: string | Date;
+    sequence: number;
+    notes?: string | null;
+  }>;
+};
 
 type MovementWithRelations = Movement & {
   events?: Event[];
@@ -122,6 +145,186 @@ const movementTypeHint = (name: string): string => {
   };
   return map[name] || "";
 };
+
+// Trip status helpers
+function tripStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    planned: "Planejado", in_progress: "Em andamento",
+    completed: "Concluído", cancelled: "Cancelado",
+  };
+  return labels[status] || status;
+}
+function tripStatusClass(status: string): string {
+  const classes: Record<string, string> = {
+    planned: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30",
+    in_progress: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+    completed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+    cancelled: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30",
+  };
+  return classes[status] || "bg-muted text-muted-foreground";
+}
+
+function fmtDt(val: string | Date | null | undefined): string {
+  if (!val) return "—";
+  try { return format(new Date(val), "dd MMM HH:mm", { locale: ptBR }); }
+  catch { return "—"; }
+}
+
+// Trip detail side panel shown when one or more trips are selected
+function TripDetailPanel({ trips }: { trips: TripWithRelations[] }) {
+  return (
+    <div className="flex flex-col gap-5 p-4">
+      {trips.map((trip) => {
+        const sortedDests = [...(trip.destinations || [])].sort((a, b) => a.sequence - b.sequence);
+        return (
+          <div key={trip.id} className="space-y-3">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold text-sm text-foreground leading-tight">
+                {trip.description || `Plano de Viagens ${trip.id.substring(0, 8)}`}
+              </p>
+              <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 shrink-0", tripStatusClass(trip.status))}>
+                {tripStatusLabel(trip.status)}
+              </Badge>
+            </div>
+
+            {/* Metadata grid */}
+            <div className="grid grid-cols-1 gap-1.5 text-xs">
+              {trip.event && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-muted-foreground">Evento</span>
+                    <p className="text-foreground font-medium leading-snug">{trip.event.name}</p>
+                  </div>
+                </div>
+              )}
+              {trip.vehicleType && (
+                <div className="flex items-start gap-2">
+                  <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-muted-foreground">Tipo de veículo</span>
+                    <p className="text-foreground font-medium leading-snug">
+                      {trip.vehicleType.name}
+                      {trip.vehicle ? ` · ${trip.vehicle.plate}` : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {trip.driver && (
+                <div className="flex items-start gap-2">
+                  <User className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-muted-foreground">Motorista</span>
+                    <p className="text-foreground font-medium leading-snug">{trip.driver.name}</p>
+                  </div>
+                </div>
+              )}
+              {trip.dock && (
+                <div className="flex items-start gap-2">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-muted-foreground">Doca</span>
+                    <p className="text-foreground font-medium leading-snug">{trip.dock.name}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Loading window */}
+            {(trip.loadingStartTime || trip.loadingEndTime || trip.loadingLocation) && (
+              <div className="rounded-md border border-border/60 bg-card p-2.5 space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Carregamento</p>
+                {trip.loadingLocation && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-foreground">{trip.loadingLocation}</span>
+                  </div>
+                )}
+                {(trip.loadingStartTime || trip.loadingEndTime) && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    <span>{fmtDt(trip.loadingStartTime)}</span>
+                    <ChevronRight className="h-3 w-3 shrink-0" />
+                    <span>{fmtDt(trip.loadingEndTime)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Departure */}
+            {trip.departureDateTime && (
+              <div className="flex items-center gap-2 text-xs">
+                <Navigation className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground">Partida:</span>
+                <span className="text-foreground font-medium">{fmtDt(trip.departureDateTime)}</span>
+              </div>
+            )}
+
+            {/* Unloading window */}
+            {(trip.unloadingStartTime || trip.unloadingEndTime || trip.unloadingLocation) && (
+              <div className="rounded-md border border-border/60 bg-card p-2.5 space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Descarregamento</p>
+                {trip.unloadingLocation && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-foreground">{trip.unloadingLocation}</span>
+                  </div>
+                )}
+                {(trip.unloadingStartTime || trip.unloadingEndTime) && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    <span>{fmtDt(trip.unloadingStartTime)}</span>
+                    <ChevronRight className="h-3 w-3 shrink-0" />
+                    <span>{fmtDt(trip.unloadingEndTime)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Destinations */}
+            {sortedDests.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Destinos ({sortedDests.length})
+                </p>
+                <div className="space-y-1">
+                  {sortedDests.map((dest, idx) => (
+                    <div key={dest.id} className="flex items-start gap-2 text-xs">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-primary shrink-0 text-[10px] font-bold mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-foreground font-medium truncate">{dest.location}</p>
+                        <p className="text-muted-foreground">{fmtDt(dest.arrivalDateTime)}</p>
+                        {dest.notes && <p className="text-muted-foreground italic">{dest.notes}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            {trip.notes && (
+              <div className="flex items-start gap-2 text-xs">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-muted-foreground">Observações</span>
+                  <p className="text-foreground leading-snug mt-0.5">{trip.notes}</p>
+                </div>
+              </div>
+            )}
+
+            {trips.indexOf(trip) < trips.length - 1 && (
+              <div className="border-t border-border/40 pt-1" />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // Section divider component
 function SectionTitle({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
@@ -250,7 +453,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     queryKey: ["/api/events"],
   });
 
-  const { data: trips = [] } = useQuery<Trip[]>({
+  const { data: trips = [] } = useQuery<TripWithRelations[]>({
     queryKey: ["/api/trips"],
   });
 
@@ -426,7 +629,10 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
-        className="max-w-xl max-h-[90vh] overflow-hidden p-0 flex flex-col"
+        className={cn(
+          "max-h-[92vh] overflow-hidden p-0 flex flex-col transition-all duration-300",
+          selectedTrips.length > 0 ? "max-w-5xl" : "max-w-xl"
+        )}
         data-testid="dialog-movement"
       >
         {/* Header */}
@@ -449,7 +655,8 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col flex-1 overflow-hidden"
           >
-            <div className="flex-1 overflow-y-auto p-6 space-y-5" style={{ scrollbarWidth: "thin" }}>
+            <div className="flex flex-1 overflow-hidden min-h-0">
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 min-w-0" style={{ scrollbarWidth: "thin" }}>
               {/* Section 1: Identificação */}
               <SectionTitle icon={Tag} title="Identificação" />
               <div className="space-y-4">
@@ -1234,6 +1441,18 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                 </>
               )}
             </div>
+            {/* Trip detail panel — right column */}
+            {selectedTrips.length > 0 && (
+              <div className="w-[360px] border-l border-border overflow-y-auto bg-muted/20 shrink-0" style={{ scrollbarWidth: "thin" }}>
+                <div className="p-3 border-b border-border/60 bg-muted/40 shrink-0">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Detalhes do plano de viagens
+                  </p>
+                </div>
+                <TripDetailPanel trips={selectedTrips} />
+              </div>
+            )}
+            </div>{/* end flex row */}
 
             {/* Footer */}
             <div className="shrink-0 bg-muted/50 p-4 border-t border-border flex flex-col sm:flex-row justify-end gap-2">
