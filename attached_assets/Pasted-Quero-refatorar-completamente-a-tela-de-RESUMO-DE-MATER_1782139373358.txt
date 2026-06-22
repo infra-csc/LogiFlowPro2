@@ -1,0 +1,800 @@
+Quero refatorar completamente a tela de RESUMO DE MATERIAIS/PEÇAS DO EVENTO para que ela fique visualmente profissional, operacional, clara e realmente útil para logística.
+
+A tela atual já possui as abas:
+
+- Peças
+- Kits
+- Categorias
+- Por Requisição
+
+Ela também possui indicadores de peças distintas, total de unidades, kits distintos, unidades de kits e peso estimado.
+
+O objetivo é preservar essas informações e regras, mas transformar a página em uma experiência 10/10 de frontend e backend.
+
+IMPORTANTE:
+
+1. Use exclusivamente os dados reais já existentes no sistema.
+2. Não crie mocks, dados fictícios ou valores estáticos.
+3. Não remova nenhuma informação atualmente disponível.
+4. Não altere regras de outros módulos.
+5. Não substitua o design system atual.
+6. Reutilize componentes, tokens, ícones, tipografia, cores e padrões já existentes no EventFlow.
+7. Antes de implementar, analise os models, relacionamentos, enums, rotas e serviços atuais para respeitar exatamente a estrutura existente.
+8. Não crie uma segunda fonte de cálculo. Centralize toda a agregação em um serviço único de backend.
+9. Não faça migração destrutiva.
+10. A tela precisa funcionar com produtos próprios, alugados, de terceiros, variantes, itens avulsos e componentes provenientes de kits/BOM.
+
+==================================================
+1. OBJETIVO DA TELA
+==================================================
+
+Esta página deve responder rapidamente:
+
+- Quais materiais o evento precisa?
+- Quantas unidades serão necessárias?
+- Quanto veio diretamente das requisições?
+- Quanto veio da composição dos kits?
+- Quais kits foram solicitados?
+- Quais categorias concentram mais materiais?
+- Quais requisições originaram cada quantidade?
+- Qual é o peso estimado da carga?
+- Existem itens sem peso, categoria ou cadastro completo?
+- Existem requisições pendentes que ainda podem alterar o total?
+
+A página deve ser principalmente uma tela operacional e analítica, não um dashboard decorativo.
+
+Não utilizar gráficos grandes ou elementos visuais sem função prática.
+
+==================================================
+2. CABEÇALHO DA PÁGINA
+==================================================
+
+Manter:
+
+- Botão “Voltar ao evento”
+- Título no padrão:
+  “Materiais — [Nome do Evento]”
+- Cliente
+- Local
+- Data do evento
+- Quantidade de requisições consideradas
+
+Melhorar a organização dessas informações.
+
+Abaixo do título, exibir chips compactos:
+
+- Cliente
+- Local
+- Data do evento
+- Total de requisições consideradas
+- Quantidade pendente de aprovação
+- Quantidade aprovada
+
+Usar os status reais existentes no sistema.
+
+Não criar um botão manual “Atualizar”.
+
+A tela deve buscar os dados atualizados ao abrir e se recalcular automaticamente quando:
+
+- filtros forem aplicados;
+- uma requisição for alterada;
+- o usuário voltar para a aba do navegador;
+- ocorrer invalidação de cache após alterações do próprio sistema.
+
+Mostrar apenas uma informação discreta no cabeçalho:
+
+“Dados calculados às HH:mm”
+
+Manter o botão “Exportar Excel” como ação principal secundária.
+
+Caso existam outras ações, agrupá-las em um menu “Ações”, sem poluir o cabeçalho.
+
+==================================================
+3. INDICADORES DO RESUMO
+==================================================
+
+Manter os cinco indicadores atuais:
+
+1. Peças distintas
+2. Total de unidades
+3. Kits distintos
+4. Unidades de kits
+5. Peso estimado
+
+Organizar visualmente em dois grupos conceituais:
+
+ESTRUTURA DOS MATERIAIS
+- Peças distintas
+- Kits distintos
+
+VOLUME OPERACIONAL
+- Total de unidades
+- Unidades de kits
+- Peso estimado
+
+Os cards devem ser mais compactos, com:
+
+- ícone discreto;
+- valor principal;
+- nome do indicador;
+- explicação curta em tooltip;
+- feedback de carregamento com skeleton;
+- nenhum número artificial ou hardcoded.
+
+Tooltips:
+
+Peças distintas:
+“Quantidade de SKUs únicos após consolidar itens avulsos e componentes de kits.”
+
+Total de unidades:
+“Soma das quantidades avulsas e das quantidades geradas pela composição dos kits.”
+
+Kits distintos:
+“Quantidade de modelos diferentes de kits solicitados.”
+
+Unidades de kits:
+“Soma da quantidade de kits solicitados, sem contar os componentes internos.”
+
+Peso estimado:
+“Soma do peso total dos produtos que possuem peso cadastrado.”
+
+No card de peso estimado, mostrar também uma informação menor:
+
+“Cobertura de peso: X de Y peças”
+
+Exemplo:
+
+1.340,7 kg
+Peso estimado
+Peso cadastrado em 39 de 46 peças
+
+Caso existam itens sem peso cadastrado, não considerar peso zero como se fosse conhecido. Exibir claramente:
+
+“7 peças sem peso cadastrado”
+
+==================================================
+4. REGRAS DE AGREGAÇÃO DO BACKEND
+==================================================
+
+Criar ou refatorar um único serviço de agregação para toda a página.
+
+Não calcular dados de forma diferente em cada aba.
+
+Para cada produto, calcular:
+
+quantidadeAvulsa =
+soma da quantidade solicitada diretamente nas requisições.
+
+quantidadeViaKits =
+soma de:
+quantidade solicitada do kit × quantidade do componente dentro do kit.
+
+quantidadeTotal =
+quantidadeAvulsa + quantidadeViaKits.
+
+pesoTotal =
+quantidadeTotal × peso unitário do produto.
+
+Se o peso estiver vazio ou não cadastrado:
+
+- retornar pesoTotal como desconhecido ou null;
+- não tratar como peso conhecido igual a zero;
+- contabilizar o produto na quantidade de itens sem peso.
+
+Exemplo obrigatório de teste:
+
+Uma peça foi solicitada diretamente com quantidade 3.
+
+Ela também pertence a um kit com quantidade 5 por kit.
+
+Foram solicitados 4 kits.
+
+Resultado:
+
+- Avulso: 3
+- Via kits: 20
+- Total: 23
+
+Evitar qualquer duplicidade causada por:
+
+- múltiplas requisições;
+- produtos presentes em mais de um kit;
+- produto avulso também presente em kit;
+- mesma requisição retornada por joins diferentes;
+- variantes;
+- relações de BOM.
+
+Usar IDs internos para agregação e não apenas nome ou SKU.
+
+Caso a modelagem permita kits compostos por outros kits, expandir de maneira segura e recursiva, impedindo ciclos. Caso a modelagem atual não permita, não criar essa funcionalidade desnecessariamente.
+
+Status considerados por padrão:
+
+- requisições aguardando aprovação;
+- requisições aprovadas;
+- outros status operacionais que já sejam considerados atualmente.
+
+Não considerar por padrão:
+
+- excluídas;
+- canceladas;
+- rejeitadas;
+- registros inválidos.
+
+Usar os enums reais do sistema, sem criar nomes de status paralelos.
+
+==================================================
+5. NAVEGAÇÃO POR ABAS
+==================================================
+
+Manter as quatro abas em um segmented control:
+
+- Peças
+- Kits
+- Categorias
+- Por Requisição
+
+A aba ativa deve ficar evidente, mas sem exagero de azul.
+
+Evitar grandes preenchimentos coloridos.
+
+Usar:
+
+- fundo ligeiramente mais claro;
+- borda discreta;
+- texto com maior contraste;
+- ícone da aba;
+- contador ao lado do nome.
+
+Exemplo:
+
+Peças 46
+Kits 8
+Categorias 4
+Por Requisição 4
+
+A troca de aba não deve recarregar toda a página.
+
+Preservar:
+
+- pesquisa;
+- filtros;
+- posição de navegação, quando possível.
+
+==================================================
+6. ABA “PEÇAS”
+==================================================
+
+Esta deve ser a visualização principal e padrão da página.
+
+Utilizar tabela operacional, não cards.
+
+Adicionar uma barra de controle contendo:
+
+- busca por nome, SKU ou código de barras;
+- filtro por categoria;
+- filtro por titularidade;
+- filtro por origem do item;
+- filtro por status da requisição;
+- botão para limpar filtros;
+- ordenação.
+
+Filtros de titularidade:
+
+- Próprio
+- Alugado
+- Terceiro
+
+Usar os valores reais existentes.
+
+Filtro de origem:
+
+- Avulso
+- Via kit
+- Avulso e via kit
+
+Ordenações:
+
+- Nome A–Z
+- Nome Z–A
+- Maior quantidade
+- Menor quantidade
+- Maior peso
+- Categoria
+- Titularidade
+
+Colunas da tabela:
+
+1. Peça
+2. SKU
+3. Categoria
+4. Titularidade
+5. Avulso
+6. Via kits
+7. Total
+8. Peso total
+9. Requisições
+10. Ação de detalhes
+
+Regras visuais:
+
+- nome do produto em destaque;
+- SKU menor e com cor secundária;
+- números alinhados à direita;
+- total com maior peso visual;
+- chips de titularidade discretos;
+- cabeçalho fixo ao rolar;
+- primeira coluna fixa quando houver rolagem horizontal;
+- hover sutil na linha;
+- densidade confortável, sem linhas excessivamente altas;
+- paginação ou carregamento progressivo para listas grandes.
+
+Não utilizar textos ambíguos como “De kits”.
+
+Usar “Via kits”.
+
+Peso:
+
+- exibir “—” quando não cadastrado;
+- exibir tooltip “Peso não cadastrado”;
+- não exibir zero quando o peso é desconhecido.
+
+Ao clicar em uma linha, abrir um drawer lateral de detalhes.
+
+==================================================
+7. DRAWER DE DETALHE DA PEÇA
+==================================================
+
+Ao clicar em uma peça, abrir um drawer lateral sem sair da tela.
+
+Exibir:
+
+- imagem do produto, quando existir;
+- nome;
+- SKU;
+- código de barras;
+- categoria;
+- titularidade;
+- unidade;
+- peso unitário;
+- quantidade avulsa;
+- quantidade via kits;
+- quantidade total;
+- peso total;
+- quantidade de requisições em que aparece.
+
+Criar duas seções:
+
+ORIGEM AVULSA
+Mostrar:
+
+- requisição;
+- área;
+- solicitante;
+- status;
+- quantidade;
+- observação do item;
+- botão “Abrir requisição”.
+
+ORIGEM VIA KITS
+Mostrar:
+
+- nome do kit;
+- quantidade solicitada do kit;
+- quantidade da peça por kit;
+- total gerado pelo kit;
+- requisição de origem;
+- botão “Ver kit”;
+- botão “Abrir requisição”.
+
+Caso o produto apareça das duas maneiras, mostrar as duas seções.
+
+Não ocultar a diferença entre item avulso e componente de kit.
+
+==================================================
+8. ABA “KITS”
+==================================================
+
+A aba Kits não deve ser apenas uma lista simples.
+
+Mostrar tabela com:
+
+1. Kit
+2. Requisições
+3. Quantidade de kits
+4. Componentes distintos
+5. Total de unidades geradas
+6. Peso estimado
+7. Ação para expandir
+
+Ao expandir um kit, mostrar sua composição:
+
+- produto;
+- SKU;
+- quantidade por kit;
+- quantidade de kits solicitados;
+- quantidade total gerada;
+- peso total do componente.
+
+Exemplo:
+
+Tenda 5×5
+10 kits solicitados
+
+Composição:
+- Pé de 2,5 m — 4 por kit — total 40
+- Lona de teto — 1 por kit — total 10
+- Cantoneira — 8 por kit — total 80
+
+Mostrar também:
+
+- quais requisições solicitaram o kit;
+- quantidade em cada requisição;
+- status das requisições;
+- botão para abrir a requisição;
+- botão para abrir o cadastro do kit.
+
+Quando um kit não possuir composição válida, mostrar alerta claro:
+
+“Kit sem composição cadastrada”
+
+Não deixar esse kit desaparecer silenciosamente dos cálculos.
+
+==================================================
+9. ABA “CATEGORIAS”
+==================================================
+
+Transformar esta aba em uma leitura gerencial útil.
+
+Tabela:
+
+1. Categoria
+2. Peças distintas
+3. Total de unidades
+4. Participação no total
+5. Peso estimado
+6. Itens sem peso
+7. Ação para detalhar
+
+A coluna “Participação no total” deve mostrar:
+
+- percentual;
+- barra horizontal discreta;
+- sem gráficos grandes.
+
+Exemplo:
+
+Estrutura
+790 unidades
+47,2% do total
+
+Ao clicar em uma categoria:
+
+- filtrar a aba Peças pela categoria;
+ou
+- abrir detalhe lateral com os produtos da categoria.
+
+Para produtos sem categoria, usar:
+
+“Sem categoria”
+
+Não ocultar esses produtos.
+
+Destacar de forma discreta quando houver muitos itens sem categoria, pois isso representa problema de cadastro.
+
+==================================================
+10. ABA “POR REQUISIÇÃO”
+==================================================
+
+Transformar cada requisição em um bloco operacional expansível.
+
+No cabeçalho da requisição mostrar:
+
+- nome ou área da requisição;
+- solicitante;
+- data;
+- status;
+- quantidade de itens distintos;
+- total de unidades;
+- quantidade de kits;
+- peso estimado;
+- observação, quando existir.
+
+Exemplo:
+
+Arena
+Yan Neves Araujo · 22/06/2026
+10 itens · 79 unidades · 2 kits · 186 kg
+Pendente de aprovação
+
+O status deve usar os padrões reais do sistema.
+
+Ordenação padrão:
+
+1. Aguardando aprovação
+2. Aprovada
+3. Demais status operacionais
+4. Encerradas ou canceladas
+
+Adicionar filtros:
+
+- status;
+- solicitante;
+- área;
+- com kit;
+- sem kit.
+
+Ao expandir a requisição, separar:
+
+PEÇAS AVULSAS
+- produto;
+- SKU;
+- quantidade;
+- observação;
+- peso.
+
+KITS
+- kit;
+- quantidade solicitada;
+- componentes gerados;
+- peso estimado;
+- ação para expandir a composição.
+
+Adicionar botão:
+
+“Abrir requisição”
+
+Não deixar o usuário depender apenas do nome para localizar a origem.
+
+==================================================
+11. FILTROS E COMPORTAMENTO
+==================================================
+
+Filtros devem atualizar automaticamente a visualização.
+
+Não exigir botão “Atualizar”.
+
+Pode existir um botão “Aplicar filtros” apenas quando os filtros estiverem dentro de um drawer lateral e ainda não tiverem sido confirmados.
+
+Depois de aplicar:
+
+- recalcular os dados;
+- fechar o drawer;
+- atualizar as abas;
+- atualizar os indicadores;
+- mostrar chips dos filtros ativos;
+- atualizar o horário “Dados calculados às HH:mm”.
+
+Quando houver filtros ativos, mostrar:
+
+“Filtros aplicados”
+
+com opção clara de limpar.
+
+A busca deve usar debounce e não disparar requisição a cada tecla sem controle.
+
+Estados vazios devem explicar o motivo:
+
+“Nenhuma peça corresponde aos filtros aplicados.”
+
+“Nenhum kit foi solicitado nas requisições consideradas.”
+
+“Não existem requisições neste status.”
+
+Nunca mostrar simplesmente uma área vazia.
+
+==================================================
+12. EXPORTAÇÃO PARA EXCEL
+==================================================
+
+Manter “Exportar Excel”, mas tornar a exportação realmente completa.
+
+Gerar um arquivo com abas:
+
+1. Resumo
+2. Peças
+3. Kits
+4. Composição dos Kits
+5. Categorias
+6. Por Requisição
+
+ABA RESUMO:
+
+- evento;
+- cliente;
+- local;
+- data;
+- requisições consideradas;
+- peças distintas;
+- total de unidades;
+- kits distintos;
+- unidades de kits;
+- peso estimado;
+- quantidade de itens sem peso;
+- data e hora da geração.
+
+ABA PEÇAS:
+
+- nome;
+- SKU;
+- categoria;
+- titularidade;
+- unidade;
+- quantidade avulsa;
+- quantidade via kits;
+- quantidade total;
+- peso unitário;
+- peso total;
+- quantidade de requisições.
+
+ABA KITS:
+
+- kit;
+- quantidade solicitada;
+- requisições;
+- componentes distintos;
+- unidades geradas;
+- peso estimado.
+
+ABA COMPOSIÇÃO DOS KITS:
+
+- kit;
+- produto;
+- SKU;
+- quantidade por kit;
+- quantidade de kits;
+- quantidade total gerada;
+- peso.
+
+ABA CATEGORIAS:
+
+- categoria;
+- peças distintas;
+- total de unidades;
+- percentual;
+- peso estimado.
+
+ABA POR REQUISIÇÃO:
+
+- requisição;
+- solicitante;
+- área;
+- status;
+- produto ou kit;
+- tipo;
+- SKU;
+- quantidade;
+- peso;
+- observação.
+
+Respeitar os filtros ativos no momento da exportação.
+
+Mostrar loading durante a geração e mensagem de sucesso ou erro.
+
+==================================================
+13. RESPONSIVIDADE
+==================================================
+
+Desktop:
+
+- aproveitar a largura da tela;
+- sem grandes espaços vazios;
+- tabelas bem alinhadas;
+- cabeçalho fixo;
+- drawer lateral para detalhes.
+
+Tablet:
+
+- manter tabelas com rolagem horizontal controlada;
+- filtros em drawer.
+
+Mobile:
+
+- não tentar comprimir todas as colunas;
+- mostrar nome, total, origem e status;
+- abrir os demais dados ao tocar no item;
+- indicadores em duas colunas;
+- abas com rolagem horizontal;
+- ações principais sempre acessíveis.
+
+Não permitir:
+
+- conteúdo cortado;
+- modal maior que a viewport;
+- rolagem dupla desnecessária;
+- botões fora da tela;
+- textos sobrepostos;
+- colunas ilegíveis.
+
+==================================================
+14. ESTADOS DA INTERFACE
+==================================================
+
+Implementar:
+
+- skeleton loading;
+- estado vazio;
+- erro de carregamento;
+- retry;
+- feedback de exportação;
+- tooltip em indicadores;
+- confirmação somente em ações destrutivas;
+- toast de sucesso e erro;
+- foco visível;
+- navegação por teclado;
+- contraste adequado no tema escuro.
+
+Não utilizar azul em excesso.
+
+Azul deve ficar concentrado em:
+
+- ação principal;
+- foco;
+- seleção ativa;
+- links relevantes.
+
+Usar verde, amarelo e vermelho apenas para estados semânticos.
+
+==================================================
+15. PERFORMANCE
+==================================================
+
+Evitar múltiplas chamadas iguais para cada aba.
+
+Criar uma resposta agregada ou serviços reutilizáveis.
+
+A tela deve:
+
+- carregar os dados principais uma única vez;
+- reutilizar o resultado nas abas;
+- utilizar paginação ou virtualização em tabelas grandes;
+- evitar N+1 queries;
+- carregar detalhes de drawer sob demanda quando necessário;
+- invalidar cache após alterações em requisições, kits ou produtos;
+- não bloquear toda a interface durante uma exportação.
+
+==================================================
+16. CRITÉRIOS DE ACEITE
+==================================================
+
+A implementação só estará concluída quando:
+
+1. A soma de Avulso + Via kits for exatamente igual ao Total.
+2. Produtos presentes diretamente e em kits não forem duplicados.
+3. Kits gerarem corretamente seus componentes.
+4. O peso não considerar produtos sem peso como peso zero conhecido.
+5. A aba Peças usar tabela como visualização principal.
+6. A aba Kits permitir visualizar a composição.
+7. A aba Categorias mostrar participação percentual e peso.
+8. A aba Por Requisição mostrar resumo completo e expansão.
+9. Todas as linhas permitirem rastrear a origem da quantidade.
+10. A exportação gerar todas as abas solicitadas.
+11. Não existir botão manual “Atualizar”.
+12. A página mostrar horário do último cálculo.
+13. Os filtros atualizarem indicadores e tabelas.
+14. Nenhuma tabela ficar cortada.
+15. Não existirem grandes áreas vazias sem propósito.
+16. O layout funcionar em desktop, tablet e celular.
+17. Nenhum dado fictício ser criado.
+18. Nenhuma regra de negócio de outro módulo ser alterada.
+19. Todas as ações usarem os dados reais do banco.
+20. A tela manter a identidade visual do EventFlow.
+
+Antes de finalizar, testar obrigatoriamente:
+
+- produto somente avulso;
+- produto somente em kit;
+- produto avulso e em kit;
+- produto em vários kits;
+- mesmo produto em várias requisições;
+- kit solicitado em várias requisições;
+- produto sem peso;
+- produto sem categoria;
+- requisição pendente;
+- requisição aprovada;
+- evento sem kits;
+- evento sem materiais;
+- lista com muitos produtos;
+- exportação com e sem filtros.
+
+Entregue a tela completa, conectada ao backend, responsiva e funcional. Não faça apenas alterações cosméticas. Corrija também consultas, agregações, estados, exportação, filtros, rastreabilidade e consistência dos números.
