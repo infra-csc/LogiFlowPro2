@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueries, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,13 +37,11 @@ import {
   ClipboardList,
   AlertTriangle,
   X,
-  Keyboard,
   Maximize2,
   Minimize2,
   Edit,
   Clock,
   User,
-  FileText,
   BarChart3,
   Truck,
   MapPin,
@@ -58,11 +56,10 @@ import {
   Play,
   TrendingUp,
   Calendar,
-  Info,
   Activity,
-  Filter,
   CheckCheck,
-  ListFilter,
+  RotateCcw,
+  ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -75,33 +72,25 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { format } from "date-fns";
 import { PageHeader, PageLoading, PageSection, StatusBadge } from "@/components";
 import { Textarea } from "@/components/ui/textarea";
-import type { Movement, MovementItem, Product, LoadingOrderItem, MovementTypeConfig, MovementAuditLog, MovementAttachment } from "@shared/schema";
+import type {
+  Movement,
+  MovementItem,
+  Product,
+  LoadingOrderItem,
+  MovementTypeConfig,
+  MovementAuditLog,
+  MovementAttachment,
+} from "@shared/schema";
 
 type MovementWithDetails = Movement & {
-  loadingOrder?: {
-    id: string;
-    orderNumber: string;
-  };
-  request?: {
-    id: string;
-    area: string;
-    event?: { id: string; name: string };
-  };
-  dock?: {
-    id: string;
-    name: string;
-  };
-  events?: Array<{
-    id: string;
-    name: string;
-    sku: string;
-  }>;
+  loadingOrder?: { id: string; orderNumber: string };
+  request?: { id: string; area: string; event?: { id: string; name: string } };
+  dock?: { id: string; name: string };
+  events?: Array<{ id: string; name: string; sku: string }>;
   movementTypeConfig?: MovementTypeConfig;
 };
 
-type LoadingOrderItemWithProduct = LoadingOrderItem & {
-  product: Product;
-};
+type LoadingOrderItemWithProduct = LoadingOrderItem & { product: Product };
 
 type ExpectedItem = {
   productId: string;
@@ -128,26 +117,51 @@ export default function MovementDetails() {
   const { toast } = useToast();
   const { user } = useAuth();
   const sidebar = useSidebar();
+
+  // ── Operational state ──────────────────────────────────────────────────────
   const [focusMode, setFocusMode] = useState(false);
+  const [operationalMode, setOperationalMode] = useState<"unit" | "batch">(() => {
+    try {
+      return (sessionStorage.getItem("movement-op-mode") as "unit" | "batch") || "batch";
+    } catch {
+      return "batch";
+    }
+  });
+
+  // ── Scanner state ───────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
-  const [orderSearchQuery, setOrderSearchQuery] = useState("");
-  const [loadedSearchQuery, setLoadedSearchQuery] = useState("");
-  const [expectedFilter, setExpectedFilter] = useState<"all" | "pending" | "complete" | "exceeded">("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [scannedSku, setScannedSku] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [ownerName, setOwnerName] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+
+  // ── Undo state ──────────────────────────────────────────────────────────────
+  const [undoState, setUndoState] = useState<{
+    itemId: string;
+    productName: string;
+    quantity: number;
+  } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Exception dialog (only for exceeded qty) ───────────────────────────────
+  const [showExceptionDialog, setShowExceptionDialog] = useState(false);
+
+  // ── Load all pending dialog ─────────────────────────────────────────────────
+  const [showLoadAllDialog, setShowLoadAllDialog] = useState(false);
+
+  // ── Other dialogs ───────────────────────────────────────────────────────────
   const [showEditStatusDialog, setShowEditStatusDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
-  const [isSelectOpen, setIsSelectOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const quantityInputRef = useRef<HTMLInputElement>(null);
-  const confirmButtonRef = useRef<HTMLButtonElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Evidence state
+  // ── List filters ────────────────────────────────────────────────────────────
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [loadedSearchQuery, setLoadedSearchQuery] = useState("");
+  const [expectedFilter, setExpectedFilter] = useState<"all" | "pending" | "complete" | "exceeded">("all");
+  const [auditFilter, setAuditFilter] = useState<"all" | "items" | "status" | "evidence">("all");
+
+  // ── Evidence state ──────────────────────────────────────────────────────────
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
@@ -157,10 +171,16 @@ export default function MovementDetails() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [evidenceCategoryFilter, setEvidenceCategoryFilter] = useState("all");
-  const [auditFilter, setAuditFilter] = useState<"all"|"items"|"status"|"evidence">("all");
 
-  // Fetch all suppliers
-  const { data: suppliers = [] } = useQuery<Array<{id: string, name: string}>>({
+  // ── Refs ────────────────────────────────────────────────────────────────────
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Track pending add metadata for undo
+  const pendingAddRef = useRef<{ productName: string; quantity: number; mode: "unit" | "batch" } | null>(null);
+
+  // ── Queries ─────────────────────────────────────────────────────────────────
+  const { data: suppliers = [] } = useQuery<Array<{ id: string; name: string }>>({
     queryKey: ["/api/suppliers"],
   });
 
@@ -184,9 +204,7 @@ export default function MovementDetails() {
     enabled: !!id,
   });
 
-  const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
-  });
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
 
   const { data: auditLogs = [] } = useQuery<MovementAuditLog[]>({
     queryKey: ["/api/movements", id, "audit-logs"],
@@ -211,17 +229,16 @@ export default function MovementDetails() {
   const { data: loadingOrderItems = [] } = useQuery<LoadingOrderItemWithProduct[]>({
     queryKey: ["/api/loading-orders", movement?.loadingOrderId, "items"],
     queryFn: async () => {
-      const res = await fetch(`/api/loading-orders/${movement?.loadingOrderId}/items`, {
-        credentials: "include",
-      });
+      const res = await fetch(`/api/loading-orders/${movement?.loadingOrderId}/items`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch loading order items");
       return res.json();
     },
     enabled: !!movement?.loadingOrderId,
   });
 
-  // Fetch items from linked request (used when movement has requestId instead of loadingOrderId)
-  const { data: requestItemsData = [] } = useQuery<Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>>({
+  const { data: requestItemsData = [] } = useQuery<
+    Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>
+  >({
     queryKey: ["/api/requests", movement?.requestId, "items"],
     queryFn: async () => {
       const res = await fetch(`/api/requests/${movement?.requestId}/items`, { credentials: "include" });
@@ -231,15 +248,13 @@ export default function MovementDetails() {
     enabled: !!movement?.requestId && !movement?.loadingOrderId,
   });
 
-  // Fetch all movements with the same loading order ID
   const { data: relatedMovements = [] } = useQuery<Movement[]>({
     queryKey: [`/api/loading-orders/${movement?.loadingOrderId}/movements`],
     enabled: !!movement?.loadingOrderId,
   });
 
-  // Fetch items for all related movements using useQueries
   const relatedMovementItemsQueries = useQueries({
-    queries: relatedMovements.map(mov => ({
+    queries: relatedMovements.map((mov) => ({
       queryKey: ["/api/movements", mov.id, "items"],
       queryFn: async () => {
         const res = await fetch(`/api/movements/${mov.id}/items`, { credentials: "include" });
@@ -250,33 +265,25 @@ export default function MovementDetails() {
     })),
   });
 
-  // Combine all movement items from all related movements
   const allRelatedMovementItems = useMemo(() => {
     const allItems: MovementItem[] = [];
-    relatedMovementItemsQueries.forEach(query => {
-      if (query.data) {
-        allItems.push(...query.data);
-      }
+    relatedMovementItemsQueries.forEach((query) => {
+      if (query.data) allItems.push(...query.data);
     });
     return allItems;
   }, [relatedMovementItemsQueries]);
 
-  // Get product IDs that are in the loading order
-  const expectedProductIds = useMemo(() => {
-    return new Set(loadingOrderItems.map(item => item.productId));
-  }, [loadingOrderItems]);
+  // ── Computed ────────────────────────────────────────────────────────────────
+  const expectedProductIds = useMemo(
+    () => new Set(loadingOrderItems.map((item) => item.productId)),
+    [loadingOrderItems]
+  );
 
-  // Consolidate movement items by product
   const consolidatedLoadedItems = useMemo(() => {
-    const itemsByProduct = new Map<string, { 
-      productId: string; 
-      totalQuantity: number; 
-      itemIds: string[];
-      isNotInOrder: boolean;
-      ownerTypes: Set<string>;
-      owners: Set<string>;
-    }>();
-
+    const itemsByProduct = new Map<
+      string,
+      { productId: string; totalQuantity: number; itemIds: string[]; isNotInOrder: boolean; ownerTypes: Set<string>; owners: Set<string> }
+    >();
     movementItems.forEach((item) => {
       const existing = itemsByProduct.get(item.productId);
       if (existing) {
@@ -285,11 +292,7 @@ export default function MovementDetails() {
         if (item.ownerType) existing.ownerTypes.add(item.ownerType);
         if (item.ownerName) existing.owners.add(item.ownerName);
       } else {
-        // Check if this product is not in the loading order (only when there is a loading order)
-        const isNotInOrder = movement?.loadingOrderId 
-          ? !expectedProductIds.has(item.productId)
-          : false;
-        
+        const isNotInOrder = movement?.loadingOrderId ? !expectedProductIds.has(item.productId) : false;
         itemsByProduct.set(item.productId, {
           productId: item.productId,
           totalQuantity: item.quantity,
@@ -300,27 +303,22 @@ export default function MovementDetails() {
         });
       }
     });
-
     return Array.from(itemsByProduct.values());
   }, [movementItems, movement?.loadingOrderId, expectedProductIds]);
 
-  // Calculate expected items with loaded quantities from ALL related movements
   const expectedItems: ExpectedItem[] = useMemo(() => {
-    // ── Source: loading order items ──────────────────────────────────────────
     if (loadingOrderItems.length > 0) {
       const itemsToConsider = movement?.loadingOrderId ? allRelatedMovementItems : movementItems;
-
       return loadingOrderItems.map((orderItem) => {
         const expectedProductSku = orderItem.product.sku;
         const loadedQuantity = itemsToConsider
           .filter((item) => {
             if (item.productId === orderItem.productId) return true;
-            const loadedProduct = products.find(p => p.id === item.productId);
+            const loadedProduct = products.find((p) => p.id === item.productId);
             if (loadedProduct?.productType === "variante" && loadedProduct.equivalentSku === expectedProductSku) return true;
             return false;
           })
           .reduce((sum, item) => sum + item.quantity, 0);
-
         return {
           productId: orderItem.productId,
           product: orderItem.product,
@@ -330,16 +328,12 @@ export default function MovementDetails() {
         };
       });
     }
-
-    // ── Source: request items (fallback when movement is linked to a request) ─
     if (requestItemsData.length > 0) {
       return requestItemsData
         .filter((ri) => ri.productId && ri.product)
         .map((ri) => {
-          // Use approvedQuantity if item was approved, otherwise use quantity
-          const expectedQuantity = ri.approvedQuantity != null && ri.approvedQuantity > 0
-            ? ri.approvedQuantity
-            : ri.quantity;
+          const expectedQuantity =
+            ri.approvedQuantity != null && ri.approvedQuantity > 0 ? ri.approvedQuantity : ri.quantity;
           const loadedQuantity = movementItems
             .filter((item) => item.productId === ri.productId)
             .reduce((sum, item) => sum + item.quantity, 0);
@@ -352,34 +346,38 @@ export default function MovementDetails() {
           };
         });
     }
-
     return [];
   }, [loadingOrderItems, requestItemsData, movementItems, movement?.loadingOrderId, allRelatedMovementItems, products]);
 
-  // Calculate overall progress
-  const totalExpected = expectedItems.reduce((sum, item) => sum + item.expectedQuantity, 0);
-  const totalLoaded = expectedItems.reduce((sum, item) => sum + item.loadedQuantity, 0);
-  const totalExceeded = expectedItems.reduce((sum, item) => sum + Math.max(0, item.loadedQuantity - item.expectedQuantity), 0);
-  const totalPending = expectedItems.reduce((sum, item) => sum + Math.max(0, item.expectedQuantity - item.loadedQuantity), 0);
+  const totalExpected = expectedItems.reduce((s, i) => s + i.expectedQuantity, 0);
+  const totalLoaded = expectedItems.reduce((s, i) => s + i.loadedQuantity, 0);
+  const totalExceeded = expectedItems.reduce((s, i) => s + Math.max(0, i.loadedQuantity - i.expectedQuantity), 0);
+  const totalPending = expectedItems.reduce((s, i) => s + Math.max(0, i.expectedQuantity - i.loadedQuantity), 0);
   const progress = totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0;
+  const completedProductCount = expectedItems.filter(
+    (i) => i.remaining === 0 && i.loadedQuantity <= i.expectedQuantity
+  ).length;
+  const pendingItems = expectedItems.filter(
+    (i) => i.remaining > 0 && i.loadedQuantity <= i.expectedQuantity
+  );
+  const pendingUnitsCount = pendingItems.reduce((s, i) => s + i.remaining, 0);
 
-  // Filter expected items based on order search query + status filter
   const filteredExpectedItems = useMemo(() => {
     let items = expectedItems;
     if (orderSearchQuery.trim()) {
-      const query = orderSearchQuery.toLowerCase();
+      const q = orderSearchQuery.toLowerCase();
       items = items.filter(
-        (item) =>
-          item.product.name.toLowerCase().includes(query) ||
-          item.product.sku?.toLowerCase().includes(query) ||
-          item.product.barcode?.toLowerCase().includes(query)
+        (i) =>
+          i.product.name.toLowerCase().includes(q) ||
+          i.product.sku?.toLowerCase().includes(q) ||
+          i.product.barcode?.toLowerCase().includes(q)
       );
     }
     if (expectedFilter !== "all") {
-      items = items.filter((item) => {
-        const isExceeded = item.loadedQuantity > item.expectedQuantity;
-        const isComplete = item.remaining === 0 && !isExceeded;
-        const isPending = item.remaining > 0;
+      items = items.filter((i) => {
+        const isExceeded = i.loadedQuantity > i.expectedQuantity;
+        const isComplete = i.remaining === 0 && !isExceeded;
+        const isPending = i.remaining > 0;
         if (expectedFilter === "pending") return isPending;
         if (expectedFilter === "complete") return isComplete;
         if (expectedFilter === "exceeded") return isExceeded;
@@ -389,73 +387,387 @@ export default function MovementDetails() {
     return items;
   }, [expectedItems, orderSearchQuery, expectedFilter]);
 
-  // Filter loaded items based on loaded search query
   const filteredLoadedItems = useMemo(() => {
     if (!loadedSearchQuery.trim()) return consolidatedLoadedItems;
-    const query = loadedSearchQuery.toLowerCase();
+    const q = loadedSearchQuery.toLowerCase();
     return consolidatedLoadedItems.filter((item) => {
-      const product = products.find((p) => p.id === item.productId);
-      return (
-        product?.name.toLowerCase().includes(query) ||
-        product?.sku?.toLowerCase().includes(query) ||
-        product?.barcode?.toLowerCase().includes(query)
-      );
+      const p = products.find((x) => x.id === item.productId);
+      return p?.name.toLowerCase().includes(q) || p?.sku?.toLowerCase().includes(q) || p?.barcode?.toLowerCase().includes(q);
     });
   }, [consolidatedLoadedItems, loadedSearchQuery, products]);
 
-  // Filter products based on search query
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     return products
-      .filter(
-        (p) =>
-          p.sku?.toLowerCase().includes(query) ||
-          p.barcode?.toLowerCase().includes(query) ||
-          p.name.toLowerCase().includes(query)
-      )
+      .filter((p) => p.sku?.toLowerCase().includes(q) || p.barcode?.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
       .slice(0, 50);
   }, [searchQuery, products]);
 
-  // Determine if the movement can be edited (items can be added/modified/deleted)
-  const isEditable = movement?.status === "in_progress";
-
-  // Evidence computed values
-  const photoCount = attachments.filter(a => a.fileType === "image").length;
-  const videoCount = attachments.filter(a => a.fileType === "video").length;
-
   const filteredAttachments = useMemo(() => {
     if (evidenceCategoryFilter === "all") return attachments;
-    if (evidenceCategoryFilter === "images") return attachments.filter(a => a.fileType === "image");
-    if (evidenceCategoryFilter === "videos") return attachments.filter(a => a.fileType === "video");
-    return attachments.filter(a => a.category === evidenceCategoryFilter);
+    if (evidenceCategoryFilter === "images") return attachments.filter((a) => a.fileType === "image");
+    if (evidenceCategoryFilter === "videos") return attachments.filter((a) => a.fileType === "video");
+    return attachments.filter((a) => a.category === evidenceCategoryFilter);
   }, [attachments, evidenceCategoryFilter]);
 
-  // Filter audit logs by type
   const filteredAuditLogs = useMemo(() => {
     if (auditFilter === "all") return auditLogs;
-    if (auditFilter === "items") return auditLogs.filter(l => ["item_added","item_removed","item_quantity_changed"].includes(l.action));
-    if (auditFilter === "status") return auditLogs.filter(l => l.action === "status_changed");
-    if (auditFilter === "evidence") return auditLogs.filter(l => l.action === "evidence_added");
+    if (auditFilter === "items") return auditLogs.filter((l) => ["item_added", "item_removed", "item_quantity_changed"].includes(l.action));
+    if (auditFilter === "status") return auditLogs.filter((l) => l.action === "status_changed");
+    if (auditFilter === "evidence") return auditLogs.filter((l) => l.action === "evidence_added");
     return auditLogs;
   }, [auditLogs, auditFilter]);
 
-  // Map of productId → evidence count
   const evidenceByProduct = useMemo(() => {
     const map = new Map<string, number>();
-    attachments.forEach(a => {
+    attachments.forEach((a) => {
       if (a.productId) map.set(a.productId, (map.get(a.productId) || 0) + 1);
     });
     return map;
   }, [attachments]);
 
-  // Evidence handlers
+  const isEditable = movement?.status === "in_progress";
+  const photoCount = attachments.filter((a) => a.fileType === "image").length;
+  const videoCount = attachments.filter((a) => a.fileType === "video").length;
+
+  // ── Scanner helpers ─────────────────────────────────────────────────────────
+  const selectedExpectedItem = useMemo(() => {
+    if (!selectedProduct) return null;
+    return expectedItems.find((i) => i.productId === selectedProduct.id) ?? null;
+  }, [selectedProduct, expectedItems]);
+
+  const willExceedExpected = useMemo(() => {
+    if (!selectedExpectedItem) return false;
+    return selectedExpectedItem.loadedQuantity + quantity > selectedExpectedItem.expectedQuantity;
+  }, [selectedExpectedItem, quantity]);
+
+  const excessUnits = useMemo(() => {
+    if (!willExceedExpected || !selectedExpectedItem) return 0;
+    return selectedExpectedItem.loadedQuantity + quantity - selectedExpectedItem.expectedQuantity;
+  }, [willExceedExpected, selectedExpectedItem, quantity]);
+
+  const getRegisterLabel = () => {
+    if (addItemMutation.isPending) return "Registrando...";
+    const exp = selectedExpectedItem;
+    if (exp) {
+      if (exp.remaining > 0 && quantity === exp.remaining) return `Carregar restante: ${exp.remaining}`;
+      if (exp.remaining === 0 && quantity > 0) return `Adicionar excedente: ${quantity}`;
+      if (willExceedExpected) return "Adicionar como excedente";
+    }
+    return quantity === 1 ? "Registrar 1 unidade" : `Registrar ${quantity} unidades`;
+  };
+
+  // ── Mutations ───────────────────────────────────────────────────────────────
+  const addItemMutation = useMutation({
+    mutationFn: async (data: {
+      productId: string;
+      quantity: number;
+      scannedSku?: string;
+      ownerName?: string;
+      ownerType?: string;
+    }) => {
+      const res = await apiRequest("POST", `/api/movements/${id}/items`, { movementId: id, ...data });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to add item");
+      }
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
+
+      const pending = pendingAddRef.current;
+      const mode = pending?.mode || operationalMode;
+
+      // Set undo state
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      if (data?.id && pending) {
+        setUndoState({ itemId: data.id, productName: pending.productName, quantity: pending.quantity });
+        undoTimerRef.current = setTimeout(() => setUndoState(null), 6000);
+      }
+
+      // Clear based on mode
+      if (mode === "unit") {
+        setSelectedProduct(null);
+        setSearchQuery("");
+        setScannedSku("");
+      }
+      setQuantity(1);
+      setOwnerName("");
+      setShowSuggestions(false);
+      setShowExceptionDialog(false);
+      pendingAddRef.current = null;
+
+      // Return focus to scanner
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+        if (mode === "unit") searchInputRef.current?.select();
+      }, 100);
+    },
+    onError: (error: Error) => {
+      pendingAddRef.current = null;
+      toast({ title: "Erro ao registrar", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const undoItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      const res = await apiRequest("DELETE", `/api/movements/${id}/items/${itemId}`);
+      if (!res.ok) throw new Error("Falha ao desfazer");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
+      setUndoState(null);
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      toast({ title: "Ação desfeita", description: "O lançamento foi removido." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Não foi possível desfazer", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const loadAllPendingMutation = useMutation({
+    mutationFn: async (items: ExpectedItem[]) => {
+      for (const item of items) {
+        const res = await apiRequest("POST", `/api/movements/${id}/items`, {
+          movementId: id,
+          productId: item.productId,
+          quantity: item.remaining,
+          scannedSku: item.product.sku || undefined,
+          ownerType: "owned",
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || `Falha ao adicionar ${item.product.name}`);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
+      setShowLoadAllDialog(false);
+      toast({ title: "Pendências registradas", description: `Todas as quantidades pendentes foram carregadas.` });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao carregar todos", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const decrementItemMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      const productItems = movementItems
+        .filter((item) => item.productId === productId)
+        .sort((a, b) => new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime());
+      if (productItems.length === 0) throw new Error("No items found for this product");
+      const itemId = productItems[0].id;
+      const res = await apiRequest("PATCH", `/api/movements/${id}/items/${itemId}/decrement`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to decrement item");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      toast({ title: "Unidade removida" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao remover unidade", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const removeItemMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      const productItems = movementItems.filter((item) => item.productId === productId);
+      if (productItems.length === 0) throw new Error("No items found for this product");
+      await Promise.all(productItems.map((item) => apiRequest("DELETE", `/api/movements/${id}/items/${item.id}`)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
+      toast({ title: "Item removido" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao remover item", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      const res = await apiRequest("PATCH", `/api/movements/${id}/status`, { status: newStatus });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update status");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
+      setShowEditStatusDialog(false);
+      setNewStatus("");
+      toast({ title: "Status atualizado" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const uploadAttachmentMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const res = await fetch(`/api/movements/${id}/attachments`, { method: "POST", body: formData, credentials: "include" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as any).error || "Falha ao enviar arquivo");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
+      setShowUploadDialog(false);
+      setUploadFile(null);
+      setUploadPreviewUrl(null);
+      setUploadCategory("other");
+      setUploadCaption("");
+      setUploadProductId("");
+      toast({ title: "Evidência enviada" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async (attachmentId: string) => {
+      const res = await fetch(`/api/movements/${id}/attachments/${attachmentId}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Falha ao remover evidência");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "attachments"] });
+      toast({ title: "Evidência removida" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+  const handleStartMovement = () => updateStatusMutation.mutate("in_progress");
+  const handlePauseMovement = () => updateStatusMutation.mutate("paused");
+  const handleContinueMovement = () => updateStatusMutation.mutate("in_progress");
+  const handleFinishMovement = () => updateStatusMutation.mutate("completed");
+
+  const toggleFocusMode = () => {
+    const next = !focusMode;
+    setFocusMode(next);
+    if (next && sidebar.open) sidebar.setOpen(false);
+    else if (!next && !sidebar.open) sidebar.setOpen(true);
+  };
+
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setSearchQuery(product.name);
+    setShowSuggestions(false);
+    setTimeout(() => {
+      quantityInputRef.current?.focus();
+      quantityInputRef.current?.select();
+    }, 100);
+  };
+
+  const handleSelectFromExpectedItem = (item: ExpectedItem) => {
+    setSearchQuery(item.product.sku || item.product.name);
+    setSelectedProduct(item.product);
+    setShowSuggestions(false);
+    setTimeout(() => {
+      quantityInputRef.current?.focus();
+      quantityInputRef.current?.select();
+    }, 100);
+  };
+
+  const handleUndo = () => {
+    if (!undoState || undoItemMutation.isPending) return;
+    undoItemMutation.mutate(undoState.itemId);
+  };
+
+  const executeAdd = (productId: string, qty: number, options: { scannedSku?: string; ownerName?: string; ownerType?: string; productName: string }) => {
+    if (!isEditable) {
+      toast({ title: "Movimentação não está em andamento", variant: "destructive" });
+      return;
+    }
+    pendingAddRef.current = { productName: options.productName, quantity: qty, mode: operationalMode };
+    addItemMutation.mutate({
+      productId,
+      quantity: qty,
+      scannedSku: options.scannedSku,
+      ownerName: options.ownerName,
+      ownerType: options.ownerType || "owned",
+    });
+  };
+
+  const handleAddItem = () => {
+    if (!isEditable || !selectedProduct || addItemMutation.isPending) return;
+    if (selectedProduct.requiresSupplier && !ownerName.trim()) {
+      toast({ title: "Proprietário obrigatório", description: "Informe o fornecedor antes de registrar.", variant: "destructive" });
+      return;
+    }
+    if (willExceedExpected) {
+      setShowExceptionDialog(true);
+      return;
+    }
+    executeAdd(selectedProduct.id, quantity, {
+      scannedSku: scannedSku || selectedProduct.sku || undefined,
+      ownerName: selectedProduct.requiresSupplier ? ownerName : undefined,
+      ownerType: selectedProduct.requiresSupplier ? selectedProduct.ownership || "owned" : "owned",
+      productName: selectedProduct.name,
+    });
+  };
+
+  const handleConfirmException = () => {
+    if (!selectedProduct) return;
+    executeAdd(selectedProduct.id, quantity, {
+      scannedSku: scannedSku || selectedProduct.sku || undefined,
+      ownerName: selectedProduct.requiresSupplier ? ownerName : undefined,
+      ownerType: selectedProduct.requiresSupplier ? selectedProduct.ownership || "owned" : "owned",
+      productName: selectedProduct.name,
+    });
+  };
+
+  const handleLoadRemaining = (item: ExpectedItem) => {
+    if (!isEditable || item.remaining <= 0) return;
+    const product = products.find((p) => p.id === item.productId);
+    if (!product) return;
+    if (product.requiresSupplier) {
+      handleSelectFromExpectedItem(item);
+      setQuantity(item.remaining);
+      return;
+    }
+    pendingAddRef.current = { productName: product.name, quantity: item.remaining, mode: operationalMode };
+    addItemMutation.mutate({
+      productId: item.productId,
+      quantity: item.remaining,
+      scannedSku: product.sku || undefined,
+      ownerType: "owned",
+    });
+  };
+
+  const handleSetOperationalMode = (mode: "unit" | "batch") => {
+    setOperationalMode(mode);
+    try { sessionStorage.setItem("movement-op-mode", mode); } catch {}
+  };
+
+  // ── Evidence helpers ────────────────────────────────────────────────────────
   function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadFile(file);
-    const url = URL.createObjectURL(file);
-    setUploadPreviewUrl(url);
+    setUploadPreviewUrl(URL.createObjectURL(file));
   }
 
   function handleUploadSubmit() {
@@ -477,322 +789,7 @@ export default function MovementDetails() {
     setShowUploadDialog(true);
   }
 
-  const uploadAttachmentMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const res = await fetch(`/api/movements/${id}/attachments`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as any).error || "Falha ao enviar arquivo");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "attachments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
-      setShowUploadDialog(false);
-      setUploadFile(null);
-      setUploadPreviewUrl(null);
-      setUploadCategory("other");
-      setUploadCaption("");
-      setUploadProductId("");
-      toast({ title: "Evidência enviada", description: "Arquivo anexado com sucesso." });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
-    },
-  });
-
-  const deleteAttachmentMutation = useMutation({
-    mutationFn: async (attachmentId: string) => {
-      const res = await fetch(`/api/movements/${id}/attachments/${attachmentId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Falha ao remover evidência");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "attachments"] });
-      toast({ title: "Evidência removida" });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
-    },
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async (newStatus: string) => {
-      const res = await apiRequest("PATCH", `/api/movements/${id}/status`, { status: newStatus });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to update status");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/movements"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
-      setShowEditStatusDialog(false);
-      setNewStatus("");
-      toast({
-        title: "Status atualizado",
-        description: "O status da movimentação foi atualizado com sucesso.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao atualizar status",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const addItemMutation = useMutation({
-    mutationFn: async (data: { 
-      productId: string; 
-      quantity: number;
-      scannedSku?: string;
-      ownerName?: string;
-      ownerType?: string;
-    }) => {
-      const res = await apiRequest("POST", `/api/movements/${id}/items`, {
-        movementId: id,
-        ...data,
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to add item");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
-      setSelectedProduct(null);
-      setScannedSku("");
-      setQuantity(1);
-      setOwnerName("");
-      setSearchQuery("");
-      setShowSuggestions(false);
-      toast({
-        title: "Item adicionado",
-        description: "O item foi adicionado à movimentação.",
-      });
-      // Focus back on scanner input for next product
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }, 100);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao adicionar item",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const decrementItemMutation = useMutation({
-    mutationFn: async (productId: string) => {
-      // Find the most recent item for this product (using processedAt timestamp)
-      const productItems = movementItems
-        .filter((item) => item.productId === productId)
-        .sort((a, b) => new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime());
-      
-      if (productItems.length === 0) {
-        throw new Error("No items found for this product");
-      }
-
-      const itemId = productItems[0].id;
-      const res = await apiRequest("PATCH", `/api/movements/${id}/items/${itemId}/decrement`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to decrement item");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
-      toast({
-        title: "Quantidade reduzida",
-        description: "Uma unidade foi removida do item.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao remover unidade",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const removeItemMutation = useMutation({
-    mutationFn: async (productId: string) => {
-      // Remove all items for this product
-      const productItems = movementItems.filter((item) => item.productId === productId);
-      
-      if (productItems.length === 0) {
-        throw new Error("No items found for this product");
-      }
-
-      // Delete all items for this product
-      await Promise.all(
-        productItems.map((item) =>
-          apiRequest("DELETE", `/api/movements/${id}/items/${item.id}`)
-        )
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "items"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/movements", id, "audit-logs"] });
-      toast({
-        title: "Item removido completamente",
-        description: "O item foi removido da movimentação.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao remover item",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleStartMovement = () => {
-    updateStatusMutation.mutate("in_progress");
-  };
-
-  const handlePauseMovement = () => {
-    updateStatusMutation.mutate("paused");
-  };
-
-  const handleContinueMovement = () => {
-    updateStatusMutation.mutate("in_progress");
-  };
-
-  const handleFinishMovement = () => {
-    updateStatusMutation.mutate("completed");
-  };
-
-  const toggleFocusMode = () => {
-    const newFocusMode = !focusMode;
-    setFocusMode(newFocusMode);
-    
-    // Toggle sidebar when entering/exiting focus mode
-    if (newFocusMode && sidebar.open) {
-      sidebar.setOpen(false);
-    } else if (!newFocusMode && !sidebar.open) {
-      sidebar.setOpen(true);
-    }
-  };
-
-  const handleSelectProduct = (product: Product) => {
-    setSelectedProduct(product);
-    setSearchQuery(product.name);
-    setShowSuggestions(false);
-    // Focus quantity input after selecting product
-    setTimeout(() => {
-      quantityInputRef.current?.focus();
-      quantityInputRef.current?.select();
-    }, 100);
-  };
-
-  const handleSelectFromExpectedItem = (item: ExpectedItem) => {
-    // Search by SKU to select the product
-    setSearchQuery(item.product.sku || item.product.name);
-    setSelectedProduct(item.product);
-    setShowSuggestions(false);
-    // Focus quantity input after selecting product
-    setTimeout(() => {
-      quantityInputRef.current?.focus();
-      quantityInputRef.current?.select();
-    }, 100);
-  };
-
-  const handleAddItem = () => {
-    console.log('handleAddItem called', { selectedProduct: selectedProduct?.name, showConfirmDialog });
-    
-    if (!isEditable) {
-      toast({
-        title: "Não é possível adicionar produtos",
-        description: "A movimentação precisa estar em andamento para registrar produtos.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!selectedProduct) return;
-    // Open confirmation dialog instead of adding directly
-    // Use setTimeout to ensure the dialog opens after the Enter key event is fully processed
-    setTimeout(() => {
-      setShowConfirmDialog(true);
-      console.log('Dialog should be opening now');
-    }, 0);
-  };
-
-  const handleConfirmAddItem = () => {
-    if (!isEditable) {
-      toast({
-        title: "Não é possível adicionar produtos",
-        description: "A movimentação precisa estar em andamento para registrar produtos.",
-        variant: "destructive",
-      });
-      setShowConfirmDialog(false);
-      return;
-    }
-    
-    if (!selectedProduct) return;
-    
-    // Validate supplier for rented/consigned products
-    if (selectedProduct.requiresSupplier && !ownerName.trim()) {
-      toast({
-        title: "Proprietário obrigatório",
-        description: "Informe o proprietário/fornecedor para produtos locados ou consignados.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    addItemMutation.mutate({
-      productId: selectedProduct.id,
-      quantity,
-      scannedSku: scannedSku || selectedProduct.sku,
-      ownerName: selectedProduct.requiresSupplier ? ownerName : undefined,
-      ownerType: selectedProduct.requiresSupplier ? selectedProduct.ownership : "owned",
-    });
-    setShowConfirmDialog(false);
-    setIsSelectOpen(false); // Reset Select state
-  };
-
-  const handleCancelAddItem = () => {
-    setShowConfirmDialog(false);
-    setIsSelectOpen(false); // Reset Select state
-    // Return focus to quantity input
-    setTimeout(() => quantityInputRef.current?.focus(), 100);
-  };
-
-  // Check if quantity exceeds expected
-  const selectedExpectedItem = useMemo(() => {
-    if (!selectedProduct) return null;
-    return expectedItems.find((item) => item.productId === selectedProduct.id);
-  }, [selectedProduct, expectedItems]);
-
-  const willExceedExpected = useMemo(() => {
-    if (!selectedExpectedItem) return false;
-    const totalAfterAdd = selectedExpectedItem.loadedQuantity + quantity;
-    return totalAfterAdd > selectedExpectedItem.expectedQuantity;
-  }, [selectedExpectedItem, quantity]);
-
-  // Auto-focus quantity input when product is selected
+  // ── Effects ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (selectedProduct) {
       setTimeout(() => {
@@ -802,52 +799,36 @@ export default function MovementDetails() {
     }
   }, [selectedProduct]);
 
-  // Pre-populate status when edit dialog opens
   useEffect(() => {
-    if (showEditStatusDialog && movement) {
-      setNewStatus(movement.status);
-    }
+    if (showEditStatusDialog && movement) setNewStatus(movement.status);
   }, [showEditStatusDialog, movement]);
 
-  // Handle Enter key in confirmation dialog
   useEffect(() => {
-    if (!showConfirmDialog) return;
-    
-    const handleDialogKeyPress = (e: KeyboardEvent) => {
-      console.log('Dialog keydown:', e.key, 'isSelectOpen:', isSelectOpen);
-      
-      // If Select is open, don't handle Enter
-      if (isSelectOpen) {
-        console.log('Select is open, ignoring keydown');
-        return;
-      }
-      
-      if (e.key === "Enter") {
-        console.log('Enter pressed in dialog, confirming...');
-        e.preventDefault();
-        e.stopPropagation();
-        handleConfirmAddItem();
-      } else if (e.key === "Escape") {
-        console.log('Escape pressed in dialog, canceling...');
-        e.preventDefault();
-        e.stopPropagation();
-        handleCancelAddItem();
-      }
-    };
-    
-    window.addEventListener("keydown", handleDialogKeyPress, true); // Use capture phase
-    return () => window.removeEventListener("keydown", handleDialogKeyPress, true);
-  }, [showConfirmDialog, selectedProduct, quantity, isSelectOpen, handleConfirmAddItem, handleCancelAddItem]);
-
-  // Close suggestions when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setShowSuggestions(false);
-    };
+    const handleClickOutside = () => setShowSuggestions(false);
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
+  // Esc on scanner clears selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedProduct && !showExceptionDialog && !showEditStatusDialog && !showUploadDialog) {
+        setSelectedProduct(null);
+        setQuantity(1);
+        setSearchQuery("");
+        setOwnerName("");
+        setTimeout(() => { searchInputRef.current?.focus(); }, 50);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [selectedProduct, showExceptionDialog, showEditStatusDialog, showUploadDialog]);
+
+  useEffect(() => {
+    return () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); };
+  }, []);
+
+  // ── Loading / not found ─────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div>
@@ -866,108 +847,68 @@ export default function MovementDetails() {
     );
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 relative">
-      {/* Botão de Modo Foco - Sempre visível */}
+      {/* Focus toggle */}
       <div className="fixed top-20 right-6 z-50">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={toggleFocusMode}
-          data-testid="button-toggle-focus"
-          title={focusMode ? "Sair do modo foco" : "Entrar em modo foco"}
-        >
+        <Button variant="outline" size="icon" onClick={toggleFocusMode} data-testid="button-toggle-focus" title={focusMode ? "Sair do modo foco" : "Entrar em modo foco"}>
           {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </Button>
       </div>
 
       {/* Header */}
       {!focusMode && (
-        <PageHeader
-          title={movement.name}
-          description={movement.movementNumber}
-        >
+        <PageHeader title={movement.name} description={movement.movementNumber}>
           {userCanChangeMovementStatusFreely(user) && (
-            <Button
-              variant="outline"
-              onClick={() => setShowEditStatusDialog(true)}
-              data-testid="button-edit-status"
-            >
+            <Button variant="outline" onClick={() => setShowEditStatusDialog(true)} data-testid="button-edit-status">
               <Edit className="h-4 w-4 mr-2" />
               Editar Status
             </Button>
           )}
           {movement.status === "created" && userCanManageMovementItems(user) && (
-            <Button
-              onClick={handleStartMovement}
-              disabled={updateStatusMutation.isPending}
-              data-testid="button-start"
-            >
+            <Button onClick={handleStartMovement} disabled={updateStatusMutation.isPending} data-testid="button-start">
               <PlayCircle className="h-4 w-4 mr-2" />
               Iniciar
             </Button>
           )}
           {movement.status === "in_progress" && userCanManageMovementItems(user) && (
             <>
-              <Button
-                variant="outline"
-                onClick={handlePauseMovement}
-                disabled={updateStatusMutation.isPending}
-                data-testid="button-pause"
-              >
+              <Button variant="outline" onClick={handlePauseMovement} disabled={updateStatusMutation.isPending} data-testid="button-pause">
                 <PauseCircle className="h-4 w-4 mr-2" />
                 Pausar
               </Button>
-              <Button
-                onClick={handleFinishMovement}
-                disabled={updateStatusMutation.isPending}
-                data-testid="button-finish"
-              >
+              <Button onClick={handleFinishMovement} disabled={updateStatusMutation.isPending} data-testid="button-finish">
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Finalizar
               </Button>
             </>
           )}
           {movement.status === "paused" && userCanManageMovementItems(user) && (
-            <Button
-              onClick={handleContinueMovement}
-              disabled={updateStatusMutation.isPending}
-              data-testid="button-continue"
-            >
+            <Button onClick={handleContinueMovement} disabled={updateStatusMutation.isPending} data-testid="button-continue">
               <PlayCircle className="h-4 w-4 mr-2" />
               Continuar
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigate("/movements")}
-            data-testid="button-back"
-            title="Voltar"
-          >
+          <Button variant="outline" size="icon" onClick={() => navigate("/movements")} data-testid="button-back" title="Voltar">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </PageHeader>
       )}
 
-      {/* Resumo Operacional */}
+      {/* Resumo operacional — stats cards */}
       {!focusMode && (
         <PageSection>
           <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
-            {/* Status */}
             <Card className="border-border/60 min-w-0">
               <CardContent className="p-2.5 flex flex-col min-h-[80px]">
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
                   <BarChart3 className="h-3 w-3 flex-shrink-0" />
                   <span className="truncate">Status</span>
                 </div>
-                <div className="mt-auto pt-1.5">
-                  <StatusBadge status={movement.status} />
-                </div>
+                <div className="mt-auto pt-1.5"><StatusBadge status={movement.status} /></div>
               </CardContent>
             </Card>
-
-            {/* Esperados */}
             <Card className="border-border/60 min-w-0">
               <CardContent className="p-2.5 flex flex-col min-h-[80px]">
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
@@ -976,12 +917,10 @@ export default function MovementDetails() {
                 </div>
                 <div className="mt-auto pt-1">
                   <div className="text-xl font-bold tabular-nums leading-none">{totalExpected}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">na ordem</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Carregados */}
             <Card className={`border-border/60 min-w-0 ${totalExpected > 0 && totalLoaded >= totalExpected ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}>
               <CardContent className="p-2.5 flex flex-col min-h-[80px]">
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
@@ -994,9 +933,7 @@ export default function MovementDetails() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Pendentes */}
-            <Card className={`border-border/60 min-w-0 transition-colors ${totalPending > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
+            <Card className={`border-border/60 min-w-0 ${totalPending > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
               <CardContent className="p-2.5 flex flex-col min-h-[80px]">
                 <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${totalPending > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
                   <AlertTriangle className="h-3 w-3 flex-shrink-0" />
@@ -1004,13 +941,11 @@ export default function MovementDetails() {
                 </div>
                 <div className="mt-auto pt-1">
                   <div className={`text-xl font-bold tabular-nums leading-none ${totalPending > 0 ? "text-amber-500" : ""}`}>{totalPending}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">faltam</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Excedentes */}
-            <Card className={`border-border/60 min-w-0 transition-colors ${totalExceeded > 0 ? "border-rose-500/40 bg-rose-500/5" : ""}`}>
+            <Card className={`border-border/60 min-w-0 ${totalExceeded > 0 ? "border-rose-500/40 bg-rose-500/5" : ""}`}>
               <CardContent className="p-2.5 flex flex-col min-h-[80px]">
                 <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${totalExceeded > 0 ? "text-rose-500" : "text-muted-foreground"}`}>
                   <Plus className="h-3 w-3 flex-shrink-0" />
@@ -1018,12 +953,10 @@ export default function MovementDetails() {
                 </div>
                 <div className="mt-auto pt-1">
                   <div className={`text-xl font-bold tabular-nums leading-none ${totalExceeded > 0 ? "text-rose-500" : ""}`}>{totalExceeded}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">além</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Progresso */}
             <Card className="border-border/60 min-w-0">
               <CardContent className="p-2.5 flex flex-col min-h-[80px]">
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
@@ -1036,8 +969,6 @@ export default function MovementDetails() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Evidências (clickable) */}
             <button
               className="text-left border rounded-lg border-border/60 hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-w-0"
               onClick={() => { const el = document.getElementById("section-evidencias"); if (el) el.scrollIntoView({ behavior: "smooth" }); }}
@@ -1059,72 +990,46 @@ export default function MovementDetails() {
               </div>
             </button>
           </div>
-
-          {/* Metadados */}
+          {/* Metadata */}
           <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5" />
-              Doca: <span className="text-foreground font-medium">{movement.dock?.name || "—"}</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <Truck className="h-3.5 w-3.5" />
-              Veículo: <span className="text-foreground font-medium">{movement.vehiclePlate || "—"}</span>
-            </span>
+            <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />Doca: <span className="text-foreground font-medium">{movement.dock?.name || "—"}</span></span>
+            <span className="flex items-center gap-1"><Truck className="h-3.5 w-3.5" />Veículo: <span className="text-foreground font-medium">{movement.vehiclePlate || "—"}</span></span>
             <span className="flex items-center gap-2 flex-wrap">
-              <span className="flex items-center gap-1">
-                <Tag className="h-3.5 w-3.5" />
-                Tipo: <span className="text-foreground font-medium">{movement.movementTypeConfig?.name || "—"}</span>
-              </span>
+              <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Tipo: <span className="text-foreground font-medium">{movement.movementTypeConfig?.name || "—"}</span></span>
               {movement.movementTypeConfig?.nature === "inbound" && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                  Entrada
-                </Badge>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">Entrada</Badge>
               )}
               {movement.movementTypeConfig?.nature === "outbound" && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                  Saída
-                </Badge>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">Saída</Badge>
               )}
             </span>
             {movement.loadingOrder && (
-              <span className="flex items-center gap-1">
-                <Layers className="h-3.5 w-3.5" />
-                Ordem: <span className="text-foreground font-medium">{movement.loadingOrder.orderNumber}</span>
-              </span>
+              <span className="flex items-center gap-1"><Layers className="h-3.5 w-3.5" />Ordem: <span className="text-foreground font-medium">{movement.loadingOrder.orderNumber}</span></span>
             )}
             {movement.request && (
               <span className="flex items-center gap-1">
-                <Layers className="h-3.5 w-3.5" />
-                Requisição: <span className="text-foreground font-medium">
+                <Layers className="h-3.5 w-3.5" />Requisição: <span className="text-foreground font-medium">
                   {movement.request.event?.name ? `${movement.request.event.name} — ` : ""}{movement.request.area}
                 </span>
               </span>
             )}
             {movement.events && movement.events.length > 0 && (
-              <span className="flex items-center gap-1">
-                <Tag className="h-3.5 w-3.5" />
-                Evento: <span className="text-foreground font-medium">{movement.events.map(e => e.name).join(", ")}</span>
-              </span>
+              <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Evento: <span className="text-foreground font-medium">{movement.events.map((e) => e.name).join(", ")}</span></span>
             )}
             {movement.createdAt && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                Criado: <span className="text-foreground font-medium">{format(new Date(movement.createdAt), "dd/MM/yy HH:mm")}</span>
-              </span>
+              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Criado: <span className="text-foreground font-medium">{format(new Date(movement.createdAt), "dd/MM/yy HH:mm")}</span></span>
             )}
           </div>
         </PageSection>
       )}
 
-      {/* Alertas Operacionais */}
+      {/* Alertas operacionais */}
       {!focusMode && (() => {
-        const hasPostCompletionEvidence = attachments.some(a => a.isPostCompletion);
-        const alerts: Array<{ type: "warning"|"error"|"info"|"muted"; icon: React.ElementType; message: string }> = [];
-        if (movement.status === "paused") alerts.push({ type: "warning", icon: PauseCircle, message: "Movimentação pausada — escaneamento temporariamente interrompido. Clique em \"Continuar\" para retomar." });
+        const alerts: Array<{ type: "warning" | "error" | "info" | "muted"; icon: React.ElementType; message: string }> = [];
+        if (movement.status === "paused") alerts.push({ type: "warning", icon: PauseCircle, message: "Movimentação pausada — escaneamento interrompido. Clique em \"Continuar\" para retomar." });
         if (movement.status === "completed") alerts.push({ type: "info", icon: CheckCheck, message: "Movimentação finalizada — modo somente consulta. Você ainda pode adicionar evidências." });
-        if (totalPending > 0 && movement.status === "in_progress") alerts.push({ type: "warning", icon: AlertTriangle, message: `${totalPending} ${totalPending === 1 ? "item pendente" : "itens pendentes"} — carregamento ainda não concluído` });
-        if (totalExceeded > 0) alerts.push({ type: "error", icon: AlertTriangle, message: `${totalExceeded} ${totalExceeded === 1 ? "item excedeu" : "itens excederam"} a quantidade prevista` });
-        if (hasPostCompletionEvidence) alerts.push({ type: "info", icon: Camera, message: "Há evidências adicionadas após a finalização desta movimentação" });
+        if (totalPending > 0 && movement.status === "in_progress") alerts.push({ type: "warning", icon: AlertTriangle, message: `${totalPending} unidade${totalPending !== 1 ? "s" : ""} pendente${totalPending !== 1 ? "s" : ""} em ${pendingItems.length} produto${pendingItems.length !== 1 ? "s" : ""} — carregamento ainda não concluído` });
+        if (totalExceeded > 0) alerts.push({ type: "error", icon: AlertTriangle, message: `${totalExceeded} unidade${totalExceeded !== 1 ? "s" : ""} excedente${totalExceeded !== 1 ? "s" : ""} acima da quantidade prevista` });
         if (movement.status === "in_progress" && attachments.length === 0) alerts.push({ type: "muted", icon: Camera, message: "Nenhuma evidência anexada ainda — recomendamos registrar fotos durante o carregamento" });
         if (alerts.length === 0) return null;
         const colorMap = {
@@ -1150,33 +1055,57 @@ export default function MovementDetails() {
         );
       })()}
 
-      {/* Scanner */}
+      {/* Scanner não disponível */}
       {!isEditable && movement?.status && (
         <PageSection>
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              {movement.status === "pending_approval" && "Movimentação pendente de aprovação. Aguarde a aprovação para registrar produtos."}
-              {movement.status === "paused" && "Movimentação pausada. Leitura temporariamente interrompida. Clique em 'Continuar' para retomar."}
+              {movement.status === "pending_approval" && "Movimentação pendente de aprovação. Aguarde para registrar produtos."}
+              {movement.status === "paused" && "Movimentação pausada. Clique em 'Continuar' para retomar o escaneamento."}
               {movement.status === "completed" && "Movimentação finalizada. Não é possível adicionar ou modificar produtos."}
-              {movement.status === "cancelled" && "Movimentação cancelada. Não é possível adicionar ou modificar produtos."}
+              {movement.status === "cancelled" && "Movimentação cancelada."}
               {movement.status === "created" && "Clique em 'Iniciar' para começar a registrar produtos."}
             </AlertDescription>
           </Alert>
         </PageSection>
       )}
 
+      {/* Scanner de Produtos */}
       {isEditable && userCanManageMovementItems(user) && (
         <PageSection title="Scanner de Produtos" description="Registre produtos via SKU, código de barras ou nome">
           <Card className="border-border/60">
             <CardContent className="p-3 space-y-3">
-              {/* Search row */}
-              <div className="flex gap-2 relative">
-                <div className="flex-1 relative">
+              {/* Mode toggle + search row */}
+              <div className="flex gap-2 items-center flex-wrap">
+                {/* Mode toggle */}
+                <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-md shrink-0">
+                  <Button
+                    size="sm"
+                    variant={operationalMode === "unit" ? "default" : "ghost"}
+                    className="h-7 text-xs px-2.5"
+                    onClick={() => handleSetOperationalMode("unit")}
+                    data-testid="button-mode-unit"
+                  >
+                    Leitura unitária
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={operationalMode === "batch" ? "default" : "ghost"}
+                    className="h-7 text-xs px-2.5"
+                    onClick={() => handleSetOperationalMode("batch")}
+                    data-testid="button-mode-batch"
+                  >
+                    Lançamento em lote
+                  </Button>
+                </div>
+
+                {/* Search input */}
+                <div className="flex-1 min-w-48 relative">
                   <Scan className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <Input
                     ref={searchInputRef}
-                    placeholder="SKU, código de barras ou nome..."
+                    placeholder="Digite ou escaneie SKU, código de barras ou nome"
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -1200,9 +1129,7 @@ export default function MovementDetails() {
                             data-testid={`suggestion-${product.id}`}
                           >
                             <p className="font-medium text-sm">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {product.sku}{product.barcode && ` · ${product.barcode}`}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{product.sku}{product.barcode && ` · ${product.barcode}`}</p>
                           </button>
                         ))}
                       </CardContent>
@@ -1210,6 +1137,8 @@ export default function MovementDetails() {
                   )}
                 </div>
                 <Button
+                  size="icon"
+                  variant="outline"
                   onClick={() => { if (filteredProducts.length === 1) handleSelectProduct(filteredProducts[0]); }}
                   disabled={!searchQuery || !!selectedProduct || filteredProducts.length !== 1}
                   data-testid="button-search"
@@ -1221,94 +1150,168 @@ export default function MovementDetails() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => { setSelectedProduct(null); setQuantity(1); setSearchQuery(""); }}
+                    onClick={() => { setSelectedProduct(null); setQuantity(1); setSearchQuery(""); setOwnerName(""); }}
                     data-testid="button-clear"
-                    title="Limpar seleção"
+                    title="Limpar seleção (Esc)"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
-                <Badge variant="outline" className="hidden sm:flex items-center gap-1 text-xs px-2 self-center">
-                  <Keyboard className="h-3 w-3" />
-                  Auto-focus
-                </Badge>
               </div>
 
-              {/* Product card — compact horizontal layout */}
+              {/* Undo banner */}
+              {undoState && (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-sm" data-testid="banner-undo">
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5 inline mr-1.5" />
+                    {undoState.quantity} {undoState.quantity === 1 ? "unidade" : "unidades"} de{" "}
+                    <span className="font-semibold">{undoState.productName}</span>{" "}
+                    {undoState.quantity === 1 ? "registrada" : "registradas"}.
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs shrink-0"
+                    onClick={handleUndo}
+                    disabled={undoItemMutation.isPending}
+                    data-testid="button-undo"
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Desfazer
+                  </Button>
+                </div>
+              )}
+
+              {/* Product card */}
               {selectedProduct && (
-                <div className={`border rounded-lg ${willExceedExpected ? "bg-destructive/10 border-destructive/60" : "bg-muted/40 border-border/60"}`}>
-                  <div className="p-3 flex flex-col sm:flex-row sm:items-center gap-3">
-                    {/* Left: product info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm leading-snug" data-testid="text-selected-product">
-                        {selectedProduct.name}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {selectedProduct.sku}{selectedProduct.barcode && ` · ${selectedProduct.barcode}`}
-                      </p>
-                      {selectedExpectedItem && (
-                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5">
-                          <span className="text-xs text-muted-foreground">Esperado: <span className="font-semibold text-foreground">{selectedExpectedItem.expectedQuantity}</span></span>
-                          <span className="text-xs text-muted-foreground">Carregado: <span className="font-semibold text-foreground">{selectedExpectedItem.loadedQuantity}</span></span>
-                          <span className={`text-xs font-semibold ${selectedExpectedItem.remaining > 0 ? "text-amber-500" : "text-emerald-500"}`}>
-                            {selectedExpectedItem.remaining > 0 ? `Faltam: ${selectedExpectedItem.remaining}` : "Completo"}
-                          </span>
-                        </div>
-                      )}
-                      {willExceedExpected && (
-                        <p className="text-xs text-destructive font-medium mt-1 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Excederá: {selectedExpectedItem!.loadedQuantity + quantity} / {selectedExpectedItem!.expectedQuantity}
+                <div className={`border rounded-lg ${willExceedExpected ? "bg-destructive/10 border-destructive/50" : "bg-muted/30 border-border/60"}`}>
+                  <div className="p-3 space-y-3">
+                    {/* Product header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-semibold leading-snug" data-testid="text-selected-product">{selectedProduct.name}</h3>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                          SKU: {selectedProduct.sku}{selectedProduct.barcode && ` · ${selectedProduct.barcode}`}
                         </p>
-                      )}
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        {willExceedExpected && (
+                          <Badge className="bg-destructive text-destructive-foreground no-default-hover-elevate">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Excedente
+                          </Badge>
+                        )}
+                        {selectedExpectedItem && selectedExpectedItem.remaining === 0 && !willExceedExpected && (
+                          <Badge className="bg-emerald-500 text-white no-default-hover-elevate">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Completo
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Right: quantity controls + confirm */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        data-testid="button-decrease-quantity"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <Input
-                        ref={quantityInputRef}
-                        type="number"
-                        min="1"
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleAddItem();
-                          }
-                        }}
-                        className={`w-16 text-center font-bold text-base ${willExceedExpected ? "border-destructive" : ""}`}
-                        data-testid="input-quantity"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setQuantity(quantity + 1)}
-                        data-testid="button-increase-quantity"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                    {/* 3-column stats */}
+                    {selectedExpectedItem && (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="text-center py-2.5 bg-muted/50 rounded-md">
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Solicitado</div>
+                          <div className="text-2xl font-bold tabular-nums">{selectedExpectedItem.expectedQuantity}</div>
+                        </div>
+                        <div className="text-center py-2.5 bg-emerald-500/10 rounded-md">
+                          <div className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-1">Carregado</div>
+                          <div className="text-2xl font-bold tabular-nums text-emerald-500">{selectedExpectedItem.loadedQuantity}</div>
+                        </div>
+                        <div className={`text-center py-2.5 rounded-md ${willExceedExpected ? "bg-destructive/10" : selectedExpectedItem.remaining > 0 ? "bg-amber-500/10" : "bg-emerald-500/10"}`}>
+                          <div className={`text-[10px] uppercase tracking-wide mb-1 ${willExceedExpected ? "text-destructive" : selectedExpectedItem.remaining > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                            {willExceedExpected ? "Excedente" : "Restante"}
+                          </div>
+                          <div className={`text-2xl font-bold tabular-nums ${willExceedExpected ? "text-destructive" : selectedExpectedItem.remaining > 0 ? "text-amber-500" : "text-emerald-500"}`}>
+                            {willExceedExpected ? excessUnits : selectedExpectedItem.remaining}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Supplier (inline when required) */}
+                    {selectedProduct.requiresSupplier && (
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-amber-700 dark:text-amber-400 font-medium">
+                          <AlertTriangle className="h-3 w-3 inline mr-1" />
+                          Proprietário / Fornecedor *
+                        </Label>
+                        <Select value={ownerName} onValueChange={setOwnerName} onOpenChange={setIsSelectOpen}>
+                          <SelectTrigger data-testid="select-owner-name" className="h-9">
+                            <SelectValue placeholder="Selecione o fornecedor..." />
+                          </SelectTrigger>
+                          <SelectContent position="popper" sideOffset={4}>
+                            {suppliers.filter((s) => s.name).map((supplier) => (
+                              <SelectItem key={supplier.id} value={supplier.name}>{supplier.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Quantity + register row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* -/quantity/+ */}
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} data-testid="button-decrease-quantity">
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <Input
+                          ref={quantityInputRef}
+                          type="number"
+                          min="1"
+                          value={quantity}
+                          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); handleAddItem(); }
+                          }}
+                          className={`w-16 text-center font-bold text-base ${willExceedExpected ? "border-destructive" : ""}`}
+                          data-testid="input-quantity"
+                        />
+                        <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)} data-testid="button-increase-quantity">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Quick: "Restante" shortcut in batch mode */}
+                      {operationalMode === "batch" && selectedExpectedItem && selectedExpectedItem.remaining > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 text-xs"
+                          onClick={() => setQuantity(selectedExpectedItem.remaining)}
+                          data-testid="button-set-remaining"
+                        >
+                          Restante: {selectedExpectedItem.remaining}
+                        </Button>
+                      )}
+
+                      <div className="flex-1" />
+
+                      {/* Main register button */}
                       <Button
                         onClick={handleAddItem}
-                        disabled={addItemMutation.isPending}
+                        disabled={addItemMutation.isPending || (selectedProduct.requiresSupplier && !ownerName.trim())}
                         data-testid="button-add-item"
                         variant={willExceedExpected ? "destructive" : "default"}
                         className="gap-1.5"
                       >
                         <CheckCircle2 className="h-4 w-4" />
-                        {addItemMutation.isPending ? "..." : "Confirmar"}
+                        {getRegisterLabel()}
                         <Badge variant="outline" className="bg-background/20 text-[10px] px-1 py-0 hidden sm:flex">ENTER</Badge>
                       </Button>
                     </div>
+
+                    {/* Excess warning */}
+                    {willExceedExpected && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        Esta quantidade gera {excessUnits} unidade{excessUnits !== 1 ? "s" : ""} excedente{excessUnits !== 1 ? "s" : ""}. Uma confirmação será exibida.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1321,694 +1324,404 @@ export default function MovementDetails() {
       {!focusMode && expectedItems.length > 0 && (
         <PageSection>
           <Card className="border-border/60 bg-muted/20">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
-                <Activity className="h-4 w-4 text-muted-foreground" />
-                Resumo da Conferência
-              </div>
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span className="text-sm text-muted-foreground">
-                    Completos: <span className="font-semibold text-foreground">{expectedItems.filter(i => i.remaining === 0 && i.loadedQuantity <= i.expectedQuantity).length}</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full bg-amber-500" />
-                  <span className="text-sm text-muted-foreground">
-                    Pendentes: <span className="font-semibold text-amber-500">{expectedItems.filter(i => i.remaining > 0).length}</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full bg-rose-500" />
-                  <span className="text-sm text-muted-foreground">
-                    Excedidos: <span className={`font-semibold ${totalExceeded > 0 ? "text-rose-500" : "text-foreground"}`}>{expectedItems.filter(i => i.loadedQuantity > i.expectedQuantity).length}</span>
-                  </span>
+            <CardContent className="p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2 font-semibold text-sm">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  Resumo da Conferência
                 </div>
                 {auditLogs.length > 0 && (
-                  <div className="flex items-center gap-1.5 ml-auto text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    <span>Última ação: <span className="font-medium text-foreground">{auditLogs[0]?.actorName}</span> · {format(new Date(auditLogs[0]?.occurredAt), "HH:mm")}</span>
+                    Última ação:{" "}
+                    <span className="font-medium text-foreground">{auditLogs[0]?.actorName}</span>
+                    {" · "}{format(new Date(auditLogs[0]?.occurredAt), "HH:mm")}
                   </div>
                 )}
               </div>
+
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+                  <span>
+                    Progresso geral:{" "}
+                    <span className={`font-semibold ${progress === 100 ? "text-emerald-500" : "text-foreground"}`}>{progress}%</span>
+                  </span>
+                  <span>{totalLoaded} de {totalExpected} unidades</span>
+                </div>
+                <Progress value={Math.min(progress, 100)} className="h-2" />
+              </div>
+
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-emerald-500 tabular-nums">{completedProductCount}</div>
+                  <div className="text-xs text-muted-foreground">de {expectedItems.length} produtos completos</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold tabular-nums">{totalLoaded}</div>
+                  <div className="text-xs text-muted-foreground">unidades carregadas</div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-lg font-bold tabular-nums ${totalPending > 0 ? "text-amber-500" : ""}`}>{totalPending}</div>
+                  <div className="text-xs text-muted-foreground">unidades pendentes</div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-lg font-bold tabular-nums ${totalExceeded > 0 ? "text-rose-500" : ""}`}>{totalExceeded}</div>
+                  <div className="text-xs text-muted-foreground">unidades excedentes</div>
+                </div>
+              </div>
+
+              {/* Load all pending */}
+              {isEditable && userCanManageMovementItems(user) && pendingItems.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/40 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowLoadAllDialog(true)}
+                    data-testid="button-load-all-pending"
+                  >
+                    <CheckCheck className="h-4 w-4 mr-1.5" />
+                    Carregar todos os restantes
+                    <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px] no-default-hover-elevate no-default-active-elevate">
+                      {pendingUnitsCount}
+                    </Badge>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </PageSection>
       )}
 
       {/* Lista dupla: Esperado vs Carregado */}
-      <PageSection title="Itens" description="Acompanhe o progresso de carregamento">
+      <PageSection
+        title={`Itens — ${expectedItems.length > 0 ? `${expectedItems.length} produto${expectedItems.length !== 1 ? "s" : ""}` : "0 produtos"}`}
+        description="Acompanhe o progresso de carregamento"
+      >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Itens Esperados (da Ordem) */}
+          {/* Itens da Requisição/Ordem */}
           {expectedItems.length > 0 && (
             <Card className="border-border/60">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3 font-semibold text-base">
                   <ClipboardList className="h-5 w-5" />
                   {movement?.requestId && !movement?.loadingOrderId
-                    ? `Itens da Requisição (${expectedItems.length})`
-                    : `Itens da Ordem (${expectedItems.length})`}
+                    ? `Produtos da Requisição — ${expectedItems.length} produto${expectedItems.length !== 1 ? "s" : ""}`
+                    : `Produtos da Ordem — ${expectedItems.length} produto${expectedItems.length !== 1 ? "s" : ""}`}
                 </div>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, SKU ou código de barras..."
+                    value={orderSearchQuery}
+                    onChange={(e) => setOrderSearchQuery(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-search-order-items"
+                  />
+                </div>
+                {/* Filtros rápidos */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {(["all", "pending", "complete", "exceeded"] as const).map((f) => {
+                    const counts = {
+                      all: expectedItems.length,
+                      pending: expectedItems.filter((i) => i.remaining > 0).length,
+                      complete: expectedItems.filter((i) => i.remaining === 0 && i.loadedQuantity <= i.expectedQuantity).length,
+                      exceeded: expectedItems.filter((i) => i.loadedQuantity > i.expectedQuantity).length,
+                    };
+                    const labels = { all: "Todos", pending: "Pendentes", complete: "Completos", exceeded: "Excedidos" };
+                    return (
+                      <Button key={f} variant={expectedFilter === f ? "default" : "outline"} size="sm" onClick={() => setExpectedFilter(f)} className="text-xs h-7">
+                        {labels[f]} ({counts[f]})
+                      </Button>
+                    );
+                  })}
+                </div>
+                <ScrollArea className="max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
+                  <div className="space-y-2">
+                    {filteredExpectedItems.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                        <p className="text-sm">{orderSearchQuery ? "Nenhum produto encontrado" : "Nenhum produto na ordem"}</p>
+                      </div>
+                    ) : (
+                      filteredExpectedItems.map((item) => {
+                        const percentComplete = item.expectedQuantity > 0
+                          ? Math.round((item.loadedQuantity / item.expectedQuantity) * 100)
+                          : 0;
+                        const isExceeded = item.loadedQuantity > item.expectedQuantity;
+                        const isComplete = item.remaining === 0 && !isExceeded;
+                        const excess = isExceeded ? item.loadedQuantity - item.expectedQuantity : 0;
+                        return (
+                          <div
+                            key={item.productId}
+                            className={`border rounded-lg p-3 space-y-2 cursor-pointer hover-elevate ${isExceeded ? "bg-destructive/10 border-destructive" : isComplete ? "bg-emerald-500/10 border-emerald-500/50" : ""}`}
+                            onClick={() => {
+                              if (movement.status === "in_progress" || movement.status === "paused") {
+                                handleSelectFromExpectedItem(item);
+                              }
+                            }}
+                            data-testid={`expected-item-${item.productId}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm leading-snug">{item.product.name}</p>
+                                <p className="text-xs text-muted-foreground font-mono mt-0.5">SKU: {item.product.sku}</p>
+                              </div>
+                              <div className="shrink-0">
+                                {isExceeded && <Badge className="bg-rose-500 text-white no-default-hover-elevate text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Excedido</Badge>}
+                                {isComplete && <Badge className="bg-emerald-500 text-white no-default-hover-elevate text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Completo</Badge>}
+                              </div>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="space-y-1">
+                              {isExceeded ? (
+                                <div className="w-full bg-muted rounded-full h-1.5 flex overflow-hidden">
+                                  <div className="h-full bg-emerald-500" style={{ width: `${(item.expectedQuantity / item.loadedQuantity) * 100}%` }} />
+                                  <div className="h-full bg-destructive" style={{ width: `${(excess / item.loadedQuantity) * 100}%` }} />
+                                </div>
+                              ) : (
+                                <div className="w-full bg-muted rounded-full h-1.5">
+                                  <div className={`h-full rounded-full transition-all ${isComplete ? "bg-emerald-500" : percentComplete >= 50 ? "bg-amber-500" : percentComplete > 0 ? "bg-blue-500" : ""}`} style={{ width: `${percentComplete}%` }} />
+                                </div>
+                              )}
+                              {/* 3-col mini stats */}
+                              <div className="flex justify-between text-[11px] pt-0.5">
+                                <span className="text-muted-foreground">Sol: <span className="font-semibold text-foreground">{item.expectedQuantity}</span></span>
+                                <span className="text-muted-foreground">Carr: <span className="font-semibold text-emerald-500">{item.loadedQuantity}</span></span>
+                                {isExceeded
+                                  ? <span className="text-destructive font-semibold">+{excess} excedente</span>
+                                  : isComplete
+                                    ? <span className="text-emerald-500 font-semibold">Completo</span>
+                                    : <span className="text-amber-500 font-semibold">Falta: {item.remaining}</span>
+                                }
+                              </div>
+                            </div>
+                            {/* Load remaining button */}
+                            {item.remaining > 0 && isEditable && userCanManageMovementItems(user) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs w-full mt-1"
+                                disabled={addItemMutation.isPending}
+                                onClick={(e) => { e.stopPropagation(); handleLoadRemaining(item); }}
+                                data-testid={`button-load-remaining-${item.productId}`}
+                              >
+                                <PackageCheck className="h-3 w-3 mr-1.5" />
+                                Carregar restante: {item.remaining}
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Itens Carregados */}
+          <Card className="border-border/60">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3 font-semibold text-base">
+                <PackageCheck className="h-5 w-5" />
+                Produtos Registrados — {consolidatedLoadedItems.length} produto{consolidatedLoadedItems.length !== 1 ? "s" : ""} / {movementItems.reduce((s, i) => s + i.quantity, 0)} unidade{movementItems.reduce((s, i) => s + i.quantity, 0) !== 1 ? "s" : ""}
+              </div>
+              {(consolidatedLoadedItems.some((i) => i.isNotInOrder) || consolidatedLoadedItems.some((i) => i.ownerTypes.has("rented"))) && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {consolidatedLoadedItems.filter((i) => i.isNotInOrder).length > 0 && (
+                    <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-700">
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      {consolidatedLoadedItems.filter((i) => i.isNotInOrder).length} fora da ordem
+                    </Badge>
+                  )}
+                  {consolidatedLoadedItems.filter((i) => i.ownerTypes.has("rented")).length > 0 && (
+                    <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
+                      {consolidatedLoadedItems.filter((i) => i.ownerTypes.has("rented")).length} locados
+                    </Badge>
+                  )}
+                </div>
+              )}
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nome, SKU ou código de barras..."
-                  value={orderSearchQuery}
-                  onChange={(e) => setOrderSearchQuery(e.target.value)}
+                  value={loadedSearchQuery}
+                  onChange={(e) => setLoadedSearchQuery(e.target.value)}
                   className="pl-9"
-                  data-testid="input-search-order-items"
+                  data-testid="input-search-loaded-items"
                 />
               </div>
-              {/* Filtros rápidos */}
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {(["all", "pending", "complete", "exceeded"] as const).map((f) => {
-                  const counts = {
-                    all: expectedItems.length,
-                    pending: expectedItems.filter(i => i.remaining > 0).length,
-                    complete: expectedItems.filter(i => i.remaining === 0 && i.loadedQuantity <= i.expectedQuantity).length,
-                    exceeded: expectedItems.filter(i => i.loadedQuantity > i.expectedQuantity).length,
-                  };
-                  const labels = { all: "Todos", pending: "Pendentes", complete: "Completos", exceeded: "Excedidos" };
-                  const isActive = expectedFilter === f;
-                  return (
-                    <Button
-                      key={f}
-                      variant={isActive ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setExpectedFilter(f)}
-                      className="text-xs h-7"
-                    >
-                      {labels[f]} ({counts[f]})
-                    </Button>
-                  );
-                })}
-              </div>
-              <ScrollArea className="max-h-[420px] pr-4" style={{ scrollbarWidth: 'thin' }}>
-                <div className="space-y-2">
-                  {filteredExpectedItems.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-6">
-                      <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                      <p className="text-sm">{orderSearchQuery ? "Nenhum item encontrado" : "Nenhum item na ordem"}</p>
-                    </div>
-                  ) : (
-                    filteredExpectedItems.map((item) => {
-                    const percentComplete = Math.round(
-                      (item.loadedQuantity / item.expectedQuantity) * 100
-                    );
-                    const isExceeded = item.loadedQuantity > item.expectedQuantity;
-                    const isComplete = item.remaining === 0 && !isExceeded;
-                    const excess = isExceeded ? item.loadedQuantity - item.expectedQuantity : 0;
-
-                    return (
-                      <div
-                        key={item.productId}
-                        className={`border rounded-lg p-3 space-y-2 cursor-pointer hover-elevate ${
-                          isExceeded
-                            ? "bg-destructive/10 border-destructive"
-                            : isComplete
-                            ? "bg-emerald-500/10 border-emerald-500"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          if (movement.status === "in_progress" || movement.status === "paused") {
-                            handleSelectFromExpectedItem(item);
-                          }
-                        }}
-                        data-testid={`expected-item-${item.productId}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium">{item.product.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              SKU: {item.product.sku}
-                            </p>
-                          </div>
-                          {isExceeded && (
-                            <Badge className="bg-rose-500 text-white no-default-hover-elevate">
-                              <AlertTriangle className="h-3 w-3 mr-1" />
-                              Excedido
-                            </Badge>
-                          )}
-                          {isComplete && (
-                            <Badge className="bg-emerald-500 text-white no-default-hover-elevate">
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Completo
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="mt-2 pt-2 border-t border-border/40 space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Progresso:</span>
-                            <span className={`font-medium ${isExceeded ? "text-destructive" : ""}`}>
-                              {item.loadedQuantity} / {item.expectedQuantity} ({percentComplete}%)
-                            </span>
-                          </div>
-                          {isExceeded ? (
-                            <div className="w-full bg-muted rounded-full h-2 flex overflow-hidden">
-                              <div className="h-full bg-emerald-500" style={{ width: `${(item.expectedQuantity / item.loadedQuantity) * 100}%` }} />
-                              <div className="h-full bg-destructive" style={{ width: `${((item.loadedQuantity - item.expectedQuantity) / item.loadedQuantity) * 100}%` }} />
+              <ScrollArea className="max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
+                {filteredLoadedItems.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <PackageCheck className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm">{loadedSearchQuery ? "Nenhum produto encontrado" : "Nenhum produto registrado ainda"}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredLoadedItems.map((item) => {
+                      const product = products.find((p) => p.id === item.productId);
+                      return (
+                        <div
+                          key={item.productId}
+                          className={`p-3 border rounded-lg hover-elevate ${item.isNotInOrder ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800" : ""}`}
+                          data-testid={`item-${item.productId}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-medium text-sm">{product?.name || "Produto desconhecido"}</p>
+                                {item.isNotInOrder && (
+                                  <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-700">
+                                    Fora da ordem
+                                  </Badge>
+                                )}
+                                {item.ownerTypes.has("rented") && (
+                                  <Badge variant="outline" className="text-[10px] bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">LOCADO</Badge>
+                                )}
+                                {item.ownerTypes.has("third_party") && (
+                                  <Badge variant="outline" className="text-[10px] bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">TERCEIROS</Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 flex-wrap mt-0.5">
+                                <p className="text-xs font-mono text-muted-foreground">{product?.sku || "-"}</p>
+                                {item.owners.size > 0 && <p className="text-xs text-muted-foreground">{Array.from(item.owners).join(", ")}</p>}
+                              </div>
                             </div>
-                          ) : (
-                            <div className="w-full bg-muted rounded-full h-2">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  isComplete
-                                    ? "bg-emerald-500"
-                                    : percentComplete >= 50
-                                    ? "bg-amber-500"
-                                    : percentComplete > 0
-                                    ? "bg-destructive"
-                                    : ""
-                                }`}
-                                style={{ width: `${percentComplete}%` }}
-                              />
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {evidenceByProduct.get(item.productId) && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs cursor-pointer"
+                                  onClick={() => { setUploadProductId(item.productId); const el = document.getElementById("section-evidencias"); if (el) el.scrollIntoView({ behavior: "smooth" }); }}
+                                  title="Ver evidências deste produto"
+                                  data-testid={`badge-evidence-${item.productId}`}
+                                >
+                                  <Camera className="h-3 w-3 mr-1" />{evidenceByProduct.get(item.productId)}
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-base px-3 py-0.5 font-bold tabular-nums no-default-hover-elevate no-default-active-elevate">
+                                {item.totalQuantity}x
+                              </Badge>
+                            </div>
+                          </div>
+                          {movement?.status === "in_progress" && userCanManageMovementItems(user) && (
+                            <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/40">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => decrementItemMutation.mutate(item.productId)}
+                                disabled={!isEditable || decrementItemMutation.isPending}
+                                data-testid={`button-decrement-${item.productId}`}
+                                title="Remover 1 unidade"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => removeItemMutation.mutate(item.productId)}
+                                disabled={!isEditable || removeItemMutation.isPending}
+                                data-testid={`button-remove-${item.productId}`}
+                                className="text-destructive"
+                                title="Remover item completo"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                {item.totalQuantity} unidade{item.totalQuantity !== 1 ? "s" : ""}
+                              </span>
                             </div>
                           )}
-                          {item.remaining > 0 && (
-                            <p className="text-sm text-muted-foreground">
-                              Faltam: {item.remaining} unidades
-                            </p>
-                          )}
-                          {isExceeded && (
-                            <p className="text-sm text-destructive font-medium">
-                              Excesso: +{excess} unidades
-                            </p>
-                          )}
                         </div>
-                      </div>
-                    );
-                  }))
-                }
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </ScrollArea>
             </CardContent>
           </Card>
-        )}
-
-        {/* Itens Carregados */}
-        <Card className="border-border/60">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3 font-semibold text-base">
-              <PackageCheck className="h-5 w-5" />
-              Itens Carregados ({consolidatedLoadedItems.length})
-            </div>
-            {/* Resumo de alertas */}
-            {(consolidatedLoadedItems.some(i => i.isNotInOrder) || consolidatedLoadedItems.some(i => i.ownerTypes.has("rented"))) && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {consolidatedLoadedItems.filter(i => i.isNotInOrder).length > 0 && (
-                  <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-700">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    {consolidatedLoadedItems.filter(i => i.isNotInOrder).length} fora da ordem
-                  </Badge>
-                )}
-                {consolidatedLoadedItems.filter(i => i.ownerTypes.has("rented")).length > 0 && (
-                  <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
-                    {consolidatedLoadedItems.filter(i => i.ownerTypes.has("rented")).length} locados
-                  </Badge>
-                )}
-              </div>
-            )}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, SKU ou código de barras..."
-                value={loadedSearchQuery}
-                onChange={(e) => setLoadedSearchQuery(e.target.value)}
-                className="pl-9"
-                data-testid="input-search-loaded-items"
-              />
-            </div>
-            <ScrollArea className="max-h-[420px] pr-4" style={{ scrollbarWidth: 'thin' }}>
-              {filteredLoadedItems.length === 0 ? (
-                <div className="text-center text-muted-foreground py-6">
-                  <PackageCheck className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">{loadedSearchQuery ? "Nenhum item encontrado" : "Nenhum item carregado ainda"}</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredLoadedItems.map((item) => {
-                    const product = products.find((p) => p.id === item.productId);
-                    return (
-                      <div
-                        key={item.productId}
-                        className={`flex items-center justify-between gap-3 p-3 border rounded-lg hover-elevate ${
-                          item.isNotInOrder ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800" : ""
-                        }`}
-                        data-testid={`item-${item.productId}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-sm truncate">{product?.name || "Produto desconhecido"}</p>
-                            {item.isNotInOrder && (
-                              <Badge variant="outline" className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-700">
-                                <AlertTriangle className="h-3 w-3 mr-1" />
-                                Fora da ordem
-                              </Badge>
-                            )}
-                            {item.ownerTypes.has("rented") && (
-                              <Badge variant="outline" className="text-xs bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
-                                LOCADO
-                              </Badge>
-                            )}
-                            {item.ownerTypes.has("third_party") && (
-                              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
-                                TERCEIROS
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 flex-wrap mt-0.5">
-                            <p className="text-xs font-mono text-muted-foreground">
-                              {product?.sku || "-"}
-                            </p>
-                            {item.owners.size > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                {Array.from(item.owners).join(", ")}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {evidenceByProduct.get(item.productId) && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs cursor-pointer"
-                              onClick={() => {
-                                setUploadProductId(item.productId);
-                                const el = document.getElementById("section-evidencias");
-                                if (el) el.scrollIntoView({ behavior: "smooth" });
-                              }}
-                              title="Ver evidências deste produto"
-                              data-testid={`badge-evidence-${item.productId}`}
-                            >
-                              <Camera className="h-3 w-3 mr-1" />
-                              {evidenceByProduct.get(item.productId)}
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className="text-base px-3 py-0.5">
-                            {item.totalQuantity}x
-                          </Badge>
-                        </div>
-                        {movement?.status === "in_progress" && userCanManageMovementItems(user) && (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => decrementItemMutation.mutate(item.productId)}
-                              disabled={!isEditable || decrementItemMutation.isPending}
-                              data-testid={`button-decrement-${item.productId}`}
-                              className="flex-shrink-0"
-                              title={!isEditable ? "Movimentação precisa estar em andamento" : "Remover 1 unidade"}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => removeItemMutation.mutate(item.productId)}
-                              disabled={!isEditable || removeItemMutation.isPending}
-                              data-testid={`button-remove-${item.productId}`}
-                              className="flex-shrink-0 text-destructive"
-                              title={!isEditable ? "Movimentação precisa estar em andamento" : "Remover item completo"}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
+        </div>
       </PageSection>
 
-      {/* Modal de Confirmação */}
-      <Dialog 
-        open={showConfirmDialog} 
-        onOpenChange={(open) => {
-          console.log('Dialog onOpenChange:', open);
-          setShowConfirmDialog(open);
-        }}
-      >
-        <DialogContent 
-          className="sm:max-w-[600px]"
-          onKeyDown={(e) => {
-            console.log('DialogContent keydown:', e.key, 'isSelectOpen:', isSelectOpen);
-            
-            // Ignore if Select dropdown is open
-            if (isSelectOpen) {
-              console.log('Select is open, ignoring keydown');
-              return;
-            }
-            
-            if (e.key === 'Enter') {
-              console.log('Enter pressed in DialogContent, confirming...');
-              e.preventDefault();
-              e.stopPropagation();
-              handleConfirmAddItem();
-            } else if (e.key === 'Escape') {
-              console.log('Escape pressed in DialogContent, canceling...');
-              e.preventDefault();
-              e.stopPropagation();
-              handleCancelAddItem();
-            }
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Confirmar Adição de Item</DialogTitle>
-            <DialogDescription>
-              Verifique os dados do produto e quantidade antes de confirmar
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedProduct && (
-            <div className="space-y-6 py-4">
-              <div className="space-y-4 p-4 bg-muted rounded-lg border">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">PRODUTO</p>
-                  <p className="text-4xl font-bold" data-testid="text-confirm-product-name">
-                    {selectedProduct.name}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">SKU</p>
-                    <p className="text-2xl font-semibold">{selectedProduct.sku}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">CÓDIGO DE BARRAS</p>
-                    <p className="text-2xl font-semibold">{selectedProduct.barcode || "-"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                <p className="text-sm text-muted-foreground mb-1">QUANTIDADE</p>
-                <p className="text-6xl font-bold text-primary" data-testid="text-confirm-quantity">
-                  {quantity}
-                </p>
-                {selectedExpectedItem && (
-                  <div className="mt-4 space-y-1">
-                    <p className="text-sm">
-                      <span className="text-muted-foreground">Esperado:</span>{" "}
-                      <span className="font-medium">{selectedExpectedItem.expectedQuantity}</span>
-                    </p>
-                    <p className="text-sm">
-                      <span className="text-muted-foreground">Já carregado:</span>{" "}
-                      <span className="font-medium">{selectedExpectedItem.loadedQuantity}</span>
-                    </p>
-                    <p className="text-sm">
-                      <span className="text-muted-foreground">Total após adicionar:</span>{" "}
-                      <span className="font-medium">{selectedExpectedItem.loadedQuantity + quantity}</span>
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Owner/Supplier fields for rented/consigned products */}
-              {selectedProduct.requiresSupplier && (
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-300 dark:border-yellow-700">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      {selectedProduct.ownership === 'rented' ? 'LOCADO' : 'CONSIGNADO'}
-                    </Badge>
-                    <p className="text-sm text-muted-foreground">
-                      Rastreamento de material de terceiros
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="ownerName" className="text-sm font-medium mb-2 block">
-                      Proprietário/Fornecedor *
-                    </Label>
-                    <Select 
-                      value={ownerName} 
-                      onValueChange={setOwnerName}
-                      onOpenChange={setIsSelectOpen}
-                    >
-                      <SelectTrigger id="ownerName" data-testid="select-owner-name">
-                        <SelectValue placeholder="Selecione o fornecedor..." />
-                      </SelectTrigger>
-                      <SelectContent position="popper" sideOffset={4}>
-                        {suppliers.filter(s => s.name).map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.name}>
-                            {supplier.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      Campo obrigatório para rastreamento de material de terceiros
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {willExceedExpected && (
-                <div className="p-4 bg-destructive/10 border border-destructive/40 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold text-destructive text-sm">
-                        Quantidade excederá o esperado
-                      </p>
-                      <p className="text-sm text-destructive/80 mt-1">
-                        Adicionando {quantity} unidades, mas só faltam {selectedExpectedItem!.remaining}.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCancelAddItem}
-              data-testid="button-cancel-confirm"
-              className="flex items-center gap-2"
-            >
-              Cancelar
-              <Badge variant="outline" className="ml-1">ESC</Badge>
-            </Button>
-            <Button
-              onClick={handleConfirmAddItem}
-              disabled={addItemMutation.isPending}
-              data-testid="button-confirm-add"
-              ref={confirmButtonRef}
-              variant={willExceedExpected ? "destructive" : "default"}
-              className="flex items-center gap-2"
-            >
-              {addItemMutation.isPending ? "Adicionando..." : "Confirmar"}
-              <Badge variant="outline" className="ml-1 bg-background/20">ENTER</Badge>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Status Dialog */}
-      <Dialog open={showEditStatusDialog} onOpenChange={setShowEditStatusDialog}>
-        <DialogContent data-testid="dialog-edit-status">
-          <DialogHeader>
-            <DialogTitle>Editar Status da Movimentação</DialogTitle>
-            <DialogDescription>
-              Selecione o novo status para esta movimentação
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="new-status" className="mb-2 block">Novo Status</Label>
-              <Select value={newStatus} onValueChange={setNewStatus}>
-                <SelectTrigger id="new-status" data-testid="select-new-status">
-                  <SelectValue placeholder="Selecione o status..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created">Criada</SelectItem>
-                  <SelectItem value="in_progress">Em Andamento</SelectItem>
-                  <SelectItem value="paused">Pausada</SelectItem>
-                  <SelectItem value="completed">Finalizada</SelectItem>
-                  <SelectItem value="cancelled">Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowEditStatusDialog(false);
-                setNewStatus("");
-              }}
-              data-testid="button-cancel-edit-status"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => {
-                if (newStatus) {
-                  updateStatusMutation.mutate(newStatus);
-                }
-              }}
-              disabled={!newStatus || updateStatusMutation.isPending}
-              data-testid="button-confirm-edit-status"
-            >
-              {updateStatusMutation.isPending ? "Atualizando..." : "Confirmar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Evidências Section */}
+      {/* Evidências */}
       {!focusMode && (
-        <PageSection
-          id="section-evidencias"
-          title="Evidências"
-          description="Fotos e vídeos vinculados à movimentação"
-        >
+        <PageSection id="section-evidencias" title="Evidências" description="Fotos e vídeos vinculados à movimentação">
           <div className="space-y-3">
-            {/* Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap gap-1.5">
                 {(["all", "images", "videos", "damage", "loss", "before", "after", "other"] as const).map((f) => {
-                  const labels: Record<string, string> = {
-                    all: "Todos", images: "Fotos", videos: "Vídeos",
-                    damage: "Avaria", loss: "Perda", before: "Antes", after: "Depois", other: "Outros",
-                  };
+                  const labels: Record<string, string> = { all: "Todos", images: "Fotos", videos: "Vídeos", damage: "Avaria", loss: "Perda", before: "Antes", after: "Depois", other: "Outros" };
                   const counts: Record<string, number> = {
-                    all: attachments.length,
-                    images: attachments.filter(a => a.fileType === "image").length,
-                    videos: attachments.filter(a => a.fileType === "video").length,
-                    damage: attachments.filter(a => a.category === "damage").length,
-                    loss: attachments.filter(a => a.category === "loss").length,
-                    before: attachments.filter(a => a.category === "before").length,
-                    after: attachments.filter(a => a.category === "after").length,
-                    other: attachments.filter(a => a.category === "other").length,
+                    all: attachments.length, images: attachments.filter((a) => a.fileType === "image").length,
+                    videos: attachments.filter((a) => a.fileType === "video").length,
+                    damage: attachments.filter((a) => a.category === "damage").length,
+                    loss: attachments.filter((a) => a.category === "loss").length,
+                    before: attachments.filter((a) => a.category === "before").length,
+                    after: attachments.filter((a) => a.category === "after").length,
+                    other: attachments.filter((a) => a.category === "other").length,
                   };
                   if (f !== "all" && counts[f] === 0) return null;
                   return (
-                    <Button
-                      key={f}
-                      variant={evidenceCategoryFilter === f ? "default" : "outline"}
-                      size="sm"
-                      className="text-xs h-7"
-                      onClick={() => setEvidenceCategoryFilter(f)}
-                      data-testid={`filter-evidence-${f}`}
-                    >
+                    <Button key={f} variant={evidenceCategoryFilter === f ? "default" : "outline"} size="sm" className="text-xs h-7" onClick={() => setEvidenceCategoryFilter(f)} data-testid={`filter-evidence-${f}`}>
                       {labels[f]}
-                      {counts[f] > 0 && (
-                        <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px]">
-                          {counts[f]}
-                        </Badge>
-                      )}
+                      {counts[f] > 0 && <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px] no-default-hover-elevate no-default-active-elevate">{counts[f]}</Badge>}
                     </Button>
                   );
                 })}
               </div>
               {userCanManageMovementItems(user) && (
-                <Button
-                  size="sm"
-                  onClick={() => openUploadDialog()}
-                  data-testid="button-upload-evidence"
-                >
+                <Button size="sm" onClick={() => openUploadDialog()} data-testid="button-upload-evidence">
                   <Upload className="h-4 w-4 mr-2" />
                   Adicionar evidência
                 </Button>
               )}
             </div>
-
-            {/* Gallery grid */}
             {filteredAttachments.length === 0 ? (
               <Card className="border-border/60">
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Camera className="h-10 w-10 mx-auto mb-3 opacity-30" />
                   <p className="font-medium">Nenhuma evidência registrada</p>
                   <p className="text-sm mt-1">
-                    {userCanManageMovementItems(user)
-                      ? "Clique em 'Adicionar evidência' para anexar fotos ou vídeos."
-                      : "Evidências serão exibidas aqui quando forem adicionadas."}
+                    {userCanManageMovementItems(user) ? "Clique em 'Adicionar evidência' para anexar fotos ou vídeos." : "Evidências serão exibidas aqui quando adicionadas."}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {filteredAttachments.map((att) => {
-                  const linkedProduct = att.productId ? products.find(p => p.id === att.productId) : null;
-                  const categoryLabels: Record<string, string> = {
-                    damage: "Avaria", loss: "Perda", before: "Antes", after: "Depois", other: "Outro",
-                  };
+                  const linkedProduct = att.productId ? products.find((p) => p.id === att.productId) : null;
+                  const categoryLabels: Record<string, string> = { damage: "Avaria", loss: "Perda", before: "Antes", after: "Depois", other: "Outro" };
                   return (
-                    <div
-                      key={att.id}
-                      className="group border border-border/60 rounded-lg overflow-hidden hover-elevate"
-                      data-testid={`evidence-card-${att.id}`}
-                    >
-                      {/* Thumbnail / preview */}
-                      <div className="relative aspect-video bg-muted cursor-pointer" onClick={() => {
-                        if (att.fileType === "image") setLightboxUrl(att.fileUrl);
-                        else setVideoUrl(att.fileUrl);
-                      }}>
+                    <div key={att.id} className="group border border-border/60 rounded-lg overflow-hidden hover-elevate" data-testid={`evidence-card-${att.id}`}>
+                      <div className="relative aspect-video bg-muted cursor-pointer" onClick={() => { if (att.fileType === "image") setLightboxUrl(att.fileUrl); else setVideoUrl(att.fileUrl); }}>
                         {att.fileType === "image" ? (
-                          <img
-                            src={att.fileUrl}
-                            alt={att.caption || att.fileName}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={att.fileUrl} alt={att.caption || att.fileName} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-muted">
-                            <Film className="h-8 w-8 text-muted-foreground" />
-                          </div>
+                          <div className="w-full h-full flex items-center justify-center bg-muted"><Film className="h-8 w-8 text-muted-foreground" /></div>
                         )}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                          {att.fileType === "image" ? (
-                            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                          ) : (
-                            <Play className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
+                          {att.fileType === "image" ? <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" /> : <Play className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />}
                         </div>
                         {att.isPostCompletion && (
                           <div className="absolute top-1 left-1">
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
-                              Pós-conclusão
-                            </Badge>
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">Pós-conclusão</Badge>
                           </div>
                         )}
                       </div>
-                      {/* Metadata */}
                       <div className="p-2 space-y-1">
                         <div className="flex items-center justify-between gap-1">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                            {categoryLabels[att.category] || att.category}
-                          </Badge>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{categoryLabels[att.category] || att.category}</Badge>
                           {userCanManageMovementItems(user) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5 text-muted-foreground hover:text-destructive"
-                              onClick={() => deleteAttachmentMutation.mutate(att.id)}
-                              disabled={deleteAttachmentMutation.isPending}
-                              data-testid={`button-delete-evidence-${att.id}`}
-                              title="Remover evidência"
-                            >
+                            <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive" onClick={() => deleteAttachmentMutation.mutate(att.id)} disabled={deleteAttachmentMutation.isPending} data-testid={`button-delete-evidence-${att.id}`} title="Remover evidência">
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           )}
                         </div>
-                        {att.caption && (
-                          <p className="text-xs text-muted-foreground truncate" title={att.caption}>{att.caption}</p>
-                        )}
-                        {linkedProduct && (
-                          <p className="text-xs font-medium truncate" title={linkedProduct.name}>
-                            {linkedProduct.name}
-                          </p>
-                        )}
+                        {att.caption && <p className="text-xs text-muted-foreground truncate" title={att.caption}>{att.caption}</p>}
+                        {linkedProduct && <p className="text-xs font-medium truncate" title={linkedProduct.name}>{linkedProduct.name}</p>}
                         <p className="text-xs text-muted-foreground">{att.uploadedByName}</p>
                       </div>
                     </div>
@@ -2020,106 +1733,72 @@ export default function MovementDetails() {
         </PageSection>
       )}
 
-      {/* Action History Section */}
+      {/* Histórico */}
       {!focusMode && auditLogs.length > 0 && (
         <PageSection title="Histórico" description="Registro de ações na movimentação">
           <Card className="border-border/60">
             <CardContent className="p-4">
-              {/* Filter tabs */}
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {([
                   { key: "all" as const, label: "Todos", count: auditLogs.length },
-                  { key: "items" as const, label: "Itens", count: auditLogs.filter(l => ["item_added","item_removed","item_quantity_changed"].includes(l.action)).length },
-                  { key: "status" as const, label: "Status", count: auditLogs.filter(l => l.action === "status_changed").length },
-                  { key: "evidence" as const, label: "Evidências", count: auditLogs.filter(l => l.action === "evidence_added").length },
+                  { key: "items" as const, label: "Itens", count: auditLogs.filter((l) => ["item_added", "item_removed", "item_quantity_changed"].includes(l.action)).length },
+                  { key: "status" as const, label: "Status", count: auditLogs.filter((l) => l.action === "status_changed").length },
+                  { key: "evidence" as const, label: "Evidências", count: auditLogs.filter((l) => l.action === "evidence_added").length },
                 ]).map(({ key, label, count }) => {
                   if (key !== "all" && count === 0) return null;
                   return (
-                    <Button
-                      key={key}
-                      variant={auditFilter === key ? "default" : "outline"}
-                      size="sm"
-                      className="text-xs h-7"
-                      onClick={() => setAuditFilter(key)}
-                      data-testid={`filter-audit-${key}`}
-                    >
+                    <Button key={key} variant={auditFilter === key ? "default" : "outline"} size="sm" className="text-xs h-7" onClick={() => setAuditFilter(key)} data-testid={`filter-audit-${key}`}>
                       {label}
-                      <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px] no-default-hover-elevate no-default-active-elevate">
-                        {count}
-                      </Badge>
+                      <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px] no-default-hover-elevate no-default-active-elevate">{count}</Badge>
                     </Button>
                   );
                 })}
               </div>
-
-              <ScrollArea className="h-[300px] pr-4" style={{ scrollbarWidth: 'thin' }}>
+              <ScrollArea className="h-[300px] pr-4" style={{ scrollbarWidth: "thin" }}>
                 {filteredAuditLogs.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8 text-sm">Nenhum evento neste filtro</p>
                 ) : (
                   <div className="relative pl-6">
-                    {/* Timeline vertical line */}
                     <div className="absolute left-2 top-2 bottom-2 w-px bg-border/40" />
                     <div className="space-y-0.5">
-                      {filteredAuditLogs.map((log, idx) => {
+                      {filteredAuditLogs.map((log) => {
                         const getActionMeta = () => {
                           switch (log.action) {
-                            case "item_added":
-                              return { icon: <Plus className="h-3 w-3" />, color: "bg-emerald-500 text-white", label: "Item adicionado" };
-                            case "item_removed":
-                              return { icon: <Minus className="h-3 w-3" />, color: "bg-rose-500 text-white", label: "Item removido" };
-                            case "status_changed":
-                              return { icon: <Activity className="h-3 w-3" />, color: "bg-sky-500 text-white", label: "Status alterado" };
-                            case "item_quantity_changed":
-                              return { icon: <Edit className="h-3 w-3" />, color: "bg-amber-500 text-white", label: "Quantidade ajustada" };
-                            case "evidence_added":
-                              return { icon: <Camera className="h-3 w-3" />, color: "bg-violet-500 text-white", label: "Evidência adicionada" };
-                            default:
-                              return { icon: <Clock className="h-3 w-3" />, color: "bg-muted-foreground/50 text-white", label: log.action };
+                            case "item_added": return { icon: <Plus className="h-3 w-3" />, color: "bg-emerald-500 text-white", label: "Item adicionado" };
+                            case "item_removed": return { icon: <Minus className="h-3 w-3" />, color: "bg-rose-500 text-white", label: "Item removido" };
+                            case "status_changed": return { icon: <Activity className="h-3 w-3" />, color: "bg-sky-500 text-white", label: "Status alterado" };
+                            case "item_quantity_changed": return { icon: <Edit className="h-3 w-3" />, color: "bg-amber-500 text-white", label: "Quantidade ajustada" };
+                            case "evidence_added": return { icon: <Camera className="h-3 w-3" />, color: "bg-violet-500 text-white", label: "Evidência adicionada" };
+                            default: return { icon: <Clock className="h-3 w-3" />, color: "bg-muted-foreground/50 text-white", label: log.action };
                           }
                         };
                         const getActionDescription = () => {
                           const metadata = log.metadata as any;
                           const context = log.context as any;
                           switch (log.action) {
-                            case "item_added":
-                              return `Adicionou ${metadata?.quantity}x ${metadata?.productName}`;
-                            case "item_removed":
-                              return `Removeu ${metadata?.quantity}x ${metadata?.productName}`;
-                            case "status_changed":
-                              return `${getStatusLabel(context?.previousStatus)} → ${getStatusLabel(context?.newStatus)}`;
-                            case "item_quantity_changed":
-                              return `${metadata?.productName}: ${metadata?.previousQuantity} → ${metadata?.newQuantity}`;
+                            case "item_added": return `Registrou ${metadata?.quantity}x ${metadata?.productName}`;
+                            case "item_removed": return `Removeu ${metadata?.quantity}x ${metadata?.productName}`;
+                            case "status_changed": return `${getStatusLabel(context?.previousStatus)} → ${getStatusLabel(context?.newStatus)}`;
+                            case "item_quantity_changed": return `${metadata?.productName}: ${metadata?.previousQuantity} → ${metadata?.newQuantity}`;
                             case "evidence_added": {
                               const typeLabel = metadata?.fileType === "image" ? "Foto" : "Vídeo";
                               const post = metadata?.isPostCompletion ? " (pós-conclusão)" : "";
                               return `${typeLabel} anexada${post}${metadata?.fileName ? `: ${metadata.fileName}` : ""}`;
                             }
-                            default:
-                              return log.action;
+                            default: return log.action;
                           }
                         };
                         const meta = getActionMeta();
                         return (
-                          <div
-                            key={log.id}
-                            className="flex items-start gap-3 py-2.5 relative"
-                            data-testid={`audit-log-${log.id}`}
-                          >
-                            {/* Icon dot on timeline */}
+                          <div key={log.id} className="flex items-start gap-3 py-2.5 relative" data-testid={`audit-log-${log.id}`}>
                             <div className={`absolute -left-4 flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center z-10 ${meta.color}`}>
                               {meta.icon}
                             </div>
                             <div className="flex-1 min-w-0 pl-1">
                               <p className="text-sm font-medium leading-snug">{getActionDescription()}</p>
                               <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {log.actorName}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {format(new Date(log.occurredAt), "dd/MM/yy HH:mm")}
-                                </span>
+                                <span className="flex items-center gap-1"><User className="h-3 w-3" />{log.actorName}</span>
+                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(log.occurredAt), "dd/MM/yy HH:mm")}</span>
                               </div>
                             </div>
                           </div>
@@ -2134,43 +1813,152 @@ export default function MovementDetails() {
         </PageSection>
       )}
 
+      {/* Exception Dialog — Exceeded quantity */}
+      <Dialog open={showExceptionDialog} onOpenChange={setShowExceptionDialog}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-exception">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmar quantidade excedente
+            </DialogTitle>
+            <DialogDescription>
+              A quantidade informada ultrapassa o previsto para este produto.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedProduct && selectedExpectedItem && (
+            <div className="space-y-4 py-2">
+              <div className="p-3 bg-muted/40 rounded-lg">
+                <p className="font-semibold">{selectedProduct.name}</p>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">SKU: {selectedProduct.sku}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="p-2.5 bg-muted/30 rounded-md">
+                  <div className="text-xs text-muted-foreground mb-0.5">Solicitado</div>
+                  <div className="font-bold text-lg tabular-nums">{selectedExpectedItem.expectedQuantity}</div>
+                </div>
+                <div className="p-2.5 bg-muted/30 rounded-md">
+                  <div className="text-xs text-muted-foreground mb-0.5">Já carregado</div>
+                  <div className="font-bold text-lg tabular-nums">{selectedExpectedItem.loadedQuantity}</div>
+                </div>
+                <div className="p-2.5 bg-muted/30 rounded-md">
+                  <div className="text-xs text-muted-foreground mb-0.5">Nova quantidade</div>
+                  <div className="font-bold text-lg tabular-nums">{quantity}</div>
+                </div>
+                <div className="p-2.5 bg-destructive/10 border border-destructive/30 rounded-md">
+                  <div className="text-xs text-destructive mb-0.5">Excedente gerado</div>
+                  <div className="font-bold text-lg tabular-nums text-destructive">+{excessUnits}</div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowExceptionDialog(false)} data-testid="button-cancel-exception">
+              Voltar e corrigir
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmException}
+              disabled={addItemMutation.isPending}
+              data-testid="button-confirm-exception"
+            >
+              {addItemMutation.isPending ? "Registrando..." : "Registrar com excedente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Load All Pending Dialog */}
+      <Dialog open={showLoadAllDialog} onOpenChange={setShowLoadAllDialog}>
+        <DialogContent className="sm:max-w-sm" data-testid="dialog-load-all">
+          <DialogHeader>
+            <DialogTitle>Registrar todas as pendências?</DialogTitle>
+            <DialogDescription>
+              Isso vai registrar automaticamente toda a quantidade pendente de cada produto.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <div className="p-3 bg-muted/40 rounded-lg space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Produtos</span>
+                <span className="font-semibold">{pendingItems.length}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Unidades</span>
+                <span className="font-semibold">{pendingUnitsCount}</span>
+              </div>
+            </div>
+            {pendingItems.some((i) => products.find((p) => p.id === i.productId)?.requiresSupplier) && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Produtos locados ou consignados serão ignorados. Registre-os manualmente para informar o fornecedor.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowLoadAllDialog(false)} data-testid="button-cancel-load-all">Cancelar</Button>
+            <Button
+              onClick={() => {
+                const itemsToLoad = pendingItems.filter((i) => !products.find((p) => p.id === i.productId)?.requiresSupplier);
+                loadAllPendingMutation.mutate(itemsToLoad);
+              }}
+              disabled={loadAllPendingMutation.isPending}
+              data-testid="button-confirm-load-all"
+            >
+              {loadAllPendingMutation.isPending ? "Registrando..." : "Registrar pendências"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Status Dialog */}
+      <Dialog open={showEditStatusDialog} onOpenChange={setShowEditStatusDialog}>
+        <DialogContent data-testid="dialog-edit-status">
+          <DialogHeader>
+            <DialogTitle>Editar Status da Movimentação</DialogTitle>
+            <DialogDescription>Selecione o novo status para esta movimentação</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="new-status" className="mb-2 block">Novo Status</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger id="new-status" data-testid="select-new-status"><SelectValue placeholder="Selecione o status..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created">Criada</SelectItem>
+                  <SelectItem value="in_progress">Em Andamento</SelectItem>
+                  <SelectItem value="paused">Pausada</SelectItem>
+                  <SelectItem value="completed">Finalizada</SelectItem>
+                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowEditStatusDialog(false); setNewStatus(""); }} data-testid="button-cancel-edit-status">Cancelar</Button>
+            <Button onClick={() => { if (newStatus) updateStatusMutation.mutate(newStatus); }} disabled={!newStatus || updateStatusMutation.isPending} data-testid="button-confirm-edit-status">
+              {updateStatusMutation.isPending ? "Atualizando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Upload Evidence Dialog */}
       <Dialog open={showUploadDialog} onOpenChange={(open) => {
-        if (!open) {
-          setUploadFile(null);
-          setUploadPreviewUrl(null);
-          setUploadCategory("other");
-          setUploadCaption("");
-          setUploadProductId("");
-        }
+        if (!open) { setUploadFile(null); setUploadPreviewUrl(null); setUploadCategory("other"); setUploadCaption(""); setUploadProductId(""); }
         setShowUploadDialog(open);
       }}>
         <DialogContent className="max-w-lg" data-testid="dialog-upload-evidence">
           <DialogHeader>
             <DialogTitle>Adicionar Evidência</DialogTitle>
-            <DialogDescription>
-              Anexe uma foto ou vídeo à movimentação
-            </DialogDescription>
+            <DialogDescription>Anexe uma foto ou vídeo à movimentação</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {/* File picker */}
             <div>
               <Label className="mb-2 block">Arquivo</Label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/jpg,image/webp,video/mp4,video/quicktime,video/webm"
-                className="hidden"
-                onChange={handleFileSelected}
-                data-testid="input-file-evidence"
-              />
+              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp,video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleFileSelected} data-testid="input-file-evidence" />
               {!uploadFile ? (
-                <button
-                  type="button"
-                  className="w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover-elevate cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                  data-testid="button-pick-file"
-                >
+                <button type="button" className="w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover-elevate cursor-pointer" onClick={() => fileInputRef.current?.click()} data-testid="button-pick-file">
                   <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm font-medium">Clique para selecionar</p>
                   <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WebP, MP4, MOV, WebM</p>
@@ -2181,7 +1969,7 @@ export default function MovementDetails() {
                     <img src={uploadPreviewUrl} alt="Preview" className="w-full max-h-48 object-contain bg-muted" />
                   ) : (
                     <div className="p-4 bg-muted flex items-center gap-3">
-                      <Film className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                      <Film className="h-8 w-8 text-muted-foreground shrink-0" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{uploadFile.name}</p>
                         <p className="text-xs text-muted-foreground">{(uploadFile.size / 1024 / 1024).toFixed(1)} MB</p>
@@ -2189,16 +1977,7 @@ export default function MovementDetails() {
                     </div>
                   )}
                   <div className="p-2 border-t border-border/40">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-muted-foreground"
-                      onClick={() => {
-                        setUploadFile(null);
-                        setUploadPreviewUrl(null);
-                        if (fileInputRef.current) fileInputRef.current.value = "";
-                      }}
-                    >
+                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => { setUploadFile(null); setUploadPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
                       <X className="h-3 w-3 mr-1" />
                       Trocar arquivo
                     </Button>
@@ -2206,14 +1985,10 @@ export default function MovementDetails() {
                 </div>
               )}
             </div>
-
-            {/* Category */}
             <div>
               <Label htmlFor="upload-category" className="mb-2 block">Categoria</Label>
               <Select value={uploadCategory} onValueChange={setUploadCategory}>
-                <SelectTrigger id="upload-category" data-testid="select-evidence-category">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger id="upload-category" data-testid="select-evidence-category"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="other">Outro</SelectItem>
                   <SelectItem value="before">Antes da movimentação</SelectItem>
@@ -2223,108 +1998,57 @@ export default function MovementDetails() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Product link (optional) */}
             {consolidatedLoadedItems.length > 0 && (
               <div>
-                <Label htmlFor="upload-product" className="mb-2 block">
-                  Produto (opcional)
-                </Label>
-                <Select value={uploadProductId || "none"} onValueChange={v => setUploadProductId(v === "none" ? "" : v)}>
-                  <SelectTrigger id="upload-product" data-testid="select-evidence-product">
-                    <SelectValue placeholder="Vincular a um produto..." />
-                  </SelectTrigger>
+                <Label htmlFor="upload-product" className="mb-2 block">Produto (opcional)</Label>
+                <Select value={uploadProductId || "none"} onValueChange={(v) => setUploadProductId(v === "none" ? "" : v)}>
+                  <SelectTrigger id="upload-product" data-testid="select-evidence-product"><SelectValue placeholder="Vincular a um produto..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum — geral</SelectItem>
-                    {consolidatedLoadedItems.map(item => {
-                      const p = products.find(x => x.id === item.productId);
-                      return p ? (
-                        <SelectItem key={item.productId} value={item.productId}>
-                          {p.name}
-                        </SelectItem>
-                      ) : null;
+                    {consolidatedLoadedItems.map((item) => {
+                      const p = products.find((x) => x.id === item.productId);
+                      return p ? <SelectItem key={item.productId} value={item.productId}>{p.name}</SelectItem> : null;
                     })}
                   </SelectContent>
                 </Select>
               </div>
             )}
-
-            {/* Caption */}
             <div>
               <Label htmlFor="upload-caption" className="mb-2 block">Descrição (opcional)</Label>
-              <Textarea
-                id="upload-caption"
-                placeholder="Descreva o que a imagem mostra..."
-                value={uploadCaption}
-                onChange={(e) => setUploadCaption(e.target.value)}
-                rows={2}
-                className="resize-none"
-                data-testid="input-evidence-caption"
-              />
+              <Textarea id="upload-caption" placeholder="Descreva o que a imagem mostra..." value={uploadCaption} onChange={(e) => setUploadCaption(e.target.value)} rows={2} className="resize-none" data-testid="input-evidence-caption" />
             </div>
-
             {movement?.status === "completed" && (
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
-                <AlertDescription className="text-xs">
-                  Esta movimentação está finalizada. A evidência será marcada como "pós-conclusão".
-                </AlertDescription>
+                <AlertDescription className="text-xs">Esta movimentação está finalizada. A evidência será marcada como "pós-conclusão".</AlertDescription>
               </Alert>
             )}
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowUploadDialog(false)}
-              data-testid="button-cancel-upload-evidence"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleUploadSubmit}
-              disabled={!uploadFile || uploadAttachmentMutation.isPending}
-              data-testid="button-confirm-upload-evidence"
-            >
+            <Button variant="outline" onClick={() => setShowUploadDialog(false)} data-testid="button-cancel-upload-evidence">Cancelar</Button>
+            <Button onClick={handleUploadSubmit} disabled={!uploadFile || uploadAttachmentMutation.isPending} data-testid="button-confirm-upload-evidence">
               {uploadAttachmentMutation.isPending ? "Enviando..." : "Enviar evidência"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Lightbox Dialog */}
+      {/* Lightbox */}
       <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
         <DialogContent className="max-w-4xl p-2" data-testid="dialog-lightbox">
-          <DialogHeader className="px-2 pt-2 pb-0">
-            <DialogTitle className="sr-only">Visualização de imagem</DialogTitle>
-          </DialogHeader>
+          <DialogHeader className="px-2 pt-2 pb-0"><DialogTitle className="sr-only">Visualização de imagem</DialogTitle></DialogHeader>
           <div className="flex items-center justify-center bg-muted/50 rounded-md overflow-hidden">
-            {lightboxUrl && (
-              <img
-                src={lightboxUrl}
-                alt="Evidência"
-                className="max-h-[80vh] max-w-full object-contain"
-              />
-            )}
+            {lightboxUrl && <img src={lightboxUrl} alt="Evidência" className="max-h-[80vh] max-w-full object-contain" />}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Video Player Dialog */}
+      {/* Video player */}
       <Dialog open={!!videoUrl} onOpenChange={(open) => { if (!open) setVideoUrl(null); }}>
         <DialogContent className="max-w-3xl p-2" data-testid="dialog-video-player">
-          <DialogHeader className="px-2 pt-2 pb-0">
-            <DialogTitle className="sr-only">Reprodução de vídeo</DialogTitle>
-          </DialogHeader>
+          <DialogHeader className="px-2 pt-2 pb-0"><DialogTitle className="sr-only">Reprodução de vídeo</DialogTitle></DialogHeader>
           <div className="bg-black rounded-md overflow-hidden">
-            {videoUrl && (
-              <video
-                src={videoUrl}
-                controls
-                autoPlay
-                className="w-full max-h-[75vh]"
-                data-testid="video-evidence-player"
-              />
-            )}
+            {videoUrl && <video src={videoUrl} controls autoPlay className="w-full max-h-[75vh]" data-testid="video-evidence-player" />}
           </div>
         </DialogContent>
       </Dialog>

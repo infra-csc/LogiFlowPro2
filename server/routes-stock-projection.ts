@@ -265,7 +265,7 @@ export function registerStockProjectionRoutes(app: Express) {
               .from(movementTrips)
               .where(inArray(movementTrips.movementId, movementIds))
           : [];
-        const linkedTripIds = [...new Set(movTripRows.map((r) => r.tripId))];
+        const linkedTripIds = Array.from(new Set(movTripRows.map((r) => r.tripId)));
         const tripDateRows2 = linkedTripIds.length
           ? await db
               .select({

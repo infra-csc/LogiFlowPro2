@@ -1,0 +1,552 @@
+Quero reformular completamente a experiência de movimentação e carregamento de itens nesta tela.
+
+O visual atual está organizado, porém o fluxo ficou lento e redundante. Hoje o usuário seleciona o produto, informa a quantidade, clica em “Confirmar” e depois precisa confirmar novamente em um modal. Isso não funciona bem em uma operação real de carregamento, principalmente quando existem muitos produtos.
+
+O objetivo é transformar esta tela em uma interface operacional rápida, segura, clara e adequada para uso em armazém.
+
+IMPORTANTE:
+- manter o tema escuro e o design system atual do EventFlow;
+- preservar todas as regras e dados existentes;
+- não remover validações importantes;
+- não alterar a lógica de estoque sem necessidade;
+- melhorar principalmente o fluxo, a hierarquia, os textos e a experiência operacional;
+- evitar cliques desnecessários;
+- não criar dados fictícios.
+
+==================================================
+1. REMOVER A DUPLA CONFIRMAÇÃO
+==================================================
+
+Remover o modal “Confirmar Adição de Item” do fluxo normal.
+
+Atualmente o usuário:
+1. seleciona o produto;
+2. informa a quantidade;
+3. clica em confirmar;
+4. precisa confirmar novamente no modal.
+
+Isso é redundante.
+
+No fluxo normal, ao clicar no botão principal ou pressionar Enter, registrar imediatamente a quantidade.
+
+Após o registro, mostrar uma notificação discreta e clara:
+
+“2 unidades de CAVALETE RETO registradas no carregamento.”
+
+Na notificação, incluir a ação:
+
+“Desfazer”
+
+Essa ação deve ficar disponível por alguns segundos e reverter somente o último lançamento.
+
+O modal de confirmação deve aparecer apenas em situações excepcionais:
+
+- quantidade maior do que a quantidade pendente;
+- produto não previsto na requisição ou ordem;
+- produto duplicado de forma ambígua;
+- tentativa de adicionar quantidade inválida;
+- operação que gere excedente;
+- movimentação já finalizada;
+- operação que possa causar inconsistência de estoque.
+
+==================================================
+2. ALTERAR O BOTÃO PRINCIPAL
+==================================================
+
+Trocar o texto genérico “Confirmar” por um texto que descreva exatamente a ação.
+
+Exemplos dinâmicos:
+
+- “Registrar 1 unidade”
+- “Registrar 2 unidades”
+- “Carregar restante: 2”
+- “Adicionar como excedente”
+- “Registrar devolução”
+
+O texto deve mudar conforme:
+
+- quantidade informada;
+- tipo da movimentação;
+- quantidade ainda pendente;
+- situação do item.
+
+Manter o atalho ENTER visível, porém discreto.
+
+==================================================
+3. MELHORAR O BLOCO DO PRODUTO SELECIONADO
+==================================================
+
+O produto selecionado deve aparecer em um card operacional compacto e mais claro.
+
+Estrutura sugerida:
+
+CAVALETE RETO
+SKU: ITEM_CAVALETE_RETO
+
+Solicitado: 2 unidades
+Já carregado: 0
+Falta carregar: 2
+
+A quantidade “Falta carregar” deve receber maior destaque visual.
+
+Não usar uma linha corrida como:
+
+“Esperado: 2  Carregado: 0  Faltam: 2”
+
+Organizar em três pequenos indicadores ou colunas.
+
+Exemplo:
+
+SOLICITADO        CARREGADO        RESTANTE
+2                 0                2
+
+Cores:
+- solicitado: neutro;
+- carregado: verde;
+- restante: amarelo;
+- excedente: vermelho.
+
+==================================================
+4. FACILITAR A ESCOLHA DA QUANTIDADE
+==================================================
+
+O controle atual de quantidade está pequeno e pouco confortável.
+
+Criar um controle maior e mais evidente, contendo:
+
+[-] [ quantidade ] [+]
+
+Ao lado, incluir atalhos rápidos:
+
+- “+1”
+- “Restante”
+- “Tudo”
+- “Quantidade personalizada”
+
+Comportamento:
+
+- em modo scanner, iniciar com quantidade 1;
+- quando o usuário selecionar manualmente um item, permitir usar “Restante”;
+- ao clicar em “Restante”, preencher automaticamente a quantidade que falta;
+- impedir valores negativos;
+- impedir zero;
+- destacar visualmente quando a quantidade causar excedente.
+
+Exemplo:
+
+Quantidade a registrar
+[-] 2 [+]    [Carregar restante: 2]
+
+Se o valor ultrapassar o esperado, mostrar antes do registro:
+
+“Esta quantidade gera 1 unidade excedente.”
+
+Nesse caso, solicitar confirmação específica de exceção.
+
+==================================================
+5. CRIAR DOIS MODOS OPERACIONAIS
+==================================================
+
+Adicionar um seletor discreto próximo ao scanner:
+
+- Leitura unitária
+- Lançamento em lote
+
+Leitura unitária:
+- cada leitura de código registra 1 unidade;
+- ideal para leitura física individual;
+- após registrar, manter o foco no scanner;
+- permitir leituras consecutivas sem abrir modal.
+
+Lançamento em lote:
+- o usuário escolhe o produto;
+- informa uma quantidade;
+- registra várias unidades de uma vez.
+
+Guardar a última opção utilizada pelo usuário durante a sessão.
+
+==================================================
+6. MELHORAR O SCANNER
+==================================================
+
+O bloco “Scanner de Produtos” deve ser mais compacto e operacional.
+
+Campo:
+“Digite ou escaneie SKU, código de barras ou nome”
+
+Ações:
+- pesquisar;
+- limpar;
+- ativar/desativar foco automático.
+
+Quando encontrar o produto:
+- substituir o estado vazio pelo card compacto do item;
+- manter o campo de busca disponível;
+- pressionar Esc limpa o produto;
+- pressionar Enter registra a operação.
+
+Após registrar:
+- limpar automaticamente o produto selecionado, quando estiver em leitura unitária;
+- manter o produto selecionado, quando estiver em lançamento em lote;
+- devolver o foco ao campo do scanner;
+- mostrar feedback visual de sucesso;
+- opcionalmente emitir feedback sonoro discreto quando suportado.
+
+Criar estados visuais claros:
+
+Sucesso:
+“Item registrado com sucesso.”
+
+Não encontrado:
+“Nenhum produto encontrado para este código.”
+
+Produto completo:
+“Este item já atingiu a quantidade solicitada.”
+
+Excedente:
+“A quantidade informada ultrapassa o solicitado.”
+
+Bloqueado:
+“Esta movimentação não permite mais alterações.”
+
+==================================================
+7. CORRIGIR A TERMINOLOGIA DE ITENS E UNIDADES
+==================================================
+
+Não usar “item” quando o número representa unidades.
+
+Exemplo atual:
+“3 itens pendentes”
+
+Se existem 2 produtos e faltam 3 unidades, exibir:
+
+“3 unidades pendentes em 2 produtos”
+
+No resumo da conferência, separar:
+
+- Produtos completos: 0 de 2
+- Unidades carregadas: 0 de 3
+- Unidades pendentes: 3
+- Unidades excedentes: 0
+
+Nos títulos das colunas, usar:
+
+“Itens da Requisição — 2 produtos”
+
+“Itens Carregados — 0 produtos / 0 unidades”
+
+Evitar contadores ambíguos.
+
+==================================================
+8. MELHORAR O RESUMO DA CONFERÊNCIA
+==================================================
+
+Transformar “Resumo da Conferência” em uma faixa mais útil.
+
+Mostrar:
+
+Progresso geral: 0%
+0 de 3 unidades carregadas
+
+Produtos completos: 0 de 2
+Unidades pendentes: 3
+Unidades excedentes: 0
+
+Adicionar uma barra de progresso horizontal.
+
+À direita, manter:
+
+“Última ação: Yan Neves Araujo · 16:03”
+
+Adicionar abaixo, quando houver lançamento:
+
+“Registrou 2 unidades de CAVALETE RETO”
+
+A última ação deve permitir “Desfazer” enquanto a operação puder ser revertida.
+
+==================================================
+9. MELHORAR AS DUAS COLUNAS DE ITENS
+==================================================
+
+Os painéis atuais ocupam muito espaço vazio.
+
+Não usar altura fixa excessiva.
+
+Os painéis devem crescer conforme o conteúdo, com um limite máximo e scroll interno apenas quando necessário.
+
+Coluna esquerda:
+“Produtos da Requisição”
+
+Exibir cada produto em linha compacta:
+
+CAVALETE RETO
+SKU: ITEM_CAVALETE_RETO
+
+Solicitado: 2
+Carregado: 0
+Restante: 2
+
+[Carregar restante]
+
+Adicionar barra de progresso por produto.
+
+Estados:
+- Pendente
+- Parcial
+- Completo
+- Excedido
+
+Coluna direita:
+“Produtos Registrados”
+
+Exibir:
+
+CAVALETE RETO
+2 unidades carregadas
+
+[-] [2] [+] [Remover]
+
+Também mostrar:
+- usuário da última alteração;
+- horário da última alteração;
+- indicação de excedente, quando houver.
+
+Evitar cards muito altos para pouca informação.
+
+==================================================
+10. AÇÃO RÁPIDA “CARREGAR RESTANTE”
+==================================================
+
+Adicionar no produto pendente uma ação direta:
+
+“Carregar restante: 2”
+
+Ao clicar:
+- registrar diretamente toda a quantidade pendente;
+- não abrir modal no fluxo normal;
+- mostrar notificação com opção de desfazer.
+
+Se a operação tiver algum risco ou inconsistência, abrir uma confirmação específica.
+
+Adicionar também uma opção no topo:
+
+“Carregar todos os restantes”
+
+Essa ação deve:
+- aparecer somente para usuários autorizados;
+- mostrar uma confirmação com resumo;
+- informar quantos produtos e unidades serão registrados;
+- nunca carregar itens excedentes automaticamente.
+
+Exemplo de confirmação:
+
+“Registrar todas as quantidades pendentes?”
+
+2 produtos
+3 unidades
+
+[Cancelar] [Registrar pendências]
+
+==================================================
+11. MODAIS APENAS PARA EXCEÇÕES
+==================================================
+
+Quando realmente for necessário abrir um modal, ele deve ser pequeno, direto e contextual.
+
+Exemplo para excedente:
+
+Título:
+“Confirmar quantidade excedente”
+
+Mensagem:
+“CAVALETE RETO possui 2 unidades pendentes. Você está tentando registrar 3 unidades.”
+
+Resumo:
+Solicitado: 2
+Já carregado: 0
+Nova quantidade: 3
+Excedente gerado: 1
+
+Campo obrigatório:
+“Motivo do excedente”
+
+Botões:
+“Voltar e corrigir”
+“Registrar com excedente”
+
+Não usar um modal grande apenas para repetir produto, SKU e quantidade.
+
+==================================================
+12. MELHORAR O FEEDBACK DE OPERAÇÃO
+==================================================
+
+Depois de cada movimentação, mostrar feedback imediato.
+
+Sucesso:
+- borda ou flash verde discreto no item;
+- toast com nome e quantidade;
+- atualização imediata dos contadores;
+- atualização da barra de progresso;
+- foco devolvido ao scanner.
+
+Erro:
+- mensagem próxima ao campo;
+- explicar exatamente o problema;
+- não limpar os dados digitados quando houver erro.
+
+Exemplos:
+
+“2 unidades registradas. Restam 0.”
+
+“1 unidade registrada. Ainda falta 1.”
+
+“Quantidade não registrada. A movimentação já foi finalizada.”
+
+“Produto não pertence à requisição vinculada.”
+
+==================================================
+13. GARANTIR CONSISTÊNCIA DOS DADOS
+==================================================
+
+Ao registrar uma quantidade:
+
+- atualizar itens carregados;
+- atualizar quantidade pendente;
+- atualizar produtos completos;
+- atualizar progresso total;
+- atualizar histórico;
+- atualizar última ação;
+- atualizar projeção de estoque conforme a regra existente;
+- impedir duplo envio por clique repetido;
+- impedir duplicidade causada por Enter e clique simultâneos.
+
+Durante o processamento:
+- desabilitar temporariamente o botão;
+- mostrar loading curto;
+- não permitir registrar novamente a mesma operação.
+
+==================================================
+14. HISTÓRICO MAIS DETALHADO
+==================================================
+
+Cada lançamento deve criar histórico com:
+
+- ação;
+- produto;
+- SKU;
+- quantidade;
+- quantidade anterior;
+- nova quantidade acumulada;
+- usuário;
+- data e hora;
+- origem: scanner, lançamento em lote ou ajuste manual.
+
+Exemplo:
+
+“Yan Neves Araujo registrou 2 unidades de CAVALETE RETO via lançamento em lote.”
+
+Para remoções:
+
+“Yan Neves Araujo removeu 1 unidade de CAVALETE RETO.”
+
+Para excedentes:
+
+“Yan Neves Araujo registrou 1 unidade excedente. Motivo: material adicional solicitado pela operação.”
+
+==================================================
+15. FINALIZAÇÃO DA MOVIMENTAÇÃO
+==================================================
+
+Ao clicar em finalizar, mostrar um resumo real:
+
+Produtos da requisição: 2
+Produtos completos: 1
+Unidades esperadas: 3
+Unidades carregadas: 2
+Unidades pendentes: 1
+Unidades excedentes: 0
+Evidências anexadas: 0
+
+Se existirem pendências, mostrar:
+
+“Esta movimentação ainda possui 1 unidade pendente.”
+
+Ações:
+- Voltar para conferência
+- Finalizar com pendência
+
+Ao finalizar com pendência, exigir uma justificativa.
+
+Se não houver evidência anexada, mostrar recomendação, mas não necessariamente bloquear, conforme as regras atuais.
+
+==================================================
+16. MELHORIAS VISUAIS
+==================================================
+
+Manter o estilo atual, mas reduzir o excesso de contornos e grandes áreas vazias.
+
+Aplicar:
+
+- cards mais compactos;
+- melhor contraste nos números;
+- quantidade restante com maior destaque;
+- mais clareza entre produto e unidade;
+- menos azul em ações secundárias;
+- verde apenas para sucesso ou completo;
+- amarelo para pendente/parcial;
+- vermelho para excedente ou erro;
+- cinza para neutro.
+
+O botão principal pode continuar azul, mas os demais controles devem ser mais discretos.
+
+Evitar:
+- modal para qualquer lançamento;
+- cards gigantes para um único produto;
+- áreas vazias muito grandes;
+- textos repetidos;
+- contadores sem unidade;
+- informações duplicadas em diferentes blocos.
+
+==================================================
+17. RESPONSIVIDADE E USO OPERACIONAL
+==================================================
+
+Desktop:
+- duas colunas para produtos da requisição e registrados;
+- scanner e resumo acima;
+- boa densidade de informação.
+
+Tablet:
+- duas colunas quando houver espaço;
+- controles de quantidade acessíveis ao toque.
+
+Mobile:
+- uma coluna;
+- scanner fixo ou facilmente acessível;
+- botões grandes;
+- controles de quantidade confortáveis;
+- nada deve ficar cortado horizontalmente.
+
+==================================================
+18. CRITÉRIOS DE ACEITE
+==================================================
+
+A implementação estará correta quando:
+
+1. Não existir dupla confirmação no fluxo normal.
+2. Registrar um item exigir apenas uma ação.
+3. O Enter puder registrar rapidamente.
+4. O foco voltar automaticamente ao scanner.
+5. Existir opção de desfazer a última ação.
+6. “Produtos” e “unidades” estiverem claramente separados.
+7. A quantidade restante estiver evidente.
+8. Existir ação “Carregar restante”.
+9. O resumo mostrar progresso real em produtos e unidades.
+10. Os painéis não ocuparem grandes espaços vazios.
+11. O modal aparecer apenas para exceções.
+12. Excedentes exigirem confirmação e justificativa.
+13. O histórico registrar detalhes de cada movimentação.
+14. As contagens atualizarem imediatamente.
+15. A tela ficar rápida para uso com dezenas de produtos.
+16. O design continuar coerente com o EventFlow.
+17. Nenhuma regra existente ser quebrada.
