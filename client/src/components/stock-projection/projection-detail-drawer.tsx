@@ -200,7 +200,7 @@ function ProductBody({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        {[
+        {([
           { l: "Estoque atual", v: product.currentStock },
           { l: "Mínimo", v: product.minimumStock },
           { l: "Pior saldo", v: product.minAvailable },
@@ -211,7 +211,10 @@ function ProductBody({
           },
           { l: "Saídas", v: product.totalOutbound, tone: "text-destructive" },
           { l: "Entradas", v: product.totalInbound, tone: "text-chart-4" },
-        ].map((c) => (
+          ...(product.totalInEvent > 0
+            ? [{ l: "Em evento (pico)", v: product.totalInEvent, tone: "text-amber-400" }]
+            : []),
+        ] as { l: string; v: number; tone?: string }[]).map((c) => (
           <div key={c.l} className="rounded-md border border-border/60 p-2.5">
             <div className={`text-lg font-bold tabular-nums ${c.tone || ""}`}>{c.v}</div>
             <div className="text-xs text-muted-foreground">{c.l}</div>

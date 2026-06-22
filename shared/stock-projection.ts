@@ -110,6 +110,8 @@ export interface ProjectionProduct {
   worstStatus: ProjectionDayStatus;
   totalOutbound: number;
   totalInbound: number;
+  /** Peak units simultaneously in-event over the range (0 when none). */
+  totalInEvent: number;
   /** Largest shortfall below zero across the range (0 when never negative). */
   maxDeficit: number;
 }

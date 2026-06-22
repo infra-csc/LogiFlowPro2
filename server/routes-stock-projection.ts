@@ -1097,6 +1097,7 @@ export function registerStockProjectionRoutes(app: Express) {
           worstStatus,
           totalOutbound,
           totalInbound,
+          totalInEvent: peakInEvent,
           maxDeficit,
         });
 
