@@ -1,24 +1,23 @@
 ---
 name: Kit BOM formula expansion
-description: Kit BOM quantity-formula evaluation is duplicated client+server and must stay in sync.
+description: How kit BOM line quantities are calculated — fixed vs variable formulas, semantics, and where the logic lives.
 ---
 
 # Kit BOM formula expansion
 
-A kit's BOM line `quantityFormula` is either `?` (variable — value supplied
-per-request via the item's `kitParameters[productId]`) or an arithmetic
-expression that may reference named kit parameters. Final piece qty =
-`eval(formula with params substituted) * kitMultiplier`, then rounded, clamped
-`>= 0`, with a finite-number guard.
+## Semântica das fórmulas
 
-The same evaluation logic is implemented in **two** places — once on the client
-(the add-item dialog that builds the cart) and once on the server (the event
-materials-summary endpoint that re-expands kits to aggregate across all
-requisitions). There is no shared helper yet.
+- **Fórmula `"?"` (variável):** o valor em `kitParameters[productId]` é o **total absoluto** informado pelo usuário — NÃO deve ser multiplicado pelo número de kits. Exemplo: usuário pede 10 kits e informa 20 fechamentos → total = 20, não 200.
+- **Demais fórmulas** (ex: `"4"`, `"qty*2"`): o resultado da fórmula é a quantidade **por kit** e é multiplicado pelo número de kits (`multiplier`).
 
-**Why:** the dialog and the summary endpoint must produce identical numbers, or
-the event materials totals diverge from what users actually entered.
+**Por quê:** componentes variáveis são totais únicos para o pedido inteiro, não quantidades por unidade de kit.
 
-**How to apply:** any change to formula syntax, parameter substitution, rounding,
-or clamping must be mirrored in both copies. Consider extracting a shared helper
-into `shared/` if this drifts again.
+**Como aplicar:** em `calcKitLineQty` (server/routes.ts), o branch `f === "?"` deve retornar `parameters[productId]` diretamente, sem multiplicar por `multiplier`.
+
+## Duplicação — risco de divergência
+
+A lógica de avaliação existe em dois lugares:
+- **Server:** `calcKitLineQty` em `server/routes.ts` (endpoint materials-summary e expansão de loading orders)
+- **Client:** `calcFinalQty` (dialog de adição de item ao carrinho da requisição)
+
+Qualquer mudança na semântica de fórmula, substituição de parâmetros, arredondamento ou clamping deve ser espelhada nos dois pontos. Considerar extrair um helper compartilhado em `shared/` se voltar a divergir.

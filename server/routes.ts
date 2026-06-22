@@ -857,7 +857,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ): number => {
         const f = (formula ?? "").trim();
         if (f === "?") {
-          return Math.max(0, Math.round((parameters[productId] ?? 0) * multiplier));
+          // Parâmetros variáveis representam o total absoluto informado pelo usuário,
+          // não uma quantidade por kit — portanto NÃO se multiplica pelo nº de kits.
+          return Math.max(0, Math.round(parameters[productId] ?? 0));
         }
         try {
           let expr = f;
