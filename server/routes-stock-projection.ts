@@ -17,6 +17,7 @@ import {
   movements,
   movementItems,
   movementEvents,
+  movementTrips,
   movementTypesConfig,
 } from "@shared/schema";
 import type {
@@ -256,6 +257,37 @@ export function registerStockProjectionRoutes(app: Express) {
           eventsByMovement.get(me.movementId)!.push(me.eventId);
         }
 
+        // Fetch linked trip departure dates so non-started outbound movements
+        // are projected on the truck's scheduled departure, not createdAt.
+        const movTripRows = movementIds.length
+          ? await db
+              .select({ movementId: movementTrips.movementId, tripId: movementTrips.tripId })
+              .from(movementTrips)
+              .where(inArray(movementTrips.movementId, movementIds))
+          : [];
+        const linkedTripIds = [...new Set(movTripRows.map((r) => r.tripId))];
+        const tripDateRows2 = linkedTripIds.length
+          ? await db
+              .select({
+                id: trips.id,
+                departure: trips.departureDateTime,
+                loadingStart: trips.loadingStartTime,
+              })
+              .from(trips)
+              .where(inArray(trips.id, linkedTripIds))
+          : [];
+        const tripDateMap2 = new Map(tripDateRows2.map((t) => [t.id, t]));
+        // For each movement, earliest trip departure (loadingStart preferred)
+        const tripDepartureByMovement = new Map<string, Date>();
+        for (const { movementId, tripId } of movTripRows) {
+          const td = tripDateMap2.get(tripId);
+          if (!td) continue;
+          const dep = td.loadingStart || td.departure;
+          if (!dep) continue;
+          const cur = tripDepartureByMovement.get(movementId);
+          if (!cur || dep < cur) tripDepartureByMovement.set(movementId, dep);
+        }
+
         for (const m of movementRows) {
           if (m.status === "cancelled") continue;
           const nature =
@@ -290,7 +322,13 @@ export function registerStockProjectionRoutes(app: Express) {
           }
 
           const isPhysical = PHYSICAL_MOVEMENT_STATUS.has(m.status);
-          const baseDate = m.startedAt || m.completedAt || m.createdAt;
+          // For non-started outbound movements, prefer the linked trip's
+          // departure/loading date over createdAt so the projection bucket
+          // matches when the truck actually leaves.
+          const tripOutDate = tripDepartureByMovement.get(m.id) ?? null;
+          const baseDate = isPhysical
+            ? (m.startedAt || m.completedAt || m.createdAt)
+            : (m.startedAt || tripOutDate || m.createdAt);
           const label = `${m.number} — ${m.name}`;
 
           if (nature === "outbound") {
