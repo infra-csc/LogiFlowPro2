@@ -1,0 +1,414 @@
+Quero melhorar bastante o modal de “Nova Movimentação”.
+
+Objetivo:
+- aumentar o tamanho do modal;
+- deixar a experiência mais clara e mais rica em informação;
+- organizar melhor os campos;
+- reduzir a sensação de formulário apertado;
+- facilitar o preenchimento e o entendimento da operação antes de criar a movimentação.
+
+IMPORTANTE:
+- manter o visual dark atual do sistema;
+- manter a identidade do EventFlow;
+- não simplificar demais;
+- quero um modal mais robusto, mais completo e com aparência mais premium/operacional;
+- manter a lógica atual da criação de movimentação, apenas melhorando layout, hierarquia, contexto, validações e usabilidade.
+
+==================================================
+1. TAMANHO E ESTRUTURA DO MODAL
+==================================================
+
+Aumentar o modal significativamente.
+
+Hoje ele está pequeno e comprimido. Quero:
+
+- largura entre 1100px e 1280px no desktop;
+- altura útil de até 88vh ou 90vh;
+- conteúdo interno bem distribuído;
+- header e footer fixos;
+- apenas o corpo do modal pode scrollar;
+- remover a sensação de “formulário longo e apertado”.
+
+Estrutura sugerida:
+- Header fixo
+- Corpo com duas colunas ou uma grade bem distribuída
+- Footer fixo com ações
+
+Desktop:
+- usar layout de 2 colunas quando fizer sentido
+- coluna principal maior para os campos
+- coluna lateral menor para contexto/resumo da movimentação
+
+Tablet/mobile:
+- cair para 1 coluna
+- footer continuar fixo
+- boa responsividade
+
+==================================================
+2. HEADER MAIS FORTE E MAIS EXPLICATIVO
+==================================================
+
+Melhorar o topo do modal.
+
+Estrutura do header:
+- título forte: “Nova Movimentação”
+- subtítulo explicativo mais curto e mais claro
+- botão fechar no canto superior direito
+
+Novo subtítulo sugerido:
+“Crie uma movimentação operacional vinculando evento, plano de viagens, ordem, itens e dados logísticos.”
+
+No header, adicionar também uma pequena linha de apoio com chips/status de contexto conforme o usuário preenche:
+- Evento selecionado
+- Plano vinculado
+- Ordem vinculada
+- X item(ns) pré-carregado(s)
+
+Se não houver nada selecionado ainda, mostrar:
+- “Nenhum evento vinculado”
+- “Nenhuma ordem vinculada”
+- “Nenhum item pré-carregado”
+
+Esses chips devem ser sutis e dinâmicos.
+
+==================================================
+3. ORGANIZAÇÃO POR BLOCOS
+==================================================
+
+Quero o formulário organizado em blocos muito claros, com títulos e descrições curtas.
+
+Usar estes blocos:
+
+1. Identificação
+2. Contexto operacional
+3. Origens e vínculos
+4. Itens da movimentação
+5. Dados logísticos
+6. Observações
+7. Resumo da movimentação
+
+Cada bloco deve ter:
+- ícone
+- título
+- linha divisória discreta
+- microdescrição opcional
+
+==================================================
+4. BLOCO: IDENTIFICAÇÃO
+==================================================
+
+Campos:
+- Nome da movimentação *
+- Tipo de movimentação *
+
+Melhorias:
+- Nome da movimentação com exemplo útil
+  Exemplo placeholder:
+  “Ex.: Carga Night Run — Carreta 1”
+- Abaixo do nome, texto de apoio:
+  “Use um nome fácil de localizar na operação.”
+
+Tipo de movimentação:
+- usar select mais rico visualmente
+- opções com descrição curta
+
+Exemplo de opções:
+- Carga para evento
+- Retorno de evento
+- Transferência interna
+- Apoio operacional
+- Movimentação avulsa
+
+Ao selecionar o tipo, mostrar uma descrição abaixo:
+Exemplo:
+“Carga para evento: separa e registra materiais enviados para o evento.”
+
+==================================================
+5. BLOCO: CONTEXTO OPERACIONAL
+==================================================
+
+Campos:
+- Evento (opcional)
+- Plano de viagens (opcional)
+- Ordem de carregamento (opcional)
+
+Quero dependência lógica mais clara entre esses campos.
+
+Comportamento:
+- se um evento for selecionado, carregar planos e ordens relacionados;
+- se um plano for selecionado, sugerir automaticamente o evento relacionado;
+- se uma ordem for selecionada, mostrar contexto resumido dela;
+- se não houver evento escolhido, mostrar ajuda explicando porque certas listas estão vazias.
+
+Exemplo de mensagem contextual:
+“Selecione um evento para visualizar ordens e planos disponíveis.”
+ou
+“Esta ordem está vinculada ao evento X.”
+
+Melhorar os campos com:
+- busca dentro do select
+- nome principal forte
+- informações secundárias menores
+
+Exemplo para um plano:
+“Desafio Energia Petrobras – Bike – São Paulo 2026 — Carreta 2”
+abaixo:
+“Evento: Desafio Energia Petrobras – Bike – São Paulo 2026”
+
+Exemplo para uma ordem:
+“Ordem 1234”
+abaixo:
+“Carga para Evento • 35 itens • status: liberada”
+
+==================================================
+6. BLOCO: ORIGENS E VÍNCULOS
+==================================================
+
+Adicionar uma área visual para explicar o que está sendo vinculado à movimentação.
+
+Quero um quadro de resumo mostrando:
+- Evento vinculado
+- Plano de viagens vinculado
+- Ordem vinculada
+- Origem da lista de itens
+
+Exemplo:
+Origem dos itens:
+- manual
+- pré-carregada da ordem
+- pré-carregada do plano
+- combinação de fontes
+
+Se nada estiver vinculado:
+“Você pode criar uma movimentação avulsa sem vínculos obrigatórios.”
+
+Isso ajuda muito o usuário a entender o impacto do que está fazendo.
+
+==================================================
+7. BLOCO: ITENS DA MOVIMENTAÇÃO
+==================================================
+
+Hoje esse trecho está simples demais.
+
+Quero deixar mais claro que o usuário pode:
+- adicionar itens manualmente;
+- pré-popular itens a partir de uma ordem;
+- pré-popular itens a partir de outro vínculo quando aplicável.
+
+Campo:
+- Adicionar produto...
+
+Melhorias:
+- transformar em componente mais robusto
+- permitir seleção com busca por nome/SKU
+- exibir os itens adicionados abaixo em uma lista preview
+
+Abaixo do campo, mostrar:
+- quantidade de itens adicionados
+- quantidade total de unidades
+- origem dos itens
+
+Exemplo:
+“12 itens adicionados • 84 unidades totais”
+
+Se os itens vierem de uma ordem, mostrar aviso:
+“Os itens abaixo foram pré-carregados da ordem 1234. Você poderá ajustar conforme a regra do fluxo.”
+
+Se houver itens adicionados, mostrar mini tabela/lista com:
+- nome do item
+- SKU
+- quantidade
+- origem
+- ação remover
+
+Não precisa ser mega completo igual tela principal, mas precisa dar visibilidade.
+
+Se ainda não houver itens:
+“Nenhum item adicionado à movimentação.”
+
+==================================================
+8. BLOCO: DADOS LOGÍSTICOS
+==================================================
+
+Campos:
+- Placa do veículo
+- Doca (opcional)
+
+Sugiro incluir, se já existir estrutura no sistema ou se for simples adicionar:
+- Transportadora (opcional)
+- Motorista / responsável (opcional)
+- Tipo de veículo (opcional)
+
+Se esses campos ainda não existirem no backend, não inventar persistência. Mas já deixar a área preparada visualmente, ou manter só:
+- Placa do veículo
+- Doca
+
+Melhorar a usabilidade da placa:
+- máscara visual ou formatação amigável
+- placeholder “Ex.: ABC-1234”
+- mensagem de apoio:
+  “Informe a placa quando não houver plano de viagens vinculado.”
+
+Doca:
+- select claro e com descrição
+- se houver docas ocupadas / indisponíveis, indicar visualmente
+
+==================================================
+9. BLOCO: OBSERVAÇÕES
+==================================================
+
+Adicionar um campo de observações operacionais.
+
+Campo:
+- Observações (opcional)
+
+Placeholder:
+“Ex.: carga parcial, materiais frágeis, saída prevista às 18h, prioridade alta, etc.”
+
+Texto de apoio:
+“As observações ajudam a equipe operacional a entender particularidades da movimentação.”
+
+Esse campo deve ficar perto do final.
+
+==================================================
+10. COLUNA LATERAL / RESUMO DA MOVIMENTAÇÃO
+==================================================
+
+Quero uma coluna lateral fixa no desktop com um resumo em tempo real.
+
+Título:
+“Resumo da movimentação”
+
+Mostrar:
+- nome informado
+- tipo
+- evento
+- plano
+- ordem
+- placa
+- doca
+- total de itens
+- total de unidades
+- origem dos itens
+
+Também mostrar alertas de consistência, por exemplo:
+- “Movimentação sem evento vinculado”
+- “Nenhum item adicionado”
+- “Placa não informada”
+- “Ordem ainda não selecionada”
+
+Quando tudo essencial estiver preenchido:
+- mostrar status visual: “Pronta para criação”
+
+Se não quiser usar coluna lateral fixa, pode usar um card-resumo destacado no topo ou no final do corpo. Mas prefiro coluna lateral no desktop.
+
+==================================================
+11. VALIDAÇÕES E AJUDAS
+==================================================
+
+Melhorar as validações e feedbacks inline.
+
+Quero:
+- mensagens claras abaixo do campo
+- borda de erro elegante
+- sem mensagens genéricas confusas
+
+Exemplos:
+- “Informe um nome para a movimentação.”
+- “Selecione o tipo da movimentação.”
+- “Adicione pelo menos um item para continuar.” (se essa for a regra)
+- “Nenhum evento selecionado. Você pode continuar com uma movimentação avulsa.” (informativo, não erro)
+
+Também quero um aviso visual quando o usuário selecionar uma ordem e os itens forem importados automaticamente:
+“X item(ns) foram pré-carregados com sucesso.”
+
+==================================================
+12. FOOTER FIXO E MELHOR
+==================================================
+
+Melhorar o rodapé do modal.
+
+Footer fixo com:
+- botão Cancelar
+- botão Criar Movimentação
+
+Adicionar também um texto curto de feedback no lado esquerdo do footer:
+- “Campos obrigatórios: nome e tipo”
+ou
+- “Pronta para criação”
+ou
+- “Faltam 2 informações obrigatórias”
+
+Botão principal:
+- “Criar movimentação”
+- desabilitado apenas quando necessário
+- com loading state ao enviar
+
+==================================================
+13. MELHORIAS DE EXPERIÊNCIA
+==================================================
+
+Aplicar melhorias gerais:
+
+- espaçamento maior entre blocos;
+- labels mais legíveis;
+- campos com largura melhor;
+- menos sensação de aperto;
+- reduzir scroll horizontal interno;
+- evitar que selects fiquem cortados;
+- melhorar hierarquia visual;
+- tornar o preenchimento mais guiado.
+
+Se possível:
+- usar accordions abertos por padrão só em alguns grupos quando a tela estiver pequena;
+- em desktop, deixar todos os blocos visíveis com boa distribuição.
+
+==================================================
+14. COMPORTAMENTOS IMPORTANTES
+==================================================
+
+Regras de UX:
+- evento pode filtrar planos e ordens;
+- plano pode sugerir evento;
+- ordem pode sugerir itens;
+- item manual pode ser adicionado mesmo sem ordem;
+- resumo lateral deve reagir em tempo real;
+- body do modal com scroll interno elegante;
+- header e footer fixos;
+- nenhuma informação importante deve ficar escondida por um modal pequeno demais.
+
+==================================================
+15. CRITÉRIOS DE ACEITE
+==================================================
+
+A melhoria estará correta quando:
+
+1. O modal estiver muito maior e mais confortável.
+2. O header estiver mais forte e mais explicativo.
+3. O conteúdo estiver organizado em blocos claros.
+4. O formulário estiver menos apertado.
+5. Os campos de evento, plano e ordem estiverem mais claros e conectados entre si.
+6. A inclusão/preload de itens estiver mais visível.
+7. Houver um resumo da movimentação em tempo real.
+8. O usuário entender facilmente o que está vinculando.
+9. O footer ficar fixo e funcional.
+10. O modal parecer mais premium, operacional e 10/10.
+11. O design continuar coerente com o restante do sistema.
+12. Não criar dados fake; usar apenas a estrutura real existente.
+
+==================================================
+16. DIREÇÃO VISUAL
+==================================================
+
+Manter:
+- tema escuro atual;
+- identidade do EventFlow;
+- botões e campos no mesmo design system.
+
+Melhorar:
+- sensação de robustez;
+- densidade informacional;
+- clareza dos agrupamentos;
+- aspecto mais profissional e menos “formulário simples dentro de popup”.
+
+Quero que esse modal pareça uma interface operacional séria, não apenas um formulário básico.
