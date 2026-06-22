@@ -875,10 +875,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      const numVal = (v: any): number => {
+        const n = typeof v === "string" ? parseFloat(v) : Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+      const hasWeightFn = (raw: any): boolean =>
+        raw !== null && raw !== undefined && numVal(raw) > 0;
+
       const allRequests = (await storage.getMaterialRequests()) as any[];
       const requests = allRequests.filter(
         (r) => r.eventId === eventId && r.status !== "rejected",
       );
+      const pendingCount = requests.filter((r) => r.status === "pending_approval").length;
+      const approvedCount = requests.filter((r) => r.status === "approved").length;
 
       const [products, kits] = await Promise.all([
         storage.getProducts(),
@@ -886,6 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
       const productMap = new Map(products.map((p) => [p.id, p]));
       const kitMap = new Map(kits.map((k) => [k.id, k]));
+      const requestMap = new Map(requests.map((r) => [r.id, r]));
       const bomCache = new Map<string, any[]>();
       const getBom = async (kitId: string) => {
         if (!bomCache.has(kitId)) {
@@ -894,30 +904,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return bomCache.get(kitId)!;
       };
 
-      const num = (v: any): number => {
-        const n = typeof v === "string" ? parseFloat(v) : Number(v);
-        return Number.isFinite(n) ? n : 0;
-      };
+      // Pieces aggregation
+      const pieces = new Map<string, {
+        productId: string; sku: string; name: string; unit: string;
+        category: string | null; ownership: string; location: string | null;
+        weight: number; hasWeight: boolean;
+        quantity: number; fromKits: number; direct: number;
+        totalWeight: number | null;
+      }>();
 
-      const pieces = new Map<
-        string,
-        {
-          productId: string; sku: string; name: string; unit: string;
-          category: string | null; ownership: string; location: string | null;
-          weight: number; quantity: number; fromKits: number; direct: number;
-          totalWeight: number;
-        }
-      >();
-      const kitSummary = new Map<
-        string,
-        { kitId: string; name: string; quantity: number; requestCount: number }
-      >();
+      const kitSummary = new Map<string, { kitId: string; name: string; quantity: number; requestCount: number }>();
       const kitRequestSeen = new Map<string, Set<string>>();
+      const kitComponentTotals = new Map<string, Map<string, number>>();
+      const kitRequestBreakdown = new Map<string, Array<{
+        requestId: string; area: string | null; requestedByName: string; status: string; quantity: number;
+      }>>();
 
       const addPiece = (productId: string, qty: number, source: "direct" | "kit") => {
         if (qty <= 0) return;
         const p = productMap.get(productId);
-        const weight = num(p?.weight);
+        const rawWeight = p?.weight;
+        const weight = numVal(rawWeight);
+        const hw = hasWeightFn(rawWeight);
         const existing = pieces.get(productId) ?? {
           productId,
           sku: p?.sku ?? "—",
@@ -927,15 +935,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownership: p?.ownership ?? "owned",
           location: p?.location ?? null,
           weight,
+          hasWeight: hw,
           quantity: 0,
           fromKits: 0,
           direct: 0,
-          totalWeight: 0,
+          totalWeight: null as number | null,
         };
         existing.quantity += qty;
         if (source === "kit") existing.fromKits += qty;
         else existing.direct += qty;
-        existing.totalWeight = Math.round(existing.quantity * existing.weight * 100) / 100;
+        existing.totalWeight = existing.hasWeight
+          ? Math.round(existing.quantity * existing.weight * 100) / 100
+          : null;
         pieces.set(productId, existing);
       };
 
@@ -943,13 +954,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requests.map((r) => r.id),
       )) as any[];
 
-      // Pre-load BOM for all referenced kits in parallel
       const referencedKitIds = Array.from(
         new Set(allItems.filter((it) => it.kitId).map((it) => it.kitId as string)),
       );
       await Promise.all(referencedKitIds.map((kitId) => getBom(kitId)));
 
-      // Per-requisition breakdown
       const itemsByRequest = new Map<string, any[]>();
       for (const it of allItems) {
         const arr = itemsByRequest.get(it.requestId) ?? [];
@@ -959,6 +968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const it of allItems) {
         const qty = it.quantity ?? 0;
+        const r = requestMap.get(it.requestId);
         if (it.productId && !it.kitId) {
           addPiece(it.productId, qty, "direct");
         } else if (it.kitId) {
@@ -975,15 +985,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             seen.add(it.requestId);
             ks.requestCount += 1;
             kitRequestSeen.set(it.kitId, seen);
+            const bd = kitRequestBreakdown.get(it.kitId) ?? [];
+            bd.push({
+              requestId: it.requestId,
+              area: r?.area ?? null,
+              requestedByName: r?.requestedByUser?.name ?? r?.requestedByUser?.username ?? "—",
+              status: r?.status ?? "—",
+              quantity: qty,
+            });
+            kitRequestBreakdown.set(it.kitId, bd);
+          } else {
+            const bd = kitRequestBreakdown.get(it.kitId) ?? [];
+            const entry = bd.find((b) => b.requestId === it.requestId);
+            if (entry) entry.quantity += qty;
           }
           kitSummary.set(it.kitId, ks);
 
           const bom = bomCache.get(it.kitId) ?? [];
           const params = (it.kitParameters as Record<string, number>) ?? {};
+          const kitCompMap = kitComponentTotals.get(it.kitId) ?? new Map<string, number>();
           for (const line of bom) {
             const lineQty = calcKitLineQty(line.quantityFormula, qty, params, line.productId);
             addPiece(line.productId, lineQty, "kit");
+            kitCompMap.set(line.productId, (kitCompMap.get(line.productId) ?? 0) + lineQty);
           }
+          kitComponentTotals.set(it.kitId, kitCompMap);
         }
       }
 
@@ -994,20 +1020,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
         a.name.localeCompare(b.name, "pt-BR"),
       );
 
-      // Category breakdown
-      const categoryMap = new Map<string, { category: string; distinctProducts: number; totalPieces: number }>();
+      // Enrich kits with components and request breakdown
+      const kitsEnriched = kitsArr.map((ks) => {
+        const bom = bomCache.get(ks.kitId) ?? [];
+        const kitCompMap = kitComponentTotals.get(ks.kitId) ?? new Map<string, number>();
+        const components = bom.map((line: any) => {
+          const cp = productMap.get(line.productId);
+          const rawW = cp?.weight;
+          const w = numVal(rawW);
+          const hw = hasWeightFn(rawW);
+          const total = kitCompMap.get(line.productId) ?? 0;
+          const f = (line.quantityFormula ?? "").trim();
+          let quantityPerKit: number | null = null;
+          if (f !== "?" && f !== "") {
+            try {
+              const sanitized = f.replace(/[^0-9+\-*/().\s]/g, "");
+              if (sanitized === f) {
+                const result = Function('"use strict"; return (' + sanitized + ")")() as number;
+                if (Number.isFinite(result)) quantityPerKit = Math.round(result);
+              }
+            } catch {}
+          }
+          return {
+            productId: line.productId,
+            name: cp?.name ?? "Produto removido",
+            sku: cp?.sku ?? "—",
+            unit: cp?.unit ?? "unid",
+            formulaDisplay: f === "?" ? "variável" : (f || "—"),
+            quantityPerKit,
+            totalGenerated: total,
+            hasWeight: hw,
+            weight: w,
+            totalWeight: hw ? Math.round(total * w * 100) / 100 : null,
+          };
+        });
+        return {
+          ...ks,
+          totalUnitsGenerated: components.reduce((s: number, c: any) => s + c.totalGenerated, 0),
+          weightEstimate: Math.round(
+            components.filter((c: any) => c.hasWeight).reduce((s: number, c: any) => s + (c.totalWeight ?? 0), 0) * 100
+          ) / 100,
+          components,
+          requestBreakdown: kitRequestBreakdown.get(ks.kitId) ?? [],
+        };
+      });
+
+      // Category breakdown with weight and participation
+      const totalPiecesAll = piecesArr.reduce((s, p) => s + p.quantity, 0);
+      const categoryMap = new Map<string, {
+        category: string; distinctProducts: number; totalPieces: number;
+        weight: number; piecesWithoutWeight: number;
+      }>();
       for (const p of piecesArr) {
         const cat = p.category?.trim() ? p.category.trim() : "Sem categoria";
-        const c = categoryMap.get(cat) ?? { category: cat, distinctProducts: 0, totalPieces: 0 };
+        const c = categoryMap.get(cat) ?? {
+          category: cat, distinctProducts: 0, totalPieces: 0, weight: 0, piecesWithoutWeight: 0,
+        };
         c.distinctProducts += 1;
         c.totalPieces += p.quantity;
+        if (p.hasWeight) c.weight += p.totalWeight as number;
+        else c.piecesWithoutWeight += 1;
         categoryMap.set(cat, c);
       }
-      const categories = Array.from(categoryMap.values()).sort((a, b) =>
-        a.category.localeCompare(b.category, "pt-BR"),
-      );
+      const categories = Array.from(categoryMap.values())
+        .map((c) => ({
+          ...c,
+          weight: Math.round(c.weight * 100) / 100,
+          participation: totalPiecesAll > 0
+            ? Math.round((c.totalPieces / totalPiecesAll) * 1000) / 10
+            : 0,
+        }))
+        .sort((a, b) => b.totalPieces - a.totalPieces);
 
-      // Build per-requisition detail
+      // Request detail with stats and sorting by priority
+      const STATUS_PRIORITY: Record<string, number> = { pending_approval: 0, approved: 1 };
       const requestsDetail = requests
         .map((r) => {
           const items = (itemsByRequest.get(r.id) ?? []).map((it) => {
@@ -1018,6 +1104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return {
                 type: "kit" as const,
                 id: it.id,
+                kitId: it.kitId as string,
                 name: k?.name ?? "Kit removido",
                 quantity: it.quantity ?? 0,
                 notes: it.notes ?? null,
@@ -1037,6 +1124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return {
               type: "product" as const,
               id: it.id,
+              productId: it.productId as string,
               name: p?.name ?? "Produto removido",
               sku: p?.sku ?? "—",
               unit: p?.unit ?? "unid",
@@ -1044,6 +1132,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               notes: it.notes ?? null,
             };
           });
+
+          let unitCount = 0;
+          let kitCount = 0;
+          let weightEstimate = 0;
+          for (const it of items) {
+            if (it.type === "product") {
+              unitCount += it.quantity;
+              const p = productMap.get(it.productId);
+              if (hasWeightFn(p?.weight)) weightEstimate += it.quantity * numVal(p?.weight);
+            } else {
+              kitCount += it.quantity;
+              for (const c of it.components) {
+                unitCount += c.quantity;
+                const cp = productMap.get(c.productId);
+                if (hasWeightFn(cp?.weight)) weightEstimate += c.quantity * numVal(cp?.weight);
+              }
+            }
+          }
+
           return {
             id: r.id,
             area: r.area,
@@ -1051,25 +1158,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
             requestedByName: r.requestedByUser?.name ?? r.requestedByUser?.username ?? "—",
             createdAt: r.createdAt,
             itemCount: items.length,
+            unitCount,
+            kitCount,
+            weightEstimate: Math.round(weightEstimate * 100) / 100,
             items,
           };
         })
-        .sort((a, b) => (a.area || "").localeCompare(b.area || "", "pt-BR"));
+        .sort((a, b) => {
+          const pa = STATUS_PRIORITY[a.status] ?? 9;
+          const pb = STATUS_PRIORITY[b.status] ?? 9;
+          if (pa !== pb) return pa - pb;
+          return (a.area || "").localeCompare(b.area || "", "pt-BR");
+        });
+
+      const piecesWithoutWeight = piecesArr.filter((p) => !p.hasWeight).length;
 
       res.json({
+        calculatedAt: new Date().toISOString(),
         eventId,
         event: { id: event.id, name: event.name, client: event.client, location: event.location, eventDate: event.eventDate },
         requestCount: requests.length,
+        pendingCount,
+        approvedCount,
         totals: {
           distinctProducts: piecesArr.length,
-          totalPieces: piecesArr.reduce((s, p) => s + p.quantity, 0),
+          totalPieces: totalPiecesAll,
           distinctKits: kitsArr.length,
           totalKits: kitsArr.reduce((s, k) => s + k.quantity, 0),
-          totalWeight: Math.round(piecesArr.reduce((s, p) => s + p.totalWeight, 0) * 100) / 100,
+          totalWeight: Math.round(
+            piecesArr.filter((p) => p.hasWeight).reduce((s, p) => s + (p.totalWeight as number), 0) * 100
+          ) / 100,
+          weightKnownCount: piecesArr.length - piecesWithoutWeight,
+          piecesWithoutWeight,
         },
         categories,
         pieces: piecesArr,
-        kits: kitsArr,
+        kits: kitsEnriched,
         requests: requestsDetail,
       });
     } catch (error) {
