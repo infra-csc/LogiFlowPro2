@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft, Edit, Plus, Truck, FileText, ClipboardList,
   AlertTriangle, CheckCircle2, Clock, Calendar, ChevronRight,
-  AlertCircle, Info, RefreshCw, Users, Package, Boxes,
+  AlertCircle, Info, RefreshCw, Users, Package, Boxes, ExternalLink,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -470,16 +470,29 @@ export default function EventDetails() {
               </span>
             )}
           </div>
-          {materials && (
-            <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
-              <Badge variant="outline" className="text-[10px]">
-                {materials.totals.distinctProducts} peça(s) · {materials.totals.totalPieces} unid
-              </Badge>
-              <Badge variant="outline" className="text-[10px]">
-                {materials.totals.distinctKits} kit(s) · {materials.totals.totalKits} unid
-              </Badge>
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+            {materials && (
+              <>
+                <Badge variant="outline" className="text-[10px]">
+                  {materials.totals.distinctProducts} peça(s) · {materials.totals.totalPieces} unid
+                </Badge>
+                <Badge variant="outline" className="text-[10px]">
+                  {materials.totals.distinctKits} kit(s) · {materials.totals.totalKits} unid
+                </Badge>
+              </>
+            )}
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              data-testid="link-materials-detail"
+            >
+              <a href={`/events/${id}/materials`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Ver detalhado
+              </a>
+            </Button>
+          </div>
         </div>
         <CardContent className="p-0">
           {materialsLoading ? (

@@ -894,9 +894,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return bomCache.get(kitId)!;
       };
 
+      const num = (v: any): number => {
+        const n = typeof v === "string" ? parseFloat(v) : Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+
       const pieces = new Map<
         string,
-        { productId: string; sku: string; name: string; unit: string; category: string | null; quantity: number; fromKits: number; direct: number }
+        {
+          productId: string; sku: string; name: string; unit: string;
+          category: string | null; ownership: string; location: string | null;
+          weight: number; quantity: number; fromKits: number; direct: number;
+          totalWeight: number;
+        }
       >();
       const kitSummary = new Map<
         string,
@@ -907,19 +917,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const addPiece = (productId: string, qty: number, source: "direct" | "kit") => {
         if (qty <= 0) return;
         const p = productMap.get(productId);
+        const weight = num(p?.weight);
         const existing = pieces.get(productId) ?? {
           productId,
           sku: p?.sku ?? "—",
           name: p?.name ?? "Produto removido",
           unit: p?.unit ?? "unid",
-          category: p?.category ?? null,
+          category: p?.category?.trim() ? p.category.trim() : null,
+          ownership: p?.ownership ?? "owned",
+          location: p?.location ?? null,
+          weight,
           quantity: 0,
           fromKits: 0,
           direct: 0,
+          totalWeight: 0,
         };
         existing.quantity += qty;
         if (source === "kit") existing.fromKits += qty;
         else existing.direct += qty;
+        existing.totalWeight = Math.round(existing.quantity * existing.weight * 100) / 100;
         pieces.set(productId, existing);
       };
 
@@ -932,6 +948,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         new Set(allItems.filter((it) => it.kitId).map((it) => it.kitId as string)),
       );
       await Promise.all(referencedKitIds.map((kitId) => getBom(kitId)));
+
+      // Per-requisition breakdown
+      const itemsByRequest = new Map<string, any[]>();
+      for (const it of allItems) {
+        const arr = itemsByRequest.get(it.requestId) ?? [];
+        arr.push(it);
+        itemsByRequest.set(it.requestId, arr);
+      }
 
       for (const it of allItems) {
         const qty = it.quantity ?? 0;
@@ -970,17 +994,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         a.name.localeCompare(b.name, "pt-BR"),
       );
 
+      // Category breakdown
+      const categoryMap = new Map<string, { category: string; distinctProducts: number; totalPieces: number }>();
+      for (const p of piecesArr) {
+        const cat = p.category?.trim() ? p.category.trim() : "Sem categoria";
+        const c = categoryMap.get(cat) ?? { category: cat, distinctProducts: 0, totalPieces: 0 };
+        c.distinctProducts += 1;
+        c.totalPieces += p.quantity;
+        categoryMap.set(cat, c);
+      }
+      const categories = Array.from(categoryMap.values()).sort((a, b) =>
+        a.category.localeCompare(b.category, "pt-BR"),
+      );
+
+      // Build per-requisition detail
+      const requestsDetail = requests
+        .map((r) => {
+          const items = (itemsByRequest.get(r.id) ?? []).map((it) => {
+            if (it.kitId && !it.productId) {
+              const k = kitMap.get(it.kitId);
+              const bom = bomCache.get(it.kitId) ?? [];
+              const params = (it.kitParameters as Record<string, number>) ?? {};
+              return {
+                type: "kit" as const,
+                id: it.id,
+                name: k?.name ?? "Kit removido",
+                quantity: it.quantity ?? 0,
+                notes: it.notes ?? null,
+                components: bom.map((line: any) => {
+                  const cp = productMap.get(line.productId);
+                  return {
+                    productId: line.productId,
+                    name: cp?.name ?? "Produto removido",
+                    sku: cp?.sku ?? "—",
+                    unit: cp?.unit ?? "unid",
+                    quantity: calcKitLineQty(line.quantityFormula, it.quantity ?? 0, params, line.productId),
+                  };
+                }),
+              };
+            }
+            const p = productMap.get(it.productId);
+            return {
+              type: "product" as const,
+              id: it.id,
+              name: p?.name ?? "Produto removido",
+              sku: p?.sku ?? "—",
+              unit: p?.unit ?? "unid",
+              quantity: it.quantity ?? 0,
+              notes: it.notes ?? null,
+            };
+          });
+          return {
+            id: r.id,
+            area: r.area,
+            status: r.status,
+            requestedByName: r.requestedByUser?.name ?? r.requestedByUser?.username ?? "—",
+            createdAt: r.createdAt,
+            itemCount: items.length,
+            items,
+          };
+        })
+        .sort((a, b) => (a.area || "").localeCompare(b.area || "", "pt-BR"));
+
       res.json({
         eventId,
+        event: { id: event.id, name: event.name, client: event.client, location: event.location, eventDate: event.eventDate },
         requestCount: requests.length,
         totals: {
           distinctProducts: piecesArr.length,
           totalPieces: piecesArr.reduce((s, p) => s + p.quantity, 0),
           distinctKits: kitsArr.length,
           totalKits: kitsArr.reduce((s, k) => s + k.quantity, 0),
+          totalWeight: Math.round(piecesArr.reduce((s, p) => s + p.totalWeight, 0) * 100) / 100,
         },
+        categories,
         pieces: piecesArr,
         kits: kitsArr,
+        requests: requestsDetail,
       });
     } catch (error) {
       console.error("[events/materials-summary] error:", error);
