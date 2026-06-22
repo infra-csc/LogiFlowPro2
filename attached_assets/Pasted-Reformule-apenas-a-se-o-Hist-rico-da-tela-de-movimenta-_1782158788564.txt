@@ -1,0 +1,428 @@
+Reformule apenas a seção “Histórico” da tela de movimentação para deixá-la mais compacta, clara e adequada como trilha de auditoria operacional.
+
+O histórico atual está visualmente estranho, possui muito espaço vazio e apresenta as ações como textos soltos. Quero uma linha do tempo profissional, fácil de consultar e com contexto suficiente para entender exatamente o que aconteceu.
+
+IMPORTANTE:
+- preservar todos os registros já existentes;
+- não excluir, unir nem alterar dados de auditoria no banco;
+- agrupamentos devem ser apenas visuais;
+- manter o tema escuro e o design system atual;
+- não inventar informações que não existam;
+- ordenar por data e hora, do mais recente para o mais antigo.
+
+==================================================
+1. REDUZIR O ESPAÇO VAZIO
+==================================================
+
+Remover a altura mínima excessiva do card de histórico.
+
+O container deve crescer de acordo com a quantidade de registros.
+
+Quando houver poucos registros, a seção deve ficar compacta.
+
+Quando houver muitos registros:
+- limitar a altura da lista;
+- usar scroll interno;
+- manter o cabeçalho e os filtros visíveis;
+- não deixar um card gigante com grande área vazia.
+
+==================================================
+2. ORGANIZAR POR DATA
+==================================================
+
+Agrupar visualmente as ações por dia.
+
+Exemplo:
+
+HOJE — 22 DE JUNHO DE 2026
+
+17:04  Registrou 2 unidades de CAVALETE RETO
+17:04  Removeu 2 unidades de CAVALETE RETO
+16:03  Status alterado de Criada para Em andamento
+
+ONTEM — 21 DE JUNHO DE 2026
+
+...
+
+Para datas mais antigas, usar:
+
+20 DE JUNHO DE 2026
+
+O agrupamento é apenas visual. Manter cada registro individualmente no histórico.
+
+==================================================
+3. MELHORAR CADA REGISTRO
+==================================================
+
+Cada ação deve ocupar uma linha compacta ou pequeno card, com esta estrutura:
+
+[ícone] Ação principal                           17:04
+        Detalhes da alteração
+        Yan Neves Araujo · Origem da ação
+
+Exemplo de entrada:
+
+Ícone verde
+
+Registrou 2 unidades de CAVALETE RETO                         17:04
+SKU: ITEM_CAVALETE_RETO
+Quantidade carregada: 0 → 2
+Yan Neves Araujo · Lançamento em lote
+
+Exemplo de remoção:
+
+Ícone vermelho
+
+Removeu 2 unidades de CAVALETE RETO                           17:04
+SKU: ITEM_CAVALETE_RETO
+Quantidade carregada: 2 → 0
+Yan Neves Araujo · Ajuste manual
+
+Exemplo de status:
+
+Ícone neutro ou azul discreto
+
+Status alterado                                               16:03
+Criada → Em andamento
+Yan Neves Araujo
+
+Não usar apenas:
+
+“Criada → Em Andamento”
+
+Sempre contextualizar:
+
+“Status alterado: Criada → Em andamento”
+
+==================================================
+4. CORRIGIR A TERMINOLOGIA
+==================================================
+
+Trocar textos como:
+
+“Registrou 2x CAVALETE RETO”
+
+por:
+
+“Registrou 2 unidades de CAVALETE RETO”
+
+Trocar:
+
+“Removeu 2x CAVALETE RETO”
+
+por:
+
+“Removeu 2 unidades de CAVALETE RETO”
+
+Usar singular corretamente:
+
+“Registrou 1 unidade de TINA CAIXA D’ÁGUA 300L”
+
+Usar plural:
+
+“Registrou 2 unidades de CAVALETE RETO”
+
+Não utilizar “x” para representar quantidade no histórico.
+
+==================================================
+5. MOSTRAR ANTES E DEPOIS
+==================================================
+
+Quando os dados estiverem disponíveis, mostrar:
+
+- quantidade anterior;
+- quantidade alterada;
+- nova quantidade;
+- quantidade esperada;
+- quantidade restante.
+
+Exemplo:
+
+Quantidade carregada: 0 → 2
+Esperado: 2
+Restante: 0
+
+Para remoção:
+
+Quantidade carregada: 2 → 0
+Quantidade removida: 2
+Restante: 2
+
+Para excedente:
+
+Quantidade carregada: 20 → 22
+Esperado: 20
+Excedente: 2
+
+Nunca calcular ou inventar esses valores no frontend. Utilizar apenas dados reais ou valores calculáveis de forma segura a partir do registro.
+
+==================================================
+6. IDENTIFICAR A ORIGEM DA AÇÃO
+==================================================
+
+Quando essa informação estiver disponível, mostrar a origem:
+
+- Scanner;
+- Leitura unitária;
+- Lançamento em lote;
+- Ajuste manual;
+- Carregar restante;
+- Desfazer;
+- Alteração de status;
+- Finalização;
+- Sistema.
+
+Exemplo:
+
+Yan Neves Araujo · Scanner
+
+ou:
+
+Yan Neves Araujo · Ajuste manual
+
+Caso a origem não esteja registrada, mostrar somente o usuário e não inventar uma origem.
+
+==================================================
+7. DIFERENCIAR OS TIPOS DE AÇÃO
+==================================================
+
+Usar cores somente como apoio:
+
+- verde: entrada ou registro de quantidade;
+- vermelho: remoção;
+- amarelo: ajuste, pendência ou excedente;
+- azul discreto: alteração de status;
+- cinza: ações automáticas ou informativas.
+
+Evitar círculos muito grandes.
+
+Usar ícones pequenos dentro de um container discreto.
+
+A cor não deve ser aplicada no texto inteiro. Destacar apenas:
+- ícone;
+- pequena borda;
+- badge;
+- valor alterado.
+
+==================================================
+8. MELHORAR A LINHA DO TEMPO
+==================================================
+
+A linha vertical atual está pouco clara.
+
+Criar uma timeline consistente:
+
+- ícone alinhado à esquerda;
+- linha vertical conectando os registros;
+- conteúdo com recuo adequado;
+- horário alinhado à direita;
+- espaçamento uniforme entre os registros.
+
+A linha deve terminar no último registro.
+
+Não deixar a linha continuando em uma grande área vazia.
+
+==================================================
+9. TRATAR AÇÕES NO MESMO MINUTO
+==================================================
+
+Existem várias ações registradas no mesmo minuto.
+
+Manter a ordem real por timestamp completo, incluindo segundos, mesmo que os segundos não sejam sempre exibidos.
+
+Ao passar o mouse sobre o horário, mostrar tooltip com data e hora completa:
+
+22/06/2026 às 17:04:38
+
+Não agrupar ações diferentes em uma única ação no banco.
+
+Opcionalmente, quando várias ações consecutivas forem feitas pelo mesmo usuário e no mesmo produto, permitir um agrupamento visual recolhível:
+
+4 alterações em CAVALETE RETO · 17:04
+
+Ao expandir:
+- registrou 2 unidades;
+- removeu 2 unidades;
+- registrou 2 unidades;
+- etc.
+
+Esse agrupamento deve ser apenas visual e nunca ocultar permanentemente os registros individuais.
+
+==================================================
+10. MELHORAR OS FILTROS
+==================================================
+
+Manter os filtros:
+
+- Todos;
+- Itens;
+- Status.
+
+Melhorar os textos e contadores:
+
+Todos 5
+Movimentações de itens 4
+Alterações de status 1
+
+Adicionar, caso a quantidade de registros aumente:
+
+- busca por produto, SKU ou usuário;
+- período;
+- tipo de ação;
+- somente adições;
+- somente remoções;
+- somente ajustes;
+- somente ações com evidência.
+
+Os filtros devem funcionar sem recarregar toda a página.
+
+==================================================
+11. DETALHES EXPANSÍVEIS
+==================================================
+
+A linha principal deve continuar compacta.
+
+Adicionar um botão discreto ou permitir clique na linha para expandir os detalhes.
+
+Detalhes possíveis:
+
+Produto: CAVALETE RETO
+SKU: ITEM_CAVALETE_RETO
+Ação: Registro de quantidade
+Quantidade: +2
+Antes: 0
+Depois: 2
+Esperado: 2
+Origem: Lançamento em lote
+Usuário: Yan Neves Araujo
+Data e hora: 22/06/2026 às 17:04:38
+Observação: —
+Evidência vinculada: —
+
+Mostrar apenas campos que possuam informação.
+
+Não exibir linhas vazias ou “—” em excesso.
+
+==================================================
+12. MOSTRAR RELAÇÃO ENTRE AÇÕES
+==================================================
+
+Quando uma ação for o desfazer de outra, mostrar claramente:
+
+“Desfez o registro de 2 unidades de CAVALETE RETO”
+
+Em vez de exibir apenas:
+
+“Removeu 2 unidades de CAVALETE RETO”
+
+Adicionar, quando possível:
+
+“Referente ao lançamento realizado às 17:04:12”
+
+Caso seja uma remoção manual normal, manter:
+
+“Removeu 2 unidades de CAVALETE RETO”
+
+Não classificar toda remoção automaticamente como desfazer.
+
+==================================================
+13. MELHORAR O CABEÇALHO
+==================================================
+
+Cabeçalho:
+
+Histórico
+Registro completo das ações realizadas nesta movimentação
+
+À direita, mostrar:
+
+5 ações registradas
+
+Abaixo, exibir os filtros.
+
+Adicionar botão secundário:
+
+“Exportar histórico”
+
+Somente se essa funcionalidade já puder ser implementada com dados reais.
+
+Não adicionar botão sem funcionamento.
+
+==================================================
+14. ESTADO VAZIO
+==================================================
+
+Quando não houver registros:
+
+Ícone discreto
+
+Nenhuma ação registrada
+
+As alterações de itens, status e evidências aparecerão aqui.
+
+Não mostrar um card gigante vazio.
+
+==================================================
+15. RESPONSIVIDADE
+==================================================
+
+Desktop:
+- ação principal à esquerda;
+- horário à direita;
+- detalhes em uma segunda linha;
+- filtros na mesma área do cabeçalho.
+
+Mobile:
+- horário abaixo da ação;
+- conteúdo em uma coluna;
+- detalhes expansíveis;
+- sem cortes horizontais;
+- timeline alinhada corretamente.
+
+==================================================
+16. EXEMPLO VISUAL FINAL
+==================================================
+
+Histórico                                      5 ações registradas
+
+[Todos 5] [Movimentações de itens 4] [Status 1]
+
+HOJE — 22 DE JUNHO DE 2026
+
+● Registrou 2 unidades de CAVALETE RETO                 17:04
+  Quantidade carregada: 0 → 2 · Restante: 0
+  Yan Neves Araujo · Lançamento em lote
+
+● Removeu 2 unidades de CAVALETE RETO                   17:04
+  Quantidade carregada: 2 → 0 · Restante: 2
+  Yan Neves Araujo · Ajuste manual
+
+● Registrou 1 unidade de TINA CAIXA D’ÁGUA 300L         17:04
+  Quantidade carregada: 0 → 1
+  Yan Neves Araujo · Scanner
+
+● Status alterado                                       16:03
+  Criada → Em andamento
+  Yan Neves Araujo
+
+==================================================
+17. CRITÉRIOS DE ACEITE
+==================================================
+
+A melhoria estará correta quando:
+
+1. O histórico não possuir uma grande área vazia.
+2. As ações estiverem agrupadas visualmente por data.
+3. Os registros mais recentes aparecerem primeiro.
+4. O horário ficar claramente separado da descrição.
+5. “2x” for substituído por “2 unidades”.
+6. Alterações de status possuírem contexto.
+7. Adições e remoções estiverem visualmente diferenciadas.
+8. Cada ação mostrar usuário e horário.
+9. Antes e depois aparecerem quando os dados existirem.
+10. A origem da ação aparecer quando estiver disponível.
+11. A timeline terminar no último registro.
+12. Ações no mesmo minuto mantiverem a ordem real.
+13. O usuário puder expandir detalhes sem poluir a lista.
+14. Nenhum registro de auditoria for removido ou alterado.
+15. A seção continuar coerente com o design do EventFlow.

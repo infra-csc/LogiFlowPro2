@@ -156,6 +156,8 @@ export default function MovementDetails() {
   const [newStatus, setNewStatus] = useState<string>("");
 
   // ── List filters ────────────────────────────────────────────────────────────
+  const [auditSearchQuery, setAuditSearchQuery] = useState("");
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
   const [loadedSearchQuery, setLoadedSearchQuery] = useState("");
   const [expectedFilter, setExpectedFilter] = useState<"all" | "pending" | "complete" | "exceeded">("all");
@@ -412,12 +414,147 @@ export default function MovementDetails() {
   }, [attachments, evidenceCategoryFilter]);
 
   const filteredAuditLogs = useMemo(() => {
-    if (auditFilter === "all") return auditLogs;
-    if (auditFilter === "items") return auditLogs.filter((l) => ["item_added", "item_removed", "item_quantity_changed"].includes(l.action));
-    if (auditFilter === "status") return auditLogs.filter((l) => l.action === "status_changed");
-    if (auditFilter === "evidence") return auditLogs.filter((l) => l.action === "evidence_added");
-    return auditLogs;
-  }, [auditLogs, auditFilter]);
+    let logs = auditLogs;
+    if (auditFilter === "items") logs = logs.filter((l) => ["item_added", "item_removed", "item_quantity_changed"].includes(l.action));
+    else if (auditFilter === "status") logs = logs.filter((l) => l.action === "status_changed");
+    else if (auditFilter === "evidence") logs = logs.filter((l) => l.action === "evidence_added");
+    if (auditSearchQuery.trim()) {
+      const q = auditSearchQuery.toLowerCase();
+      logs = logs.filter((l) => {
+        const m = l.metadata as any;
+        return (
+          m?.productName?.toLowerCase().includes(q) ||
+          m?.sku?.toLowerCase().includes(q) ||
+          l.actorName?.toLowerCase().includes(q)
+        );
+      });
+    }
+    return logs;
+  }, [auditLogs, auditFilter, auditSearchQuery]);
+
+  const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const formatDatePT = (d: Date) => `${d.getDate()} de ${MONTHS_PT[d.getMonth()]} de ${d.getFullYear()}`;
+
+  const groupedAuditLogs = useMemo(() => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+    const yesterdayKey = `${yesterday.getFullYear()}-${yesterday.getMonth()}-${yesterday.getDate()}`;
+
+    const groups: Array<{ dateKey: string; label: string; logs: typeof filteredAuditLogs }> = [];
+    const seen = new Map<string, number>();
+
+    filteredAuditLogs.forEach((log) => {
+      const d = new Date(log.occurredAt);
+      const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!seen.has(dateKey)) {
+        let label: string;
+        if (dateKey === todayKey) label = "HOJE — " + formatDatePT(d).toUpperCase();
+        else if (dateKey === yesterdayKey) label = "ONTEM — " + formatDatePT(d).toUpperCase();
+        else label = formatDatePT(d).toUpperCase();
+        seen.set(dateKey, groups.length);
+        groups.push({ dateKey, label, logs: [log] });
+      } else {
+        groups[seen.get(dateKey)!].logs.push(log);
+      }
+    });
+    return groups;
+  }, [filteredAuditLogs]);
+
+  const getLogTitle = (log: MovementAuditLog) => {
+    const m = log.metadata as any;
+    const qty: number = m?.quantity ?? 0;
+    const unitLabel = qty === 1 ? "unidade" : "unidades";
+    const name: string = m?.productName ?? "";
+    switch (log.action) {
+      case "item_added": return `Registrou ${qty} ${unitLabel} de ${name}`;
+      case "item_removed": return `Removeu ${qty} ${unitLabel} de ${name}`;
+      case "item_quantity_changed": return `Ajustou quantidade de ${name}`;
+      case "status_changed": return "Status alterado";
+      case "evidence_added": return m?.fileType === "image" ? "Foto anexada" : "Vídeo anexado";
+      default: return log.action;
+    }
+  };
+
+  const getLogDetails = (log: MovementAuditLog): string[] => {
+    const m = log.metadata as any;
+    const ctx = log.context as any;
+    const details: string[] = [];
+    switch (log.action) {
+      case "item_added": {
+        const prev: number = m?.previousQuantity ?? 0;
+        const next = prev + (m?.quantity ?? 0);
+        details.push(`Quantidade carregada: ${prev} → ${next}`);
+        if (m?.sku) details.push(`SKU: ${m.sku}`);
+        break;
+      }
+      case "item_removed": {
+        if (m?.previousQuantity != null) {
+          const next = Math.max(0, m.previousQuantity - (m?.quantity ?? 0));
+          details.push(`Quantidade carregada: ${m.previousQuantity} → ${next}`);
+        }
+        if (m?.sku) details.push(`SKU: ${m.sku}`);
+        break;
+      }
+      case "item_quantity_changed": {
+        if (m?.previousQuantity != null && m?.newQuantity != null) {
+          details.push(`Quantidade: ${m.previousQuantity} → ${m.newQuantity}`);
+        }
+        if (m?.quantityDecremented != null) details.push(`Ajuste: −${m.quantityDecremented}`);
+        if (m?.sku) details.push(`SKU: ${m.sku}`);
+        break;
+      }
+      case "status_changed": {
+        const prev = getStatusLabel(ctx?.previousStatus);
+        const next = getStatusLabel(ctx?.newStatus);
+        details.push(`${prev} → ${next}`);
+        break;
+      }
+      case "evidence_added": {
+        if (m?.fileName) details.push(`Arquivo: ${m.fileName}`);
+        if (m?.isPostCompletion) details.push("Adicionada após a conclusão da movimentação");
+        break;
+      }
+    }
+    return details;
+  };
+
+  const getLogSource = (log: MovementAuditLog): string | undefined => {
+    const m = log.metadata as any;
+    return m?.source as string | undefined;
+  };
+
+  const getLogIconConfig = (action: string) => {
+    switch (action) {
+      case "item_added": return { bg: "bg-emerald-500/15 border-emerald-500/40 text-emerald-400", line: "bg-emerald-500/20" };
+      case "item_removed": return { bg: "bg-rose-500/15 border-rose-500/40 text-rose-400", line: "bg-rose-500/20" };
+      case "item_quantity_changed": return { bg: "bg-amber-500/15 border-amber-500/40 text-amber-400", line: "bg-amber-500/20" };
+      case "status_changed": return { bg: "bg-sky-500/15 border-sky-500/40 text-sky-400", line: "bg-sky-500/20" };
+      case "evidence_added": return { bg: "bg-violet-500/15 border-violet-500/40 text-violet-400", line: "bg-violet-500/20" };
+      default: return { bg: "bg-muted/40 border-border text-muted-foreground", line: "bg-border/40" };
+    }
+  };
+
+  const getLogIconEl = (action: string) => {
+    switch (action) {
+      case "item_added": return <Plus className="h-2.5 w-2.5" />;
+      case "item_removed": return <Minus className="h-2.5 w-2.5" />;
+      case "item_quantity_changed": return <Edit className="h-2.5 w-2.5" />;
+      case "status_changed": return <Activity className="h-2.5 w-2.5" />;
+      case "evidence_added": return <Camera className="h-2.5 w-2.5" />;
+      default: return <Clock className="h-2.5 w-2.5" />;
+    }
+  };
+
+  const toggleLogExpanded = (logId: string) => {
+    setExpandedLogs((prev) => {
+      const next = new Set(prev);
+      if (next.has(logId)) next.delete(logId);
+      else next.add(logId);
+      return next;
+    });
+  };
 
   const evidenceByProduct = useMemo(() => {
     const map = new Map<string, number>();
@@ -1734,82 +1871,181 @@ export default function MovementDetails() {
       )}
 
       {/* Histórico */}
-      {!focusMode && auditLogs.length > 0 && (
-        <PageSection title="Histórico" description="Registro de ações na movimentação">
-          <Card className="border-border/60">
-            <CardContent className="p-4">
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {([
-                  { key: "all" as const, label: "Todos", count: auditLogs.length },
-                  { key: "items" as const, label: "Itens", count: auditLogs.filter((l) => ["item_added", "item_removed", "item_quantity_changed"].includes(l.action)).length },
-                  { key: "status" as const, label: "Status", count: auditLogs.filter((l) => l.action === "status_changed").length },
-                  { key: "evidence" as const, label: "Evidências", count: auditLogs.filter((l) => l.action === "evidence_added").length },
-                ]).map(({ key, label, count }) => {
-                  if (key !== "all" && count === 0) return null;
-                  return (
-                    <Button key={key} variant={auditFilter === key ? "default" : "outline"} size="sm" className="text-xs h-7" onClick={() => setAuditFilter(key)} data-testid={`filter-audit-${key}`}>
-                      {label}
-                      <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px] no-default-hover-elevate no-default-active-elevate">{count}</Badge>
-                    </Button>
-                  );
-                })}
-              </div>
-              <ScrollArea className="h-[300px] pr-4" style={{ scrollbarWidth: "thin" }}>
-                {filteredAuditLogs.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8 text-sm">Nenhum evento neste filtro</p>
-                ) : (
-                  <div className="relative pl-6">
-                    <div className="absolute left-2 top-2 bottom-2 w-px bg-border/40" />
-                    <div className="space-y-0.5">
-                      {filteredAuditLogs.map((log) => {
-                        const getActionMeta = () => {
-                          switch (log.action) {
-                            case "item_added": return { icon: <Plus className="h-3 w-3" />, color: "bg-emerald-500 text-white", label: "Item adicionado" };
-                            case "item_removed": return { icon: <Minus className="h-3 w-3" />, color: "bg-rose-500 text-white", label: "Item removido" };
-                            case "status_changed": return { icon: <Activity className="h-3 w-3" />, color: "bg-sky-500 text-white", label: "Status alterado" };
-                            case "item_quantity_changed": return { icon: <Edit className="h-3 w-3" />, color: "bg-amber-500 text-white", label: "Quantidade ajustada" };
-                            case "evidence_added": return { icon: <Camera className="h-3 w-3" />, color: "bg-violet-500 text-white", label: "Evidência adicionada" };
-                            default: return { icon: <Clock className="h-3 w-3" />, color: "bg-muted-foreground/50 text-white", label: log.action };
-                          }
-                        };
-                        const getActionDescription = () => {
-                          const metadata = log.metadata as any;
-                          const context = log.context as any;
-                          switch (log.action) {
-                            case "item_added": return `Registrou ${metadata?.quantity}x ${metadata?.productName}`;
-                            case "item_removed": return `Removeu ${metadata?.quantity}x ${metadata?.productName}`;
-                            case "status_changed": return `${getStatusLabel(context?.previousStatus)} → ${getStatusLabel(context?.newStatus)}`;
-                            case "item_quantity_changed": return `${metadata?.productName}: ${metadata?.previousQuantity} → ${metadata?.newQuantity}`;
-                            case "evidence_added": {
-                              const typeLabel = metadata?.fileType === "image" ? "Foto" : "Vídeo";
-                              const post = metadata?.isPostCompletion ? " (pós-conclusão)" : "";
-                              return `${typeLabel} anexada${post}${metadata?.fileName ? `: ${metadata.fileName}` : ""}`;
-                            }
-                            default: return log.action;
-                          }
-                        };
-                        const meta = getActionMeta();
-                        return (
-                          <div key={log.id} className="flex items-start gap-3 py-2.5 relative" data-testid={`audit-log-${log.id}`}>
-                            <div className={`absolute -left-4 flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center z-10 ${meta.color}`}>
-                              {meta.icon}
-                            </div>
-                            <div className="flex-1 min-w-0 pl-1">
-                              <p className="text-sm font-medium leading-snug">{getActionDescription()}</p>
-                              <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1"><User className="h-3 w-3" />{log.actorName}</span>
-                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(log.occurredAt), "dd/MM/yy HH:mm")}</span>
-                              </div>
+      {!focusMode && (
+        <PageSection>
+          {/* Custom header */}
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 className="font-semibold text-sm leading-snug">Histórico</h3>
+              <p className="text-xs text-muted-foreground">Registro completo de ações realizadas nesta movimentação</p>
+            </div>
+            <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate">
+              {auditLogs.length} {auditLogs.length === 1 ? "ação registrada" : "ações registradas"}
+            </Badge>
+          </div>
+
+          {auditLogs.length === 0 ? (
+            <Card className="border-border/60">
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <Clock className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                <p className="text-sm font-medium">Nenhuma ação registrada</p>
+                <p className="text-xs mt-1">Alterações de itens, status e evidências aparecerão aqui.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-border/60">
+              <CardContent className="p-4 space-y-3">
+                {/* Filters + search row */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { key: "all" as const, label: "Todos", count: auditLogs.length },
+                      { key: "items" as const, label: "Movimentações de itens", count: auditLogs.filter((l) => ["item_added","item_removed","item_quantity_changed"].includes(l.action)).length },
+                      { key: "status" as const, label: "Alterações de status", count: auditLogs.filter((l) => l.action === "status_changed").length },
+                      { key: "evidence" as const, label: "Evidências", count: auditLogs.filter((l) => l.action === "evidence_added").length },
+                    ]).map(({ key, label, count }) => {
+                      if (key !== "all" && count === 0) return null;
+                      return (
+                        <Button key={key} variant={auditFilter === key ? "default" : "outline"} size="sm" className="text-xs h-7" onClick={() => setAuditFilter(key)} data-testid={`filter-audit-${key}`}>
+                          {label}
+                          <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px] no-default-hover-elevate no-default-active-elevate">{count}</Badge>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  {/* Search */}
+                  <div className="flex-1 min-w-40 relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      value={auditSearchQuery}
+                      onChange={(e) => setAuditSearchQuery(e.target.value)}
+                      placeholder="Buscar por produto, SKU ou usuário..."
+                      className="pl-8 h-7 text-xs"
+                      data-testid="input-search-audit"
+                    />
+                    {auditSearchQuery && (
+                      <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setAuditSearchQuery("")}>
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Timeline */}
+                <div className="max-h-[520px] overflow-y-auto -mx-1 px-1" style={{ scrollbarWidth: "thin" }}>
+                  {groupedAuditLogs.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-6">
+                      <Search className="h-6 w-6 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">Nenhum resultado para este filtro</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {groupedAuditLogs.map((group) => (
+                        <div key={group.dateKey}>
+                          {/* Date separator */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="h-px flex-1 bg-border/40" />
+                            <span className="text-[10px] font-semibold text-muted-foreground tracking-widest px-1">{group.label}</span>
+                            <div className="h-px flex-1 bg-border/40" />
+                          </div>
+
+                          {/* Entries for this day */}
+                          <div className="relative pl-6">
+                            {/* Vertical timeline line — stops before last entry's icon */}
+                            {group.logs.length > 1 && (
+                              <div
+                                className="absolute left-[9px] top-3 w-px bg-border/40"
+                                style={{ height: `calc(100% - 22px)` }}
+                              />
+                            )}
+                            <div className="space-y-0.5">
+                              {group.logs.map((log) => {
+                                const iconCfg = getLogIconConfig(log.action);
+                                const title = getLogTitle(log);
+                                const details = getLogDetails(log);
+                                const source = getLogSource(log);
+                                const isExpanded = expandedLogs.has(log.id);
+                                const occurredAt = new Date(log.occurredAt);
+                                const hasExpandable = details.length > 0;
+
+                                return (
+                                  <div
+                                    key={log.id}
+                                    className="relative flex items-start gap-3 py-1.5"
+                                    data-testid={`audit-log-${log.id}`}
+                                  >
+                                    {/* Icon dot */}
+                                    <div className={`relative z-10 flex-shrink-0 mt-0.5 w-[18px] h-[18px] rounded-full border flex items-center justify-center ${iconCfg.bg}`}>
+                                      {getLogIconEl(log.action)}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="flex-1 min-w-0">
+                                      {/* Main row: title + time */}
+                                      <div className="flex items-start justify-between gap-2">
+                                        <button
+                                          onClick={() => hasExpandable && toggleLogExpanded(log.id)}
+                                          className={`text-left flex-1 min-w-0 ${hasExpandable ? "cursor-pointer" : "cursor-default"}`}
+                                          data-testid={`audit-toggle-${log.id}`}
+                                        >
+                                          <span className="text-sm font-medium leading-snug">{title}</span>
+                                        </button>
+                                        <span
+                                          className="text-xs text-muted-foreground tabular-nums shrink-0 cursor-default select-none"
+                                          title={format(occurredAt, "dd/MM/yyyy 'às' HH:mm:ss")}
+                                        >
+                                          {format(occurredAt, "HH:mm")}
+                                        </span>
+                                      </div>
+
+                                      {/* First detail line — always visible as preview */}
+                                      {details.length > 0 && !isExpanded && (
+                                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{details[0]}</p>
+                                      )}
+
+                                      {/* Actor + source */}
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {log.actorName}
+                                        {source && <span className="opacity-70"> · {source}</span>}
+                                      </p>
+
+                                      {/* Expanded details panel */}
+                                      {isExpanded && (
+                                        <div className="mt-1.5 p-2.5 bg-muted/30 rounded-md text-xs space-y-1 border border-border/40">
+                                          {details.map((d, i) => (
+                                            <p key={i} className="text-muted-foreground">{d}</p>
+                                          ))}
+                                          <p className="text-muted-foreground/60 pt-0.5 border-t border-border/30 mt-1">
+                                            {format(occurredAt, "dd/MM/yyyy 'às' HH:mm:ss")}
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      {/* Expand / collapse toggle */}
+                                      {hasExpandable && (
+                                        <button
+                                          onClick={() => toggleLogExpanded(log.id)}
+                                          className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground mt-0.5 flex items-center gap-0.5 transition-colors"
+                                          data-testid={`audit-expand-${log.id}`}
+                                        >
+                                          {isExpanded ? "Recolher" : "Ver detalhes"}
+                                          <ChevronRight className={`h-2.5 w-2.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </PageSection>
       )}
 
