@@ -905,70 +905,11 @@ export function AddItemDialog({
                                       </div>
                                     )}
 
-                                    {/* ── Fixed items: auto-calculated ── */}
+                                    {/* ── Fixed items: shown as informational note only ── */}
                                     {fixedLines.length > 0 && (
-                                      <div className="rounded-md border border-border/40 overflow-hidden">
-                                        {variableLines.length > 0 && (
-                                          <div className="px-3 py-1.5 border-b border-border/30 bg-muted/30">
-                                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                              Calculados automaticamente
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="divide-y divide-border/20">
-                                          {fixedLines.map((line) => {
-                                            const isExcluded = expansion.excludedItems.includes(line.productId);
-                                            return (
-                                              <div
-                                                key={line.productId}
-                                                className={cn(
-                                                  "flex items-center gap-3 px-3 py-2",
-                                                  isExcluded && "opacity-40"
-                                                )}
-                                              >
-                                                {/* Checkbox */}
-                                                <button
-                                                  onClick={() => toggleExcludeKitItem(kit.id, line.productId)}
-                                                  className={cn(
-                                                    "w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors",
-                                                    isExcluded ? "border-border/50 bg-transparent" : "border-primary bg-primary"
-                                                  )}
-                                                  title={isExcluded ? "Incluir este item" : "Não preciso deste item"}
-                                                  data-testid={`button-exclude-param-${kit.id}-${line.productId}`}
-                                                >
-                                                  {!isExcluded && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-                                                </button>
-                                                {/* Name */}
-                                                <div className="flex-1 min-w-0">
-                                                  <p className={cn("text-xs font-medium", isExcluded && "line-through text-muted-foreground")}>
-                                                    {line.productName}
-                                                  </p>
-                                                  <p className="text-[10px] text-muted-foreground">{line.sku}</p>
-                                                </div>
-                                                {/* Qty: shows calculated, editable */}
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                  <Input
-                                                    type="number"
-                                                    min="0"
-                                                    value={line.finalQty}
-                                                    onChange={(e) => updateBomLineQty(kit.id, line.productId, parseInt(e.target.value) || 0)}
-                                                    disabled={isExcluded}
-                                                    className="w-14 h-6 text-center text-xs font-semibold px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                  />
-                                                  <span className="text-xs text-muted-foreground w-10 truncate">{line.unit}</span>
-                                                  <button
-                                                    onClick={() => removeBomLine(kit.id, line.productId)}
-                                                    className="text-muted-foreground/40 hover:text-destructive transition-colors"
-                                                    title="Remover do kit"
-                                                  >
-                                                    <X className="h-3 w-3" />
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
+                                      <p className="text-[11px] text-muted-foreground px-1">
+                                        + {fixedLines.length} {fixedLines.length === 1 ? "item calculado automaticamente" : "itens calculados automaticamente"}
+                                      </p>
                                     )}
                                   </div>
                                 );
