@@ -68,7 +68,7 @@ export function ProjectionMatrix({
     return [...products].sort((a, b) => {
       const statusDiff = ORDER[a.worstStatus] - ORDER[b.worstStatus];
       if (statusDiff !== 0) return statusDiff;
-      return (b.totalOutbound + b.totalInbound) - (a.totalOutbound + a.totalInbound);
+      return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
     });
   }, [products]);
 

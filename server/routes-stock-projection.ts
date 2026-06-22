@@ -290,9 +290,20 @@ export function registerStockProjectionRoutes(app: Express) {
 
         for (const m of movementRows) {
           if (m.status === "cancelled") continue;
-          const nature =
+          const resolvedNature =
             (m.typeConfigId && natureMap.get(m.typeConfigId)) ||
             (m.legacyType?.startsWith("inbound") ? "inbound" : m.legacyType?.startsWith("outbound") ? "outbound" : null);
+          // Physical movements that are already in_progress/paused/completed and have
+          // scanned items should still appear in the projection (their effect is already
+          // baked into currentStock, so alreadyPhysical=true prevents double-counting).
+          // Movements with unresolvable nature AND non-physical are silently skipped.
+          const isPhysicalMovement = PHYSICAL_MOVEMENT_STATUS.has(m.status);
+          const nature: "inbound" | "outbound" | null =
+            resolvedNature === "inbound" || resolvedNature === "outbound"
+              ? resolvedNature
+              : isPhysicalMovement
+                ? "outbound"
+                : null;
           if (nature !== "inbound" && nature !== "outbound") continue;
 
           const items = itemsByMovement.get(m.id) || [];
