@@ -1604,6 +1604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quantity: qty,
             notes: item.notes || undefined,
             kitId: item.kitId || undefined,
+            kitParameters: item.kitParameters ?? undefined,
           } as any);
           results.push({ ...created, action: "created" });
         }
