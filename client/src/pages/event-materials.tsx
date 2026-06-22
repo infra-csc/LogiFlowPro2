@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -7,6 +7,7 @@ import {
   Package, Boxes, Download, Search, ChevronRight, ChevronDown,
   Layers, Scale, FileText, Building2, MapPin, Calendar, ArrowLeft,
   Info, X, ExternalLink, Tag, AlertTriangle, Filter,
+  ArrowUp, ArrowDown, ChevronsUpDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -67,6 +68,9 @@ interface MaterialsData {
   kits: KitDetail[];
   requests: RequestDetail[];
 }
+
+type ColSortKey = "quantity" | "direct" | "fromKits" | "totalWeight" | "reqCount";
+type ColSort = { col: ColSortKey; dir: "asc" | "desc" } | null;
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -179,7 +183,7 @@ function PieceDrawer({ piece, data, open, onClose }: {
           {[
             { label: "Avulso", value: piece.direct },
             { label: "Via kits", value: piece.fromKits },
-            { label: "Total", value: piece.quantity, bold: true },
+            { label: "Total físico", value: piece.quantity, bold: true },
           ].map(({ label, value, bold }) => (
             <div key={label} className="flex-1 text-center">
               <p className={`text-xl tabular-nums ${bold ? "font-bold" : "font-semibold"}`}>{fmtNum(value)}</p>
@@ -276,7 +280,11 @@ export default function EventMaterials() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [ownershipFilter, setOwnershipFilter] = useState("all");
   const [originFilter, setOriginFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("name-asc");
+  const [sortBy, setSortBy] = useState("qty-desc");
+  const [minQty, setMinQty] = useState("");
+  const [maxQty, setMaxQty] = useState("");
+  const [topFilter, setTopFilter] = useState<"all" | "10" | "20">("all");
+  const [colSort, setColSort] = useState<ColSort>(null);
   // Filters — requests
   const [reqStatusFilter, setReqStatusFilter] = useState("all");
   const [reqKitFilter, setReqKitFilter] = useState("all");
@@ -292,46 +300,8 @@ export default function EventMaterials() {
     refetchOnWindowFocus: true,
   });
 
-  // ── Filtered & sorted pieces ───────────────────────────────────────────────
+  // ── Per-piece requisition count ────────────────────────────────────────────
 
-  const filteredPieces = useMemo(() => {
-    if (!data) return [];
-    const q = search.trim().toLowerCase();
-    let list = data.pieces.filter((p) => {
-      if (categoryFilter !== "all" && (p.category ?? "Sem categoria") !== categoryFilter) return false;
-      if (ownershipFilter !== "all" && p.ownership !== ownershipFilter) return false;
-      if (originFilter === "direct" && !(p.direct > 0 && p.fromKits === 0)) return false;
-      if (originFilter === "kit" && !(p.direct === 0 && p.fromKits > 0)) return false;
-      if (originFilter === "both" && !(p.direct > 0 && p.fromKits > 0)) return false;
-      if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
-      return true;
-    });
-
-    list = [...list].sort((a, b) => {
-      switch (sortBy) {
-        case "name-desc": return b.name.localeCompare(a.name, "pt-BR");
-        case "qty-desc": return b.quantity - a.quantity;
-        case "qty-asc": return a.quantity - b.quantity;
-        case "weight-desc": return (b.totalWeight ?? -1) - (a.totalWeight ?? -1);
-        case "category": return (a.category ?? "Sem categoria").localeCompare(b.category ?? "Sem categoria", "pt-BR") || a.name.localeCompare(b.name, "pt-BR");
-        case "ownership": return a.ownership.localeCompare(b.ownership) || a.name.localeCompare(b.name, "pt-BR");
-        default: return a.name.localeCompare(b.name, "pt-BR");
-      }
-    });
-    return list;
-  }, [data, search, categoryFilter, ownershipFilter, originFilter, sortBy]);
-
-  const filteredRequests = useMemo(() => {
-    if (!data) return [];
-    return data.requests.filter((r) => {
-      if (reqStatusFilter !== "all" && r.status !== reqStatusFilter) return false;
-      if (reqKitFilter === "with" && r.kitCount === 0) return false;
-      if (reqKitFilter === "without" && r.kitCount > 0) return false;
-      return true;
-    });
-  }, [data, reqStatusFilter, reqKitFilter]);
-
-  // Per-piece requisition count
   const pieceReqCount = useMemo(() => {
     if (!data) return new Map<string, number>();
     const counts = new Map<string, Set<string>>();
@@ -351,9 +321,117 @@ export default function EventMaterials() {
     return new Map(Array.from(counts.entries()).map(([k, v]) => [k, v.size]));
   }, [data]);
 
+  // ── Column-header sort helper ──────────────────────────────────────────────
+
+  const handleColSort = useCallback((col: ColSortKey) => {
+    setColSort((prev) => {
+      if (prev?.col !== col) return { col, dir: "desc" };
+      if (prev.dir === "desc") return { col, dir: "asc" };
+      return null;
+    });
+  }, []);
+
+  const ColSortIcon = useCallback(({ col }: { col: ColSortKey }) => {
+    if (colSort?.col !== col) return <ChevronsUpDown className="h-3 w-3 ml-0.5 opacity-30 inline" />;
+    if (colSort.dir === "desc") return <ArrowDown className="h-3 w-3 ml-0.5 inline" />;
+    return <ArrowUp className="h-3 w-3 ml-0.5 inline" />;
+  }, [colSort]);
+
+  // ── Filtered & sorted pieces ───────────────────────────────────────────────
+
+  const filteredPieces = useMemo(() => {
+    if (!data) return [];
+    const q = search.trim().toLowerCase();
+    const minN = minQty !== "" ? Number(minQty) : null;
+    const maxN = maxQty !== "" ? Number(maxQty) : null;
+
+    let list = data.pieces.filter((p) => {
+      if (categoryFilter !== "all" && (p.category ?? "Sem categoria") !== categoryFilter) return false;
+      if (ownershipFilter !== "all" && p.ownership !== ownershipFilter) return false;
+      if (originFilter === "direct" && !(p.direct > 0 && p.fromKits === 0)) return false;
+      if (originFilter === "kit" && !(p.direct === 0 && p.fromKits > 0)) return false;
+      if (originFilter === "both" && !(p.direct > 0 && p.fromKits > 0)) return false;
+      if (minN !== null && p.quantity < minN) return false;
+      if (maxN !== null && p.quantity > maxN) return false;
+      if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false;
+      return true;
+    });
+
+    // Top N filter: sort by qty desc first, take N
+    if (topFilter !== "all") {
+      list = [...list].sort((a, b) => b.quantity - a.quantity).slice(0, Number(topFilter));
+    } else {
+      // Column-header sort takes priority over select
+      list = [...list].sort((a, b) => {
+        if (colSort) {
+          const { col, dir } = colSort;
+          let diff = 0;
+          if (col === "quantity") diff = a.quantity - b.quantity;
+          else if (col === "direct") diff = a.direct - b.direct;
+          else if (col === "fromKits") diff = a.fromKits - b.fromKits;
+          else if (col === "totalWeight") diff = (a.totalWeight ?? -1) - (b.totalWeight ?? -1);
+          else if (col === "reqCount") diff = (pieceReqCount.get(a.productId) ?? 0) - (pieceReqCount.get(b.productId) ?? 0);
+          return dir === "desc" ? -diff : diff;
+        }
+        switch (sortBy) {
+          case "name-desc": return b.name.localeCompare(a.name, "pt-BR");
+          case "sku-asc": return a.sku.localeCompare(b.sku, "pt-BR");
+          case "qty-desc": return b.quantity - a.quantity;
+          case "qty-asc": return a.quantity - b.quantity;
+          case "direct-desc": return b.direct - a.direct;
+          case "kits-desc": return b.fromKits - a.fromKits;
+          case "weight-desc": return (b.totalWeight ?? -1) - (a.totalWeight ?? -1);
+          case "weight-asc": return (a.totalWeight ?? -1) - (b.totalWeight ?? -1);
+          default: return a.name.localeCompare(b.name, "pt-BR");
+        }
+      });
+    }
+
+    return list;
+  }, [data, search, categoryFilter, ownershipFilter, originFilter, minQty, maxQty, topFilter, sortBy, colSort, pieceReqCount]);
+
+  const filteredRequests = useMemo(() => {
+    if (!data) return [];
+    return data.requests.filter((r) => {
+      if (reqStatusFilter !== "all" && r.status !== reqStatusFilter) return false;
+      if (reqKitFilter === "with" && r.kitCount === 0) return false;
+      if (reqKitFilter === "without" && r.kitCount > 0) return false;
+      return true;
+    });
+  }, [data, reqStatusFilter, reqKitFilter]);
+
+  // ── Derived aggregates ─────────────────────────────────────────────────────
+
+  const totalStandalone = useMemo(() => data?.pieces.reduce((s, p) => s + p.direct, 0) ?? 0, [data]);
+  const totalFromKits = useMemo(() => data?.pieces.reduce((s, p) => s + p.fromKits, 0) ?? 0, [data]);
+  const filteredTotalUnits = useMemo(() => filteredPieces.reduce((s, p) => s + p.quantity, 0), [filteredPieces]);
+
   const activeFilterCount = [
-    categoryFilter !== "all", ownershipFilter !== "all", originFilter !== "all",
+    categoryFilter !== "all",
+    ownershipFilter !== "all",
+    originFilter !== "all",
+    minQty !== "",
+    maxQty !== "",
+    topFilter !== "all",
   ].filter(Boolean).length;
+
+  const activeSortLabel = useMemo(() => {
+    if (topFilter !== "all") return `Top ${topFilter}`;
+    if (colSort) {
+      const names: Record<ColSortKey, string> = {
+        quantity: "Total", direct: "Avulso", fromKits: "Via kits",
+        totalWeight: "Peso", reqCount: "Req.",
+      };
+      return `${names[colSort.col]} ${colSort.dir === "desc" ? "↓" : "↑"}`;
+    }
+    const labels: Record<string, string> = {
+      "qty-desc": "Maior total", "qty-asc": "Menor total",
+      "direct-desc": "Maior avulsa", "kits-desc": "Maior via kits",
+      "weight-desc": "Maior peso", "weight-asc": "Menor peso",
+      "name-asc": "Nome A–Z", "name-desc": "Nome Z–A", "sku-asc": "SKU A–Z",
+    };
+    return labels[sortBy] ?? sortBy;
+  }, [topFilter, colSort, sortBy]);
 
   const selectedPiece = data?.pieces.find((p) => p.productId === drawerPieceId) ?? null;
 
@@ -373,23 +451,23 @@ export default function EventMaterials() {
         ["Requisições consideradas", data.requestCount],
         ["Pendentes", data.pendingCount], ["Aprovadas", data.approvedCount],
         ["Peças distintas", data.totals.distinctProducts],
-        ["Total de unidades", data.totals.totalPieces],
-        ["Kits distintos", data.totals.distinctKits],
-        ["Unidades de kits", data.totals.totalKits],
+        ["Total de unidades de peças", data.totals.totalPieces],
+        ["  Avulsas", totalStandalone], ["  Via kits", totalFromKits],
+        ["Kits solicitados", data.totals.totalKits],
         ["Peso estimado (kg)", data.totals.totalWeight],
         ["Itens sem peso cadastrado", data.totals.piecesWithoutWeight],
         ["Gerado em", format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })],
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumoRows), "Resumo");
 
-      // 2. Peças
+      // 2. Peças (respeita filtros ativos)
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
         filteredPieces.map((p) => ({
           Peça: p.name, SKU: p.sku,
           Categoria: p.category ?? "Sem categoria",
           Titularidade: OWNERSHIP_LABEL[p.ownership] ?? p.ownership,
           Unidade: p.unit,
-          Avulso: p.direct, "Via kits": p.fromKits, "Total": p.quantity,
+          Total: p.quantity, Avulso: p.direct, "Via kits": p.fromKits,
           "Peso unit. (kg)": p.hasWeight ? p.weight : "",
           "Peso total (kg)": p.totalWeight ?? "",
           Requisições: pieceReqCount.get(p.productId) ?? 0,
@@ -434,12 +512,12 @@ export default function EventMaterials() {
       for (const r of data.requests) {
         for (const it of r.items) {
           if (it.type === "kit") {
-            reqRows.push({ Requisição: r.area ?? "—", Solicitante: r.requestedByName, Área: r.area ?? "—", Status: r.status, Tipo: "Kit", "Produto/Kit": it.name, SKU: "—", Qtd: it.quantity, "Peso (kg)": "", Observação: it.notes ?? "" });
+            reqRows.push({ Requisição: r.area ?? "—", Solicitante: r.requestedByName, Status: r.status, Tipo: "Kit", "Produto/Kit": it.name, SKU: "—", Qtd: it.quantity, Observação: it.notes ?? "" });
             for (const c of it.components) {
-              reqRows.push({ Requisição: r.area ?? "—", Solicitante: r.requestedByName, Área: r.area ?? "—", Status: r.status, Tipo: "  Componente", "Produto/Kit": c.name, SKU: c.sku, Qtd: c.quantity, "Peso (kg)": "", Observação: "" });
+              reqRows.push({ Requisição: r.area ?? "—", Solicitante: r.requestedByName, Status: r.status, Tipo: "  Componente", "Produto/Kit": c.name, SKU: c.sku, Qtd: c.quantity, Observação: "" });
             }
           } else {
-            reqRows.push({ Requisição: r.area ?? "—", Solicitante: r.requestedByName, Área: r.area ?? "—", Status: r.status, Tipo: "Peça", "Produto/Kit": it.name, SKU: it.sku, Qtd: it.quantity, "Peso (kg)": "", Observação: it.notes ?? "" });
+            reqRows.push({ Requisição: r.area ?? "—", Solicitante: r.requestedByName, Status: r.status, Tipo: "Peça", "Produto/Kit": it.name, SKU: it.sku, Qtd: it.quantity, Observação: it.notes ?? "" });
           }
         }
       }
@@ -556,10 +634,17 @@ export default function EventMaterials() {
         </div>
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-3">Volume operacional</p>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          <StatCard icon={Layers} label="Total de unidades" value={fmtNum(data.totals.totalPieces)}
-            tooltip="Soma das quantidades avulsas e das quantidades geradas pela composição dos kits." />
-          <StatCard icon={Boxes} label="Unidades de kits" value={fmtNum(data.totals.totalKits)}
-            tooltip="Soma da quantidade de kits solicitados, sem contar os componentes internos." />
+          <StatCard
+            icon={Layers}
+            label="Total de unidades de peças"
+            value={fmtNum(data.totals.totalPieces)}
+            sub={`Avulsas: ${fmtNum(totalStandalone)} • Via kits: ${fmtNum(totalFromKits)}`}
+            tooltip="Soma das quantidades físicas finais: itens avulsos + componentes gerados pelos kits. Os kits em si não são somados aqui." />
+          <StatCard
+            icon={Boxes}
+            label="Kits solicitados"
+            value={fmtNum(data.totals.totalKits)}
+            tooltip="Quantidade de kits completos solicitados. Os componentes internos desses kits já estão incluídos no total de unidades de peças." />
           <StatCard icon={Scale} label="Peso estimado"
             value={`${fmtNum(data.totals.totalWeight, 1)} kg`}
             sub={data.totals.piecesWithoutWeight > 0
@@ -605,7 +690,8 @@ export default function EventMaterials() {
 
           {/* ───────────────────── PEÇAS ───────────────────── */}
           <TabsContent value="pieces" className="mt-4 space-y-3">
-            {/* Controls */}
+
+            {/* ── Row 1: busca + categoria + titularidade + origem ── */}
             <div className="flex flex-wrap gap-2 items-center">
               <div className="relative flex-1 min-w-[180px]">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -648,23 +734,44 @@ export default function EventMaterials() {
                   <SelectItem value="both">Avulso e via kit</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[150px] h-8 text-sm" data-testid="select-sort">
+            </div>
+
+            {/* ── Row 2: quantidade mín/máx + ordenação ── */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Qtd mín:</span>
+                <Input
+                  type="number" min={0} placeholder="—"
+                  value={minQty} onChange={(e) => setMinQty(e.target.value)}
+                  className="w-[72px] h-8 text-sm" data-testid="input-min-qty" />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Qtd máx:</span>
+                <Input
+                  type="number" min={0} placeholder="—"
+                  value={maxQty} onChange={(e) => setMaxQty(e.target.value)}
+                  className="w-[72px] h-8 text-sm" data-testid="input-max-qty" />
+              </div>
+              <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setColSort(null); setTopFilter("all"); }}>
+                <SelectTrigger className="w-[185px] h-8 text-sm" data-testid="select-sort">
                   <SelectValue placeholder="Ordenar" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="qty-desc">Maior total de unidades</SelectItem>
+                  <SelectItem value="qty-asc">Menor total de unidades</SelectItem>
+                  <SelectItem value="direct-desc">Maior quantidade avulsa</SelectItem>
+                  <SelectItem value="kits-desc">Maior quantidade via kits</SelectItem>
+                  <SelectItem value="weight-desc">Maior peso total</SelectItem>
+                  <SelectItem value="weight-asc">Menor peso total</SelectItem>
                   <SelectItem value="name-asc">Nome A–Z</SelectItem>
                   <SelectItem value="name-desc">Nome Z–A</SelectItem>
-                  <SelectItem value="qty-desc">Maior quantidade</SelectItem>
-                  <SelectItem value="qty-asc">Menor quantidade</SelectItem>
-                  <SelectItem value="weight-desc">Maior peso</SelectItem>
-                  <SelectItem value="category">Por categoria</SelectItem>
-                  <SelectItem value="ownership">Por titularidade</SelectItem>
+                  <SelectItem value="sku-asc">SKU A–Z</SelectItem>
                 </SelectContent>
               </Select>
               {activeFilterCount > 0 && (
                 <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => {
                   setCategoryFilter("all"); setOwnershipFilter("all"); setOriginFilter("all");
+                  setMinQty(""); setMaxQty(""); setTopFilter("all");
                 }}>
                   <Filter className="h-3 w-3" />
                   Limpar filtros
@@ -673,20 +780,143 @@ export default function EventMaterials() {
               )}
             </div>
 
-            {/* Table */}
+            {/* ── Row 3: filtros rápidos ── */}
+            <div className="flex flex-wrap gap-1.5">
+              {(["all", "10", "20"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setTopFilter(v)}
+                  data-testid={`quick-top-${v}`}
+                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                    topFilter === v
+                      ? "bg-primary/10 border-primary/30 text-primary"
+                      : "border-border/40 text-muted-foreground hover:bg-muted/40"
+                  }`}>
+                  {v === "all" ? "Todos" : `Top ${v}`}
+                </button>
+              ))}
+              <span className="text-muted-foreground/30 mx-1 self-center">|</span>
+              {[
+                { v: "all", label: "Toda origem" },
+                { v: "direct", label: "Somente avulso" },
+                { v: "kit", label: "Somente via kit" },
+                { v: "both", label: "Avulso e via kit" },
+              ].map(({ v, label }) => (
+                <button
+                  key={v}
+                  onClick={() => setOriginFilter(v)}
+                  data-testid={`quick-origin-${v}`}
+                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                    originFilter === v
+                      ? "bg-primary/10 border-primary/30 text-primary"
+                      : "border-border/40 text-muted-foreground hover:bg-muted/40"
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Active filter chips ── */}
+            {(activeFilterCount > 0 || search || colSort || sortBy !== "qty-desc") && (
+              <div className="flex flex-wrap gap-1.5 items-center">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Filtros:</span>
+                {search && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => setSearch("")}>
+                    Busca: "{search}" <X className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
+                {categoryFilter !== "all" && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => setCategoryFilter("all")}>
+                    Categoria: {categoryFilter} <X className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
+                {ownershipFilter !== "all" && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => setOwnershipFilter("all")}>
+                    {OWNERSHIP_LABEL[ownershipFilter] ?? ownershipFilter} <X className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
+                {originFilter !== "all" && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => setOriginFilter("all")}>
+                    {originFilter === "direct" ? "Somente avulso" : originFilter === "kit" ? "Somente via kit" : "Avulso e via kit"} <X className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
+                {minQty !== "" && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => setMinQty("")}>
+                    Mín: {minQty} <X className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
+                {maxQty !== "" && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => setMaxQty("")}>
+                    Máx: {maxQty} <X className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
+                {topFilter !== "all" && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => setTopFilter("all")}>
+                    Top {topFilter} <X className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-[10px] text-muted-foreground no-default-hover-elevate">
+                  {activeSortLabel}
+                </Badge>
+              </div>
+            )}
+
+            {/* ── Summary line ── */}
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{filteredPieces.length}</span> peça(s) distintas
+              {" "}·{" "}
+              <span className="font-medium text-foreground">{fmtNum(filteredTotalUnits)}</span> unidades físicas
+              {(filteredPieces.length !== data.pieces.length || filteredTotalUnits !== data.totals.totalPieces) && (
+                <span className="text-muted-foreground/70">
+                  {" "}(de {data.pieces.length} peças · {fmtNum(data.totals.totalPieces)} unidades no total)
+                </span>
+              )}
+            </p>
+
+            {/* ── Table ── */}
             <Card className="border-border/60">
               <CardContent className="p-0 overflow-x-auto">
-                <table className="w-full text-sm min-w-[640px]">
+                <table className="w-full text-sm min-w-[680px]">
                   <thead>
                     <tr className="border-b border-border/40 bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
                       <th className="text-left font-medium px-4 py-2.5">Peça / SKU</th>
+                      {/* Total — sortable */}
+                      <th
+                        className="text-right font-medium px-4 py-2.5 cursor-pointer select-none hover:text-foreground transition-colors"
+                        onClick={() => handleColSort("quantity")}
+                        data-testid="th-quantity">
+                        Total <ColSortIcon col="quantity" />
+                      </th>
+                      {/* Avulso — sortable */}
+                      <th
+                        className="text-right font-medium px-4 py-2.5 cursor-pointer select-none hover:text-foreground transition-colors"
+                        onClick={() => handleColSort("direct")}
+                        data-testid="th-direct">
+                        Avulso <ColSortIcon col="direct" />
+                      </th>
+                      {/* Via kits — sortable */}
+                      <th
+                        className="text-right font-medium px-4 py-2.5 cursor-pointer select-none hover:text-foreground transition-colors"
+                        onClick={() => handleColSort("fromKits")}
+                        data-testid="th-fromkits">
+                        Via kits <ColSortIcon col="fromKits" />
+                      </th>
                       <th className="text-left font-medium px-4 py-2.5 hidden md:table-cell">Categoria</th>
                       <th className="text-left font-medium px-4 py-2.5 hidden lg:table-cell">Titularidade</th>
-                      <th className="text-right font-medium px-4 py-2.5">Avulso</th>
-                      <th className="text-right font-medium px-4 py-2.5">Via kits</th>
-                      <th className="text-right font-medium px-4 py-2.5 font-semibold">Total</th>
-                      <th className="text-right font-medium px-4 py-2.5 hidden lg:table-cell">Peso total</th>
-                      <th className="text-right font-medium px-4 py-2.5 hidden xl:table-cell">Req.</th>
+                      {/* Peso total — sortable */}
+                      <th
+                        className="text-right font-medium px-4 py-2.5 hidden lg:table-cell cursor-pointer select-none hover:text-foreground transition-colors"
+                        onClick={() => handleColSort("totalWeight")}
+                        data-testid="th-weight">
+                        Peso total <ColSortIcon col="totalWeight" />
+                      </th>
+                      {/* Req. — sortable */}
+                      <th
+                        className="text-right font-medium px-4 py-2.5 hidden xl:table-cell cursor-pointer select-none hover:text-foreground transition-colors"
+                        onClick={() => handleColSort("reqCount")}
+                        data-testid="th-req">
+                        Req. <ColSortIcon col="reqCount" />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -704,28 +934,44 @@ export default function EventMaterials() {
                           className="border-b border-border/40 last:border-0 cursor-pointer hover:bg-muted/20 transition-colors"
                           onClick={() => setDrawerPieceId(p.productId)}
                           data-testid={`row-piece-${p.productId}`}>
+                          {/* Peça / SKU */}
                           <td className="px-4 py-2.5">
                             <p className="font-medium text-sm leading-snug">{p.name}</p>
                             <p className="font-mono text-[11px] text-muted-foreground">{p.sku}</p>
                           </td>
+                          {/* Total — destaque com tooltip */}
+                          <td className="px-4 py-2.5 text-right">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="tabular-nums font-semibold text-sm cursor-default">
+                                  {fmtNum(p.quantity)}{" "}
+                                  <span className="text-[10px] text-muted-foreground font-normal">{p.unit}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="text-xs">
+                                Total físico: {p.direct} avulsa(s) + {p.fromKits} proveniente(s) de kits.
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
+                          {/* Avulso */}
+                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground text-sm">
+                            {p.direct > 0 ? fmtNum(p.direct) : "0"}
+                          </td>
+                          {/* Via kits */}
+                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground text-sm">
+                            {p.fromKits > 0 ? fmtNum(p.fromKits) : "0"}
+                          </td>
+                          {/* Categoria */}
                           <td className="px-4 py-2.5 hidden md:table-cell text-xs text-muted-foreground">
                             {p.category ?? <span className="italic">Sem categoria</span>}
                           </td>
+                          {/* Titularidade */}
                           <td className="px-4 py-2.5 hidden lg:table-cell">
                             <Badge variant="outline" className="text-[10px]">
                               {OWNERSHIP_LABEL[p.ownership] ?? p.ownership}
                             </Badge>
                           </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground text-sm">
-                            {p.direct || "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground text-sm">
-                            {p.fromKits || "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-sm">
-                            {fmtNum(p.quantity)}{" "}
-                            <span className="text-[10px] text-muted-foreground font-normal">{p.unit}</span>
-                          </td>
+                          {/* Peso total */}
                           <td className="px-4 py-2.5 text-right tabular-nums text-sm text-muted-foreground hidden lg:table-cell">
                             {p.hasWeight
                               ? fmtWeight(p.totalWeight)
@@ -737,6 +983,7 @@ export default function EventMaterials() {
                                 </Tooltip>
                             }
                           </td>
+                          {/* Requisições */}
                           <td className="px-4 py-2.5 text-right tabular-nums text-sm text-muted-foreground hidden xl:table-cell">
                             {pieceReqCount.get(p.productId) ?? 0}
                           </td>
@@ -747,11 +994,17 @@ export default function EventMaterials() {
                 </table>
               </CardContent>
             </Card>
-            <p className="text-xs text-muted-foreground px-1">
-              {filteredPieces.length} de {data.pieces.length} peças.
-              {activeFilterCount > 0 && " Filtros ativos."}
-              {" "}Clique em uma linha para ver a origem.
-            </p>
+
+            {/* ── Footer ── */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground px-1">
+              <span>
+                Exibindo <span className="font-medium text-foreground">{filteredPieces.length}</span> de <span className="font-medium text-foreground">{data.pieces.length}</span> peças
+              </span>
+              <span>
+                <span className="font-medium text-foreground">{fmtNum(filteredTotalUnits)}</span> de <span className="font-medium text-foreground">{fmtNum(data.totals.totalPieces)}</span> unidades físicas exibidas
+              </span>
+              <span className="text-muted-foreground/60">Clique em uma linha para ver a origem.</span>
+            </div>
           </TabsContent>
 
           {/* ───────────────────── KITS ───────────────────── */}
@@ -1030,37 +1283,24 @@ export default function EventMaterials() {
                                     <div key={it.id}>
                                       <div className="flex items-center gap-2">
                                         <Boxes className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                        <span className="text-sm font-medium flex-1 min-w-0 truncate">{it.name}</span>
-                                        <Badge variant="secondary" className="text-xs shrink-0">{it.quantity}×</Badge>
-                                        <a href={`/kits/${it.kitId}`} target="_blank" rel="noopener noreferrer">
-                                          <Button size="icon" variant="ghost" className="h-6 w-6">
-                                            <ExternalLink className="h-3 w-3" />
-                                          </Button>
-                                        </a>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium truncate">{it.name}</p>
+                                          {it.notes && <p className="text-[11px] text-muted-foreground italic">{it.notes}</p>}
+                                        </div>
+                                        <span className="text-sm tabular-nums font-semibold shrink-0">{it.quantity}×</span>
                                       </div>
                                       {it.components.length > 0 && (
-                                        <Collapsible>
-                                          <CollapsibleTrigger className="ml-5 mt-1 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-                                            <ChevronDown className="h-3 w-3" />
-                                            Ver {it.components.length} componente(s)
-                                          </CollapsibleTrigger>
-                                          <CollapsibleContent>
-                                            <div className="ml-5 mt-1 pl-3 border-l border-border/40 space-y-1">
-                                              {it.components.map((c) => (
-                                                <div key={c.productId} className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                  <span className="flex-1 min-w-0 truncate">
-                                                    {c.name}
-                                                    <span className="font-mono ml-1.5 text-[10px]">{c.sku}</span>
-                                                  </span>
-                                                  <span className="tabular-nums shrink-0 font-medium text-foreground">{c.quantity} {c.unit}</span>
-                                                </div>
-                                              ))}
+                                        <div className="ml-5 mt-1.5 space-y-0">
+                                          {it.components.map((c) => (
+                                            <div key={c.productId} className="flex items-center gap-2 py-1.5 border-b border-border/40 last:border-0">
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-xs truncate">{c.name}</p>
+                                                <p className="font-mono text-[10px] text-muted-foreground">{c.sku}</p>
+                                              </div>
+                                              <span className="text-xs tabular-nums text-muted-foreground shrink-0">{c.quantity} {c.unit}</span>
                                             </div>
-                                          </CollapsibleContent>
-                                        </Collapsible>
-                                      )}
-                                      {it.notes && (
-                                        <p className="ml-5 text-[11px] text-muted-foreground italic mt-0.5">{it.notes}</p>
+                                          ))}
+                                        </div>
                                       )}
                                     </div>
                                   ))}

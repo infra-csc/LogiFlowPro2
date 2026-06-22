@@ -1,0 +1,292 @@
+A tela melhorou, mas preciso corrigir a lógica e a visualização das quantidades na aba “Peças”.
+
+Não refaça toda a página. Preserve o layout atual e implemente os ajustes abaixo usando exclusivamente os dados reais já calculados.
+
+==================================================
+1. DEIXAR CLARO O TOTAL DE UNIDADES DE PEÇAS
+==================================================
+
+O indicador atual “Total de unidades” está ambíguo.
+
+Renomear para:
+
+“Total de unidades de peças”
+
+Esse valor deve representar a quantidade física final de componentes/produtos necessários para o evento:
+
+totalUnidadesPecas =
+total de unidades avulsas + total de unidades geradas pelos kits
+
+Não somar novamente a quantidade de kits nesse indicador.
+
+No próprio card, mostrar uma decomposição menor:
+
+Avulsas: X • Via kits: Y
+
+Exemplo visual:
+
+1.672
+TOTAL DE UNIDADES DE PEÇAS
+Avulsas: 420 • Via kits: 1.252
+
+Usar os valores reais da agregação.
+
+Manter o indicador de kits separado, mas renomear:
+
+“Unidades de kits” → “Kits solicitados”
+
+Adicionar tooltip:
+
+“Quantidade de kits completos solicitados. Os componentes internos desses kits já estão incluídos no total de unidades de peças.”
+
+Isso deve impedir a interpretação de que:
+
+1.672 unidades de peças + 26 kits
+
+representam 1.698 unidades físicas.
+
+Os 26 kits são uma informação estrutural; seus componentes já fazem parte das 1.672 peças.
+
+Também mostrar acima da tabela um resumo compacto:
+
+46 peças distintas • 1.672 unidades físicas
+
+Esse texto deve reagir aos filtros aplicados.
+
+==================================================
+2. ORDENAR PELOS PRODUTOS COM MAIS UNIDADES
+==================================================
+
+O seletor de ordenação atual não oferece uma forma clara de encontrar os produtos com maior quantidade.
+
+Adicionar as seguintes opções:
+
+- Maior total de unidades
+- Menor total de unidades
+- Maior quantidade avulsa
+- Maior quantidade via kits
+- Maior peso total
+- Menor peso total
+- Nome A–Z
+- Nome Z–A
+- SKU A–Z
+
+A opção deve usar os valores agregados reais:
+
+- quantidadeAvulsa
+- quantidadeViaKits
+- quantidadeTotal
+- pesoTotal
+
+A ordenação deve ser numérica, e não textual.
+
+Exemplo obrigatório:
+
+100 unidades deve aparecer antes de 20 unidades ao selecionar “Maior total de unidades”.
+
+Não ordenar strings como:
+
+1, 10, 100, 2, 20.
+
+Ordenar os valores numéricos reais depois da agregação dos produtos e da expansão dos kits.
+
+==================================================
+3. ORDENAÇÃO PELO CABEÇALHO DA TABELA
+==================================================
+
+Permitir também ordenar clicando nos cabeçalhos:
+
+- Avulso
+- Via kits
+- Total
+- Peso total
+- Requisições
+
+Primeiro clique:
+
+ordem decrescente.
+
+Segundo clique:
+
+ordem crescente.
+
+Terceiro clique:
+
+remove a ordenação daquela coluna.
+
+Mostrar uma seta discreta no cabeçalho da coluna ativa.
+
+A coluna “Total” deve iniciar em ordem decrescente quando o usuário selecionar “Maior total de unidades”.
+
+==================================================
+4. FILTRO POR QUANTIDADE
+==================================================
+
+Adicionar aos filtros um campo:
+
+“Quantidade total”
+
+Com:
+
+- Quantidade mínima
+- Quantidade máxima
+
+Exemplo:
+
+Mínimo: 50
+Máximo: vazio
+
+Resultado:
+
+mostrar somente produtos com 50 unidades ou mais.
+
+Adicionar também filtros rápidos:
+
+- Top 10 mais requisitados
+- Top 20 mais requisitados
+- Somente com quantidade avulsa
+- Somente provenientes de kits
+- Avulso e via kits
+
+Esses filtros devem funcionar junto com:
+
+- pesquisa;
+- categoria;
+- titularidade;
+- origem;
+- ordenação.
+
+==================================================
+5. MELHORAR A TABELA
+==================================================
+
+Alterar a ordem das colunas para facilitar a leitura operacional:
+
+1. Peça / SKU
+2. Total
+3. Avulso
+4. Via kits
+5. Categoria
+6. Titularidade
+7. Peso total
+8. Requisições
+9. Ações
+
+A coluna “Total” deve ficar próxima ao nome do produto, pois é a informação mais importante.
+
+Dar maior destaque visual ao total:
+
+- fonte semibold;
+- alinhamento à direita;
+- unidade menor ao lado;
+- sem utilizar uma cor excessivamente chamativa.
+
+Exemplo:
+
+ÂNGULOS 15
+BOX_30_ANGULOS_15
+
+Total: 5 unit
+Avulso: —
+Via kits: 5
+
+Quando o valor for zero, exibir “0”.
+
+Usar “—” somente quando a informação não for aplicável ou desconhecida.
+
+==================================================
+6. MOSTRAR A COMPOSIÇÃO DO TOTAL
+==================================================
+
+Ao passar o mouse sobre o valor da coluna “Total”, mostrar tooltip:
+
+“Total físico: X avulsas + Y provenientes de kits.”
+
+Exemplo:
+
+“Total físico: 3 avulsas + 20 provenientes de kits.”
+
+Ao clicar na linha ou no total, abrir o drawer de detalhes já existente mostrando:
+
+- quantidade avulsa;
+- quantidade via kits;
+- total físico;
+- kits que geraram a quantidade;
+- requisições de origem.
+
+==================================================
+7. FILTROS ATIVOS E RESULTADO
+==================================================
+
+Quando uma ordenação ou filtro estiver ativo, mostrar chips abaixo da barra de filtros.
+
+Exemplos:
+
+- Maior total primeiro
+- Mínimo de 50 unidades
+- Somente via kits
+- Categoria: Estrutura
+
+Mostrar também:
+
+“Exibindo 10 de 46 peças”
+
+e:
+
+“620 de 1.672 unidades físicas exibidas”
+
+O segundo número deve representar a soma das quantidades dos produtos que permaneceram após o filtro.
+
+==================================================
+8. BACKEND E CONSISTÊNCIA
+==================================================
+
+A resposta agregada de cada produto deve disponibilizar campos numéricos:
+
+{
+  productId,
+  productName,
+  sku,
+  quantityStandalone,
+  quantityFromKits,
+  quantityTotal,
+  weightTotal,
+  requestCount
+}
+
+Garantir:
+
+quantityTotal =
+quantityStandalone + quantityFromKits
+
+A ordenação deve ocorrer usando esses campos numéricos.
+
+Caso a paginação seja feita no backend, aplicar primeiro:
+
+1. agregação;
+2. filtros;
+3. ordenação;
+4. paginação.
+
+Nunca paginar antes de consolidar produtos e componentes de kits.
+
+O resumo superior deve respeitar os filtros aplicados, mas também manter disponível o total geral da página.
+
+==================================================
+9. CRITÉRIOS DE ACEITE
+==================================================
+
+A alteração estará concluída quando:
+
+1. Eu conseguir selecionar “Maior total de unidades”.
+2. O produto com maior quantidade aparecer primeiro.
+3. A ordenação for numérica.
+4. Eu conseguir filtrar uma quantidade mínima e máxima.
+5. Eu conseguir visualizar o total físico de peças.
+6. O total mostrar separadamente avulsas e via kits.
+7. “Kits solicitados” não for somado novamente ao total físico.
+8. A coluna Total ficar próxima ao nome do produto.
+9. Os números dos cards reagirem corretamente aos filtros.
+10. A tela mostrar quantas unidades filtradas estão sendo exibidas.
+11. Não forem criados mocks ou valores estáticos.
+12. Todos os dados vierem das agregações reais já existentes.
