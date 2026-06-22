@@ -288,6 +288,25 @@ export function registerStockProjectionRoutes(app: Express) {
           if (!cur || dep < cur) tripDepartureByMovement.set(movementId, dep);
         }
 
+        // Pre-pass: record the earliest physical inbound movement date per product.
+        // Used to close the "in-event" window of outbound flows when a physical
+        // return (completed inbound) happens before the event teardown date.
+        const physicalInboundByProduct = new Map<string, Date>();
+        for (const m of movementRows) {
+          if (m.status !== "completed") continue;
+          const rNature =
+            (m.typeConfigId && natureMap.get(m.typeConfigId)) ||
+            (m.legacyType?.startsWith("inbound") ? "inbound" : m.legacyType?.startsWith("outbound") ? "outbound" : null);
+          if (rNature !== "inbound") continue;
+          const returnDate = m.startedAt || m.completedAt || m.createdAt;
+          if (!returnDate) continue;
+          const pitems = itemsByMovement.get(m.id) || [];
+          for (const it of pitems) {
+            const cur = physicalInboundByProduct.get(it.productId);
+            if (!cur || returnDate < cur) physicalInboundByProduct.set(it.productId, returnDate);
+          }
+        }
+
         for (const m of movementRows) {
           if (m.status === "cancelled") continue;
           const resolvedNature =
@@ -344,9 +363,10 @@ export function registerStockProjectionRoutes(app: Express) {
 
           if (nature === "outbound") {
             // Outbound realization: if physical it is already in currentStock; its
-            // return comes back via the event teardown date.
+            // return comes back via the event teardown date (or earlier if a physical
+            // inbound movement already returned the product before teardown).
             const outDate = baseDate;
-            const inDate = ev?.teardownDate || null;
+            const teardownDate = ev?.teardownDate || null;
             const acc: ConsideredAcc = {
               source: "movement",
               sourceId: m.id,
@@ -355,7 +375,7 @@ export function registerStockProjectionRoutes(app: Express) {
               eventName: ev?.name || null,
               direction: "outbound",
               outDate: outDate ? toDayKey(outDate) : null,
-              inDate: inDate ? toDayKey(inDate) : null,
+              inDate: teardownDate ? toDayKey(teardownDate) : null,
               status: m.status,
               alreadyPhysical: isPhysical,
               situation: "considered",
@@ -367,6 +387,14 @@ export function registerStockProjectionRoutes(app: Express) {
               if (productFilter && !productFilter.has(it.productId)) continue;
               addQty(acc.grossByProduct, it.productId, it.quantity);
               if (primaryEventId) addQty(movementOutboundQty, `${primaryEventId}::${it.productId}`, it.quantity);
+              // Cap the inDate per product: if a physical inbound movement returned
+              // this product earlier than the event teardown, close the in-event
+              // window at the actual return date.
+              const physicalReturn = physicalInboundByProduct.get(it.productId) ?? null;
+              const inDate: Date | null =
+                teardownDate && physicalReturn
+                  ? (physicalReturn < teardownDate ? physicalReturn : teardownDate)
+                  : physicalReturn ?? teardownDate;
               flows.push({
                 productId: it.productId,
                 qty: it.quantity,
