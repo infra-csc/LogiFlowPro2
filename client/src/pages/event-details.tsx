@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft, Edit, Plus, Truck, FileText, ClipboardList,
   AlertTriangle, CheckCircle2, Clock, Calendar, ChevronRight,
-  AlertCircle, Info, RefreshCw, Users,
+  AlertCircle, Info, RefreshCw, Users, Package, Boxes,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -45,6 +45,33 @@ interface EventOverview {
   };
   movements: any[];
   alerts: Array<{ severity: string; message: string; type: string }>;
+}
+
+interface MaterialsSummary {
+  eventId: string;
+  requestCount: number;
+  totals: {
+    distinctProducts: number;
+    totalPieces: number;
+    distinctKits: number;
+    totalKits: number;
+  };
+  pieces: Array<{
+    productId: string;
+    sku: string;
+    name: string;
+    unit: string;
+    category: string | null;
+    quantity: number;
+    fromKits: number;
+    direct: number;
+  }>;
+  kits: Array<{
+    kitId: string;
+    name: string;
+    quantity: number;
+    requestCount: number;
+  }>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -209,6 +236,11 @@ export default function EventDetails() {
 
   const { data: overview, isLoading } = useQuery<EventOverview>({
     queryKey: ["/api/events", id, "overview"],
+    enabled: !!id,
+  });
+
+  const { data: materials, isLoading: materialsLoading } = useQuery<MaterialsSummary>({
+    queryKey: ["/api/events", id, "materials-summary"],
     enabled: !!id,
   });
 
@@ -422,6 +454,130 @@ export default function EventDetails() {
             <p className="mt-3 text-xs text-muted-foreground border-t border-border/40 pt-3">
               {event.notes}
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Resumo de Materiais ─────────────────────────────────────── */}
+      <Card className="border-border/60">
+        <div className="px-4 py-3 border-b border-border/40 flex flex-row items-center justify-between gap-2 flex-wrap">
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            Resumo de Materiais do Evento
+            {materials && (
+              <span className="text-xs font-normal text-muted-foreground">
+                ({materials.requestCount} requisição(ões), incluindo pendentes)
+              </span>
+            )}
+          </div>
+          {materials && (
+            <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+              <Badge variant="outline" className="text-[10px]">
+                {materials.totals.distinctProducts} peça(s) · {materials.totals.totalPieces} unid
+              </Badge>
+              <Badge variant="outline" className="text-[10px]">
+                {materials.totals.distinctKits} kit(s) · {materials.totals.totalKits} unid
+              </Badge>
+            </div>
+          )}
+        </div>
+        <CardContent className="p-0">
+          {materialsLoading ? (
+            <div className="p-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Calculando materiais...
+            </div>
+          ) : !materials || (materials.pieces.length === 0 && materials.kits.length === 0) ? (
+            <div className="p-4">
+              <EmptyState
+                icon={Package}
+                title="Nenhum material"
+                description="Nenhuma requisição com itens foi criada para este evento ainda."
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border/40">
+              {/* Kits */}
+              <div className="min-w-0">
+                <div className="px-4 py-2.5 border-b border-border/40 flex items-center gap-2 bg-muted/30">
+                  <Boxes className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Kits ({materials.kits.length})
+                  </span>
+                </div>
+                {materials.kits.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+                    Nenhum kit requisitado.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/40 max-h-96 overflow-y-auto">
+                    {materials.kits.map((k) => (
+                      <div
+                        key={k.kitId}
+                        className="flex items-center gap-3 px-4 py-2.5"
+                        data-testid={`material-kit-${k.kitId}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{k.name}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {k.requestCount} requisição(ões)
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs font-semibold shrink-0">
+                          {k.quantity}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Pieces */}
+              <div className="min-w-0">
+                <div className="px-4 py-2.5 border-b border-border/40 flex items-center gap-2 bg-muted/30">
+                  <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Peças ({materials.pieces.length})
+                  </span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    inclui itens de kits
+                  </span>
+                </div>
+                {materials.pieces.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+                    Nenhuma peça requisitada.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/40 max-h-96 overflow-y-auto">
+                    {materials.pieces.map((p) => (
+                      <div
+                        key={p.productId}
+                        className="flex items-center gap-3 px-4 py-2.5"
+                        data-testid={`material-piece-${p.productId}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{p.name}</p>
+                          <p className="text-[11px] text-muted-foreground font-mono truncate">
+                            {p.sku}
+                            {p.fromKits > 0 && p.direct > 0 && (
+                              <span className="font-sans"> · {p.direct} avulso + {p.fromKits} de kits</span>
+                            )}
+                            {p.fromKits > 0 && p.direct === 0 && (
+                              <span className="font-sans"> · de kits</span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-baseline gap-1 shrink-0">
+                          <Badge variant="secondary" className="text-xs font-semibold">
+                            {p.quantity}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground">{p.unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

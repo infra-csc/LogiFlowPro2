@@ -843,6 +843,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/events/:id/materials-summary", requireAuth, async (req, res) => {
+    try {
+      const eventId = req.params.id;
+      const event = await storage.getEvent(eventId);
+      if (!event) return res.status(404).json({ error: "Event not found" });
+
+      const calcKitLineQty = (
+        formula: string,
+        multiplier: number,
+        parameters: Record<string, number>,
+        productId: string,
+      ): number => {
+        const f = (formula ?? "").trim();
+        if (f === "?") {
+          return Math.max(0, Math.round((parameters[productId] ?? 0) * multiplier));
+        }
+        try {
+          let expr = f;
+          for (const [name, val] of Object.entries(parameters || {})) {
+            expr = expr.replace(new RegExp(`\\b${name}\\b`, "g"), String(val));
+          }
+          const sanitized = expr.replace(/[^0-9+\-*/().\s]/g, "");
+          if (sanitized !== expr) return 0;
+          const result = Function('"use strict"; return (' + sanitized + ")")() as number;
+          const total = result * multiplier;
+          if (!Number.isFinite(total)) return 0;
+          return Math.max(0, Math.round(total));
+        } catch {
+          return 0;
+        }
+      };
+
+      const allRequests = (await storage.getMaterialRequests()) as any[];
+      const requests = allRequests.filter(
+        (r) => r.eventId === eventId && r.status !== "rejected",
+      );
+
+      const [products, kits] = await Promise.all([
+        storage.getProducts(),
+        storage.getKits(),
+      ]);
+      const productMap = new Map(products.map((p) => [p.id, p]));
+      const kitMap = new Map(kits.map((k) => [k.id, k]));
+      const bomCache = new Map<string, any[]>();
+      const getBom = async (kitId: string) => {
+        if (!bomCache.has(kitId)) {
+          bomCache.set(kitId, await storage.getBomLinesByKit(kitId));
+        }
+        return bomCache.get(kitId)!;
+      };
+
+      const pieces = new Map<
+        string,
+        { productId: string; sku: string; name: string; unit: string; category: string | null; quantity: number; fromKits: number; direct: number }
+      >();
+      const kitSummary = new Map<
+        string,
+        { kitId: string; name: string; quantity: number; requestCount: number }
+      >();
+      const kitRequestSeen = new Map<string, Set<string>>();
+
+      const addPiece = (productId: string, qty: number, source: "direct" | "kit") => {
+        if (qty <= 0) return;
+        const p = productMap.get(productId);
+        const existing = pieces.get(productId) ?? {
+          productId,
+          sku: p?.sku ?? "—",
+          name: p?.name ?? "Produto removido",
+          unit: p?.unit ?? "unid",
+          category: p?.category ?? null,
+          quantity: 0,
+          fromKits: 0,
+          direct: 0,
+        };
+        existing.quantity += qty;
+        if (source === "kit") existing.fromKits += qty;
+        else existing.direct += qty;
+        pieces.set(productId, existing);
+      };
+
+      const allItems = (await storage.getRequestItemsByRequestIds(
+        requests.map((r) => r.id),
+      )) as any[];
+
+      // Pre-load BOM for all referenced kits in parallel
+      const referencedKitIds = Array.from(
+        new Set(allItems.filter((it) => it.kitId).map((it) => it.kitId as string)),
+      );
+      await Promise.all(referencedKitIds.map((kitId) => getBom(kitId)));
+
+      for (const it of allItems) {
+        const qty = it.quantity ?? 0;
+        if (it.productId && !it.kitId) {
+          addPiece(it.productId, qty, "direct");
+        } else if (it.kitId) {
+          const k = kitMap.get(it.kitId);
+          const ks = kitSummary.get(it.kitId) ?? {
+            kitId: it.kitId,
+            name: k?.name ?? "Kit removido",
+            quantity: 0,
+            requestCount: 0,
+          };
+          ks.quantity += qty;
+          const seen = kitRequestSeen.get(it.kitId) ?? new Set<string>();
+          if (!seen.has(it.requestId)) {
+            seen.add(it.requestId);
+            ks.requestCount += 1;
+            kitRequestSeen.set(it.kitId, seen);
+          }
+          kitSummary.set(it.kitId, ks);
+
+          const bom = bomCache.get(it.kitId) ?? [];
+          const params = (it.kitParameters as Record<string, number>) ?? {};
+          for (const line of bom) {
+            const lineQty = calcKitLineQty(line.quantityFormula, qty, params, line.productId);
+            addPiece(line.productId, lineQty, "kit");
+          }
+        }
+      }
+
+      const piecesArr = Array.from(pieces.values()).sort((a, b) =>
+        a.name.localeCompare(b.name, "pt-BR"),
+      );
+      const kitsArr = Array.from(kitSummary.values()).sort((a, b) =>
+        a.name.localeCompare(b.name, "pt-BR"),
+      );
+
+      res.json({
+        eventId,
+        requestCount: requests.length,
+        totals: {
+          distinctProducts: piecesArr.length,
+          totalPieces: piecesArr.reduce((s, p) => s + p.quantity, 0),
+          distinctKits: kitsArr.length,
+          totalKits: kitsArr.reduce((s, k) => s + k.quantity, 0),
+        },
+        pieces: piecesArr,
+        kits: kitsArr,
+      });
+    } catch (error) {
+      console.error("[events/materials-summary] error:", error);
+      res.status(500).json({ error: "Failed to fetch materials summary" });
+    }
+  });
+
   app.post("/api/events", requireAuth, requireAdmin({ message: "Apenas administradores podem criar eventos" }), async (req, res) => {
     try {
       const data = insertEventSchema.parse(req.body);

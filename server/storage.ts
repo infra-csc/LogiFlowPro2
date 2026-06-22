@@ -173,6 +173,7 @@ export interface IStorage {
 
   // Request Items
   getRequestItems(requestId: string): Promise<RequestItem[]>;
+  getRequestItemsByRequestIds(requestIds: string[]): Promise<RequestItem[]>;
   getRequestItem(id: string): Promise<RequestItem | undefined>;
   createRequestItem(item: InsertRequestItem): Promise<RequestItem>;
   updateRequestItem(id: string, item: Partial<InsertRequestItem>): Promise<RequestItem>;
@@ -641,6 +642,26 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(kits, eq(requestItems.kitId, kits.id))
       .where(eq(requestItems.requestId, requestId));
     
+    return items as any;
+  }
+
+  async getRequestItemsByRequestIds(requestIds: string[]): Promise<RequestItem[]> {
+    if (requestIds.length === 0) return [];
+    const items = await db
+      .select({
+        id: requestItems.id,
+        requestId: requestItems.requestId,
+        productId: requestItems.productId,
+        kitId: requestItems.kitId,
+        quantity: requestItems.quantity,
+        approvalStatus: requestItems.approvalStatus,
+        approvedQuantity: requestItems.approvedQuantity,
+        rejectionReason: requestItems.rejectionReason,
+        kitParameters: requestItems.kitParameters,
+        notes: requestItems.notes,
+      })
+      .from(requestItems)
+      .where(inArray(requestItems.requestId, requestIds));
     return items as any;
   }
 

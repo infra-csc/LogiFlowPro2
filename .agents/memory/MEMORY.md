@@ -1,3 +1,4 @@
 - [db:push interactive drift](db-push-drift.md) — `npm run db:push` stops on a pre-existing suppliers_name_unique truncate prompt; for additive-only changes (indexes) apply via psql instead.
 - [Movement relations N+1](movement-relations-n1.md) — movements list/detail relations (events/trips) must be batch-loaded by movementId, never one query per movement.
 - [Stock projection precedence](stock-projection-precedence.md) — request/loading/movement demand per (event,product) is one demand; net quantity-aware (movement>loading>request), never boolean.
+- [Kit BOM formula expansion](kit-bom-formula.md) — formula eval duplicated in client calcFinalQty and server calcKitLineQty; keep both in sync.
