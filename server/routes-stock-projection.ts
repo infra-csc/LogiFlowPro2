@@ -210,7 +210,7 @@ export function registerStockProjectionRoutes(app: Express) {
       // ── Movements (outbound realizations + inbound supply) ─────────────────
       if (include.movements) {
         const typeRows = await db
-          .select({ id: movementTypesConfig.id, nature: movementTypesConfig.nature })
+          .select({ id: movementTypesConfig.id, nature: movementTypesConfig.nature, isEventReturn: movementTypesConfig.isEventReturn })
           .from(movementTypesConfig);
         const natureMap = new Map(typeRows.map((t) => [t.id, t.nature]));
 
@@ -288,16 +288,16 @@ export function registerStockProjectionRoutes(app: Express) {
           if (!cur || dep < cur) tripDepartureByMovement.set(movementId, dep);
         }
 
-        // Pre-pass: record the earliest physical inbound movement date per product.
-        // Used to close the "in-event" window of outbound flows when a physical
-        // return (completed inbound) happens before the event teardown date.
+        // Pre-pass: record the earliest completed "event return" movement date per product.
+        // Only movement types with isEventReturn=true (e.g. "Descarga de Evento") close
+        // the "in-event" window. Other inbound types (purchases, etc.) do not.
+        const eventReturnTypeIds = new Set(
+          typeRows.filter((t) => t.isEventReturn === true).map((t) => t.id),
+        );
         const physicalInboundByProduct = new Map<string, Date>();
         for (const m of movementRows) {
           if (m.status !== "completed") continue;
-          const rNature =
-            (m.typeConfigId && natureMap.get(m.typeConfigId)) ||
-            (m.legacyType?.startsWith("inbound") ? "inbound" : m.legacyType?.startsWith("outbound") ? "outbound" : null);
-          if (rNature !== "inbound") continue;
+          if (!m.typeConfigId || !eventReturnTypeIds.has(m.typeConfigId)) continue;
           const returnDate = m.startedAt || m.completedAt || m.createdAt;
           if (!returnDate) continue;
           const pitems = itemsByMovement.get(m.id) || [];

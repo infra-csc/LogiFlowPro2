@@ -463,7 +463,12 @@ export const movementTypesConfig = pgTable("movement_types_config", {
   requiredFields: jsonb("required_fields").$type<string[]>(),
   optionalFields: jsonb("optional_fields").$type<string[]>(),
   specialValidations: jsonb("special_validations").$type<Record<string, any>>(),
-  
+
+  // Projection: marks this inbound type as the one that closes the "in-event"
+  // window for outbound flows (e.g. "descarga de evento"). Only inbound types
+  // should have this set to true.
+  isEventReturn: boolean("is_event_return").notNull().default(false),
+
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`)

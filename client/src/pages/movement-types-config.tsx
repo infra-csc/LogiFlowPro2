@@ -139,7 +139,8 @@ export default function MovementTypesConfigPage() {
       affectsPhysicalInventory: true, affectsOperationalInventory: false, affectsPatrimonialInventory: true,
       requiresApproval: false, requiresDocument: false, allowsMixedBatch: true,
       changesProductStatus: false, allowedSourceProductStatuses: null, targetProductStatusId: null,
-      changesLocation: false, allowedSourceLocations: null, targetLocationId: null, active: true,
+      changesLocation: false, allowedSourceLocations: null, targetLocationId: null,
+      isEventReturn: false, active: true,
     });
     setIsDialogOpen(true);
   }
@@ -159,6 +160,7 @@ export default function MovementTypesConfigPage() {
       changesLocation: (type as any).changesLocation ?? false,
       allowedSourceLocations: (type as any).allowedSourceLocations ?? null,
       targetLocationId: (type as any).targetLocationId ?? null,
+      isEventReturn: (type as any).isEventReturn ?? false,
       active: type.active,
     });
     setIsDialogOpen(true);
@@ -326,6 +328,11 @@ export default function MovementTypesConfigPage() {
                     {type.requiresDocument && (
                       <Badge variant="outline" className="text-xs">
                         Documento
+                      </Badge>
+                    )}
+                    {(type as any).isEventReturn && (
+                      <Badge variant="outline" className="text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                        Descarga de Evento
                       </Badge>
                     )}
                     {!type.active && (
@@ -608,6 +615,20 @@ export default function MovementTypesConfigPage() {
                   </div>
                 )}
               </div>
+
+              <FormField control={form.control} name="isEventReturn" render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel>Descarga de Evento</FormLabel>
+                    <FormDescription>
+                      Marca este tipo como "retorno de evento" — a simulação de estoque usa isso para encerrar o período "em evento" dos produtos quando este tipo de movimentação (entrada) for concluído.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={!!field.value} onCheckedChange={field.onChange} data-testid="switch-is-event-return" />
+                  </FormControl>
+                </FormItem>
+              )} />
 
               <FormField control={form.control} name="active" render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border p-4">
