@@ -220,6 +220,17 @@ export default function MovementDetails() {
     enabled: !!movement?.loadingOrderId,
   });
 
+  // Fetch items from linked request (used when movement has requestId instead of loadingOrderId)
+  const { data: requestItemsData = [] } = useQuery<Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>>({
+    queryKey: ["/api/requests", movement?.requestId, "items"],
+    queryFn: async () => {
+      const res = await fetch(`/api/requests/${movement?.requestId}/items`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch request items");
+      return res.json();
+    },
+    enabled: !!movement?.requestId && !movement?.loadingOrderId,
+  });
+
   // Fetch all movements with the same loading order ID
   const { data: relatedMovements = [] } = useQuery<Movement[]>({
     queryKey: [`/api/loading-orders/${movement?.loadingOrderId}/movements`],
@@ -295,39 +306,55 @@ export default function MovementDetails() {
 
   // Calculate expected items with loaded quantities from ALL related movements
   const expectedItems: ExpectedItem[] = useMemo(() => {
-    if (!loadingOrderItems.length) return [];
+    // ── Source: loading order items ──────────────────────────────────────────
+    if (loadingOrderItems.length > 0) {
+      const itemsToConsider = movement?.loadingOrderId ? allRelatedMovementItems : movementItems;
 
-    // Use all related movement items if we have a loading order, otherwise use current movement items
-    const itemsToConsider = movement?.loadingOrderId ? allRelatedMovementItems : movementItems;
+      return loadingOrderItems.map((orderItem) => {
+        const expectedProductSku = orderItem.product.sku;
+        const loadedQuantity = itemsToConsider
+          .filter((item) => {
+            if (item.productId === orderItem.productId) return true;
+            const loadedProduct = products.find(p => p.id === item.productId);
+            if (loadedProduct?.productType === "variante" && loadedProduct.equivalentSku === expectedProductSku) return true;
+            return false;
+          })
+          .reduce((sum, item) => sum + item.quantity, 0);
 
-    return loadingOrderItems.map((orderItem) => {
-      // Get the SKU of the expected product
-      const expectedProductSku = orderItem.product.sku;
-      
-      const loadedQuantity = itemsToConsider
-        .filter((item) => {
-          // Direct match by productId
-          if (item.productId === orderItem.productId) return true;
-          
-          // Check if the loaded item is a variant of the expected product
-          const loadedProduct = products.find(p => p.id === item.productId);
-          if (loadedProduct?.productType === "variante" && loadedProduct.equivalentSku === expectedProductSku) {
-            return true;
-          }
-          
-          return false;
-        })
-        .reduce((sum, item) => sum + item.quantity, 0);
+        return {
+          productId: orderItem.productId,
+          product: orderItem.product,
+          expectedQuantity: orderItem.consolidatedQuantity,
+          loadedQuantity,
+          remaining: Math.max(0, orderItem.consolidatedQuantity - loadedQuantity),
+        };
+      });
+    }
 
-      return {
-        productId: orderItem.productId,
-        product: orderItem.product,
-        expectedQuantity: orderItem.consolidatedQuantity,
-        loadedQuantity,
-        remaining: Math.max(0, orderItem.consolidatedQuantity - loadedQuantity),
-      };
-    });
-  }, [loadingOrderItems, movementItems, movement?.loadingOrderId, allRelatedMovementItems, products]);
+    // ── Source: request items (fallback when movement is linked to a request) ─
+    if (requestItemsData.length > 0) {
+      return requestItemsData
+        .filter((ri) => ri.productId && ri.product)
+        .map((ri) => {
+          // Use approvedQuantity if item was approved, otherwise use quantity
+          const expectedQuantity = ri.approvedQuantity != null && ri.approvedQuantity > 0
+            ? ri.approvedQuantity
+            : ri.quantity;
+          const loadedQuantity = movementItems
+            .filter((item) => item.productId === ri.productId)
+            .reduce((sum, item) => sum + item.quantity, 0);
+          return {
+            productId: ri.productId!,
+            product: ri.product!,
+            expectedQuantity,
+            loadedQuantity,
+            remaining: Math.max(0, expectedQuantity - loadedQuantity),
+          };
+        });
+    }
+
+    return [];
+  }, [loadingOrderItems, requestItemsData, movementItems, movement?.loadingOrderId, allRelatedMovementItems, products]);
 
   // Calculate overall progress
   const totalExpected = expectedItems.reduce((sum, item) => sum + item.expectedQuantity, 0);
@@ -1339,7 +1366,9 @@ export default function MovementDetails() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3 font-semibold text-base">
                   <ClipboardList className="h-5 w-5" />
-                  Itens da Ordem ({expectedItems.length})
+                  {movement?.requestId && !movement?.loadingOrderId
+                    ? `Itens da Requisição (${expectedItems.length})`
+                    : `Itens da Ordem (${expectedItems.length})`}
                 </div>
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
