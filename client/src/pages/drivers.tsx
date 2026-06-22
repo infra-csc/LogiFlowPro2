@@ -48,7 +48,7 @@ import { z } from "zod";
 const driverFormSchema = insertDriverSchema.extend({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   cpf: z.string().length(11, "CPF deve ter 11 dígitos"),
-  license: z.string().min(5, "Número da CNH é obrigatório"),
+  license: z.string().min(5, "CNH deve ter pelo menos 5 caracteres").optional().or(z.literal("")),
   phone: z.string().min(10, "Telefone é obrigatório"),
 });
 
@@ -174,10 +174,12 @@ export default function DriversPage() {
   });
 
   const handleSubmit = (data: DriverFormData) => {
+    const license = data.license?.trim() || undefined;
+    const normalized = { ...data, license };
     if (selectedDriver) {
-      updateMutation.mutate({ id: selectedDriver.id, data });
+      updateMutation.mutate({ id: selectedDriver.id, data: normalized });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(normalized);
     }
   };
 
@@ -203,7 +205,7 @@ export default function DriversPage() {
       rg: driver.rg || undefined,
       sex: driver.sex || undefined,
       birthDate: normalizedBirthDate || undefined,
-      license: driver.license,
+      license: driver.license ?? "",
       phone: driver.phone,
       available: driver.available,
     });
@@ -227,7 +229,7 @@ export default function DriversPage() {
     return (
       d.name.toLowerCase().includes(q) ||
       d.cpf.includes(q) ||
-      d.license.toLowerCase().includes(q) ||
+      (d.license ?? "").toLowerCase().includes(q) ||
       d.phone.includes(q)
     );
   });
@@ -309,10 +311,12 @@ export default function DriversPage() {
                     <span>CPF:</span>
                     <span className="font-mono">{driver.cpf}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span>CNH:</span>
-                    <span className="font-mono">{driver.license}</span>
-                  </div>
+                  {driver.license && (
+                    <div className="flex items-center gap-1.5">
+                      <span>CNH:</span>
+                      <span className="font-mono">{driver.license}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5 flex-shrink-0" />
                     <span>{driver.phone}</span>
@@ -465,7 +469,7 @@ export default function DriversPage() {
                   name="license"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Número da CNH</FormLabel>
+                      <FormLabel>Número da CNH <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="12345678900" data-testid="input-driver-license" />
                       </FormControl>
