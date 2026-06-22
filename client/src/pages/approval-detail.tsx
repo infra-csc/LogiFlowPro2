@@ -28,6 +28,8 @@ import {
   AlertCircle,
   Package,
   Boxes,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -492,20 +494,55 @@ export default function ApprovalDetail() {
                                 <Label className="text-xs font-medium whitespace-nowrap">
                                   Qtd. aprovada
                                 </Label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max={item.quantity}
-                                  value={approval?.approvedQuantity ?? item.quantity}
-                                  onChange={(e) => {
-                                    const val =
-                                      e.target.value === "" ? 0 : Number(e.target.value);
-                                    handleApprovalChange(item.id, "approvedQuantity", val);
-                                  }}
-                                  className="w-20 h-8 text-sm"
-                                  data-testid={`input-quantity-${item.id}`}
-                                  aria-label="Quantidade aprovada"
-                                />
+                                {(() => {
+                                  const current = approval?.approvedQuantity ?? item.quantity;
+                                  const setQty = (v: number) => {
+                                    const clamped = Math.max(0, Math.min(item.quantity, v));
+                                    handleApprovalChange(item.id, "approvedQuantity", clamped);
+                                  };
+                                  return (
+                                    <div className="flex items-center h-8 rounded-md border border-border bg-background overflow-hidden">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-none no-default-hover-elevate hover-elevate active-elevate-2"
+                                        disabled={current <= 0}
+                                        onClick={() => setQty(current - 1)}
+                                        data-testid={`button-decrease-quantity-${item.id}`}
+                                        aria-label="Diminuir quantidade"
+                                      >
+                                        <Minus className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max={item.quantity}
+                                        value={current}
+                                        onChange={(e) => {
+                                          const val =
+                                            e.target.value === "" ? 0 : Number(e.target.value);
+                                          setQty(val);
+                                        }}
+                                        className="w-12 h-8 bg-transparent text-center text-sm font-semibold text-foreground focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        data-testid={`input-quantity-${item.id}`}
+                                        aria-label="Quantidade aprovada"
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-none no-default-hover-elevate hover-elevate active-elevate-2"
+                                        disabled={current >= item.quantity}
+                                        onClick={() => setQty(current + 1)}
+                                        data-testid={`button-increase-quantity-${item.id}`}
+                                        aria-label="Aumentar quantidade"
+                                      >
+                                        <Plus className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  );
+                                })()}
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   de {item.quantity} {unit}
                                 </span>
