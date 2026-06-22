@@ -550,7 +550,11 @@ export default function RequestDetails() {
               />
             ) : (
               <div className="space-y-3">
-                {items.map((item) => {
+                {[...items].sort((a, b) => {
+                  const nameA = (a.kit?.name ?? a.product?.name ?? "").toLowerCase();
+                  const nameB = (b.kit?.name ?? b.product?.name ?? "").toLowerCase();
+                  return nameA.localeCompare(nameB, "pt-BR");
+                }).map((item) => {
                   const StatusIcon = itemStatusIcon[item.approvalStatus] || Clock;
                   const statusColor = itemStatusColor[item.approvalStatus] || "text-muted-foreground";
                   const statusBg = itemStatusBg[item.approvalStatus] || "bg-muted/50 border-border";
