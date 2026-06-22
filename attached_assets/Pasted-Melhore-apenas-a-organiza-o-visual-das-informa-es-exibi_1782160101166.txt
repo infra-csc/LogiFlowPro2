@@ -1,0 +1,293 @@
+Melhore apenas a organização visual das informações exibidas abaixo dos cards de resumo da tela de movimentação.
+
+Não altere regras, dados, vínculos, funcionalidades, nomes ou informações existentes. A mudança deve ser somente de layout, hierarquia e usabilidade.
+
+Atualmente, Evento, Requisição, Plano de viagens, Tipo, Sentido, Doca, Veículo e Data de criação aparecem em uma única linha corrida, tornando a leitura confusa.
+
+==================================================
+1. CRIAR BLOCO “CONTEXTO DA MOVIMENTAÇÃO”
+==================================================
+
+Substituir a linha corrida atual por um card compacto chamado:
+
+Contexto da movimentação
+
+O card deve ficar imediatamente abaixo dos indicadores principais:
+
+- Status
+- Esperados
+- Carregados
+- Pendentes
+- Excedentes
+- Progresso
+- Evidências
+
+Não misturar essas informações novamente com os cards numéricos.
+
+==================================================
+2. DIVIDIR AS INFORMAÇÕES EM DOIS NÍVEIS
+==================================================
+
+Organizar o card em duas áreas:
+
+A. VÍNCULOS PRINCIPAIS
+
+Mostrar em maior destaque:
+
+- Evento
+- Requisição
+- Plano de viagens
+
+Layout desktop:
+
+| Evento | Requisição | Plano de viagens |
+
+Cada informação deve ficar em uma célula própria.
+
+Estrutura de cada célula:
+
+ÍCONE + LABEL
+Valor principal
+Informação secundária, caso exista
+
+Exemplo:
+
+Evento
+Desafio Energia Petrobras – Bike – São Paulo 2026
+
+Requisição
+Desafio Energia Petrobras – Bike – São Paulo 2026 — Ativação
+
+Plano de viagens
+Carreta 2 – Desafio Energia Petrobras – Bike – São Paulo 2026
+
+Os valores podem ser clicáveis quando já existir navegação para o registro relacionado.
+
+Adicionar ícone discreto de abrir ou seta à direita, sem transformar toda a área em um botão azul.
+
+==================================================
+3. INFORMAÇÕES OPERACIONAIS
+==================================================
+
+Abaixo dos vínculos principais, criar uma segunda linha mais compacta com:
+
+- Tipo
+- Sentido
+- Veículo
+- Doca
+- Criado em
+
+Exemplo:
+
+Tipo
+Carregamento para evento
+
+Sentido
+Saída
+
+Veículo
+Não informado
+
+Doca
+Não informada
+
+Criado em
+22/06/2026 às 15:19
+
+Usar uma grade responsiva.
+
+Desktop:
+- 5 colunas equilibradas.
+
+Tablet:
+- 2 ou 3 colunas.
+
+Mobile:
+- 1 coluna.
+
+==================================================
+4. NÃO USAR TRAÇO ISOLADO
+==================================================
+
+Atualmente aparecem informações como:
+
+Doca: —
+Veículo: —
+
+Substituir por textos claros:
+
+Doca
+Não informada
+
+Veículo
+Não informado
+
+Usar texto neutro e discreto.
+
+Não utilizar vermelho ou amarelo apenas porque a informação está vazia.
+
+==================================================
+5. SENTIDO DA MOVIMENTAÇÃO
+==================================================
+
+Manter o sentido “Saída” como badge.
+
+Padronização:
+
+- Saída: badge discreto em tom vermelho ou laranja.
+- Entrada ou retorno: badge discreto em verde.
+- Transferência interna: badge neutro ou azul discreto.
+
+O badge deve aparecer dentro do campo “Sentido”, e não solto no meio do texto do Tipo.
+
+Não mostrar:
+
+Tipo: Carregamento para Evento [Saída]
+
+Mostrar:
+
+Tipo
+Carregamento para evento
+
+Sentido
+[Saída]
+
+==================================================
+6. HIERARQUIA VISUAL
+==================================================
+
+Aplicar a seguinte hierarquia:
+
+Label:
+- tamanho pequeno;
+- caixa normal ou uppercase discreto;
+- cor secundária.
+
+Valor:
+- tamanho médio;
+- maior contraste;
+- peso semibold.
+
+Informação técnica:
+- tamanho menor;
+- cor secundária.
+
+Os nomes de Evento, Requisição e Plano de viagens devem possuir maior destaque do que Veículo, Doca e Data de criação.
+
+==================================================
+7. NOMES MUITO LONGOS
+==================================================
+
+Nomes longos não podem aumentar excessivamente a altura da tela.
+
+Aplicar:
+
+- máximo de duas linhas;
+- quebra de texto controlada;
+- reticências quando necessário;
+- tooltip com o nome completo ao passar o mouse.
+
+Não cortar informações permanentemente.
+
+Não permitir que um nome longo desloque ou comprima os outros campos.
+
+==================================================
+8. REDUZIR POLUIÇÃO DE ÍCONES
+==================================================
+
+Usar apenas um ícone por campo.
+
+Não exibir vários ícones pequenos em sequência na mesma linha.
+
+Os ícones devem:
+
+- ter o mesmo tamanho;
+- usar cor secundária;
+- ficar alinhados ao label;
+- não competir com os textos.
+
+==================================================
+9. EVIDÊNCIAS
+==================================================
+
+Manter a mensagem de evidência abaixo do card de contexto, mas melhorar a ação.
+
+Estado sem evidências:
+
+Ícone de câmera
+
+Nenhuma evidência anexada
+
+Recomendamos registrar fotos ou vídeos durante o carregamento.
+
+Botão à direita:
+
+Adicionar evidência
+
+Não deixar apenas um texto informativo sem ação.
+
+Quando houver evidências:
+
+3 evidências registradas
+2 fotos · 1 vídeo
+
+Botão:
+
+Ver evidências
+
+==================================================
+10. EXEMPLO DE ESTRUTURA FINAL
+==================================================
+
+Contexto da movimentação
+
+┌────────────────────────┬────────────────────────┬────────────────────────┐
+│ Evento                 │ Requisição             │ Plano de viagens       │
+│ Desafio Energia...     │ Desafio Energia...     │ Carreta 2 – Desafio... │
+└────────────────────────┴────────────────────────┴────────────────────────┘
+
+┌────────────────┬────────────┬──────────────┬──────────────┬──────────────────┐
+│ Tipo           │ Sentido    │ Veículo      │ Doca         │ Criado em        │
+│ Carregamento   │ [Saída]    │ Não informado│ Não informada│ 22/06/26 15:19   │
+│ para evento    │            │              │              │                  │
+└────────────────┴────────────┴──────────────┴──────────────┴──────────────────┘
+
+Nenhuma evidência anexada
+Recomendamos registrar fotos ou vídeos durante o carregamento.
+                                      [Adicionar evidência]
+
+==================================================
+11. COMPORTAMENTO RESPONSIVO
+==================================================
+
+Desktop:
+- vínculos principais em três colunas;
+- informações operacionais em cinco colunas;
+- evidência com texto à esquerda e ação à direita.
+
+Tablet:
+- vínculos em duas colunas;
+- informações operacionais em duas ou três colunas.
+
+Mobile:
+- uma coluna;
+- labels acima dos valores;
+- botão de evidência com largura total;
+- sem rolagem horizontal.
+
+==================================================
+12. CRITÉRIOS DE ACEITE
+==================================================
+
+A alteração estará correta quando:
+
+1. As informações não estiverem mais em uma linha corrida.
+2. Evento, Requisição e Plano de viagens estiverem visualmente destacados.
+3. Tipo e Sentido estiverem separados.
+4. “Saída” estiver dentro do campo Sentido.
+5. Doca e Veículo vazios mostrarem “Não informado”.
+6. A data estiver formatada como “22/06/2026 às 15:19”.
+7. Nomes longos não quebrarem o layout.
+8. A área de evidências possuir uma ação clara.
+9. Nenhum dado existente for removido ou alterado.
+10. O resultado continuar coerente com o design escuro do EventFlow.

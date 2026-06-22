@@ -1128,44 +1128,142 @@ export default function MovementDetails() {
               </div>
             </button>
           </div>
-          {/* Metadata */}
-          <div className="mt-3 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />Doca: <span className="text-foreground font-medium">{movement.dock?.name || "—"}</span></span>
-            <span className="flex items-center gap-1"><Truck className="h-3.5 w-3.5" />Veículo: <span className="text-foreground font-medium">{movement.vehiclePlate || "—"}</span></span>
-            <span className="flex items-center gap-2 flex-wrap">
-              <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Tipo: <span className="text-foreground font-medium">{movement.movementTypeConfig?.name || "—"}</span></span>
-              {movement.movementTypeConfig?.nature === "inbound" && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">Entrada</Badge>
+          {/* Contexto da movimentação */}
+          <div className="mt-3 space-y-2">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Contexto da movimentação</p>
+
+            {/* Row A — primary links: Evento / Requisição / Plano de viagens / Ordem */}
+            {(movement.events?.length || movement.request || movement.trips?.length || movement.loadingOrder) ? (
+              <div className="rounded-lg overflow-hidden border border-border/60">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-px bg-border/40">
+                  {movement.events && movement.events.length > 0 && (
+                    <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        <Tag className="h-3 w-3 shrink-0" />Evento
+                      </div>
+                      <p className="text-sm font-semibold leading-snug line-clamp-2 mt-0.5" title={movement.events.map((e) => e.name).join(", ")}>
+                        {movement.events.map((e) => e.name).join(", ")}
+                      </p>
+                    </div>
+                  )}
+                  {movement.request && (
+                    <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        <ClipboardList className="h-3 w-3 shrink-0" />Requisição
+                      </div>
+                      <p className="text-sm font-semibold leading-snug line-clamp-2 mt-0.5" title={`${movement.request.event?.name ? movement.request.event.name + " — " : ""}${movement.request.area}`}>
+                        {movement.request.event?.name ? `${movement.request.event.name} — ` : ""}{movement.request.area}
+                      </p>
+                    </div>
+                  )}
+                  {movement.trips && movement.trips.length > 0 && (
+                    <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        <Truck className="h-3 w-3 shrink-0" />Plano de viagens
+                      </div>
+                      <p className="text-sm font-semibold leading-snug line-clamp-2 mt-0.5" title={movement.trips.map((t) => t.description || `Viagem ${t.id.slice(0, 8)}`).join(", ")}>
+                        {movement.trips.map((t) => t.description || `Viagem ${t.id.slice(0, 8)}`).join(", ")}
+                      </p>
+                    </div>
+                  )}
+                  {movement.loadingOrder && (
+                    <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        <Layers className="h-3 w-3 shrink-0" />Ordem de carregamento
+                      </div>
+                      <p className="text-sm font-semibold leading-snug line-clamp-2 mt-0.5">
+                        {movement.loadingOrder.orderNumber}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Row B — operational details: Tipo / Sentido / Veículo / Doca / Criado em */}
+            <div className="rounded-lg overflow-hidden border border-border/60">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-px bg-border/40">
+                <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    <Tag className="h-3 w-3 shrink-0" />Tipo
+                  </div>
+                  <p className="text-sm font-medium leading-snug mt-0.5">{movement.movementTypeConfig?.name || "Não informado"}</p>
+                </div>
+                <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    <Activity className="h-3 w-3 shrink-0" />Sentido
+                  </div>
+                  <div className="mt-1">
+                    {movement.movementTypeConfig?.nature === "inbound" && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">Entrada</Badge>
+                    )}
+                    {movement.movementTypeConfig?.nature === "outbound" && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">Saída</Badge>
+                    )}
+                    {!movement.movementTypeConfig?.nature && (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    <Truck className="h-3 w-3 shrink-0" />Veículo
+                  </div>
+                  <p className={`text-sm font-medium leading-snug mt-0.5 ${!movement.vehiclePlate ? "text-muted-foreground" : ""}`}>
+                    {movement.vehiclePlate || "Não informado"}
+                  </p>
+                </div>
+                <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    <MapPin className="h-3 w-3 shrink-0" />Doca
+                  </div>
+                  <p className={`text-sm font-medium leading-snug mt-0.5 ${!movement.dock?.name ? "text-muted-foreground" : ""}`}>
+                    {movement.dock?.name || "Não informada"}
+                  </p>
+                </div>
+                <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    <Calendar className="h-3 w-3 shrink-0" />Criado em
+                  </div>
+                  <p className="text-sm font-medium leading-snug mt-0.5">
+                    {movement.createdAt ? format(new Date(movement.createdAt), "dd/MM/yyyy 'às' HH:mm") : "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </PageSection>
+      )}
+
+      {/* Barra de evidências */}
+      {!focusMode && (
+        <PageSection>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border border-border/60 bg-muted/20">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
+              {photoCount + videoCount === 0 ? (
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-snug">Nenhuma evidência anexada</p>
+                  <p className="text-xs text-muted-foreground leading-snug">Recomendamos registrar fotos ou vídeos durante o carregamento.</p>
+                </div>
+              ) : (
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-snug">{photoCount + videoCount} {photoCount + videoCount === 1 ? "evidência registrada" : "evidências registradas"}</p>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    {[photoCount > 0 && `${photoCount} ${photoCount === 1 ? "foto" : "fotos"}`, videoCount > 0 && `${videoCount} ${videoCount === 1 ? "vídeo" : "vídeos"}`].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
               )}
-              {movement.movementTypeConfig?.nature === "outbound" && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">Saída</Badge>
-              )}
-            </span>
-            {movement.loadingOrder && (
-              <span className="flex items-center gap-1"><Layers className="h-3.5 w-3.5" />Ordem: <span className="text-foreground font-medium">{movement.loadingOrder.orderNumber}</span></span>
-            )}
-            {movement.request && (
-              <span className="flex items-center gap-1">
-                <Layers className="h-3.5 w-3.5" />Requisição: <span className="text-foreground font-medium">
-                  {movement.request.event?.name ? `${movement.request.event.name} — ` : ""}{movement.request.area}
-                </span>
-              </span>
-            )}
-            {movement.events && movement.events.length > 0 && (
-              <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Evento: <span className="text-foreground font-medium">{movement.events.map((e) => e.name).join(", ")}</span></span>
-            )}
-            {movement.trips && movement.trips.length > 0 && (
-              <span className="flex items-center gap-1">
-                <Truck className="h-3.5 w-3.5" />
-                Plano de viagens:{" "}
-                <span className="text-foreground font-medium">
-                  {movement.trips.map((t) => t.description || `Viagem ${t.id.slice(0, 8)}`).join(", ")}
-                </span>
-              </span>
-            )}
-            {movement.createdAt && (
-              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Criado: <span className="text-foreground font-medium">{format(new Date(movement.createdAt), "dd/MM/yy HH:mm")}</span></span>
-            )}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs shrink-0"
+              onClick={() => { const el = document.getElementById("section-evidencias"); if (el) el.scrollIntoView({ behavior: "smooth" }); }}
+              data-testid="button-evidence-action"
+            >
+              {photoCount + videoCount === 0 ? "Adicionar evidência" : "Ver evidências"}
+            </Button>
           </div>
         </PageSection>
       )}
@@ -1177,7 +1275,6 @@ export default function MovementDetails() {
         if (movement.status === "completed") alerts.push({ type: "info", icon: CheckCheck, message: "Movimentação finalizada — modo somente consulta. Você ainda pode adicionar evidências." });
         if (totalPending > 0 && movement.status === "in_progress") alerts.push({ type: "warning", icon: AlertTriangle, message: `${totalPending} unidade${totalPending !== 1 ? "s" : ""} pendente${totalPending !== 1 ? "s" : ""} em ${pendingItems.length} produto${pendingItems.length !== 1 ? "s" : ""} — carregamento ainda não concluído` });
         if (totalExceeded > 0) alerts.push({ type: "error", icon: AlertTriangle, message: `${totalExceeded} unidade${totalExceeded !== 1 ? "s" : ""} excedente${totalExceeded !== 1 ? "s" : ""} acima da quantidade prevista` });
-        if (movement.status === "in_progress" && attachments.length === 0) alerts.push({ type: "muted", icon: Camera, message: "Nenhuma evidência anexada ainda — recomendamos registrar fotos durante o carregamento" });
         if (alerts.length === 0) return null;
         const colorMap = {
           warning: "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
