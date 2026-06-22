@@ -87,6 +87,7 @@ type MovementWithDetails = Movement & {
   request?: { id: string; area: string; event?: { id: string; name: string } };
   dock?: { id: string; name: string };
   events?: Array<{ id: string; name: string; sku: string }>;
+  trips?: Array<{ id: string; description: string | null; status: string; departureDateTime: string | null; loadingStartTime: string | null }>;
   movementTypeConfig?: MovementTypeConfig;
 };
 
@@ -1152,6 +1153,15 @@ export default function MovementDetails() {
             )}
             {movement.events && movement.events.length > 0 && (
               <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Evento: <span className="text-foreground font-medium">{movement.events.map((e) => e.name).join(", ")}</span></span>
+            )}
+            {movement.trips && movement.trips.length > 0 && (
+              <span className="flex items-center gap-1">
+                <Truck className="h-3.5 w-3.5" />
+                Plano de viagens:{" "}
+                <span className="text-foreground font-medium">
+                  {movement.trips.map((t) => t.description || `Viagem ${t.id.slice(0, 8)}`).join(", ")}
+                </span>
+              </span>
             )}
             {movement.createdAt && (
               <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Criado: <span className="text-foreground font-medium">{format(new Date(movement.createdAt), "dd/MM/yy HH:mm")}</span></span>
