@@ -127,32 +127,6 @@ function StatCounter({
 }
 
 // Progress display for loaded/expected
-function MetricBlock({
-  label,
-  value,
-  sub,
-  emphasis,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  emphasis?: "warning" | "success" | "default";
-}) {
-  const colorClass =
-    emphasis === "warning"
-      ? "text-amber-500"
-      : emphasis === "success"
-      ? "text-emerald-500"
-      : "text-foreground";
-  return (
-    <div className="flex flex-col items-center gap-0.5 min-w-0">
-      <div className={`text-base font-bold tabular-nums leading-none ${colorClass}`}>{value}</div>
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium text-center leading-tight">{label}</div>
-      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
-    </div>
-  );
-}
-
 // Single metadata row
 function MetaRow({ icon: Icon, label, value, truncate }: {
   icon: React.ElementType;
@@ -335,65 +309,64 @@ function MovementCard({
 
         {/* ── METRICS ROW ─────────────────────────────────────────────── */}
         <div className="mx-4 rounded-lg bg-muted/20 border border-border/40 px-3 py-2.5 mb-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-4">
-              <MetricBlock
-                label="Lançados"
-                value={stats.itemsLoaded}
-                sub={stats.itemsLoaded === 1 ? "item" : "itens"}
-              />
-              <div className="h-6 w-px bg-border/50" />
-              <MetricBlock
-                label="Unid. lançadas"
-                value={stats.unitsLoaded}
-              />
-              {hasExpected && (
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            {/* Left: counts in plain readable format */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Product count */}
+              <span className="text-sm tabular-nums">
+                <span className="font-bold">{stats.itemsLoaded}</span>
+                <span className="text-muted-foreground ml-1 text-xs">
+                  {stats.itemsLoaded === 1 ? "produto" : "produtos"}
+                </span>
+              </span>
+
+              <span className="text-border/70 text-xs">·</span>
+
+              {/* Units: "349 un." or "349 / 500 un." */}
+              <span className="text-sm tabular-nums">
+                <span className="font-bold">{stats.unitsLoaded}</span>
+                {hasExpected && (
+                  <span className="text-muted-foreground text-xs"> / {stats.unitsExpected}</span>
+                )}
+                <span className="text-muted-foreground ml-1 text-xs">un.</span>
+              </span>
+
+              {/* Pending badge */}
+              {unitsPending !== null && unitsPending > 0 && (
                 <>
-                  <div className="h-6 w-px bg-border/50" />
-                  <MetricBlock
-                    label="Esperado"
-                    value={stats.unitsExpected}
-                  />
-                  {unitsPending !== null && unitsPending > 0 && (
-                    <>
-                      <div className="h-6 w-px bg-border/50" />
-                      <MetricBlock
-                        label="Pendente"
-                        value={unitsPending}
-                        emphasis="warning"
-                      />
-                    </>
-                  )}
-                  {unitsExceeded !== null && unitsExceeded > 0 && (
-                    <>
-                      <div className="h-6 w-px bg-border/50" />
-                      <MetricBlock
-                        label="Excedente"
-                        value={unitsExceeded}
-                        emphasis="warning"
-                      />
-                    </>
-                  )}
+                  <span className="text-border/70 text-xs">·</span>
+                  <span className="text-xs font-medium text-amber-500 tabular-nums">
+                    {unitsPending} pendente{unitsPending !== 1 ? "s" : ""}
+                  </span>
                 </>
               )}
+
+              {/* Exceeded badge */}
+              {unitsExceeded !== null && unitsExceeded > 0 && (
+                <>
+                  <span className="text-border/70 text-xs">·</span>
+                  <span className="text-xs font-medium text-red-500 tabular-nums">
+                    {unitsExceeded} excedente{unitsExceeded !== 1 ? "s" : ""}
+                  </span>
+                </>
+              )}
+
+              {/* Empty state */}
+              {stats.itemsLoaded === 0 && !hasExpected && (
+                <span className="text-xs text-muted-foreground italic">Nenhum item registrado</span>
+              )}
             </div>
+
+            {/* Right: progress bar + % */}
             {progressPct !== null && (
-              <div className="flex flex-col items-end gap-1 shrink-0 min-w-[60px]">
+              <div className="flex items-center gap-2 shrink-0">
+                <Progress value={progressPct} className="h-1.5 w-16" />
                 <span className={`text-sm font-bold tabular-nums leading-none ${
                   progressPct === 100 ? "text-emerald-500" : "text-foreground"
                 }`}>
                   {progressPct}%
                 </span>
-                <Progress
-                  value={progressPct}
-                  className="h-1.5 w-14"
-                />
               </div>
-            )}
-            {stats.itemsLoaded === 0 && !hasExpected && (
-              <span className="text-[10px] text-muted-foreground italic">
-                Nenhum item lançado
-              </span>
             )}
           </div>
         </div>
