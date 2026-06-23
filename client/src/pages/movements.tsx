@@ -620,7 +620,7 @@ export default function Movements() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const res = await apiRequest("PATCH", `/api/movements/${id}`, { status });
+      const res = await apiRequest("PATCH", `/api/movements/${id}/status`, { status });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to update status");
