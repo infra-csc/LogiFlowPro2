@@ -1253,6 +1253,76 @@ export class DatabaseStorage implements IStorage {
       junctionRequestsByMovement.set(r.movementId, arr);
     }
 
+    // ── Batch aggregate: loaded items stats ──────────────────────────────
+    const loadedStatsRows = ids.length
+      ? await db
+          .select({
+            movementId: movementItems.movementId,
+            itemCount: sql<string>`COUNT(*)`,
+            totalUnits: sql<string>`COALESCE(SUM(${movementItems.quantity}), 0)`,
+          })
+          .from(movementItems)
+          .where(inArray(movementItems.movementId, ids))
+          .groupBy(movementItems.movementId)
+      : [];
+
+    // ── Batch aggregate: evidence counts ────────────────────────────────
+    const evidenceStatsRows = ids.length
+      ? await db
+          .select({
+            movementId: movementAttachments.movementId,
+            evidenceCount: sql<string>`COUNT(*)`,
+          })
+          .from(movementAttachments)
+          .where(
+            and(
+              inArray(movementAttachments.movementId, ids),
+              sql`${movementAttachments.deletedAt} IS NULL`
+            )
+          )
+          .groupBy(movementAttachments.movementId)
+      : [];
+
+    // ── Batch aggregate: expected from requests (junction table) ─────────
+    const expectedFromRequestRows = ids.length
+      ? await db
+          .select({
+            movementId: movementRequests.movementId,
+            itemCount: sql<string>`COUNT(DISTINCT ${requestItems.id})`,
+            totalUnits: sql<string>`COALESCE(SUM(CASE WHEN ${requestItems.approvedQuantity} IS NOT NULL THEN ${requestItems.approvedQuantity} ELSE ${requestItems.quantity} END), 0)`,
+          })
+          .from(movementRequests)
+          .innerJoin(requestItems, eq(movementRequests.requestId, requestItems.requestId))
+          .where(
+            and(
+              inArray(movementRequests.movementId, ids),
+              sql`${requestItems.approvalStatus} != 'rejected'`
+            )
+          )
+          .groupBy(movementRequests.movementId)
+      : [];
+
+    // ── Batch aggregate: expected from loading orders ─────────────────────
+    const loIdsForExpected = Array.from(
+      new Set(movementsData.map((m) => (m as any).loadingOrderId).filter(Boolean))
+    ) as string[];
+    const expectedFromLORows = loIdsForExpected.length
+      ? await db
+          .select({
+            loadingOrderId: loadingOrderItems.loadingOrderId,
+            itemCount: sql<string>`COUNT(*)`,
+            totalUnits: sql<string>`COALESCE(SUM(${loadingOrderItems.consolidatedQuantity}), 0)`,
+          })
+          .from(loadingOrderItems)
+          .where(inArray(loadingOrderItems.loadingOrderId, loIdsForExpected))
+          .groupBy(loadingOrderItems.loadingOrderId)
+      : [];
+
+    const loadedStatsByMovement = new Map(loadedStatsRows.map((s) => [s.movementId, s]));
+    const evidenceStatsByMovement = new Map(evidenceStatsRows.map((s) => [s.movementId, s]));
+    const expectedFromRequestsByMovement = new Map(expectedFromRequestRows.map((s) => [s.movementId, s]));
+    const expectedFromLOByLOId = new Map(expectedFromLORows.map((s) => [s.loadingOrderId, s]));
+
     return movementsData.map((m) => {
       // Prefer junction table requests; fall back to legacy requestId column
       const junctionReqs = junctionRequestsByMovement.get(m.id) ?? [];
@@ -1262,6 +1332,23 @@ export class DatabaseStorage implements IStorage {
       const requests = junctionReqs.length > 0
         ? junctionReqs
         : legacyRequest ? [legacyRequest] : [];
+
+      const loadedStat = loadedStatsByMovement.get(m.id);
+      const evidenceStat = evidenceStatsByMovement.get(m.id);
+      const expectedStat =
+        expectedFromRequestsByMovement.get(m.id) ??
+        ((m as any).loadingOrderId
+          ? expectedFromLOByLOId.get((m as any).loadingOrderId)
+          : undefined);
+
+      const _stats = {
+        itemsLoaded: Number(loadedStat?.itemCount ?? 0),
+        unitsLoaded: Number(loadedStat?.totalUnits ?? 0),
+        itemsExpected: Number(expectedStat?.itemCount ?? 0),
+        unitsExpected: Number(expectedStat?.totalUnits ?? 0),
+        evidenceCount: Number(evidenceStat?.evidenceCount ?? 0),
+      };
+
       return {
         ...m,
         events: eventsByMovement.get(m.id) ?? [],
@@ -1271,6 +1358,7 @@ export class DatabaseStorage implements IStorage {
           : undefined,
         request: requests[0] ?? undefined,
         requests,
+        _stats,
       };
     });
   }
