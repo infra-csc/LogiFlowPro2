@@ -332,13 +332,17 @@ function TripDetailPanel({ trips }: { trips: TripWithRelations[] }) {
 }
 
 // ─── Searchable select ────────────────────────────────────────────────────────
+type SelectOption = { value: string; label: string; searchText: string };
+type SelectGroup = { label: string; options: SelectOption[] };
+
 function SearchableSelect({
-  value, onChange, options, placeholder, searchPlaceholder, emptyText,
+  value, onChange, options, groups, placeholder, searchPlaceholder, emptyText,
   disabled, dataTestid, renderItem, renderSelected,
 }: {
   value: string;
   onChange: (value: string) => void;
-  options: { value: string; label: string; searchText: string }[];
+  options: SelectOption[];
+  groups?: SelectGroup[];
   placeholder: string;
   searchPlaceholder: string;
   emptyText: string;
@@ -348,7 +352,28 @@ function SearchableSelect({
   renderSelected?: (value: string) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.value === value);
+  const allOptions = groups ? groups.flatMap((g) => g.options) : options;
+  const selected = allOptions.find((o) => o.value === value);
+
+  function renderCommandItem(option: SelectOption) {
+    return (
+      <CommandItem
+        key={option.value}
+        value={option.searchText}
+        onSelect={() => {
+          onChange(option.value === value ? "" : option.value);
+          setOpen(false);
+        }}
+      >
+        <div className="flex items-center gap-2 w-full">
+          <Check
+            className={cn("h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")}
+          />
+          {renderItem ? renderItem(option) : <span className="text-sm">{option.label}</span>}
+        </div>
+      </CommandItem>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -376,25 +401,17 @@ function SearchableSelect({
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.searchText}
-                  onSelect={() => {
-                    onChange(option.value === value ? "" : option.value);
-                    setOpen(false);
-                  }}
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    <Check
-                      className={cn("h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")}
-                    />
-                    {renderItem ? renderItem(option) : <span className="text-sm">{option.label}</span>}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {groups ? (
+              groups.map((group) => (
+                <CommandGroup key={group.label} heading={group.label}>
+                  {group.options.map(renderCommandItem)}
+                </CommandGroup>
+              ))
+            ) : (
+              <CommandGroup>
+                {options.map(renderCommandItem)}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
@@ -659,11 +676,26 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       control={form.control}
                       name="movementTypeConfigId"
                       render={({ field }) => {
-                        const typeOptions = activeMovementTypes.map((t) => ({
-                          value: t.id,
-                          label: movementTypeFriendlyLabel(t.name),
-                          searchText: `${movementTypeFriendlyLabel(t.name)} ${t.name}`.toLowerCase(),
+                        const NATURE_ORDER: Record<string, number> = { outbound: 0, inbound: 1, transfer: 2, adjustment: 3 };
+                        const NATURE_LABEL: Record<string, string> = { outbound: "Saída", inbound: "Entrada", transfer: "Transferência", adjustment: "Ajuste" };
+                        const sortedTypes = [...activeMovementTypes].sort((a, b) => {
+                          const nA = NATURE_ORDER[a.nature] ?? 99;
+                          const nB = NATURE_ORDER[b.nature] ?? 99;
+                          if (nA !== nB) return nA - nB;
+                          return movementTypeFriendlyLabel(a.name).localeCompare(movementTypeFriendlyLabel(b.name), "pt-BR");
+                        });
+                        const naturesPresent = Array.from(new Set(sortedTypes.map((t) => t.nature)));
+                        const typeGroups: SelectGroup[] = naturesPresent.map((nature) => ({
+                          label: NATURE_LABEL[nature] ?? nature,
+                          options: sortedTypes
+                            .filter((t) => t.nature === nature)
+                            .map((t) => ({
+                              value: t.id,
+                              label: movementTypeFriendlyLabel(t.name),
+                              searchText: `${NATURE_LABEL[t.nature] ?? t.nature} ${movementTypeFriendlyLabel(t.name)} ${t.name}`.toLowerCase(),
+                            })),
                         }));
+                        const typeOptions = typeGroups.flatMap((g) => g.options);
                         return (
                           <FormItem>
                             <FormLabel className="text-sm font-medium">Tipo de movimentação *</FormLabel>
@@ -672,6 +704,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                                 value={field.value}
                                 onChange={field.onChange}
                                 options={typeOptions}
+                                groups={typeGroups}
                                 placeholder="Selecione o tipo..."
                                 searchPlaceholder="Buscar tipo de movimentação..."
                                 emptyText="Nenhum tipo encontrado"
