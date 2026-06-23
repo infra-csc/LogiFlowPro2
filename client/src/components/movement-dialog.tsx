@@ -495,32 +495,39 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     })),
   });
 
-  // Consolidated items across all selected requests
-  const allReqItems = useMemo(() => {
-    return reqItemsResults.flatMap((r) => (r.data as (RequestItem & { product?: Product })[] || []));
-  }, [reqItemsResults]);
+  const reqItemsLoading = reqItemsResults.some((r) => r.isPending);
 
-  // Consolidated view: merge duplicate productIds (sum quantities)
+  // Consolidate items from ALL requests: merge duplicate productIds (sum quantities)
+  // Derived directly from reqItemsResults.data values to avoid unstable array ref in deps
   const consolidatedReqItems = useMemo(() => {
     const map = new Map<string, { productId: string; qty: number; name: string; sku: string }>();
-    for (const item of allReqItems) {
-      if (!item.productId) continue;
-      const qty = item.approvedQuantity ?? item.quantity;
-      const prod = products.find((p) => p.id === item.productId);
-      const existing = map.get(item.productId);
-      if (existing) {
-        existing.qty += qty;
-      } else {
-        map.set(item.productId, {
-          productId: item.productId,
-          qty,
-          name: prod?.name || item.productId,
-          sku: prod?.sku || "",
-        });
+    for (const result of reqItemsResults) {
+      const items = (result.data as (RequestItem & { product?: Product })[] | undefined) ?? [];
+      for (const item of items) {
+        if (!item.productId) continue;
+        const qty = item.approvedQuantity ?? item.quantity;
+        const prod = products.find((p) => p.id === item.productId);
+        const existing = map.get(item.productId);
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          map.set(item.productId, {
+            productId: item.productId,
+            qty,
+            name: prod?.name || item.productId,
+            sku: prod?.sku || "",
+          });
+        }
       }
     }
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  }, [allReqItems, products]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    // Depend on the serialized data so memo only re-runs when actual data changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    JSON.stringify(reqItemsResults.map((r) => r.data)),
+    products,
+  ]);
 
   // Order items
   const { data: orderItemsRaw = [] } = useQuery<(LoadingOrderItem & { product?: Product })[]>({
@@ -1699,7 +1706,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                         </div>
                       </div>
                       <div className="p-4">
-                        {reqItemsResults.some(r => r.isLoading) ? (
+                        {reqItemsLoading ? (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             Carregando itens...
