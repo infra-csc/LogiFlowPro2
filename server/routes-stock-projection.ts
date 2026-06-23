@@ -1000,19 +1000,24 @@ export function registerStockProjectionRoutes(app: Express) {
           const effIn = f.inDate;
           const effArrive = f.arriveDate || f.outDate;
           // Fully returned before window → no effect on this window.
-          if (effIn && effIn.getTime() < rangeStart.getTime() && (!effOut || effOut.getTime() < rangeStart.getTime())) {
+          // Physical outbound flows are NOT skipped: even when both dates are before the
+          // range, we still register an informational driver so completed movements appear
+          // in the "Por Produto" impact list (their qty is already baked into currentStock).
+          if (!f.alreadyPhysical && effIn && effIn.getTime() < rangeStart.getTime() && (!effOut || effOut.getTime() < rangeStart.getTime())) {
             continue;
           }
 
-          // Outbound (only for not-yet-physical flows; physical already left).
-          if (effOut && !f.alreadyPhysical) {
-            if (effOut.getTime() <= rangeEnd.getTime()) {
-              const applyKey = effOut.getTime() < rangeStart.getTime() ? rangeDays[0] : toDayKey(effOut);
-              const idx = dayIndex.get(applyKey);
-              if (idx !== undefined) {
+          // Outbound: balance only changes for non-physical flows (physical already left and
+          // is baked into currentStock). But always register an informational driver so
+          // completed movements appear in the "Por Produto" impact list.
+          if (effOut && effOut.getTime() <= rangeEnd.getTime()) {
+            const applyKey = effOut.getTime() < rangeStart.getTime() ? rangeDays[0] : toDayKey(effOut);
+            const idx = dayIndex.get(applyKey);
+            if (idx !== undefined) {
+              if (!f.alreadyPhysical) {
                 outboundByDay[idx] += f.qty;
-                driversByDay[idx].push(driverOf(f, "outbound", f.qty));
               }
+              driversByDay[idx].push(driverOf(f, "outbound", f.qty));
             }
           }
 
