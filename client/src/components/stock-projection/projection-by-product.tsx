@@ -463,7 +463,7 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
       {product && (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
             <Card className="border-border/60">
               <CardContent className="p-3">
                 <div className="text-xl font-bold tabular-nums">{product.currentStock}</div>
@@ -500,6 +500,14 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
               <CardContent className="p-3">
                 <div className="text-xl font-bold text-chart-4 tabular-nums">{product.totalInbound}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">Entradas</div>
+              </CardContent>
+            </Card>
+            <Card className={product.totalInEvent > 0 ? "border-amber-500/40" : "border-border/60"}>
+              <CardContent className="p-3">
+                <div className={`text-xl font-bold tabular-nums ${product.totalInEvent > 0 ? "text-amber-400" : ""}`}>
+                  {product.totalInEvent}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">Em evento (pico)</div>
               </CardContent>
             </Card>
           </div>
