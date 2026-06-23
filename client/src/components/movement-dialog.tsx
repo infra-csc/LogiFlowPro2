@@ -1706,9 +1706,12 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       <ReviewRow icon={FileText} label={`Requisiç${selectedRequests.length === 1 ? "ão" : "ões"} (${selectedRequests.length})`}>
                         <div className="space-y-0.5 mt-0.5">
                           {selectedRequests.map((req) => (
-                            <p key={req.id} className="font-medium leading-snug text-foreground truncate text-xs">
-                              {req.event?.name ? `${req.event.name} — ` : ""}{req.area}
-                            </p>
+                            <div key={req.id} className="leading-snug">
+                              <p className="font-medium text-foreground truncate text-xs">{req.area}</p>
+                              {req.event?.name && (
+                                <p className="text-[10px] text-muted-foreground truncate">{req.event.name}</p>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </ReviewRow>
