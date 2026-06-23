@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -1706,7 +1705,7 @@ export default function MovementDetails() {
                     );
                   })}
                 </div>
-                <ScrollArea className="max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
+                <div className="overflow-y-auto max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
                   <div className="space-y-2">
                     {filteredExpectedItems.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8">
@@ -1785,7 +1784,7 @@ export default function MovementDetails() {
                       })
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -1822,7 +1821,7 @@ export default function MovementDetails() {
                   data-testid="input-search-loaded-items"
                 />
               </div>
-              <ScrollArea className="max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
+              <div className="overflow-y-auto max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
                 {filteredLoadedItems.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
                     <PackageCheck className="h-8 w-8 mx-auto mb-2 opacity-20" />
@@ -1909,7 +1908,7 @@ export default function MovementDetails() {
                     })}
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         </div>
