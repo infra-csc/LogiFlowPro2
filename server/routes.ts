@@ -638,7 +638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (inRange(depDate) && depDateStr !== loadDateStr) {
               items.push({
                 id: `trip_departure-${trip.id}`,
-                type: "trip_loading",
+                type: "trip_departure",
                 title: `Saída: ${label}`,
                 subtitle: routeLabel || trip.vehicleType?.name,
                 start: depDate.toISOString(),

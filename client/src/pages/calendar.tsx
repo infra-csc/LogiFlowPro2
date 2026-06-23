@@ -28,10 +28,14 @@ import {
   ExternalLink,
   AlertTriangle,
   X,
+  PackagePlus,
+  PackageOpen,
+  Layers,
+  AlarmClockOff,
+  Navigation,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -79,88 +83,147 @@ const DEFAULT_FILTERS: CalendarFilters = {
   eventId: "",
 };
 
-// ── Type config ───────────────────────────────────────────────────────────────
+// ── Semantic colour config ────────────────────────────────────────────────────
+
+interface TypeConfig {
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  bgAlpha: string;
+  dotTw: string;
+  textTw: string;
+  badgeTw: string;
+}
+
+const TYPE_CONFIG: Record<string, TypeConfig> = {
+  event: {
+    label: "Evento",
+    icon: CalendarDays,
+    color: "#3B82F6",
+    bgAlpha: "rgba(59,130,246,0.10)",
+    dotTw: "bg-blue-500",
+    textTw: "text-blue-400",
+    badgeTw: "bg-blue-500/10 border-blue-500/30 text-blue-400",
+  },
+  event_setup: {
+    label: "Montagem",
+    icon: Wrench,
+    color: "#60A5FA",
+    bgAlpha: "rgba(59,130,246,0.07)",
+    dotTw: "bg-blue-400",
+    textTw: "text-blue-300",
+    badgeTw: "bg-blue-400/10 border-blue-400/25 text-blue-300",
+  },
+  event_teardown: {
+    label: "Desmontagem",
+    icon: Wrench,
+    color: "#60A5FA",
+    bgAlpha: "rgba(59,130,246,0.07)",
+    dotTw: "bg-blue-400",
+    textTw: "text-blue-300",
+    badgeTw: "bg-blue-400/10 border-blue-400/25 text-blue-300",
+  },
+  trip_departure: {
+    label: "Saída",
+    icon: Truck,
+    color: "#F59E0B",
+    bgAlpha: "rgba(245,158,11,0.10)",
+    dotTw: "bg-amber-400",
+    textTw: "text-amber-400",
+    badgeTw: "bg-amber-500/10 border-amber-500/30 text-amber-400",
+  },
+  trip_loading: {
+    label: "Carregamento",
+    icon: PackagePlus,
+    color: "#06B6D4",
+    bgAlpha: "rgba(6,182,212,0.10)",
+    dotTw: "bg-cyan-400",
+    textTw: "text-cyan-400",
+    badgeTw: "bg-cyan-500/10 border-cyan-500/30 text-cyan-400",
+  },
+  trip_unloading: {
+    label: "Descarregamento",
+    icon: PackageOpen,
+    color: "#10B981",
+    bgAlpha: "rgba(16,185,129,0.10)",
+    dotTw: "bg-emerald-400",
+    textTw: "text-emerald-400",
+    badgeTw: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
+  },
+  loading_order: {
+    label: "Ordem de Carga",
+    icon: Layers,
+    color: "#0EA5E9",
+    bgAlpha: "rgba(14,165,233,0.10)",
+    dotTw: "bg-sky-400",
+    textTw: "text-sky-400",
+    badgeTw: "bg-sky-500/10 border-sky-500/30 text-sky-400",
+  },
+  movement: {
+    label: "Movimentação",
+    icon: ArrowLeftRight,
+    color: "#8B5CF6",
+    bgAlpha: "rgba(139,92,246,0.10)",
+    dotTw: "bg-violet-400",
+    textTw: "text-violet-400",
+    badgeTw: "bg-violet-500/10 border-violet-500/30 text-violet-400",
+  },
+  request_window_start: {
+    label: "Janela abre",
+    icon: Clock,
+    color: "#F97316",
+    bgAlpha: "rgba(249,115,22,0.10)",
+    dotTw: "bg-orange-400",
+    textTw: "text-orange-400",
+    badgeTw: "bg-orange-500/10 border-orange-500/30 text-orange-400",
+  },
+  request_window_end: {
+    label: "Janela fecha",
+    icon: AlarmClockOff,
+    color: "#F97316",
+    bgAlpha: "rgba(249,115,22,0.12)",
+    dotTw: "bg-orange-400",
+    textTw: "text-orange-400",
+    badgeTw: "bg-orange-500/10 border-orange-500/30 text-orange-400",
+  },
+};
+
+const FALLBACK_CONFIG: TypeConfig = {
+  label: "Outro",
+  icon: CalendarDays,
+  color: "#6B7280",
+  bgAlpha: "rgba(107,114,128,0.07)",
+  dotTw: "bg-muted-foreground",
+  textTw: "text-muted-foreground",
+  badgeTw: "bg-muted border-border/60 text-muted-foreground",
+};
+
+function getTypeConfig(type: string): TypeConfig {
+  return TYPE_CONFIG[type] ?? FALLBACK_CONFIG;
+}
+
+// ── Type groups ───────────────────────────────────────────────────────────────
 
 const TYPE_GROUPS: Record<string, string[]> = {
   events: ["event", "event_setup", "event_teardown"],
-  trips: ["trip_loading", "trip_unloading"],
+  trips: ["trip_departure", "trip_loading", "trip_unloading"],
   loading_orders: ["loading_order"],
   movements: ["movement"],
   windows: ["request_window_start", "request_window_end"],
 };
 
-interface TypeDef {
-  label: string;
-  icon: React.ElementType;
-  chip: string;
-  dot: string;
-}
-
-const TYPE_CONFIG: Record<string, TypeDef> = {
-  event: {
-    label: "Evento",
-    icon: CalendarDays,
-    chip: "bg-primary/10 border-primary/30 text-primary",
-    dot: "bg-primary",
-  },
-  event_setup: {
-    label: "Montagem",
-    icon: Wrench,
-    chip: "bg-blue-500/10 border-blue-500/20 text-blue-400",
-    dot: "bg-blue-400",
-  },
-  event_teardown: {
-    label: "Desmontagem",
-    icon: Wrench,
-    chip: "bg-blue-500/10 border-blue-500/20 text-blue-400",
-    dot: "bg-blue-400",
-  },
-  request_window_start: {
-    label: "Janela abre",
-    icon: Clock,
-    chip: "bg-orange-500/10 border-orange-500/20 text-orange-400",
-    dot: "bg-orange-400",
-  },
-  request_window_end: {
-    label: "Janela fecha",
-    icon: Clock,
-    chip: "bg-orange-500/15 border-orange-500/30 text-orange-400",
-    dot: "bg-orange-400",
-  },
-  trip_loading: {
-    label: "Carregamento",
-    icon: Truck,
-    chip: "bg-amber-500/10 border-amber-500/20 text-amber-400",
-    dot: "bg-amber-400",
-  },
-  trip_unloading: {
-    label: "Descarregamento",
-    icon: Truck,
-    chip: "bg-amber-500/10 border-amber-500/20 text-amber-400",
-    dot: "bg-amber-400",
-  },
-  loading_order: {
-    label: "Ordem",
-    icon: Package,
-    chip: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
-    dot: "bg-emerald-400",
-  },
-  movement: {
-    label: "Movimentação",
-    icon: ArrowLeftRight,
-    chip: "bg-purple-500/10 border-purple-500/20 text-purple-400",
-    dot: "bg-purple-400",
-  },
+const GROUP_SHORT_LABELS: Record<string, string> = {
+  events: "eventos",
+  trips: "viagens",
+  loading_orders: "ordens",
+  movements: "moviment.",
+  windows: "janelas",
 };
 
-function getTypeConfig(type: string): TypeDef {
+function getGroupForType(type: string): string {
   return (
-    TYPE_CONFIG[type] ?? {
-      label: type,
-      icon: CalendarDays,
-      chip: "bg-muted border-border/60 text-muted-foreground",
-      dot: "bg-muted-foreground",
-    }
+    Object.entries(TYPE_GROUPS).find(([, types]) => types.includes(type))?.[0] ??
+    "outros"
   );
 }
 
@@ -184,218 +247,96 @@ function buildGridDays(current: Date): Date[] {
   return days;
 }
 
-// ── CalendarItemChip (compact chip in grid cell) ─────────────────────────────
+function tryDate(s: string | null | undefined): Date | null {
+  if (!s) return null;
+  try {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  } catch {
+    return null;
+  }
+}
+
+function getPrimaryDateTime(item: CalItem): Date | null {
+  const m = item.metadata ?? {};
+  const pick = (key: string) => tryDate(m[key] ? String(m[key]) : null);
+  if (item.type === "trip_departure") return pick("departureDateTime") ?? tryDate(item.start);
+  if (item.type === "trip_loading") return pick("loadingStartTime") ?? tryDate(item.start);
+  if (item.type === "trip_unloading") return pick("unloadingStartTime") ?? tryDate(item.start);
+  return tryDate(item.start);
+}
+
+function fmtTime(d: Date | null): string | null {
+  if (!d) return null;
+  return format(d, "HH:mm");
+}
+
+function fmtDateTime(d: Date | null): string | null {
+  if (!d) return null;
+  return format(d, "dd/MM HH:mm", { locale: ptBR });
+}
+
+type TimePeriod = "morning" | "afternoon" | "evening" | "notime";
+
+function getTimePeriod(d: Date | null): TimePeriod {
+  if (!d) return "notime";
+  const h = d.getHours();
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "evening";
+}
+
+const PERIOD_LABELS: Record<TimePeriod, string> = {
+  morning: "Manhã",
+  afternoon: "Tarde",
+  evening: "Noite",
+  notime: "Sem horário definido",
+};
+
+const PERIOD_ORDER: TimePeriod[] = ["morning", "afternoon", "evening", "notime"];
+
+// ── CalendarItemChip ──────────────────────────────────────────────────────────
 
 function CalendarItemChip({ item }: { item: CalItem }) {
   const cfg = getTypeConfig(item.type);
   const Icon = cfg.icon;
+  const t = fmtTime(getPrimaryDateTime(item));
+  const tooltipText = [
+    cfg.label,
+    item.title,
+    item.subtitle,
+    t,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div
-      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] leading-tight border truncate ${cfg.chip}`}
-      title={item.title}
+      className="flex items-stretch overflow-hidden rounded-sm"
+      title={tooltipText}
     >
-      <Icon className="h-2.5 w-2.5 shrink-0" />
-      <span className="truncate">{item.title}</span>
-      {item.severity === "warning" && (
-        <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-400" />
-      )}
-    </div>
-  );
-}
-
-// ── DayPanel (right detail panel) ────────────────────────────────────────────
-
-function DayPanel({
-  date,
-  items,
-  onClose,
-}: {
-  date: Date;
-  items: CalItem[];
-  onClose: () => void;
-}) {
-  const [, navigate] = useLocation();
-
-  const grouped = useMemo(() => {
-    const groups: Record<string, CalItem[]> = {};
-    for (const item of items) {
-      const g = Object.entries(TYPE_GROUPS).find(([, types]) =>
-        types.includes(item.type)
-      )?.[0] ?? "outros";
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(item);
-    }
-    return groups;
-  }, [items]);
-
-  const groupLabels: Record<string, string> = {
-    events: "Eventos",
-    trips: "Planos de Viagens",
-    loading_orders: "Ordens de Carregamento",
-    movements: "Movimentações",
-    windows: "Janelas de Requisição",
-    outros: "Outros",
-  };
-
-  return (
-    <div className="w-full lg:w-80 shrink-0 flex flex-col gap-3">
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <h3 className="font-semibold text-base text-foreground">
-                {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })
-                  .replace(/^\w/, (c) => c.toUpperCase())}
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {items.length} item{items.length !== 1 ? "s" : ""} neste dia
-              </p>
-            </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onClose}
-              data-testid="button-close-day-panel"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {items.length === 0 ? (
-        <EmptyState
-          icon={CalendarDays}
-          title="Sem itens"
-          description="Nenhum planejamento para este dia."
-        />
-      ) : (
-        <div
-          className="space-y-3 overflow-y-auto"
-          style={{ scrollbarWidth: "thin" }}
+      <div className="w-[3px] shrink-0" style={{ backgroundColor: cfg.color }} />
+      <div
+        className="flex items-center gap-1 px-1 py-0.5 flex-1 min-w-0"
+        style={{ backgroundColor: cfg.bgAlpha }}
+      >
+        <Icon className="h-2.5 w-2.5 shrink-0" style={{ color: cfg.color }} />
+        <span
+          className="truncate text-[10px] leading-tight font-medium"
+          style={{ color: cfg.color }}
         >
-          {Object.entries(grouped).map(([group, groupItems]) => (
-            <div key={group}>
-              <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-2 px-1">
-                {groupLabels[group]}
-              </p>
-              <div className="space-y-2">
-                {groupItems.map((item) => {
-                  const cfg = getTypeConfig(item.type);
-                  const Icon = cfg.icon;
-                  return (
-                    <Card
-                      key={item.id}
-                      className="border-border/60 hover-elevate cursor-pointer"
-                      onClick={() => navigate(item.route)}
-                      data-testid={`card-cal-item-${item.id}`}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-start gap-2">
-                          <div
-                            className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded flex items-center justify-center ${cfg.chip}`}
-                          >
-                            <Icon className="h-3 w-3" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-1">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm text-foreground leading-tight truncate">
-                                  {item.title}
-                                </p>
-                                {item.subtitle && (
-                                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                    {item.subtitle}
-                                  </p>
-                                )}
-                              </div>
-                              <ExternalLink className="h-3 w-3 text-muted-foreground/50 shrink-0 mt-0.5" />
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1 h-4 no-default-hover-elevate"
-                              >
-                                {cfg.label}
-                              </Badge>
-                              <StatusBadge status={item.status} />
-                              {item.severity === "warning" && (
-                                <AlertTriangle className="h-3 w-3 text-amber-400" />
-                              )}
-                            </div>
-                            {/* Trip: show departure and return times */}
-                            {(item.type === "trip_loading" || item.type === "trip_unloading") && (() => {
-                              const m = item.metadata ?? {};
-                              const departure = m.departureDateTime ? String(m.departureDateTime) : null;
-                              const arrivalStart = m.unloadingStartTime ? String(m.unloadingStartTime) : null;
-                              const arrivalEnd = m.unloadingEndTime ? String(m.unloadingEndTime) : null;
-                              const driver = m.driver ? String(m.driver) : null;
-                              const plate = m.plate ? String(m.plate) : null;
-                              return (
-                                <div className="mt-2 pt-2 border-t border-border/30 space-y-1">
-                                  {departure && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-amber-400">
-                                      <Truck className="h-3 w-3 shrink-0" />
-                                      <span className="font-medium">Saída:</span>
-                                      <span className="text-muted-foreground">
-                                        {format(new Date(departure), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {arrivalStart && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-blue-400">
-                                      <Clock className="h-3 w-3 shrink-0" />
-                                      <span className="font-medium">Chegada/Volta:</span>
-                                      <span className="text-muted-foreground">
-                                        {format(new Date(arrivalStart), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {arrivalEnd && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                      <Clock className="h-3 w-3 shrink-0" />
-                                      <span className="font-medium">Fim descarreg.:</span>
-                                      <span>
-                                        {format(new Date(arrivalEnd), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {driver && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                      <span className="font-medium">Motorista:</span>
-                                      <span>{driver}</span>
-                                    </div>
-                                  )}
-                                  {plate && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                      <span className="font-medium">Placa:</span>
-                                      <span className="font-mono">{plate}</span>
-                                    </div>
-                                  )}
-                                  {!departure && !arrivalStart && (
-                                    <p className="text-[11px] text-muted-foreground/60 italic">
-                                      Horários ainda não definidos
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+          {cfg.label}
+          {item.title ? `: ${item.title}` : ""}
+        </span>
+        {item.severity === "warning" && (
+          <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-400" />
+        )}
+      </div>
     </div>
   );
 }
 
-// ── CalendarCell (single day in the grid) ────────────────────────────────────
+// ── CalendarCell ──────────────────────────────────────────────────────────────
 
 function CalendarCell({
   date,
@@ -414,46 +355,67 @@ function CalendarCell({
   const inMonth = isSameMonth(date, currentMonth);
   const MAX_VISIBLE = 3;
   const visible = items.slice(0, MAX_VISIBLE);
-  const overflow = items.length - MAX_VISIBLE;
+  const overflow = items.slice(MAX_VISIBLE);
   const hasWarning = items.some((i) => i.severity === "warning");
+
+  let overflowDesc = "";
+  if (overflow.length > 0) {
+    const counts: Record<string, number> = {};
+    for (const item of overflow) {
+      const g = getGroupForType(item.type);
+      counts[g] = (counts[g] || 0) + 1;
+    }
+    overflowDesc = Object.entries(counts)
+      .map(([g, n]) => `${n} ${GROUP_SHORT_LABELS[g] ?? g}`)
+      .join(" · ");
+  }
 
   return (
     <div
       onClick={onClick}
       data-testid={`cell-day-${format(date, "yyyy-MM-dd")}`}
-      className={`
-        min-h-[88px] p-1.5 border-b border-r border-border/30 cursor-pointer transition-colors
-        ${inMonth ? "bg-card/30" : "bg-muted/10"}
-        ${isSelected ? "ring-1 ring-inset ring-primary" : ""}
-        ${today ? "bg-primary/5" : ""}
-        hover:bg-muted/30
-      `}
+      className={cn(
+        "min-h-[90px] p-1.5 border-b border-r border-border/30 cursor-pointer transition-colors",
+        inMonth ? "bg-card/20" : "bg-muted/5",
+        isSelected && "ring-1 ring-inset ring-primary/50",
+        "hover:bg-muted/20",
+      )}
     >
       <div className="flex items-center justify-between mb-1">
-        <span
-          className={`
-            inline-flex items-center justify-center text-sm font-medium leading-none
-            ${today
-              ? "h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs"
-              : inMonth
-              ? "text-foreground"
-              : "text-muted-foreground/40"
-            }
-          `}
-        >
-          {format(date, "d")}
-        </span>
+        <div className="flex items-center gap-1">
+          <span
+            className={cn(
+              "inline-flex items-center justify-center text-xs font-semibold leading-none w-5 h-5 rounded-full",
+              today &&
+                "ring-2 ring-primary/70 ring-offset-1 ring-offset-background text-primary",
+              !today && inMonth && "text-foreground",
+              !today && !inMonth && "text-muted-foreground/35",
+            )}
+          >
+            {format(date, "d")}
+          </span>
+          {today && (
+            <span className="text-[9px] text-primary/60 font-medium leading-none">
+              Hoje
+            </span>
+          )}
+        </div>
         {hasWarning && (
           <AlertTriangle className="h-2.5 w-2.5 text-amber-400 shrink-0" />
         )}
       </div>
+
       <div className="space-y-0.5">
         {visible.map((item) => (
           <CalendarItemChip key={item.id} item={item} />
         ))}
-        {overflow > 0 && (
-          <div className="text-[10px] text-muted-foreground px-1">
-            +{overflow} mais
+        {overflow.length > 0 && (
+          <div
+            className="text-[9px] text-muted-foreground/60 px-1 pt-0.5 leading-tight"
+            title={overflowDesc || undefined}
+          >
+            +{overflow.length} atividades
+            {overflowDesc ? ` · ${overflowDesc}` : ""}
           </div>
         )}
       </div>
@@ -461,20 +423,279 @@ function CalendarCell({
   );
 }
 
+// ── DayPanel ──────────────────────────────────────────────────────────────────
+
+function DayPanel({
+  date,
+  items,
+  onClose,
+}: {
+  date: Date;
+  items: CalItem[];
+  onClose: () => void;
+}) {
+  const [, navigate] = useLocation();
+
+  const periodGroups = useMemo<Record<TimePeriod, CalItem[]>>(() => {
+    const groups: Record<TimePeriod, CalItem[]> = {
+      morning: [],
+      afternoon: [],
+      evening: [],
+      notime: [],
+    };
+    for (const item of items) {
+      const t = getPrimaryDateTime(item);
+      groups[getTimePeriod(t)].push(item);
+    }
+    for (const key of PERIOD_ORDER) {
+      groups[key].sort((a, b) => {
+        const ta = getPrimaryDateTime(a);
+        const tb = getPrimaryDateTime(b);
+        if (!ta && !tb) return 0;
+        if (!ta) return 1;
+        if (!tb) return -1;
+        return ta.getTime() - tb.getTime();
+      });
+    }
+    return groups;
+  }, [items]);
+
+  const filledPeriods = PERIOD_ORDER.filter((p) => periodGroups[p].length > 0);
+
+  return (
+    <div className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col gap-3">
+      <Card className="border-border/60">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="font-semibold text-base text-foreground leading-snug">
+                {format(date, "EEEE, d 'de' MMMM", { locale: ptBR }).replace(
+                  /^\w/,
+                  (c) => c.toUpperCase(),
+                )}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {items.length === 0
+                  ? "Nenhuma atividade"
+                  : `${items.length} atividade${items.length !== 1 ? "s" : ""} planejada${items.length !== 1 ? "s" : ""}`}
+              </p>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onClose}
+              data-testid="button-close-day-panel"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {items.length === 0 ? (
+        <EmptyState
+          icon={CalendarDays}
+          title="Sem atividades"
+          description="Nenhum planejamento para este dia."
+        />
+      ) : (
+        <div
+          className="space-y-4 overflow-y-auto"
+          style={{ scrollbarWidth: "thin" }}
+        >
+          {filledPeriods.map((period) => (
+            <div key={period}>
+              <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-2 px-0.5">
+                {PERIOD_LABELS[period]}
+              </p>
+              <div className="space-y-2">
+                {periodGroups[period].map((item) => {
+                  const cfg = getTypeConfig(item.type);
+                  const Icon = cfg.icon;
+                  const m = item.metadata ?? {};
+                  const primaryTime = getPrimaryDateTime(item);
+                  const driver = m.driver ? String(m.driver) : null;
+                  const plate = m.plate ? String(m.plate) : null;
+                  const vehicleType = m.vehicleType ? String(m.vehicleType) : null;
+                  const location = m.location ? String(m.location) : null;
+                  const loadStart = tryDate(m.loadingStartTime ? String(m.loadingStartTime) : null);
+                  const loadEnd = tryDate(m.loadingEndTime ? String(m.loadingEndTime) : null);
+                  const departure = tryDate(m.departureDateTime ? String(m.departureDateTime) : null);
+                  const unloadStart = tryDate(m.unloadingStartTime ? String(m.unloadingStartTime) : null);
+                  const unloadEnd = tryDate(m.unloadingEndTime ? String(m.unloadingEndTime) : null);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="relative rounded-md border border-border/60 hover-elevate cursor-pointer"
+                      onClick={() => navigate(item.route)}
+                      data-testid={`card-cal-item-${item.id}`}
+                    >
+                      <div
+                        className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-md"
+                        style={{ backgroundColor: cfg.color }}
+                      />
+
+                      <div className="pl-4 pr-3 py-3">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${cfg.badgeTw}`}
+                          >
+                            <Icon className="h-2.5 w-2.5" />
+                            {cfg.label.toUpperCase()}
+                          </span>
+                          <StatusBadge status={item.status} />
+                          {item.severity === "warning" && (
+                            <AlertTriangle className="h-3 w-3 text-amber-400" />
+                          )}
+                        </div>
+
+                        <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
+                          {item.title}
+                        </p>
+
+                        {item.subtitle && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                            {item.subtitle}
+                          </p>
+                        )}
+
+                        {primaryTime && (
+                          <p
+                            className="text-xl font-bold tabular-nums mt-1.5 leading-none"
+                            style={{ color: cfg.color }}
+                          >
+                            {fmtTime(primaryTime)}
+                          </p>
+                        )}
+
+                        {/* Metadata */}
+                        <div className="mt-2 pt-2 border-t border-border/30 space-y-1 text-[11px] text-muted-foreground">
+                          {(vehicleType || plate) && (
+                            <div className="flex items-center gap-1.5">
+                              <Truck className="h-3 w-3 shrink-0 opacity-50" />
+                              <span>
+                                {[vehicleType, plate ? `(${plate})` : null]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                              </span>
+                            </div>
+                          )}
+                          {driver && (
+                            <div className="flex items-center gap-1.5">
+                              <Navigation className="h-3 w-3 shrink-0 opacity-50" />
+                              <span>{driver}</span>
+                            </div>
+                          )}
+                          {item.type === "trip_loading" && loadStart && (
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3 shrink-0 opacity-50" />
+                              <span>
+                                Carreg.: {fmtDateTime(loadStart)}
+                                {loadEnd ? ` → ${fmtDateTime(loadEnd)}` : ""}
+                              </span>
+                            </div>
+                          )}
+                          {item.type === "trip_departure" && departure && (
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3 shrink-0 opacity-50" />
+                              <span>Saída: {fmtDateTime(departure)}</span>
+                            </div>
+                          )}
+                          {item.type === "trip_unloading" && unloadStart && (
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3 shrink-0 opacity-50" />
+                              <span>
+                                Descarg.: {fmtDateTime(unloadStart)}
+                                {unloadEnd ? ` → ${fmtDateTime(unloadEnd)}` : ""}
+                              </span>
+                            </div>
+                          )}
+                          {location && (
+                            <div className="flex items-center gap-1.5">
+                              <CalendarDays className="h-3 w-3 shrink-0 opacity-50" />
+                              <span>{location}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex justify-end mt-2">
+                          <ExternalLink className="h-3 w-3 text-muted-foreground/40" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
+
+const LEGEND_DEFS = [
+  {
+    key: "showEvents" as keyof CalendarFilters,
+    group: "events",
+    label: "Eventos",
+    dotTw: "bg-blue-500",
+    chipOn: "bg-blue-500/10 border-blue-500/30 text-blue-400",
+  },
+  {
+    key: "showTrips" as keyof CalendarFilters,
+    group: "trips",
+    label: "Saídas / Viagens",
+    dotTw: "bg-amber-400",
+    chipOn: "bg-amber-500/10 border-amber-500/30 text-amber-400",
+  },
+  {
+    key: "showLoadingOrders" as keyof CalendarFilters,
+    group: "loading_orders",
+    label: "Ordens de Carga",
+    dotTw: "bg-sky-400",
+    chipOn: "bg-sky-500/10 border-sky-500/30 text-sky-400",
+  },
+  {
+    key: "showMovements" as keyof CalendarFilters,
+    group: "movements",
+    label: "Movimentações",
+    dotTw: "bg-violet-400",
+    chipOn: "bg-violet-500/10 border-violet-500/30 text-violet-400",
+  },
+  {
+    key: "showWindows" as keyof CalendarFilters,
+    group: "windows",
+    label: "Janelas de Req.",
+    dotTw: "bg-orange-400",
+    chipOn: "bg-orange-500/10 border-orange-500/30 text-orange-400",
+  },
+];
+
+const COLOR_LEGEND = [
+  { color: "#3B82F6", label: "Evento" },
+  { color: "#F59E0B", label: "Saída" },
+  { color: "#06B6D4", label: "Carregamento" },
+  { color: "#10B981", label: "Descarregamento" },
+  { color: "#0EA5E9", label: "Ordem de Carga" },
+  { color: "#8B5CF6", label: "Movimentação" },
+  { color: "#F97316", label: "Janela de requisição" },
+];
+
+const DAY_NAMES = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 export default function OperationalCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [filters, setFilters] = useState<CalendarFilters>(DEFAULT_FILTERS);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Grid covers Mon–Sun for all weeks visible in the month
   const gridDays = useMemo(() => buildGridDays(currentDate), [currentDate]);
   const gridStart = gridDays[0];
   const gridEnd = gridDays[gridDays.length - 1];
 
-  // Fetch calendar data
   const { data, isLoading, isError } = useQuery<{ items: CalItem[] }>({
     queryKey: [
       "/api/calendar/operational",
@@ -494,12 +715,10 @@ export default function OperationalCalendar() {
     },
   });
 
-  // Fetch events list for event filter
   const { data: eventsData } = useQuery<{ id: string; name: string }[]>({
     queryKey: ["/api/events"],
   });
 
-  // Apply client-side filters
   const filteredItems = useMemo(() => {
     const all = data?.items ?? [];
     return all.filter((item) => {
@@ -508,14 +727,10 @@ export default function OperationalCalendar() {
       if (!filters.showLoadingOrders && TYPE_GROUPS.loading_orders.includes(item.type)) return false;
       if (!filters.showMovements && TYPE_GROUPS.movements.includes(item.type)) return false;
       if (!filters.showWindows && TYPE_GROUPS.windows.includes(item.type)) return false;
-      if (filters.eventId && item.metadata?.["client"] === undefined) {
-        // For non-event items, we can't filter by event easily without the metadata
-      }
       return true;
     });
   }, [data, filters]);
 
-  // Group filtered items by date string (YYYY-MM-DD)
   const itemsByDate = useMemo(() => {
     const map: Record<string, CalItem[]> = {};
     for (const item of filteredItems) {
@@ -526,11 +741,19 @@ export default function OperationalCalendar() {
     return map;
   }, [filteredItems]);
 
-  // Items for selected day
   const selectedDayItems = useMemo(() => {
     if (!selectedDate) return [];
     return itemsByDate[format(selectedDate, "yyyy-MM-dd")] ?? [];
   }, [selectedDate, itemsByDate]);
+
+  const countByGroup = useMemo(() => {
+    const all = data?.items ?? [];
+    const counts: Record<string, number> = {};
+    for (const [group, types] of Object.entries(TYPE_GROUPS)) {
+      counts[group] = all.filter((i) => types.includes(i.type)).length;
+    }
+    return counts;
+  }, [data]);
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -547,16 +770,13 @@ export default function OperationalCalendar() {
     setFilters(DEFAULT_FILTERS);
   }
 
-  const DAY_NAMES = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
       <PageHeader
         title="Calendário Operacional"
         description="Agenda integrada de eventos, planos de viagens, ordens e movimentações"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -587,27 +807,16 @@ export default function OperationalCalendar() {
         </div>
       </PageHeader>
 
-      {/* Filter bar */}
-      <FilterBar
-        badgeCount={activeFilterCount}
-        onClear={clearFilters}
-      >
-        {/* Category toggles — pills that act as both filter and legend */}
+      {/* Filter bar — also serves as legend */}
+      <FilterBar badgeCount={activeFilterCount} onClear={clearFilters}>
         <div className="lg:col-span-3 space-y-2">
           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
-            Mostrar no calendário
+            Tipo de atividade
           </p>
           <div className="flex flex-wrap gap-2">
-            {(
-              [
-                { key: "showEvents" as const,       label: "Eventos",        dot: "bg-primary",    chipOn: "bg-primary/10 border-primary/30 text-primary" },
-                { key: "showTrips" as const,        label: "Planos de Viagens",        dot: "bg-amber-400",  chipOn: "bg-amber-500/10 border-amber-500/20 text-amber-400" },
-                { key: "showLoadingOrders" as const, label: "Ordens de Carga", dot: "bg-emerald-400", chipOn: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" },
-                { key: "showMovements" as const,    label: "Movimentações",  dot: "bg-purple-400", chipOn: "bg-purple-500/10 border-purple-500/20 text-purple-400" },
-                { key: "showWindows" as const,      label: "Janelas",        dot: "bg-orange-400", chipOn: "bg-orange-500/10 border-orange-500/20 text-orange-400" },
-              ]
-            ).map(({ key, label, dot, chipOn }) => {
-              const active = filters[key];
+            {LEGEND_DEFS.map(({ key, group, label, dotTw, chipOn }) => {
+              const active = filters[key] as boolean;
+              const count = countByGroup[group] ?? 0;
               return (
                 <button
                   key={key}
@@ -618,21 +827,25 @@ export default function OperationalCalendar() {
                     "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all select-none cursor-pointer",
                     active
                       ? chipOn
-                      : "bg-muted/40 border-border/40 text-muted-foreground opacity-50"
+                      : "bg-muted/40 border-border/40 text-muted-foreground opacity-50",
                   )}
                 >
-                  <span className={cn(
-                    "w-2 h-2 rounded-full flex-shrink-0 transition-colors",
-                    active ? dot : "bg-muted-foreground/40"
-                  )} />
+                  <span
+                    className={cn(
+                      "w-2 h-2 rounded-full shrink-0 transition-colors",
+                      active ? dotTw : "bg-muted-foreground/40",
+                    )}
+                  />
                   {label}
+                  {count > 0 && (
+                    <span className="font-bold tabular-nums">{count}</span>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Event filter */}
         <div className="space-y-2">
           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
             Evento
@@ -643,7 +856,10 @@ export default function OperationalCalendar() {
               setFilters((p) => ({ ...p, eventId: v === "all" ? "" : v }))
             }
           >
-            <SelectTrigger className="h-9 text-sm bg-card border-border/60" data-testid="select-event-filter">
+            <SelectTrigger
+              className="h-9 text-sm bg-card border-border/60"
+              data-testid="select-event-filter"
+            >
               <SelectValue placeholder="Todos os eventos" />
             </SelectTrigger>
             <SelectContent>
@@ -658,7 +874,7 @@ export default function OperationalCalendar() {
         </div>
       </FilterBar>
 
-      {/* Calendar + day panel */}
+      {/* Calendar */}
       {isLoading ? (
         <PageLoading message="Carregando calendário..." />
       ) : isError ? (
@@ -669,11 +885,10 @@ export default function OperationalCalendar() {
         />
       ) : (
         <div className="flex flex-col lg:flex-row gap-4 min-h-0">
-          {/* Calendar grid */}
           <div className="flex-1 min-w-0">
             <Card className="border-border/60 overflow-hidden">
-              {/* Day names header */}
-              <div className="grid grid-cols-7 bg-muted/30 border-b border-border/40">
+              {/* Day-of-week header */}
+              <div className="grid grid-cols-7 bg-muted/20 border-b border-border/40">
                 {DAY_NAMES.map((d) => (
                   <div
                     key={d}
@@ -684,7 +899,7 @@ export default function OperationalCalendar() {
                 ))}
               </div>
 
-              {/* Days */}
+              {/* Grid cells */}
               <div className="grid grid-cols-7 border-l border-t border-border/30">
                 {gridDays.map((day) => (
                   <CalendarCell
@@ -695,7 +910,7 @@ export default function OperationalCalendar() {
                     isSelected={selectedDate ? isSameDay(day, selectedDate) : false}
                     onClick={() =>
                       setSelectedDate(
-                        selectedDate && isSameDay(day, selectedDate) ? null : day
+                        selectedDate && isSameDay(day, selectedDate) ? null : day,
                       )
                     }
                   />
@@ -703,28 +918,20 @@ export default function OperationalCalendar() {
               </div>
             </Card>
 
-            {/* Stats bar */}
-            <div className="flex flex-wrap gap-3 mt-3">
-              {[
-                { key: "events", label: "Eventos", types: TYPE_GROUPS.events, dot: "bg-primary" },
-                { key: "trips", label: "Planos de Viagens", types: TYPE_GROUPS.trips, dot: "bg-amber-400" },
-                { key: "loading_orders", label: "Ordens", types: TYPE_GROUPS.loading_orders, dot: "bg-emerald-400" },
-                { key: "movements", label: "Movimentações", types: TYPE_GROUPS.movements, dot: "bg-purple-400" },
-                { key: "windows", label: "Janelas", types: TYPE_GROUPS.windows, dot: "bg-orange-400" },
-              ].map(({ key, label, types, dot }) => {
-                const count = filteredItems.filter((i) => types.includes(i.type)).length;
-                return (
+            {/* Colour legend */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3">
+              {COLOR_LEGEND.map(({ color, label }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                >
                   <div
-                    key={key}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                    data-testid={`stat-${key}`}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${dot}`} />
-                    <span className="font-medium text-foreground">{count}</span>
-                    {label}
-                  </div>
-                );
-              })}
+                    className="w-[10px] h-[10px] rounded-[2px] shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span>{label}</span>
+                </div>
+              ))}
             </div>
           </div>
 
