@@ -1,0 +1,311 @@
+Melhore a tela inicial de “Carga e Descarga” / listagem de movimentações operacionais do EventFlow.
+
+IMPORTANTE:
+- não alterar regras de negócio;
+- não remover informações existentes;
+- apenas reorganizar, enriquecer e melhorar a visualização inicial da listagem;
+- manter o visual dark atual e coerente com o restante do sistema;
+- foco total em leitura rápida, operação e visão resumida realmente útil.
+
+==================================================
+OBJETIVO
+==================================================
+
+A tela inicial de movimentações precisa funcionar como um painel operacional de consulta rápida.
+
+Hoje os cards estão fracos, com pouca informação útil. Faltam principalmente:
+- itens carregados;
+- quantidades;
+- progresso real;
+- informações mais relevantes da movimentação;
+- melhor aproveitamento do espaço;
+- melhor tratamento para nomes longos que estão cortando.
+
+Quero que a listagem permita entender rapidamente:
+- qual movimentação é;
+- em que status ela está;
+- qual evento está vinculado;
+- se é carga ou descarga;
+- quantos itens/unidades eram esperados;
+- quantos já foram carregados;
+- quantos estão pendentes ou excedentes;
+- qual o progresso;
+- se possui plano de viagens, requisição, veículo, doca e evidências.
+
+==================================================
+1. CABEÇALHO DA TELA
+==================================================
+
+Manter o cabeçalho com:
+- título “Carga e Descarga”
+- subtítulo explicando a função da área
+- botão “Nova Movimentação”
+
+Mas melhorar a hierarquia visual dos KPIs do topo:
+- Total
+- Criadas
+- Em andamento
+- Pausadas
+- Finalizadas
+
+Esses cards-resumo devem continuar, porém:
+- com melhor contraste;
+- números mais fortes;
+- labels menores;
+- mais compactos verticalmente;
+- responsivos;
+- visual mais operacional.
+
+==================================================
+2. ESTRUTURA DA LISTAGEM
+==================================================
+
+Substituir o card atual simples por um card/list item muito mais completo.
+
+Cada movimentação deve aparecer como um card rico, com melhor distribuição de conteúdo.
+
+Estrutura sugerida por card:
+
+==================================================
+TOPO DO CARD
+==================================================
+
+Linha 1:
+- badge de status (Criada, Em andamento, Pausada, Finalizada etc.)
+- código da movimentação (ex.: MVT-20260622-001)
+- tipo (Movimentação / Carga / Descarga / Carregamento para Evento etc.)
+- ação rápida “Ver detalhes”
+
+Linha 2:
+- nome principal da movimentação, com destaque
+- permitir até 2 linhas antes de truncar
+- usar ellipsis apenas quando realmente necessário
+- exibir tooltip com nome completo ao passar o mouse
+
+Linha 3:
+- subtítulo contextual com status textual complementar, se necessário
+  ex.: “Finalizada”, “Carregamento em andamento”, “3 itens pendentes”, etc.
+
+==================================================
+3. INFORMAÇÕES PRINCIPAIS DENTRO DO CARD
+==================================================
+
+Adicionar uma área de métricas resumidas dentro de cada card.
+
+Exibir mini-blocos ou colunas com:
+
+- Itens esperados
+- Unidades esperadas
+- Carregados
+- Pendentes
+- Excedentes
+- Progresso %
+
+Exemplo visual de conteúdo:
+- 10 itens
+- 83 unidades esperadas
+- 65 carregadas
+- 18 pendentes
+- 0 excedentes
+- 78%
+
+Essas métricas devem ter forte prioridade visual, porque são as informações mais importantes da tela inicial.
+
+IMPORTANTE:
+Se não existir distinção entre “itens” e “unidades” em algum caso, ainda assim mostrar de forma clara o total mais útil disponível.
+
+==================================================
+4. METADADOS OPERACIONAIS DO CARD
+==================================================
+
+Abaixo das métricas, mostrar os vínculos operacionais mais importantes.
+
+Exibir de forma bem organizada, com ícones discretos:
+
+- Evento
+- Requisição (se houver)
+- Plano de viagens (quantidade ou nome principal)
+- Veículo
+- Motorista (se houver)
+- Doca
+- Criado em
+- Última atualização
+
+Esses dados devem ser mostrados em grid ou em 2 colunas no desktop.
+
+Exemplo:
+Evento: Desafio Energia Petrobras - Bike - São Paulo 2026
+Requisição: Ativação
+Plano de viagens: 1 plano vinculado
+Veículo: Carreta
+Doca: Doca 6 - Estrutura
+Criado em: 22/06/26 15:19
+Atualizado em: 22/06/26 17:04
+
+==================================================
+5. TRATAMENTO DE NOMES LONGOS
+==================================================
+
+Corrigir o problema de corte do nome do evento e da movimentação.
+
+Regras:
+- nome da movimentação: até 2 linhas;
+- nome do evento: até 1 ou 2 linhas dependendo do layout;
+- usar tooltip com valor completo;
+- nunca deixar o card parecer “quebrado” por truncamento ruim;
+- evitar cortar logo no começo das informações.
+
+Se necessário:
+- priorizar mostrar mais do nome e menos de metadados secundários;
+- permitir wrap controlado.
+
+==================================================
+6. RODAPÉ DO CARD
+==================================================
+
+Adicionar uma faixa inferior ou área de ações resumidas contendo:
+
+- botão “Detalhes”
+- se possível, ações rápidas discretas conforme status:
+  - Continuar
+  - Pausar
+  - Finalizar
+  - Retomar
+  (somente se fizer sentido no fluxo já existente; se não fizer, manter só “Detalhes”)
+
+Também pode mostrar pequenos indicadores:
+- possui evidências
+- sem evidências
+- com pendências
+- finalizada
+
+Exemplo:
+- Evidências: 3
+- Pendências: 2
+- Última ação: Yan Neves Araujo · 17:04
+
+==================================================
+7. BADGES E INDICADORES IMPORTANTES
+==================================================
+
+Adicionar pequenos indicadores visuais úteis no card, por exemplo:
+
+- “Sem veículo informado”
+- “Sem evidência”
+- “Com pendências”
+- “100% concluída”
+- “Plano vinculado”
+- “Requisição vinculada”
+
+Esses indicadores devem ser discretos, mas úteis.
+
+==================================================
+8. MELHORAR O USO DO ESPAÇO
+==================================================
+
+Hoje o card parece grande, mas entrega pouca informação.
+
+Melhorar o aproveitamento do espaço:
+- usar layout mais denso e organizado;
+- não deixar vazios grandes;
+- distribuir as informações em blocos claros;
+- deixar a leitura fluida.
+
+O card precisa parecer mais “dashboard operacional” e menos “cartão vazio”.
+
+==================================================
+9. VISUALIZAÇÃO SUGERIDA
+==================================================
+
+Sugestão de composição do card:
+
+[ status ] [ código ] [ tipo ]                     [ Detalhes ]
+
+Nome da movimentação em destaque
+Evento vinculado abaixo com truncamento inteligente
+
+[ Itens ] [ Unidades ] [ Carregados ] [ Pendentes ] [ Excedentes ] [ Progresso ]
+
+Evento: ...
+Requisição: ...
+Plano de viagens: ...
+Veículo: ...
+Doca: ...
+Criado em: ...
+Atualizado em: ...
+
+[ Evidências: X ] [ Sem veículo ] [ Pendências: Y ]          [ Detalhes ]
+
+==================================================
+10. FILTROS E LEITURA INICIAL
+==================================================
+
+A barra de filtros também pode ser melhorada visualmente, sem mudar a lógica.
+
+Se possível:
+- mostrar filtros ativos com chips;
+- destacar busca;
+- facilitar leitura da quantidade de resultados;
+- deixar a seção de filtros mais útil e menos vazia.
+
+==================================================
+11. ESTADOS ESPECIAIS
+==================================================
+
+Adicionar bom tratamento visual para:
+- movimentação criada sem itens;
+- movimentação sem veículo;
+- movimentação sem evidências;
+- movimentação finalizada;
+- movimentação pausada;
+- movimentação com pendências;
+- movimentação concluída com 100%.
+
+==================================================
+12. RESPONSIVIDADE
+==================================================
+
+No desktop:
+- card completo com grid de métricas e metadados.
+
+No tablet:
+- reorganizar os metadados em blocos com quebra.
+
+No mobile:
+- priorizar:
+  1. status
+  2. nome
+  3. evento
+  4. métricas principais
+  5. detalhes
+
+==================================================
+13. CRITÉRIOS DE ACEITE
+==================================================
+
+A melhoria estará correta quando:
+
+1. a listagem inicial mostrar claramente os dados principais da movimentação;
+2. for possível ver rapidamente itens e quantidades;
+3. o nome da movimentação e do evento não ficar truncado de forma ruim;
+4. o card mostrar progresso, pendências e carregados com clareza;
+5. os vínculos importantes (evento, requisição, plano, veículo, doca) estiverem visíveis;
+6. o layout ficar mais rico e útil sem parecer poluído;
+7. a leitura operacional ficar muito melhor do que a atual;
+8. a tela parecer 10/10 em clareza, densidade de informação e usabilidade.
+
+==================================================
+14. DIRETRIZ FINAL DE UX
+==================================================
+
+Quero que essa tela funcione como uma visão operacional de verdade.
+
+Ao bater o olho em um card, eu preciso entender:
+- o que é;
+- em que status está;
+- quanto já foi carregado;
+- quanto falta;
+- com qual evento está vinculado;
+- se está redondo ou com problema.
+
+Faça a interface parecer mais profissional, mais informativa e mais útil para operação do dia a dia.

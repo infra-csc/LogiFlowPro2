@@ -50,6 +50,7 @@ import { userCanCreateMovement, userCanEditMovement } from "@/lib/authz";
 import type {
   LoadingOrder, Dock, Event, Trip, Movement,
   MovementTypeConfig, MaterialRequest, Product,
+  RequestItem, LoadingOrderItem,
 } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -59,7 +60,7 @@ import {
   Warehouse, Tag, FileText, Info, Minus, Plus,
   Calendar, Clock, User, Navigation, ChevronRight,
   Building2, CheckCircle2, AlertTriangle, StickyNote,
-  ListOrdered, Layers,
+  ListOrdered, Layers, ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -430,6 +431,9 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   );
   // Track which fields were auto-filled from a trip plan so we can show a hint
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
+  // Right-panel collapsible sections
+  const [tripDetailExpanded, setTripDetailExpanded] = useState(false);
+  const [itemsSummaryExpanded, setItemsSummaryExpanded] = useState(true);
 
   // ─ Queries ─────────────────────────────────────────────────────────────────
   const { data: loadingOrders = [] } = useQuery<LoadingOrder[]>({ queryKey: ["/api/loading-orders"] });
@@ -456,6 +460,16 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   });
 
   const watchedValues = form.watch();
+
+  // Items from origin (request or loading order) — fetched conditionally after form is declared
+  const { data: reqItemsRaw = [] } = useQuery<(RequestItem & { product?: Product })[]>({
+    queryKey: ["/api/requests", watchedValues.requestId, "items"],
+    enabled: !!watchedValues.requestId,
+  });
+  const { data: orderItemsRaw = [] } = useQuery<(LoadingOrderItem & { product?: Product })[]>({
+    queryKey: ["/api/loading-orders", watchedValues.loadingOrderId, "items"],
+    enabled: !!watchedValues.loadingOrderId,
+  });
 
   useEffect(() => {
     if (open) {
@@ -1426,23 +1440,25 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
               </div>
               {/* end left col */}
 
-              {/* ─ RIGHT: Summary + Trip details ──────────────────────────── */}
+              {/* ─ RIGHT: Summary + collapsible sections ───────────────── */}
               <div className="w-[320px] border-l border-border flex flex-col shrink-0 overflow-hidden">
-                {/* Summary header */}
+                {/* Header */}
                 <div className="p-3 border-b border-border/60 bg-muted/40 shrink-0">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Resumo da movimentação
                   </p>
                 </div>
+
                 <div className="flex-1 overflow-y-auto">
-                  {/* Summary rows */}
+
+                  {/* ── RESUMO ─────────────────────────────────────────────── */}
                   <div className="p-3 space-y-2 border-b border-border/40">
                     {/* Name */}
                     <div className="flex items-start gap-2 text-xs">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="text-muted-foreground block">Nome</span>
-                        <p className={cn("font-medium leading-snug truncate", !watchedValues.name && "text-muted-foreground italic")}>
+                        <p className={cn("font-medium leading-snug break-words", !watchedValues.name && "text-muted-foreground italic")}>
                           {watchedValues.name || "Não informado"}
                         </p>
                       </div>
@@ -1477,7 +1493,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                         {selectedEvents.length > 0 ? (
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {selectedEvents.map((e) => (
-                              <Badge key={e.id} variant="outline" className="text-[9px] px-1 py-0 max-w-[150px] truncate">{e.name}</Badge>
+                              <Badge key={e.id} variant="outline" className="text-[9px] px-1 py-0 max-w-[200px] truncate">{e.name}</Badge>
                             ))}
                           </div>
                         ) : (
@@ -1494,7 +1510,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           <span className="text-muted-foreground block">Plano de viagens</span>
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {selectedTrips.map((t) => (
-                              <Badge key={t.id} variant="outline" className="text-[9px] px-1 py-0 max-w-[150px] truncate">
+                              <Badge key={t.id} variant="outline" className="text-[9px] px-1 py-0 max-w-[200px] truncate">
                                 {t.description || `Plano ${t.id.substring(0, 8)}`}
                               </Badge>
                             ))}
@@ -1508,7 +1524,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       <div className="flex items-start gap-2 text-xs">
                         <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <span className="text-muted-foreground block">Ordem</span>
+                          <span className="text-muted-foreground block">Ordem de carregamento</span>
                           <p className="font-medium leading-snug">{selectedOrder.orderNumber}</p>
                         </div>
                       </div>
@@ -1518,7 +1534,10 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                         <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                         <div className="min-w-0">
                           <span className="text-muted-foreground block">Requisição</span>
-                          <p className="font-medium leading-snug truncate">{selectedRequest.area}</p>
+                          <p className="font-medium leading-snug">{selectedRequest.area}</p>
+                          {selectedRequest.event && (
+                            <p className="text-[10px] text-muted-foreground">{selectedRequest.event.name}</p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1529,13 +1548,12 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       <div className="min-w-0 flex-1">
                         <span className="text-muted-foreground block">Veículo</span>
                         {(() => {
-                          const tripVehicle = selectedTrips.find(t => t.vehicle)?.vehicle;
                           const tripVehicleType = selectedTrips.find(t => t.vehicleType)?.vehicleType;
                           const plate = watchedValues.vehiclePlate;
-                          if (tripVehicleType || tripVehicle || plate) {
+                          if (tripVehicleType || plate) {
                             return (
                               <div>
-                                {tripVehicleType && <p className="font-medium leading-snug truncate">{tripVehicleType.name}</p>}
+                                {tripVehicleType && <p className="font-medium leading-snug">{tripVehicleType.name}</p>}
                                 {plate && <p className="leading-snug text-muted-foreground">{plate}</p>}
                               </div>
                             );
@@ -1551,7 +1569,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                         <User className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                         <div className="min-w-0">
                           <span className="text-muted-foreground block">Motorista</span>
-                          <p className="font-medium leading-snug truncate">
+                          <p className="font-medium leading-snug">
                             {selectedTrips.find(t => t.driver)?.driver?.name}
                           </p>
                         </div>
@@ -1569,7 +1587,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       </div>
                     </div>
 
-                    {/* Items summary (create mode) */}
+                    {/* Items summary */}
                     {!isEditMode && (
                       <div className="flex items-start gap-2 text-xs">
                         <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
@@ -1577,7 +1595,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           <span className="text-muted-foreground block">Itens pré-carregados</span>
                           <p className={cn("font-medium leading-snug", productItems.length === 0 && "text-muted-foreground italic")}>
                             {productItems.length > 0
-                              ? `${productItems.length} item${productItems.length !== 1 ? "s" : ""} · ${totalUnits} un.`
+                              ? `${productItems.length} produto${productItems.length !== 1 ? "s" : ""} · ${totalUnits} un.`
                               : "Nenhum item"}
                           </p>
                         </div>
@@ -1596,15 +1614,15 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                     )}
                   </div>
 
-                  {/* Readiness / Alerts */}
-                  <div className="p-3 space-y-2">
+                  {/* ── PENDÊNCIAS ──────────────────────────────────────────── */}
+                  <div className="p-3 space-y-1.5 border-b border-border/40">
                     {isReady ? (
                       <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                         <span className="font-medium">Pronta para criação</span>
                       </div>
                     ) : (
-                      <div className="space-y-1">
+                      <>
                         <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
                           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                           <span className="font-medium">
@@ -1616,33 +1634,137 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                             · {m === "nome" ? "Informe o nome da movimentação." : m === "tipo" ? "Selecione o tipo de movimentação." : `Preencha: ${m}.`}
                           </p>
                         ))}
-                      </div>
+                      </>
                     )}
                     {!watchedValues.vehiclePlate && selectedTrips.length === 0 && (
-                      <p className="text-xs text-muted-foreground flex items-start gap-1">
+                      <p className="text-[10px] text-muted-foreground flex items-start gap-1">
                         <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
                         Placa não informada.
                       </p>
                     )}
                     {selectedEvents.length === 0 && (
-                      <p className="text-xs text-muted-foreground flex items-start gap-1">
+                      <p className="text-[10px] text-muted-foreground flex items-start gap-1">
                         <Info className="h-3 w-3 shrink-0 mt-0.5" />
                         Movimentação sem evento vinculado.
                       </p>
                     )}
                   </div>
 
-                  {/* Trip detail panel (when trips selected) */}
+                  {/* ── DETALHES DO PLANO (colapsável) ─────────────────────── */}
                   {selectedTrips.length > 0 && (
-                    <>
-                      <div className="px-3 pt-1 pb-2 border-t border-border/60 bg-muted/40">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Detalhes do plano
-                        </p>
-                      </div>
-                      <TripDetailPanel trips={selectedTrips} />
-                    </>
+                    <div className="border-b border-border/40">
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between px-3 py-2.5 bg-muted/40 hover:bg-muted/60 transition-colors text-left"
+                        onClick={() => setTripDetailExpanded(v => !v)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Route className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Detalhes do plano
+                          </span>
+                          <Badge variant="outline" className="text-[9px] px-1 py-0">
+                            {selectedTrips.length}
+                          </Badge>
+                        </div>
+                        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", tripDetailExpanded && "rotate-180")} />
+                      </button>
+                      {tripDetailExpanded && <TripDetailPanel trips={selectedTrips} />}
+                    </div>
                   )}
+
+                  {/* ── RESUMO DOS ITENS DA ORIGEM (colapsável) ────────────── */}
+                  {(selectedRequest || selectedOrder) && (
+                    <div>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between px-3 py-2.5 bg-muted/40 hover:bg-muted/60 transition-colors text-left"
+                        onClick={() => setItemsSummaryExpanded(v => !v)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Resumo dos itens
+                          </span>
+                        </div>
+                        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", itemsSummaryExpanded && "rotate-180")} />
+                      </button>
+                      {itemsSummaryExpanded && (
+                        <div className="p-3 space-y-3">
+                          {selectedRequest && (() => {
+                            const total = reqItemsRaw.reduce((s, i) => s + (i.approvedQuantity ?? i.quantity), 0);
+                            const preview = reqItemsRaw.slice(0, 5);
+                            const remaining = reqItemsRaw.length - preview.length;
+                            return (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-medium text-foreground">Requisição: {selectedRequest.area}</p>
+                                </div>
+                                <div className="flex gap-3 text-xs text-muted-foreground">
+                                  <span>{reqItemsRaw.length} produto{reqItemsRaw.length !== 1 ? "s" : ""}</span>
+                                  <span>{total} unidade{total !== 1 ? "s" : ""}</span>
+                                </div>
+                                {preview.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {preview.map((item) => {
+                                      const prod = products.find(p => p.id === item.productId);
+                                      return (
+                                        <div key={item.id} className="flex items-center justify-between text-[11px]">
+                                          <span className="text-foreground truncate max-w-[170px]">{prod?.name || item.productId}</span>
+                                          <span className="text-muted-foreground shrink-0 ml-1">{item.approvedQuantity ?? item.quantity} un</span>
+                                        </div>
+                                      );
+                                    })}
+                                    {remaining > 0 && (
+                                      <p className="text-[10px] text-muted-foreground">+ {remaining} ite{remaining !== 1 ? "ns" : "m"}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground italic">Nenhum item na requisição.</p>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {selectedOrder && (() => {
+                            const total = orderItemsRaw.reduce((s, i) => s + i.consolidatedQuantity, 0);
+                            const preview = orderItemsRaw.slice(0, 5);
+                            const remaining = orderItemsRaw.length - preview.length;
+                            return (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-medium text-foreground">Ordem: {selectedOrder.orderNumber}</p>
+                                </div>
+                                <div className="flex gap-3 text-xs text-muted-foreground">
+                                  <span>{orderItemsRaw.length} produto{orderItemsRaw.length !== 1 ? "s" : ""}</span>
+                                  <span>{total} unidade{total !== 1 ? "s" : ""}</span>
+                                </div>
+                                {preview.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {preview.map((item) => {
+                                      const prod = products.find(p => p.id === item.productId);
+                                      return (
+                                        <div key={item.id} className="flex items-center justify-between text-[11px]">
+                                          <span className="text-foreground truncate max-w-[170px]">{prod?.name || item.productId}</span>
+                                          <span className="text-muted-foreground shrink-0 ml-1">{item.consolidatedQuantity} un</span>
+                                        </div>
+                                      );
+                                    })}
+                                    {remaining > 0 && (
+                                      <p className="text-[10px] text-muted-foreground">+ {remaining} ite{remaining !== 1 ? "ns" : "m"}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground italic">Nenhum item na ordem.</p>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               </div>
               {/* end right col */}

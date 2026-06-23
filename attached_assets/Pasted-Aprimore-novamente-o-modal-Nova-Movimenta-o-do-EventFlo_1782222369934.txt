@@ -1,0 +1,240 @@
+Aprimore novamente o modal “Nova Movimentação” do EventFlow, mantendo o visual dark, a estrutura ampla e o formulário mais organizado, porém corrigindo dois pontos que ficaram faltando:
+
+1. agora o usuário não consegue visualizar bem os detalhes do plano de viagens vinculado;
+2. agora o usuário também precisa visualizar um resumo útil dos itens vindos de requisição ou ordem de carregamento.
+
+Não remover nenhuma informação existente. Não alterar regras de negócio. Melhorar apenas layout, hierarquia visual, comportamento dos resumos e clareza operacional.
+
+==================================================
+OBJETIVO
+==================================================
+
+O modal deve continuar moderno, amplo e organizado, mas precisa voltar a ser informativo. O usuário deve conseguir entender rapidamente:
+
+- o que está vinculando;
+- quais dados logísticos vieram do plano;
+- quais itens foram pré-carregados da requisição ou da ordem;
+- qual será o impacto da movimentação antes de criar.
+
+==================================================
+1. PAINEL LATERAL: RESUMO DA MOVIMENTAÇÃO
+==================================================
+
+Manter o painel lateral “Resumo da Movimentação”, porém deixá-lo mais útil.
+
+Ele deve continuar compacto, mas precisa exibir:
+
+- Nome
+- Tipo
+- Evento
+- Plano de viagens
+- Requisição ou ordem vinculada
+- Veículo
+- Motorista
+- Doca
+- Itens pré-carregados
+- Total de unidades
+- Pendências obrigatórias
+
+Ajustes importantes:
+
+- permitir altura maior do conteúdo do resumo;
+- manter o painel lateral com rolagem própria apenas se realmente necessário;
+- garantir que o conteúdo não fique cortado;
+- melhorar truncamento de nomes longos com tooltip;
+- separar visualmente “Resumo”, “Detalhes do plano” e “Resumo dos itens”.
+
+==================================================
+2. BLOCO EXPANSÍVEL: DETALHES DO PLANO
+==================================================
+
+Quando existir plano de viagens vinculado, adicionar no painel lateral um bloco expansível chamado:
+
+DETALHES DO PLANO
+
+Esse bloco deve mostrar de forma clara:
+
+- nome do plano;
+- evento vinculado;
+- veículo;
+- motorista;
+- doca;
+- janela de carregamento;
+- horário de partida;
+- janela de descarregamento;
+- destinos.
+
+Estrutura sugerida:
+
+DETALHES DO PLANO
+- Carregamento
+  - local/doca
+  - data e horário
+- Partida
+  - data e horário
+- Descarregamento
+  - local
+  - data e horário
+- Destinos
+  - lista de destinos vinculados
+
+Esse bloco deve:
+
+- vir recolhido por padrão, mas visível;
+- permitir expandir/recolher;
+- aparecer somente quando houver plano selecionado;
+- desaparecer ou mostrar estado vazio quando não houver plano.
+
+Adicionar ação discreta:
+“Ver detalhes do plano”
+
+==================================================
+3. BLOCO EXPANSÍVEL: RESUMO DOS ITENS DA ORIGEM
+==================================================
+
+Quando a origem da movimentação for uma requisição ou ordem de carregamento, adicionar abaixo do resumo um bloco chamado:
+
+RESUMO DOS ITENS
+
+Esse bloco deve mostrar:
+
+- origem dos itens (requisição ou ordem);
+- nome da origem;
+- quantidade de itens distintos;
+- total de unidades;
+- preview dos itens;
+- observações da origem, se houver.
+
+Se for requisição, exibir algo como:
+
+Requisição: Arena
+10 itens distintos
+83 unidades
+
+Itens:
+- CAVALETE RETO — 4 un
+- GRADES 2X1 — 40 un
+- LIXEIRAS ARAMADAS — 20 un
+- + 7 itens
+
+Se for ordem de carregamento, seguir o mesmo padrão.
+
+Esse bloco deve:
+
+- vir expandido por padrão quando houver origem selecionada;
+- mostrar no máximo 5 itens inicialmente;
+- ter ação “Ver lista completa”;
+- informar claramente quando nenhum item foi pré-carregado.
+
+==================================================
+4. SEÇÃO “ITENS DA MOVIMENTAÇÃO” NO FORMULÁRIO
+==================================================
+
+Na coluna principal, melhorar a seção “Itens da movimentação”.
+
+Hoje não basta mostrar “Nenhum item adicionado”.
+
+A nova experiência deve ser:
+
+- se existir requisição ou ordem selecionada, mostrar um card de pré-carga;
+- o card deve mostrar quantos itens vieram da origem;
+- exibir total de unidades;
+- mostrar uma pequena lista com os principais itens;
+- permitir revisar, editar ou remover itens;
+- permitir adicionar mais produtos manualmente.
+
+Estrutura sugerida:
+
+Itens da movimentação
+Pré-populados a partir da requisição Arena
+
+Resumo:
+- 10 produtos
+- 83 unidades
+
+Preview:
+- CAVALETE RETO — 4 un
+- GRADES 2X1 — 40 un
+- LIXEIRAS ARAMADAS — 20 un
+- + 7 itens
+
+Ações:
+- Ver todos os itens
+- Editar lista
+- Adicionar produto manualmente
+
+Se não houver origem selecionada:
+- mostrar estado vazio simples;
+- permitir adicionar produtos manualmente.
+
+==================================================
+5. HIERARQUIA VISUAL
+==================================================
+
+Separar claramente no modal:
+
+- Resumo da movimentação
+- Detalhes do plano
+- Resumo dos itens
+- Pendências
+
+Não misturar tudo no mesmo bloco textual.
+
+Cada bloco deve ser um card ou seção bem delimitada, com título e espaçamento consistente.
+
+==================================================
+6. PENDÊNCIAS
+==================================================
+
+Manter o bloco de pendências, mas não deixar ele competir com o resumo.
+
+Exemplo:
+
+1 campo obrigatório
+- Selecione o tipo de movimentação
+
+Ele deve ficar abaixo do resumo principal e acima dos detalhes extras.
+
+==================================================
+7. COMPORTAMENTO DOS DADOS HERDADOS
+==================================================
+
+Quando o plano de viagens preencher automaticamente dados como:
+
+- evento;
+- veículo;
+- motorista;
+- doca;
+
+deixar isso visível no formulário e também refletido no resumo lateral.
+
+Exibir um indicador visual discreto:
+“Preenchido automaticamente via plano de viagens”
+
+==================================================
+8. RESPONSIVIDADE
+==================================================
+
+No desktop:
+- manter duas colunas;
+- esquerda = formulário;
+- direita = resumo + detalhes do plano + resumo dos itens.
+
+No tablet/mobile:
+- transformar o painel lateral em drawer ou acordeão;
+- manter acesso a “Detalhes do plano” e “Resumo dos itens” sem perda de informação.
+
+==================================================
+9. CRITÉRIOS DE ACEITE
+==================================================
+
+O modal estará correto quando:
+
+1. o usuário conseguir ver claramente os detalhes do plano vinculado;
+2. o usuário conseguir ver o resumo dos itens da requisição ou da ordem;
+3. o resumo lateral não ficar superficial demais;
+4. a seção de itens mostrar os pré-carregados de forma clara;
+5. a origem dos itens ficar evidente;
+6. os dados herdados do plano aparecerem claramente;
+7. nenhum dado importante fique oculto ou cortado;
+8. o modal continue limpo, moderno e coerente com o EventFlow.
