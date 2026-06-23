@@ -4,6 +4,9 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
   Lock,
   MapPin,
   AlertTriangle,
@@ -149,11 +152,44 @@ function AgendaBlock({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+type SortCol = "produto" | "abertura" | "saida" | "entrada" | "controlado" | "em_evento" | "em_transito" | "reservado" | "disponivel" | "status";
+type SortDir = "asc" | "desc";
+
+const STATUS_ORDER: Record<string, number> = { shortage: 0, low: 1, ok: 2 };
+
+function SortableHead({
+  col, label, current, dir, onSort, className,
+}: {
+  col: SortCol; label: string; current: SortCol | null; dir: SortDir; onSort: (c: SortCol) => void; className?: string;
+}) {
+  const active = current === col;
+  const Icon = active ? (dir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
+  return (
+    <TableHead className={className}>
+      <button
+        onClick={() => onSort(col)}
+        className={`inline-flex items-center gap-0.5 hover:text-foreground transition-colors ${active ? "text-foreground" : "text-muted-foreground"}`}
+        data-testid={`sort-${col}`}
+      >
+        {label}
+        <Icon className="w-3 h-3 flex-shrink-0" />
+      </button>
+    </TableHead>
+  );
+}
+
 export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props) {
   const { rangeDays, products } = result;
   const [selectedDay, setSelectedDay] = useState<string>(
     () => (initialDay && rangeDays.includes(initialDay) ? initialDay : rangeDays[0]) || "",
   );
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortCol(col); setSortDir("asc"); }
+  };
 
   // Navigate to a specific day when controlled from outside (timeline click)
   useEffect(() => {
@@ -183,6 +219,28 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
         return diff !== 0 ? diff : a.cell.available - b.cell.available;
       });
   }, [products, dayIdx]);
+
+  const sortedRows = useMemo(() => {
+    if (!sortCol) return rows;
+    const mul = sortDir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const { product: pa, cell: ca } = a;
+      const { product: pb, cell: cb } = b;
+      switch (sortCol) {
+        case "produto":    return mul * pa.name.localeCompare(pb.name);
+        case "abertura":   return mul * (ca.opening - cb.opening);
+        case "saida":      return mul * (ca.outbound - cb.outbound);
+        case "entrada":    return mul * (ca.inbound - cb.inbound);
+        case "controlado": return mul * (ca.available - cb.available);
+        case "em_evento":  return mul * (ca.inEvent - cb.inEvent);
+        case "em_transito":return mul * (ca.inTransit - cb.inTransit);
+        case "reservado":  return mul * (ca.reserved - cb.reserved);
+        case "disponivel": return mul * ((ca.available - ca.inEvent) - (cb.available - cb.inEvent));
+        case "status":     return mul * ((STATUS_ORDER[ca.status] ?? 9) - (STATUS_ORDER[cb.status] ?? 9));
+        default:           return 0;
+      }
+    });
+  }, [rows, sortCol, sortDir]);
 
   const kpis = useMemo(() => {
     let shortage = 0, low = 0, outbound = 0, inbound = 0, reserved = 0, inEvent = 0;
@@ -418,20 +476,20 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
               <Table data-testid="table-projection-day">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-right">Abertura</TableHead>
-                    <TableHead className="text-right">Saída</TableHead>
-                    <TableHead className="text-right">Entrada</TableHead>
-                    <TableHead className="text-right text-muted-foreground">Controlado</TableHead>
-                    <TableHead className="text-right text-muted-foreground/70">Em evento</TableHead>
-                    <TableHead className="text-right text-muted-foreground/70">Em trânsito</TableHead>
-                    <TableHead className="text-right text-muted-foreground/70">Reservado</TableHead>
-                    <TableHead className="text-right font-semibold">Disponível</TableHead>
-                    <TableHead>Status</TableHead>
+                    <SortableHead col="produto"     label="Produto"      current={sortCol} dir={sortDir} onSort={handleSort} />
+                    <SortableHead col="abertura"    label="Abertura"     current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
+                    <SortableHead col="saida"       label="Saída"        current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
+                    <SortableHead col="entrada"     label="Entrada"      current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
+                    <SortableHead col="controlado"  label="Controlado"   current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
+                    <SortableHead col="em_evento"   label="Em evento"    current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
+                    <SortableHead col="em_transito" label="Em trânsito"  current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
+                    <SortableHead col="reservado"   label="Reservado"    current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
+                    <SortableHead col="disponivel"  label="Disponível"   current={sortCol} dir={sortDir} onSort={handleSort} className="text-right font-semibold" />
+                    <SortableHead col="status"      label="Status"       current={sortCol} dir={sortDir} onSort={handleSort} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map(({ product, cell }) => (
+                  {sortedRows.map(({ product, cell }) => (
                     <TableRow
                       key={product.productId}
                       className={`${rowToneClass(cell.status)} ${onSelectProduct ? "cursor-pointer" : ""}`}
