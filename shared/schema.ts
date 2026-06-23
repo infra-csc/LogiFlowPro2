@@ -678,6 +678,17 @@ export const movementTrips = pgTable("movement_trips", {
   tripIdIdx: index("idx_movement_trips_trip_id").on(table.tripId),
 }));
 
+// Movement Requests junction table (many-to-many: one movement ↔ many requests)
+export const movementRequests = pgTable("movement_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  movementId: varchar("movement_id").notNull().references(() => movements.id, { onDelete: "cascade" }),
+  requestId: varchar("request_id").notNull().references(() => materialRequests.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`)
+}, (table) => ({
+  movementIdIdx: index("idx_movement_requests_movement_id").on(table.movementId),
+  requestIdIdx: index("idx_movement_requests_request_id").on(table.requestId),
+}));
+
 // Movement Items table
 export const movementItems = pgTable("movement_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1024,7 +1035,8 @@ export const movementsRelations = relations(movements, ({ one, many }) => ({
   }),
   items: many(movementItems),
   movementEvents: many(movementEvents),
-  movementTrips: many(movementTrips)
+  movementTrips: many(movementTrips),
+  movementRequests: many(movementRequests)
 }));
 
 export const movementItemsRelations = relations(movementItems, ({ one }) => ({
@@ -1057,6 +1069,17 @@ export const movementTripsRelations = relations(movementTrips, ({ one }) => ({
   trip: one(trips, {
     fields: [movementTrips.tripId],
     references: [trips.id]
+  })
+}));
+
+export const movementRequestsRelations = relations(movementRequests, ({ one }) => ({
+  movement: one(movements, {
+    fields: [movementRequests.movementId],
+    references: [movements.id]
+  }),
+  request: one(materialRequests, {
+    fields: [movementRequests.requestId],
+    references: [materialRequests.id]
   })
 }));
 
@@ -1310,17 +1333,23 @@ export const insertMovementSchema = createInsertSchema(movements).omit({
 export const insertMovementWithEventsSchema = insertMovementSchema.extend({
   eventIds: z.array(z.string()).optional().default([]),
   tripIds: z.array(z.string()).optional(),
+  requestIds: z.array(z.string()).optional().default([]),
   productItems: z.array(z.object({
     productId: z.string(),
     quantity: z.number().int().positive(),
   })).optional().default([]),
 }).refine(
-  (data) => !(data.loadingOrderId && data.requestId),
+  (data) => !(data.loadingOrderId && data.requestIds && data.requestIds.length > 0),
   {
-    message: "Vincule a movimentação a uma ordem de carregamento OU a uma requisição, não a ambas.",
-    path: ["requestId"],
+    message: "Vincule a movimentação a uma ordem de carregamento OU a requisições, não a ambas.",
+    path: ["requestIds"],
   }
 );
+
+export const insertMovementRequestSchema = createInsertSchema(movementRequests).omit({
+  id: true,
+  createdAt: true
+});
 
 export const insertMovementItemSchema = createInsertSchema(movementItems).omit({
   id: true,
@@ -1476,6 +1505,9 @@ export type MovementEvent = typeof movementEvents.$inferSelect;
 
 export type MovementTrip = typeof movementTrips.$inferSelect;
 export type InsertMovementTrip = z.infer<typeof insertMovementTripSchema>;
+
+export type MovementRequest = typeof movementRequests.$inferSelect;
+export type InsertMovementRequest = z.infer<typeof insertMovementRequestSchema>;
 
 export type MovementItem = typeof movementItems.$inferSelect;
 export type InsertMovementItem = z.infer<typeof insertMovementItemSchema>;

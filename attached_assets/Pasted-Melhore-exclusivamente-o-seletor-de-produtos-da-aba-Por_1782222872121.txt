@@ -1,0 +1,178 @@
+Melhore exclusivamente o seletor de produtos da aba “Por Produto” na tela de Projeção de Estoque.
+
+Não altere a lógica da projeção, cálculos, filtros gerais ou demais abas. O objetivo é apenas tornar a localização e a seleção de produtos rápida e clara.
+
+PROBLEMA ATUAL
+
+O seletor atual abre uma lista muito grande, semelhante a um select nativo:
+
+- ocupa espaço excessivo;
+- não possui busca eficiente;
+- exige muita rolagem;
+- mistura nome e SKU em uma única linha longa;
+- dificulta localizar produtos parecidos;
+- não mostra informações úteis para diferenciar os itens;
+- causa sensação de lista desorganizada;
+- pode ultrapassar a área visível da tela.
+
+SUBSTITUIR POR COMBOBOX PESQUISÁVEL
+
+Transformar o campo “Produto” em um combobox/autocomplete moderno.
+
+Ao clicar no campo:
+
+1. abrir um painel compacto abaixo do campo;
+2. colocar um campo de busca automaticamente focado;
+3. permitir pesquisar por:
+   - nome do produto;
+   - SKU;
+   - código de barras, caso exista;
+4. filtrar os resultados enquanto o usuário digita;
+5. não exigir pressionar Enter para iniciar a pesquisa.
+
+PLACEHOLDER
+
+Usar:
+
+“Buscar por nome, SKU ou código de barras...”
+
+RESULTADOS
+
+Cada resultado deve ser exibido em duas linhas:
+
+Linha principal:
+- nome completo do produto;
+- não concatenar visualmente o nome e o SKU com ponto ou hífen.
+
+Linha secundária:
+- SKU;
+- unidade;
+- estoque atual;
+- status operacional.
+
+Exemplo:
+
+PÉS DE 0,56 M
+BOX_3Q_PES_DE_0_56M · 4 un. disponíveis
+
+Box Truss – Q15 – Peça 400
+BOX_2Q04 · sem estoque
+
+O nome deve ter maior destaque.
+SKU e informações complementares devem aparecer menores e com cor secundária.
+
+STATUS VISUAL
+
+Mostrar um indicador discreto em cada resultado:
+
+- verde: possui estoque disponível;
+- amarelo: abaixo do mínimo;
+- vermelho: falta prevista ou saldo negativo;
+- cinza: estoque zerado e sem demanda no período.
+
+Não considerar estoque igual a zero como adequado.
+
+PESQUISA
+
+A busca deve:
+
+- ignorar diferença entre letras maiúsculas e minúsculas;
+- ignorar acentos;
+- aceitar partes do nome;
+- aceitar partes do SKU;
+- encontrar resultados mesmo quando as palavras forem digitadas em ordem parcial;
+- destacar visualmente o trecho correspondente à pesquisa.
+
+Exemplo:
+Buscar “pes 056” deve localizar “PÉS DE 0,56 M”.
+
+ORDENAÇÃO DOS RESULTADOS
+
+Ordenar nesta prioridade:
+
+1. correspondência exata com SKU;
+2. nome começando com o texto pesquisado;
+3. nome contendo o texto pesquisado;
+4. demais correspondências;
+5. ordem alfabética.
+
+Ao abrir sem digitar nada, mostrar:
+
+- produtos recentemente consultados, quando houver;
+- produtos impactados no período;
+- todos os demais produtos em ordem alfabética.
+
+DIMENSÕES DO PAINEL
+
+- largura igual à do campo ou aproximadamente 480 px;
+- altura máxima entre 320 e 380 px;
+- rolagem somente dentro da lista;
+- nunca ocupar a tela inteira;
+- nunca criar rolagem horizontal;
+- manter o painel dentro da viewport;
+- caso não haja espaço abaixo, abrir acima do campo.
+
+INTERAÇÃO POR TECLADO
+
+Permitir:
+
+- setas para cima e para baixo: navegar;
+- Enter: selecionar;
+- Esc: fechar;
+- digitar imediatamente após abrir;
+- Tab: seguir normalmente pelo formulário.
+
+SELEÇÃO
+
+Depois que o produto for escolhido:
+
+- fechar automaticamente a lista;
+- mostrar o nome do produto no campo;
+- mostrar o SKU em texto secundário;
+- atualizar imediatamente a análise “Por Produto”;
+- não exigir botão adicional;
+- manter uma opção discreta para limpar a seleção;
+- ao reabrir, destacar o produto atualmente selecionado.
+
+ESTADO SEM RESULTADO
+
+Exibir:
+
+“Nenhum produto encontrado”
+
+E abaixo:
+
+“Tente buscar por outro nome ou SKU.”
+
+Não deixar uma área vazia.
+
+CARREGAMENTO E DESEMPENHO
+
+- mostrar indicador de carregamento enquanto os resultados forem buscados;
+- usar debounce curto, aproximadamente 200 ms;
+- evitar renderizar centenas de produtos simultaneamente;
+- usar paginação interna, carregamento progressivo ou virtualização se necessário;
+- não travar a interface.
+
+MOBILE E RESPONSIVIDADE
+
+No mobile:
+
+- abrir como painel ou bottom sheet pesquisável;
+- manter o campo de busca fixo no topo;
+- permitir fechar facilmente;
+- exibir nome e SKU sem corte excessivo.
+
+CRITÉRIOS DE ACEITE
+
+A alteração estará correta quando:
+
+1. não existir mais o dropdown enorme mostrado atualmente;
+2. o usuário conseguir localizar qualquer produto digitando nome ou SKU;
+3. nome e SKU estiverem visualmente separados;
+4. os resultados mostrarem estoque e status;
+5. a lista não ultrapassar a tela;
+6. a seleção puder ser feita por mouse ou teclado;
+7. a análise atualizar automaticamente após a seleção;
+8. produtos com estoque zerado não aparecerem como adequados;
+9. o componente ficar coerente com o visual dark do EventFlow.

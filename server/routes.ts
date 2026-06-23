@@ -3006,11 +3006,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
 
       const data = insertMovementWithEventsSchema.parse(req.body);
-      const { productItems, ...movementData } = data;
+      const { productItems, requestIds, ...movementData } = data as any;
       
-      // A movement may be linked to a loading order OR a request, never both
-      if (movementData.loadingOrderId && movementData.requestId) {
-        return res.status(400).json({ error: "Vincule a uma ordem de carregamento OU a uma requisição, não a ambas." });
+      // A movement may be linked to a loading order OR requests, never both
+      if (movementData.loadingOrderId && requestIds && requestIds.length > 0) {
+        return res.status(400).json({ error: "Vincule a uma ordem de carregamento OU a requisições, não a ambas." });
       }
 
       // Validate loading order if provided
@@ -3024,8 +3024,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Validate material request if provided (alternative to loading order)
-      if (movementData.requestId) {
+      // Validate each material request if provided (alternative to loading order)
+      if (requestIds && requestIds.length > 0) {
+        for (const requestId of requestIds) {
+          const request = await storage.getMaterialRequest(requestId);
+          if (!request) {
+            return res.status(404).json({ error: `Requisição não encontrada: ${requestId}` });
+          }
+        }
+      } else if (movementData.requestId) {
+        // Legacy single requestId fallback
         const request = await storage.getMaterialRequest(movementData.requestId);
         if (!request) {
           return res.status(404).json({ error: "Request not found" });
@@ -3076,6 +3084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const movement = await storage.createMovementWithEvents({
         ...movementData,
+        requestIds,
         movementNumber,
         createdBy,
       } as any);
@@ -3121,15 +3130,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const bodyRequestIds: string[] | undefined = Array.isArray(req.body.requestIds) ? req.body.requestIds : undefined;
       const data = insertMovementSchema.partial().parse(req.body);
 
       // Enforce loading-order/request mutual exclusivity against the resulting state
       const effectiveLoadingOrderId =
         data.loadingOrderId !== undefined ? data.loadingOrderId : movement.loadingOrderId;
-      const effectiveRequestId =
-        data.requestId !== undefined ? data.requestId : movement.requestId;
-      if (effectiveLoadingOrderId && effectiveRequestId) {
-        return res.status(400).json({ error: "Vincule a uma ordem de carregamento OU a uma requisição, não a ambas." });
+      const incomingRequestIds = bodyRequestIds ?? [];
+      if (effectiveLoadingOrderId && incomingRequestIds.length > 0) {
+        return res.status(400).json({ error: "Vincule a uma ordem de carregamento OU a requisições, não a ambas." });
       }
       if (data.loadingOrderId) {
         const order = await storage.getLoadingOrder(data.loadingOrderId);
@@ -3140,7 +3149,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "Loading order must be approved" });
         }
       }
-      if (data.requestId) {
+      if (bodyRequestIds && bodyRequestIds.length > 0) {
+        for (const requestId of bodyRequestIds) {
+          const request = await storage.getMaterialRequest(requestId);
+          if (!request) {
+            return res.status(404).json({ error: `Requisição não encontrada: ${requestId}` });
+          }
+        }
+      } else if (data.requestId) {
         const request = await storage.getMaterialRequest(data.requestId);
         if (!request) {
           return res.status(404).json({ error: "Request not found" });
@@ -3156,6 +3172,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updated = await storage.updateMovement(req.params.id, data);
+
+      // Update junction table for requests if requestIds was explicitly sent
+      if (bodyRequestIds !== undefined) {
+        await storage.updateMovementRequests(req.params.id, bodyRequestIds);
+      }
+
       res.json(updated);
     } catch (error) {
       res.status(400).json({ error: "Invalid movement data" });

@@ -25,6 +25,7 @@ import {
   movements,
   movementEvents,
   movementTrips,
+  movementRequests,
   movementItems,
   movementAuditLogs,
   inventoryMovements,
@@ -1221,17 +1222,57 @@ export class DatabaseStorage implements IStorage {
       ])
     );
 
-    return movementsData.map((m) => ({
-      ...m,
-      events: eventsByMovement.get(m.id) ?? [],
-      trips: tripsByMovement.get(m.id) ?? [],
-      loadingOrder: (m as any).loadingOrderId
-        ? loadingOrderById.get((m as any).loadingOrderId) ?? undefined
-        : undefined,
-      request: (m as any).requestId
+    // Batch-load requests from junction table (new multi-request support)
+    const junctionRequestRows = ids.length
+      ? await db
+          .select({
+            movementId: movementRequests.movementId,
+            id: materialRequests.id,
+            area: materialRequests.area,
+            eventId: materialRequests.eventId,
+            status: materialRequests.status,
+            eventName: events.name,
+          })
+          .from(movementRequests)
+          .leftJoin(materialRequests, eq(movementRequests.requestId, materialRequests.id))
+          .leftJoin(events, eq(materialRequests.eventId, events.id))
+          .where(inArray(movementRequests.movementId, ids))
+      : [];
+
+    const junctionRequestsByMovement = new Map<string, any[]>();
+    for (const r of junctionRequestRows) {
+      if (!r.id) continue;
+      const arr = junctionRequestsByMovement.get(r.movementId) ?? [];
+      arr.push({
+        id: r.id,
+        area: r.area,
+        eventId: r.eventId,
+        status: r.status,
+        event: r.eventName ? { id: r.eventId, name: r.eventName } : undefined,
+      });
+      junctionRequestsByMovement.set(r.movementId, arr);
+    }
+
+    return movementsData.map((m) => {
+      // Prefer junction table requests; fall back to legacy requestId column
+      const junctionReqs = junctionRequestsByMovement.get(m.id) ?? [];
+      const legacyRequest = (m as any).requestId
         ? requestById.get((m as any).requestId) ?? undefined
-        : undefined,
-    }));
+        : undefined;
+      const requests = junctionReqs.length > 0
+        ? junctionReqs
+        : legacyRequest ? [legacyRequest] : [];
+      return {
+        ...m,
+        events: eventsByMovement.get(m.id) ?? [],
+        trips: tripsByMovement.get(m.id) ?? [],
+        loadingOrder: (m as any).loadingOrderId
+          ? loadingOrderById.get((m as any).loadingOrderId) ?? undefined
+          : undefined,
+        request: requests[0] ?? undefined,
+        requests,
+      };
+    });
   }
 
   async getMovements(): Promise<Movement[]> {
@@ -1291,9 +1332,32 @@ export class DatabaseStorage implements IStorage {
       loadingOrder = lo || undefined;
     }
 
-    // Material request link (if any) - alternative to loading order
-    let request: any = undefined;
-    if (movementData.requestId) {
+    // Load requests from junction table (new multi-request support)
+    const junctionReqRows = await db
+      .select({
+        id: materialRequests.id,
+        area: materialRequests.area,
+        eventId: materialRequests.eventId,
+        status: materialRequests.status,
+        eventName: events.name,
+      })
+      .from(movementRequests)
+      .leftJoin(materialRequests, eq(movementRequests.requestId, materialRequests.id))
+      .leftJoin(events, eq(materialRequests.eventId, events.id))
+      .where(eq(movementRequests.movementId, movementData.id));
+
+    let requests: any[] = junctionReqRows
+      .filter(r => r.id)
+      .map(r => ({
+        id: r.id,
+        area: r.area,
+        eventId: r.eventId,
+        status: r.status,
+        event: r.eventName ? { id: r.eventId, name: r.eventName } : undefined,
+      }));
+
+    // Fallback: legacy requestId column on movements table
+    if (requests.length === 0 && movementData.requestId) {
       const [rq] = await db
         .select({
           id: materialRequests.id,
@@ -1305,15 +1369,15 @@ export class DatabaseStorage implements IStorage {
         .from(materialRequests)
         .leftJoin(events, eq(materialRequests.eventId, events.id))
         .where(eq(materialRequests.id, movementData.requestId));
-      request = rq
-        ? {
-            id: rq.id,
-            area: rq.area,
-            eventId: rq.eventId,
-            status: rq.status,
-            event: rq.eventName ? { id: rq.eventId, name: rq.eventName } : undefined,
-          }
-        : undefined;
+      if (rq) {
+        requests = [{
+          id: rq.id,
+          area: rq.area,
+          eventId: rq.eventId,
+          status: rq.status,
+          event: rq.eventName ? { id: rq.eventId, name: rq.eventName } : undefined,
+        }];
+      }
     }
 
     return {
@@ -1321,7 +1385,8 @@ export class DatabaseStorage implements IStorage {
       events: eventRelations.map(r => r.event).filter(Boolean),
       trips: tripRelations.map(r => r.trip).filter(Boolean),
       loadingOrder,
-      request,
+      request: requests[0] ?? undefined,
+      requests,
     } as any;
   }
 
@@ -1342,7 +1407,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMovementWithEvents(movementData: InsertMovementWithEvents): Promise<Movement> {
-    const { eventIds, tripIds, ...movementInsert } = movementData;
+    const { eventIds, tripIds, requestIds, ...movementInsert } = movementData as any;
     
     // Check if movement type requires approval
     let finalStatus = movementInsert.status || "created";
@@ -1366,7 +1431,7 @@ export class DatabaseStorage implements IStorage {
     // Create the junction records for events
     if (eventIds && eventIds.length > 0) {
       await db.insert(movementEvents).values(
-        eventIds.map(eventId => ({
+        eventIds.map((eventId: string) => ({
           movementId: created.id,
           eventId
         }))
@@ -1376,14 +1441,33 @@ export class DatabaseStorage implements IStorage {
     // Create the junction records for trips
     if (tripIds && tripIds.length > 0) {
       await db.insert(movementTrips).values(
-        tripIds.map(tripId => ({
+        tripIds.map((tripId: string) => ({
           movementId: created.id,
           tripId
         }))
       );
     }
+
+    // Create the junction records for requests (multi-request support)
+    if (requestIds && requestIds.length > 0) {
+      await db.insert(movementRequests).values(
+        requestIds.map((requestId: string) => ({
+          movementId: created.id,
+          requestId
+        }))
+      );
+    }
     
     return created;
+  }
+
+  async updateMovementRequests(movementId: string, requestIds: string[]): Promise<void> {
+    await db.delete(movementRequests).where(eq(movementRequests.movementId, movementId));
+    if (requestIds.length > 0) {
+      await db.insert(movementRequests).values(
+        requestIds.map((requestId) => ({ movementId, requestId }))
+      );
+    }
   }
 
   async updateMovement(id: string, movement: Partial<InsertMovement>): Promise<Movement> {

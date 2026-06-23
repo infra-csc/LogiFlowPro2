@@ -2,3 +2,4 @@
 - [Movement relations N+1](movement-relations-n1.md) — movements list/detail relations (events/trips) must be batch-loaded by movementId, never one query per movement.
 - [Stock projection precedence](stock-projection-precedence.md) — request/loading/movement demand per (event,product) is one demand; net quantity-aware (movement>loading>request), never boolean.
 - [Kit BOM formula expansion](kit-bom-formula.md) — formula eval duplicated in client calcFinalQty and server calcKitLineQty; keep both in sync.
+- [Multi-request junction pattern](multi-request-junction.md) — movement_requests junction table for multi-requisição; `attachMovementRelations` prefers junction, falls back to legacy requestId column; PATCH uses `updateMovementRequests` helper.

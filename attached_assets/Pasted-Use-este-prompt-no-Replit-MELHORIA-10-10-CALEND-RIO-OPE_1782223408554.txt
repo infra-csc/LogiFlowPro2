@@ -1,0 +1,487 @@
+Use este prompt no Replit:
+
+---
+
+## MELHORIA 10/10 — CALENDÁRIO OPERACIONAL
+
+Melhore a tela de **Calendário Operacional** do EventFlow, deixando a visualização mais clara, elegante e útil para a gestão logística.
+
+O principal problema atual é que **Saída, Carregamento e Descarregamento parecem visualmente a mesma operação**. O usuário precisa ler todos os textos para entender o que acontecerá em cada dia.
+
+Não alterar regras de negócio, integrações, dados, rotas ou funcionamento atual. Trabalhar principalmente em **hierarquia visual, cores semânticas, legibilidade, organização e experiência de uso**.
+
+---
+
+# 1. PALETA SEMÂNTICA OBRIGATÓRIA
+
+Cada tipo de atividade deve possuir uma identidade visual própria e consistente em toda a tela.
+
+### Evento
+
+* Cor principal: azul
+* Principal: `#3B82F6`
+* Texto destacado: `#60A5FA`
+* Fundo suave: `rgba(59, 130, 246, 0.12)`
+* Borda: `rgba(59, 130, 246, 0.45)`
+
+### Saída
+
+* Cor principal: âmbar
+* Principal: `#F59E0B`
+* Texto destacado: `#FBBF24`
+* Fundo suave: `rgba(245, 158, 11, 0.12)`
+* Borda: `rgba(245, 158, 11, 0.50)`
+
+### Carregamento
+
+* Cor principal: ciano
+* Principal: `#06B6D4`
+* Texto destacado: `#22D3EE`
+* Fundo suave: `rgba(6, 182, 212, 0.12)`
+* Borda: `rgba(6, 182, 212, 0.50)`
+
+### Descarregamento
+
+* Cor principal: verde
+* Principal: `#10B981`
+* Texto destacado: `#34D399`
+* Fundo suave: `rgba(16, 185, 129, 0.12)`
+* Borda: `rgba(16, 185, 129, 0.50)`
+
+### Movimentação avulsa
+
+* Cor principal: roxo
+* Principal: `#8B5CF6`
+* Texto destacado: `#A78BFA`
+* Fundo suave: `rgba(139, 92, 246, 0.12)`
+* Borda: `rgba(139, 92, 246, 0.50)`
+
+### Janela de requisição
+
+* Cor principal: laranja
+* Principal: `#F97316`
+* Texto destacado: `#FB923C`
+* Fundo suave: `rgba(249, 115, 22, 0.12)`
+* Borda: `rgba(249, 115, 22, 0.50)`
+
+Não utilizar apenas variações do mesmo azul.
+
+---
+
+# 2. ITENS DENTRO DO CALENDÁRIO
+
+Cada atividade exibida dentro da célula do dia deve possuir:
+
+* barra vertical de 3 ou 4 px na cor do tipo;
+* fundo suavemente tonalizado;
+* borda discreta;
+* ícone específico;
+* título em uma linha;
+* tooltip ao passar o mouse;
+* contraste adequado no dark mode.
+
+Exemplos:
+
+* Saída: ícone de seta saindo ou caminhão partindo;
+* Carregamento: ícone de caixa sendo carregada ou caminhão recebendo carga;
+* Descarregamento: ícone de caixa sendo descarregada;
+* Evento: ícone de calendário;
+* Movimentação: ícone de setas ou transferência;
+* Janela de requisição: ícone de relógio ou formulário.
+
+Formato visual aproximado:
+
+`[ícone] Saída: Carreta 2 — Desafio Energia`
+
+Evitar textos como:
+
+`Carregamento: Carr...`
+
+Quando não houver espaço, aplicar ellipsis apenas no final e exibir o nome completo no tooltip.
+
+---
+
+# 3. HIERARQUIA DOS TEXTOS
+
+Dentro de cada atividade:
+
+1. Tipo da atividade;
+2. nome resumido da operação;
+3. horário, quando houver.
+
+Exemplo:
+
+**Saída · Carreta 2**
+`21:00`
+
+Não repetir o nome completo do evento em todos os itens quando o espaço estiver reduzido.
+
+No tooltip, mostrar:
+
+* tipo;
+* nome completo;
+* evento;
+* veículo;
+* motorista;
+* doca;
+* início;
+* término ou retorno;
+* status.
+
+---
+
+# 4. DIFERENCIAÇÃO ENTRE SAÍDA E CARREGAMENTO
+
+Saída e carregamento não são a mesma informação.
+
+### Carregamento
+
+Representa o período operacional em que o veículo está recebendo materiais.
+
+Mostrar:
+
+* início do carregamento;
+* fim do carregamento;
+* doca;
+* veículo;
+* situação.
+
+### Saída
+
+Representa o momento em que o veículo deixa o local.
+
+Mostrar:
+
+* horário de saída;
+* veículo;
+* motorista;
+* destino principal;
+* status.
+
+Não mostrar os dois com o mesmo título, cor ou ícone.
+
+---
+
+# 5. DIFERENCIAÇÃO DO DESCARREGAMENTO
+
+Descarregamento deve usar verde e representar claramente:
+
+* início do descarregamento;
+* fim do descarregamento;
+* local de descarga;
+* veículo;
+* situação.
+
+Não utilizar a mesma cor de Saída ou Carregamento.
+
+---
+
+# 6. DIA ATUAL E DIA SELECIONADO
+
+Não utilizar um grande preenchimento azul no dia atual ou no dia selecionado, porque isso compete com as cores das operações.
+
+### Dia atual
+
+* número do dia com pequeno contorno neutro;
+* texto “Hoje” discreto;
+* fundo praticamente igual aos outros dias;
+* pequena marca no cabeçalho da célula.
+
+### Dia selecionado
+
+* contorno claro e discreto;
+* leve elevação visual;
+* sem preencher toda a célula com azul;
+* preservar integralmente as cores das atividades internas.
+
+O dia atual e o dia selecionado podem coexistir sem esconder os tipos de atividade.
+
+---
+
+# 7. LEGENDA
+
+Criar uma legenda operacional clara acima ou abaixo do calendário:
+
+* azul: Eventos;
+* âmbar: Saídas;
+* ciano: Carregamentos;
+* verde: Descarregamentos;
+* roxo: Movimentações;
+* laranja: Janelas de requisição.
+
+Cada item da legenda deve ter:
+
+* pequeno marcador colorido;
+* ícone;
+* nome do tipo;
+* quantidade encontrada no mês.
+
+Exemplo:
+
+`● Eventos 30   ● Saídas 6   ● Carregamentos 4`
+
+A legenda também deve funcionar como filtro rápido.
+
+Ao clicar em “Saídas”, mostrar ou ocultar as saídas do calendário.
+
+---
+
+# 8. CÉLULAS COM MUITOS ITENS
+
+Mostrar no máximo três atividades diretamente dentro do dia.
+
+Quando houver mais:
+
+`+6 atividades`
+
+Não usar somente “+6 mais”, pois é pouco descritivo.
+
+Ao clicar:
+
+* selecionar o dia;
+* abrir a lateral direita;
+* mostrar todas as atividades daquele dia;
+* manter ordenação cronológica.
+
+Se houver diferentes tipos, opcionalmente mostrar pequenos marcadores:
+
+`+6 atividades · 2 saídas · 3 eventos · 1 descarga`
+
+---
+
+# 9. PAINEL LATERAL DO DIA
+
+Melhorar a lateral direita para funcionar como uma agenda detalhada do dia.
+
+Cabeçalho:
+
+**Sexta-feira, 19 de junho**
+`4 atividades planejadas`
+
+Abaixo, agrupar por período:
+
+* Manhã;
+* Tarde;
+* Noite;
+* Sem horário definido.
+
+Ordenar cronologicamente.
+
+Cada card deve apresentar:
+
+* faixa ou borda lateral na cor do tipo;
+* badge colorido do tipo;
+* status;
+* título completo em até duas linhas;
+* evento relacionado;
+* horário principal em destaque;
+* veículo;
+* motorista;
+* doca ou local;
+* botão discreto para abrir detalhes.
+
+Exemplo:
+
+**SAÍDA** · Planejado
+**Carreta 2 — Desafio Energia Petrobras**
+21:00
+Doca 7 · Paulo Dantas
+Destino: São Paulo
+
+Não cortar o título em uma linha curta como acontece atualmente.
+
+---
+
+# 10. STATUS NÃO DEVE SUBSTITUIR O TIPO
+
+O tipo da operação e o status são informações diferentes.
+
+Exemplo correto:
+
+* tipo: Carregamento;
+* status: Planejado.
+
+Não usar somente uma badge “Planejado”, pois isso não informa qual operação será realizada.
+
+Estrutura recomendada:
+
+`[Carregamento] [Planejado]`
+
+As cores do status devem ser secundárias e mais discretas que a cor do tipo.
+
+---
+
+# 11. FILTROS
+
+Manter o bloco de filtros recolhível, mas incluir:
+
+* busca por evento, motorista, veículo, doca ou operação;
+* tipo de atividade;
+* status;
+* evento;
+* veículo;
+* motorista;
+* doca;
+* período;
+* mostrar apenas dias com atividades.
+
+Adicionar chips de filtros aplicados acima do calendário.
+
+Exemplo:
+
+`Tipo: Saída ×`
+`Evento: Desafio Energia ×`
+
+Aplicar filtros sem recarregar a página inteira.
+
+---
+
+# 12. NAVEGAÇÃO DO CALENDÁRIO
+
+Manter visão mensal com:
+
+* botão mês anterior;
+* botão próximo mês;
+* botão “Hoje”;
+* título do mês centralizado;
+* seletor de mês e ano;
+* troca entre mês, semana e agenda.
+
+Visualizações:
+
+* Mês;
+* Semana;
+* Agenda.
+
+A visualização mensal continua sendo o padrão.
+
+---
+
+# 13. RESUMO OPERACIONAL DO MÊS
+
+Acima do calendário, apresentar um resumo compacto:
+
+* eventos;
+* saídas;
+* carregamentos;
+* descarregamentos;
+* movimentações;
+* atividades sem horário;
+* atividades com conflito.
+
+Os cards devem ser pequenos e clicáveis para filtrar.
+
+Não criar gráficos grandes. O foco é controle operacional.
+
+---
+
+# 14. CONFLITOS E ALERTAS
+
+Destacar situações críticas:
+
+* dois veículos utilizando a mesma doca no mesmo horário;
+* motorista em atividades sobrepostas;
+* saída antes do término do carregamento;
+* descarregamento antes da chegada prevista;
+* atividade sem veículo;
+* atividade sem motorista;
+* atividade sem horário;
+* viagem sem retorno;
+* evento sem montagem ou desmontagem definida.
+
+Mostrar um ícone de alerta no item e explicar o problema no tooltip e na lateral.
+
+---
+
+# 15. RESPONSIVIDADE
+
+Em telas menores:
+
+* calendário continua utilizável;
+* lateral vira drawer;
+* títulos podem ocupar duas linhas;
+* legenda pode virar menu;
+* células não podem quebrar horizontalmente;
+* não criar scroll horizontal na página inteira;
+* somente áreas internas podem possuir scroll quando necessário.
+
+---
+
+# 16. ACESSIBILIDADE
+
+Não depender somente da cor.
+
+Cada tipo deve ter simultaneamente:
+
+* cor;
+* ícone;
+* nome textual;
+* tooltip.
+
+Garantir:
+
+* contraste compatível com dark mode;
+* foco visível pelo teclado;
+* navegação por Tab;
+* `aria-label`;
+* descrição completa para ícones;
+* tamanho mínimo confortável para clicar.
+
+---
+
+# 17. REGRAS DE CONSISTÊNCIA
+
+Usar a mesma cor de cada tipo em:
+
+* calendário;
+* lateral direita;
+* badges;
+* legenda;
+* filtros;
+* tooltips;
+* visão semanal;
+* visão agenda.
+
+Não criar cores diferentes para a mesma operação em áreas distintas.
+
+---
+
+# 18. NÃO ALTERAR
+
+Não alterar:
+
+* dados cadastrados;
+* datas;
+* nomes;
+* lógica dos planos de viagem;
+* lógica de carregamento;
+* lógica de descarregamento;
+* movimentações;
+* relacionamentos com eventos;
+* rotas;
+* banco de dados;
+* permissões;
+* funcionalidades já existentes.
+
+A melhoria deve ser principalmente de interface, organização e legibilidade.
+
+---
+
+# 19. CRITÉRIOS DE ACEITE
+
+A implementação só estará concluída quando:
+
+1. Saída, Carregamento e Descarregamento forem identificáveis sem precisar ler todo o texto;
+2. cada tipo possuir cor, ícone e badge próprios;
+3. o dia atual não usar um preenchimento azul dominante;
+4. o dia selecionado não esconder as cores dos itens;
+5. a lateral mostrar os títulos completos em até duas linhas;
+6. tipo e status aparecerem como informações separadas;
+7. os itens forem ordenados por horário;
+8. a legenda funcionar também como filtro;
+9. o “+N atividades” abrir todos os detalhes do dia;
+10. o calendário continuar limpo, profissional e coerente com o EventFlow;
+11. nenhuma regra de negócio ou dado existente for alterado;
+12. a tela permitir que o administrador compreenda rapidamente o que será carregado, quando haverá saída e quando ocorrerá o descarregamento.
+
+O resultado deve transmitir uma **agenda logística operacional**, e não apenas um calendário genérico com eventos coloridos.

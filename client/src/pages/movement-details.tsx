@@ -239,16 +239,18 @@ export default function MovementDetails() {
     enabled: !!movement?.loadingOrderId,
   });
 
+  // Resolve the canonical requestId: prefer junction table (new), fall back to legacy column
+  const canonicalRequestId = (movement as any)?.requests?.[0]?.id ?? movement?.requestId;
   const { data: requestItemsData = [] } = useQuery<
     Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>
   >({
-    queryKey: ["/api/requests", movement?.requestId, "items"],
+    queryKey: ["/api/requests", canonicalRequestId, "items"],
     queryFn: async () => {
-      const res = await fetch(`/api/requests/${movement?.requestId}/items`, { credentials: "include" });
+      const res = await fetch(`/api/requests/${canonicalRequestId}/items`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch request items");
       return res.json();
     },
-    enabled: !!movement?.requestId && !movement?.loadingOrderId,
+    enabled: !!canonicalRequestId && !movement?.loadingOrderId,
   });
 
   const { data: relatedMovements = [] } = useQuery<Movement[]>({
@@ -1650,7 +1652,7 @@ export default function MovementDetails() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3 font-semibold text-base">
                   <ClipboardList className="h-5 w-5" />
-                  {movement?.requestId && !movement?.loadingOrderId
+                  {canonicalRequestId && !movement?.loadingOrderId
                     ? `Produtos da Requisição — ${expectedItems.length} produto${expectedItems.length !== 1 ? "s" : ""}`
                     : `Produtos da Ordem — ${expectedItems.length} produto${expectedItems.length !== 1 ? "s" : ""}`}
                 </div>

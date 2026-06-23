@@ -72,7 +72,7 @@ const formSchema = z.object({
   eventIds: z.array(z.string()).optional().default([]),
   tripIds: z.array(z.string()).optional(),
   loadingOrderId: z.string().optional(),
-  requestId: z.string().optional(),
+  requestIds: z.array(z.string()).optional().default([]),
   vehiclePlate: z.string().optional(),
   dockId: z.string().optional(),
   notes: z.string().optional(),
@@ -102,6 +102,7 @@ type TripWithRelations = Trip & {
 type MovementWithRelations = Movement & {
   events?: Event[];
   trips?: Trip[];
+  requests?: Array<{ id: string; area: string | null; eventId: string | null; status: string; event?: { id: string | null; name: string } | null }>;
 };
 
 interface MovementDialogProps {
@@ -427,7 +428,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   const { user } = useAuth();
   const isEditMode = !!movement;
   const [linkType, setLinkType] = useState<"order" | "request">(
-    movement?.requestId ? "request" : "order"
+    (movement?.requests && movement.requests.length > 0) || movement?.requestId ? "request" : "order"
   );
   // Track which fields were auto-filled from a trip plan so we can show a hint
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
@@ -453,7 +454,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     defaultValues: {
       name: "", movementTypeConfigId: "",
       eventIds: [], tripIds: [],
-      loadingOrderId: undefined, requestId: undefined,
+      loadingOrderId: undefined, requestIds: [],
       vehiclePlate: undefined, dockId: undefined,
       notes: undefined, productItems: [],
     },
@@ -462,9 +463,11 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   const watchedValues = form.watch();
 
   // Items from origin (request or loading order) — fetched conditionally after form is declared
+  // Only fetch when exactly 1 request is selected (for preview)
+  const firstRequestId = watchedValues.requestIds?.[0];
   const { data: reqItemsRaw = [] } = useQuery<(RequestItem & { product?: Product })[]>({
-    queryKey: ["/api/requests", watchedValues.requestId, "items"],
-    enabled: !!watchedValues.requestId,
+    queryKey: ["/api/requests", firstRequestId, "items"],
+    enabled: !!firstRequestId && (watchedValues.requestIds?.length === 1),
   });
   const { data: orderItemsRaw = [] } = useQuery<(LoadingOrderItem & { product?: Product })[]>({
     queryKey: ["/api/loading-orders", watchedValues.loadingOrderId, "items"],
@@ -480,18 +483,18 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
           eventIds: movement.events?.map((e) => e.id) || [],
           tripIds: movement.trips?.map((t) => t.id) || [],
           loadingOrderId: movement.loadingOrderId || undefined,
-          requestId: movement.requestId || undefined,
+          requestIds: movement.requests?.map((r) => r.id) || (movement.requestId ? [movement.requestId] : []),
           vehiclePlate: movement.vehiclePlate || undefined,
           dockId: movement.dockId || undefined,
           notes: (movement as any).notes || undefined,
           productItems: [],
         });
-        setLinkType(movement.requestId ? "request" : "order");
+        setLinkType((movement.requests && movement.requests.length > 0) || movement.requestId ? "request" : "order");
       } else {
         form.reset({
           name: "", movementTypeConfigId: "",
           eventIds: [], tripIds: [],
-          loadingOrderId: undefined, requestId: undefined,
+          loadingOrderId: undefined, requestIds: [],
           vehiclePlate: undefined, dockId: undefined,
           notes: undefined, productItems: [],
         });
@@ -515,7 +518,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
       form.reset({
         name: "", movementTypeConfigId: "",
         eventIds: [], tripIds: [],
-        loadingOrderId: undefined, requestId: undefined,
+        loadingOrderId: undefined, requestIds: [],
         vehiclePlate: undefined, dockId: undefined,
         notes: undefined, productItems: [],
       });
@@ -548,7 +551,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     const normalized = {
       ...data,
       loadingOrderId: linkType === "order" ? (data.loadingOrderId || null) : null,
-      requestId: linkType === "request" ? (data.requestId || null) : null,
+      requestIds: linkType === "request" ? (data.requestIds || []) : [],
       vehiclePlate: data.vehiclePlate || undefined,
       dockId: data.dockId || undefined,
       notes: data.notes || undefined,
@@ -566,11 +569,17 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   // requestIds já vinculados a uma movimentação (excluindo a própria movimentação em edição)
   const usedRequestIds = useMemo(() => {
     const currentId = movement?.id;
-    return new Set(
-      existingMovements
-        .filter((m) => m.requestId && m.id !== currentId)
-        .map((m) => m.requestId as string)
-    );
+    const used = new Set<string>();
+    for (const m of existingMovements as any[]) {
+      if (m.id === currentId) continue;
+      // Junction table (new)
+      if (m.requests && Array.isArray(m.requests)) {
+        for (const r of m.requests) used.add(r.id);
+      }
+      // Legacy single requestId column
+      if (m.requestId) used.add(m.requestId);
+    }
+    return used;
   }, [existingMovements, movement?.id]);
 
   const linkableRequests = useMemo(
@@ -585,7 +594,8 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   const selectedEvents = events.filter((e) => (watchedValues.eventIds || []).includes(e.id));
   const selectedTrips = trips.filter((t) => (watchedValues.tripIds || []).includes(t.id));
   const selectedOrder = approvedOrders.find((o) => o.id === watchedValues.loadingOrderId);
-  const selectedRequest = linkableRequests.find((r) => r.id === watchedValues.requestId);
+  const selectedRequestIds = watchedValues.requestIds || [];
+  const selectedRequests = linkableRequests.filter((r) => selectedRequestIds.includes(r.id));
   const selectedDock = docks.find((d) => d.id === watchedValues.dockId);
   const productItems = watchedValues.productItems || [];
   const totalUnits = productItems.reduce((s, i) => s + i.quantity, 0);
@@ -1024,7 +1034,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                         variant={linkType === "order" ? "default" : "outline"}
                         size="sm"
                         data-testid="button-link-type-order"
-                        onClick={() => { setLinkType("order"); form.setValue("requestId", undefined); }}
+                        onClick={() => { setLinkType("order"); form.setValue("requestIds", []); }}
                       >
                         <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
                         Ordem de carregamento
@@ -1120,13 +1130,16 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                     {linkType === "request" && (
                       <FormField
                         control={form.control}
-                        name="requestId"
+                        name="requestIds"
                         render={({ field }) => {
                           const selectedEventIds = form.watch("eventIds") || [];
+                          const currentIds: string[] = field.value || [];
                           const filteredRequests = selectedEventIds.length > 0
-                            ? linkableRequests.filter((r) => selectedEventIds.includes(r.eventId))
+                            ? linkableRequests.filter((r) => selectedEventIds.includes(r.eventId ?? ""))
                             : linkableRequests;
-                          const requestOptions = filteredRequests.map((r) => {
+                          const selectedList = filteredRequests.filter((r) => currentIds.includes(r.id));
+                          const unselected = filteredRequests.filter((r) => !currentIds.includes(r.id));
+                          const requestOptions = unselected.map((r) => {
                             const event = events.find((e) => e.id === r.eventId);
                             return {
                               value: r.id,
@@ -1136,48 +1149,66 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           });
                           return (
                             <FormItem>
-                              <FormLabel className="text-sm font-medium">Requisição</FormLabel>
-                              <FormControl>
-                                <SearchableSelect
-                                  value={field.value || ""}
-                                  onChange={(val) => field.onChange(val || undefined)}
-                                  options={requestOptions}
-                                  placeholder="Selecionar requisição (opcional)"
-                                  searchPlaceholder="Buscar por área ou evento..."
-                                  emptyText="Nenhuma requisição encontrada"
-                                  dataTestid="select-request"
-                                  renderItem={(option) => {
-                                    const request = linkableRequests.find((r) => r.id === option.value);
-                                    const event = events.find((e) => e.id === request?.eventId);
-                                    return (
-                                      <div className="flex flex-col">
-                                        <span className="text-sm font-medium">{option.label}</span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                          {event?.name} · {request?.area}
-                                        </span>
-                                      </div>
-                                    );
-                                  }}
-                                  renderSelected={(val) => {
-                                    const request = linkableRequests.find((r) => r.id === val);
-                                    const event = events.find((e) => e.id === request?.eventId);
-                                    return request ? (
-                                      <span className="truncate">
-                                        {event?.name ? `${event.name} — ` : ""}{request.area}
-                                      </span>
-                                    ) : (
-                                      <span className="text-muted-foreground">Selecionar requisição (opcional)</span>
-                                    );
-                                  }}
-                                />
-                              </FormControl>
-                              {filteredRequests.length === 0 && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {selectedEventIds.length > 0
-                                    ? "Nenhuma requisição disponível para os eventos selecionados."
-                                    : "Nenhuma requisição disponível."}
-                                </p>
-                              )}
+                              <FormLabel className="text-sm font-medium">Requisições</FormLabel>
+                              <div className="space-y-2">
+                                {selectedList.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {selectedList.map((req) => {
+                                      const event = events.find((e) => e.id === req.eventId);
+                                      return (
+                                        <Badge key={req.id} variant="secondary" className="gap-1 pr-1" data-testid={`badge-request-${req.id}`}>
+                                          <FileText className="h-3 w-3 shrink-0" />
+                                          <span className="max-w-[200px] truncate">
+                                            {event?.name ? `${event.name} — ` : ""}{req.area}
+                                          </span>
+                                          <Button
+                                            type="button" variant="ghost" size="icon"
+                                            className="h-4 w-4 p-0 hover:bg-transparent"
+                                            onClick={() => field.onChange(currentIds.filter((id) => id !== req.id))}
+                                            data-testid={`button-remove-request-${req.id}`}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </Badge>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                {unselected.length > 0 ? (
+                                  <FormControl>
+                                    <SearchableSelect
+                                      value=""
+                                      onChange={(val) => { if (val) field.onChange([...currentIds, val]); }}
+                                      options={requestOptions}
+                                      placeholder="Adicionar requisição..."
+                                      searchPlaceholder="Buscar por área ou evento..."
+                                      emptyText="Nenhuma requisição encontrada"
+                                      dataTestid="select-request"
+                                      renderItem={(option) => {
+                                        const request = linkableRequests.find((r) => r.id === option.value);
+                                        const event = events.find((e) => e.id === request?.eventId);
+                                        return (
+                                          <div className="flex flex-col">
+                                            <span className="text-sm font-medium">{option.label}</span>
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {event?.name} · {request?.area}
+                                            </span>
+                                          </div>
+                                        );
+                                      }}
+                                      renderSelected={() => (
+                                        <span className="text-muted-foreground">Adicionar requisição...</span>
+                                      )}
+                                    />
+                                  </FormControl>
+                                ) : selectedList.length === 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {selectedEventIds.length > 0
+                                      ? "Nenhuma requisição disponível para os eventos selecionados."
+                                      : "Nenhuma requisição disponível."}
+                                  </p>
+                                )}
+                              </div>
                               <FormMessage />
                             </FormItem>
                           );
@@ -1186,7 +1217,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                     )}
 
                     {/* Context: what is linked */}
-                    {!selectedOrder && !selectedRequest && (
+                    {!selectedOrder && selectedRequests.length === 0 && (
                       <div className="rounded-md bg-muted/40 border border-border/40 px-3 py-2">
                         <p className="text-xs text-muted-foreground">
                           Você pode criar uma movimentação avulsa sem vínculos obrigatórios.
@@ -1529,15 +1560,18 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                         </div>
                       </div>
                     )}
-                    {selectedRequest && (
+                    {selectedRequests.length > 0 && (
                       <div className="flex items-start gap-2 text-xs">
                         <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <span className="text-muted-foreground block">Requisição</span>
-                          <p className="font-medium leading-snug">{selectedRequest.area}</p>
-                          {selectedRequest.event && (
-                            <p className="text-[10px] text-muted-foreground">{selectedRequest.event.name}</p>
-                          )}
+                          <span className="text-muted-foreground block">
+                            Requisiç{selectedRequests.length === 1 ? "ão" : "ões"} ({selectedRequests.length})
+                          </span>
+                          {selectedRequests.map((req) => (
+                            <p key={req.id} className="font-medium leading-snug truncate">
+                              {req.event?.name ? `${req.event.name} — ` : ""}{req.area}
+                            </p>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -1674,7 +1708,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                   )}
 
                   {/* ── RESUMO DOS ITENS DA ORIGEM (colapsável) ────────────── */}
-                  {(selectedRequest || selectedOrder) && (
+                  {(selectedRequests.length > 0 || selectedOrder) && (
                     <div>
                       <button
                         type="button"
@@ -1691,37 +1725,54 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       </button>
                       {itemsSummaryExpanded && (
                         <div className="p-3 space-y-3">
-                          {selectedRequest && (() => {
-                            const total = reqItemsRaw.reduce((s, i) => s + (i.approvedQuantity ?? i.quantity), 0);
-                            const preview = reqItemsRaw.slice(0, 5);
-                            const remaining = reqItemsRaw.length - preview.length;
-                            return (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-medium text-foreground">Requisição: {selectedRequest.area}</p>
-                                </div>
-                                <div className="flex gap-3 text-xs text-muted-foreground">
-                                  <span>{reqItemsRaw.length} produto{reqItemsRaw.length !== 1 ? "s" : ""}</span>
-                                  <span>{total} unidade{total !== 1 ? "s" : ""}</span>
-                                </div>
-                                {preview.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {preview.map((item) => {
-                                      const prod = products.find(p => p.id === item.productId);
-                                      return (
-                                        <div key={item.id} className="flex items-center justify-between text-[11px]">
-                                          <span className="text-foreground truncate max-w-[170px]">{prod?.name || item.productId}</span>
-                                          <span className="text-muted-foreground shrink-0 ml-1">{item.approvedQuantity ?? item.quantity} un</span>
-                                        </div>
-                                      );
-                                    })}
-                                    {remaining > 0 && (
-                                      <p className="text-[10px] text-muted-foreground">+ {remaining} ite{remaining !== 1 ? "ns" : "m"}</p>
-                                    )}
+                          {selectedRequests.length > 0 && (() => {
+                            if (selectedRequests.length === 1) {
+                              // Single request: show full item preview
+                              const req = selectedRequests[0];
+                              const total = reqItemsRaw.reduce((s, i) => s + (i.approvedQuantity ?? i.quantity), 0);
+                              const preview = reqItemsRaw.slice(0, 5);
+                              const remaining = reqItemsRaw.length - preview.length;
+                              return (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-medium text-foreground">Requisição: {req.area}</p>
+                                  <div className="flex gap-3 text-xs text-muted-foreground">
+                                    <span>{reqItemsRaw.length} produto{reqItemsRaw.length !== 1 ? "s" : ""}</span>
+                                    <span>{total} unidade{total !== 1 ? "s" : ""}</span>
                                   </div>
-                                ) : (
-                                  <p className="text-xs text-muted-foreground italic">Nenhum item na requisição.</p>
-                                )}
+                                  {preview.length > 0 ? (
+                                    <div className="space-y-1">
+                                      {preview.map((item) => {
+                                        const prod = products.find(p => p.id === item.productId);
+                                        return (
+                                          <div key={item.id} className="flex items-center justify-between text-[11px]">
+                                            <span className="text-foreground truncate max-w-[170px]">{prod?.name || item.productId}</span>
+                                            <span className="text-muted-foreground shrink-0 ml-1">{item.approvedQuantity ?? item.quantity} un</span>
+                                          </div>
+                                        );
+                                      })}
+                                      {remaining > 0 && (
+                                        <p className="text-[10px] text-muted-foreground">+ {remaining} ite{remaining !== 1 ? "ns" : "m"}</p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground italic">Nenhum item na requisição.</p>
+                                  )}
+                                </div>
+                              );
+                            }
+                            // Multiple requests: show list without item details
+                            return (
+                              <div className="space-y-1.5">
+                                <p className="text-xs font-medium text-foreground">{selectedRequests.length} requisições vinculadas</p>
+                                {selectedRequests.map((req) => {
+                                  const evt = events.find(e => e.id === req.eventId);
+                                  return (
+                                    <div key={req.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                      <FileText className="h-3 w-3 shrink-0" />
+                                      <span className="truncate">{evt?.name ? `${evt.name} — ` : ""}{req.area}</span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             );
                           })()}
