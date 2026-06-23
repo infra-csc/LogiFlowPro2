@@ -1,0 +1,883 @@
+Quero redesenhar e aprimorar completamente o modal **“Nova Movimentação”**, deixando-o com aparência profissional, excelente hierarquia visual e fluxo operacional realmente fácil de usar.
+
+O modal deve permitir criar uma movimentação vinculando evento, plano de viagens, ordem de carregamento ou requisições, itens e dados logísticos, sem que o usuário fique perdido em um formulário longo.
+
+## REGRA PRINCIPAL
+
+Não remover funcionalidades existentes e não alterar indevidamente:
+
+* regras de negócio;
+* banco de dados;
+* vínculos existentes;
+* campos atualmente disponíveis;
+* validações;
+* permissões;
+* funcionamento do backend;
+* criação da movimentação.
+
+A melhoria deve ser feita principalmente na:
+
+* experiência do usuário;
+* organização das informações;
+* exibição dos dados relacionados;
+* legibilidade;
+* responsividade;
+* prevenção de erros.
+
+---
+
+# 1. ESTRUTURA GERAL DO MODAL
+
+Transformar o modal atual em um modal amplo e operacional.
+
+## Dimensões
+
+No desktop:
+
+* largura entre `1180px` e `1320px`;
+* largura máxima de aproximadamente `94vw`;
+* altura máxima de `90vh`;
+* centralizado na tela;
+* sem rolagem horizontal;
+* cantos e espaçamentos seguindo o design system atual.
+
+## Organização
+
+Dividir o modal em:
+
+### Cabeçalho fixo
+
+Mostrar:
+
+* título “Nova Movimentação”;
+* descrição curta;
+* indicador da etapa atual;
+* resumo do contexto já selecionado;
+* botão de fechar.
+
+### Conteúdo principal
+
+Dividido em duas áreas:
+
+* área principal do formulário, ocupando aproximadamente 72%;
+* painel de revisão, ocupando aproximadamente 28%.
+
+### Rodapé fixo
+
+Mostrar:
+
+* campos obrigatórios ainda pendentes;
+* botão “Cancelar”;
+* botão principal “Criar Movimentação”.
+
+Não permitir que os botões desapareçam durante a rolagem.
+
+---
+
+# 2. EVITAR MÚLTIPLAS BARRAS DE ROLAGEM
+
+O modal atual possui rolagens independentes e elementos cortados.
+
+Corrigir para que:
+
+* exista apenas uma rolagem vertical principal no conteúdo do modal;
+* o cabeçalho e o rodapé permaneçam fixos;
+* o painel de resumo acompanhe a rolagem como conteúdo sticky;
+* o painel lateral não tenha uma segunda barra de rolagem visível;
+* nenhuma seção seja cortada;
+* não exista rolagem horizontal;
+* dropdowns e popovers não sejam cortados pelos limites do modal.
+
+Caso o painel lateral fique muito extenso, usar seções expansíveis, e não uma barra de rolagem interna permanente.
+
+---
+
+# 3. ORGANIZAR O FLUXO EM ETAPAS
+
+Substituir o formulário longo por um fluxo claro em três etapas.
+
+## Etapa 1 — Identificação
+
+Campos:
+
+* Nome da movimentação;
+* Tipo da movimentação;
+* Sentido operacional, quando aplicável.
+
+## Etapa 2 — Vínculos e itens
+
+Campos e informações:
+
+* Evento;
+* Plano de viagens;
+* escolha entre Ordem de carregamento ou Requisições;
+* requisições selecionadas;
+* itens consolidados;
+* inclusão manual de produtos.
+
+## Etapa 3 — Logística e revisão
+
+Campos:
+
+* veículo;
+* placa;
+* motorista;
+* doca;
+* horários relacionados;
+* observações;
+* revisão final.
+
+Adicionar um stepper discreto no topo:
+
+1. Identificação
+2. Vínculos e itens
+3. Logística e revisão
+
+Permitir voltar para etapas anteriores sem perder os dados preenchidos.
+
+O botão “Criar Movimentação” deve aparecer somente na última etapa. Nas etapas anteriores, usar “Continuar”.
+
+---
+
+# 4. CABEÇALHO DO MODAL
+
+No cabeçalho, abaixo da descrição, mostrar chips contextuais com informações úteis:
+
+* tipo selecionado;
+* evento vinculado;
+* quantidade de planos de viagens;
+* quantidade de requisições;
+* quantidade de itens consolidados.
+
+Exemplo:
+
+* Carregamento para Evento
+* Desafio Energia Petrobras — São Paulo 2026
+* 1 plano de viagens
+* 3 requisições
+* 22 itens
+
+Não mostrar chips como “Sem evento” ou “Sem tipo selecionado” com o mesmo destaque de informações válidas. Estados não preenchidos devem ser mais discretos.
+
+Evitar excesso de chips e textos cortados.
+
+---
+
+# 5. IDENTIFICAÇÃO
+
+## Nome da movimentação
+
+O nome pode ser sugerido automaticamente, mas deve continuar editável.
+
+A sugestão não deve duplicar o nome completo do evento várias vezes.
+
+Usar formato curto e operacional:
+
+* `Carga — Desafio Energia Petrobras — Carreta 2`
+* `Descarregamento — Night Run Florianópolis — Carreta 1`
+* `Retorno — Energy Land — Caminhão 3`
+
+Evitar nomes como:
+
+`Desafio Energia Petrobras - Bike - São Paulo 2026 — Carreta 1 - Desafio Energia Petrobras - Bike - São Paulo 2026`
+
+Adicionar:
+
+* limite visual adequado;
+* tooltip quando o conteúdo ultrapassar o campo;
+* texto de apoio curto;
+* contador de caracteres apenas quando necessário.
+
+## Tipo da movimentação
+
+Ao selecionar o tipo:
+
+* atualizar automaticamente o sentido operacional;
+* mostrar uma identificação visual discreta;
+* usar cores consistentes.
+
+Sugestão:
+
+* carregamento/saída: laranja ou âmbar;
+* retorno/entrada: verde;
+* transferência interna: roxo ou azul discreto;
+* inventário/ajuste: cinza ou neutro.
+
+Não usar azul para representar todos os tipos de operação.
+
+---
+
+# 6. CONTEXTO OPERACIONAL
+
+## Evento
+
+O campo Evento deve:
+
+* permitir busca por nome;
+* mostrar nome completo;
+* mostrar cliente, local ou data como informação secundária, quando disponível;
+* não cortar o nome sem tooltip;
+* filtrar planos de viagens, ordens e requisições relacionados.
+
+Quando um evento for selecionado, mostrar um card compacto:
+
+**Evento selecionado**
+
+* nome;
+* cliente;
+* local;
+* data de montagem;
+* data do evento;
+* desmontagem.
+
+Exibir somente os campos que já existem.
+
+---
+
+# 7. PLANO DE VIAGENS
+
+O plano de viagens atualmente aparece selecionado, mas seus detalhes ficam escondidos ou inacessíveis.
+
+Ao selecionar um plano, exibir imediatamente um card chamado:
+
+## Resumo do plano de viagens
+
+Mostrar, quando disponível:
+
+* nome do plano;
+* veículo;
+* motorista;
+* placa;
+* doca;
+* origem;
+* destinos;
+* início do carregamento;
+* fim do carregamento;
+* horário de saída;
+* início do descarregamento;
+* fim do descarregamento;
+* retorno previsto;
+* status.
+
+Organizar os horários em uma pequena linha do tempo:
+
+**Carregamento → Saída → Descarregamento → Retorno**
+
+Exemplo:
+
+* Carregamento: 18/06, das 10h às 19h
+* Saída: 18/06 às 21h
+* Descarregamento: 18/06 às 22h
+* Retorno: 19/06 às 02h
+
+## Preenchimento automático
+
+Quando o plano possuir dados logísticos:
+
+* preencher veículo;
+* motorista;
+* placa;
+* doca;
+* horários relacionados.
+
+Mostrar mensagem discreta:
+
+“Preenchido automaticamente pelo plano de viagens.”
+
+Permitir alteração somente se a regra atual permitir.
+
+Se o usuário alterar um dado vindo do plano, mostrar:
+
+“Valor diferente do plano de viagens.”
+
+Não sobrescrever silenciosamente uma alteração manual.
+
+---
+
+# 8. ORIGENS E VÍNCULOS
+
+Manter a regra de que Ordem de carregamento e Requisições são origens mutuamente exclusivas, caso essa já seja a regra atual.
+
+Exibir a seleção como controle segmentado:
+
+* Ordem de carregamento
+* Requisições
+
+Ao alternar entre as opções:
+
+* preservar os dados somente quando permitido;
+* pedir confirmação antes de remover vínculos já preenchidos;
+* explicar de forma curta que apenas uma origem pode ser utilizada.
+
+---
+
+# 9. REQUISIÇÕES VINCULADAS
+
+A exibição atual das requisições está ruim porque:
+
+* os nomes ficam cortados;
+* várias requisições parecem iguais;
+* não é possível entender qual área originou a solicitação;
+* os itens das requisições não aparecem;
+* o resumo lateral mostra apenas nomes incompletos.
+
+Corrigir completamente essa seção.
+
+## Seleção de requisições
+
+O seletor deve permitir:
+
+* pesquisar por nome;
+* pesquisar por área;
+* pesquisar por solicitante;
+* pesquisar por status, caso disponível;
+* selecionar múltiplas requisições;
+* visualizar nome completo antes da seleção.
+
+Cada opção deve mostrar:
+
+* nome da requisição;
+* área ou template;
+* solicitante;
+* status;
+* quantidade de itens;
+* total de unidades.
+
+Mostrar somente informações existentes.
+
+## Requisições selecionadas
+
+Não usar apenas chips pequenos com nomes cortados.
+
+Criar a seção:
+
+## Requisições vinculadas
+
+Mostrar cada requisição em uma linha ou card compacto.
+
+Cada card deve exibir:
+
+* nome completo em até duas linhas;
+* área;
+* status;
+* quantidade de itens distintos;
+* quantidade total de unidades;
+* botão para remover;
+* botão ou seta para expandir os itens.
+
+Exemplo:
+
+**Desafio Energia Petrobras — Arena**
+10 itens · 134 unidades · Pendente de aprovação
+
+**Desafio Energia Petrobras — Percurso**
+8 itens · 52 unidades · Aprovada
+
+Se ainda for necessário utilizar chips:
+
+* mostrar nome resumido;
+* tooltip obrigatório com o nome completo;
+* botão de remoção;
+* quebra automática de linha;
+* nunca esconder toda a identificação da requisição.
+
+---
+
+# 10. ITENS DE CADA REQUISIÇÃO
+
+Ao expandir uma requisição, mostrar seus itens.
+
+Cada item deve exibir:
+
+* nome;
+* SKU;
+* quantidade;
+* unidade;
+* observação, quando existir;
+* origem da requisição.
+
+Exemplo:
+
+**Arena — 10 itens**
+
+* Grades 2x1 — 40 un
+* Cavalete reto — 4 un
+* Caixa d’água 500 L — 10 un
+* Gerador — 2 un
+* Lixeira aramada — 20 un
+* +5 itens
+
+Adicionar ações:
+
+* Expandir todos;
+* Recolher todos;
+* Ver somente itens com quantidade;
+* Buscar item dentro das requisições.
+
+---
+
+# 11. RESUMO CONSOLIDADO DOS ITENS
+
+Criar uma área importante chamada:
+
+## Itens consolidados da movimentação
+
+Essa área deve agrupar todos os itens vindos das requisições selecionadas.
+
+Se o mesmo produto aparecer em várias requisições:
+
+* consolidar pelo identificador real do produto;
+* somar as quantidades;
+* preservar a origem;
+* não criar linhas duplicadas sem necessidade.
+
+Exemplo:
+
+**Grade 2x1 — 40 unidades**
+
+Origens:
+
+* Arena — 20
+* Percurso — 20
+
+## Resumo numérico
+
+Mostrar:
+
+* requisições vinculadas;
+* itens distintos;
+* total de unidades;
+* produtos repetidos entre requisições;
+* itens sem produto correspondente, caso existam;
+* itens sem quantidade, caso existam.
+
+## Tabela consolidada
+
+Colunas:
+
+* Produto;
+* SKU;
+* Quantidade consolidada;
+* Unidade;
+* Origem;
+* Situação;
+* Ações.
+
+A coluna Origem pode mostrar:
+
+* Arena;
+* Percurso;
+* 3 requisições.
+
+Ao clicar, abrir o detalhamento das origens.
+
+---
+
+# 12. ITENS PRÉ-CARREGADOS
+
+Os itens vindos de uma Ordem de carregamento ou das Requisições devem ser tratados como itens pré-carregados.
+
+Mostrar claramente a origem:
+
+* Ordem de carregamento;
+* Requisição;
+* Inclusão manual.
+
+Não mostrar apenas:
+
+“Nenhum item adicionado à movimentação”
+
+quando existem requisições selecionadas com itens.
+
+Usar, por exemplo:
+
+“22 itens serão pré-carregados a partir de 3 requisições.”
+
+Caso a movimentação ainda não tenha itens manuais:
+
+“Nenhum item adicional incluído manualmente.”
+
+---
+
+# 13. ADICIONAR PRODUTO MANUALMENTE
+
+Melhorar o campo “Adicionar produto”.
+
+Ele deve possuir:
+
+* busca por nome;
+* busca por SKU;
+* busca por código de barras;
+* resultado com nome e SKU;
+* seleção clara;
+* quantidade;
+* unidade;
+* observação opcional;
+* ação para adicionar.
+
+Não utilizar um select simples com lista extensa.
+
+Usar autocomplete pesquisável.
+
+Ao selecionar um produto que já existe na consolidação:
+
+* avisar que ele já está incluído;
+* permitir somar à quantidade existente;
+* não duplicar silenciosamente.
+
+Exemplo:
+
+“Este produto já possui 20 unidades vindas das requisições. Deseja adicionar mais 5 unidades?”
+
+---
+
+# 14. PAINEL LATERAL DE REVISÃO
+
+Redesenhar o painel **Resumo da Movimentação**.
+
+Ele deve permanecer visível e apresentar informações realmente úteis.
+
+Dividir em seções expansíveis.
+
+## Resumo geral
+
+Mostrar:
+
+* nome;
+* tipo;
+* sentido;
+* evento;
+* plano de viagens;
+* origem selecionada;
+* veículo;
+* motorista;
+* placa;
+* doca.
+
+Não exibir nomes cortados sem possibilidade de leitura.
+
+Para nomes longos:
+
+* permitir duas linhas;
+* usar tooltip;
+* não reduzir a fonte excessivamente.
+
+## Detalhes do plano
+
+Mostrar:
+
+* origem e destino;
+* carregamento;
+* saída;
+* descarregamento;
+* retorno;
+* veículo;
+* motorista;
+* doca.
+
+Essa seção não pode ficar abaixo de uma área inacessível.
+
+## Requisições
+
+Mostrar:
+
+* quantidade de requisições;
+* nomes resumidos;
+* área;
+* quantidade de itens;
+* quantidade de unidades.
+
+Exemplo:
+
+**3 requisições**
+
+* Arena — 10 itens · 74 un
+* Percurso — 8 itens · 52 un
+* Ativação — 4 itens · 20 un
+
+Adicionar botão:
+
+“Ver requisições e itens”
+
+Esse botão deve levar o usuário à seção correspondente no conteúdo principal.
+
+## Resumo dos itens
+
+Mostrar:
+
+* itens distintos;
+* total de unidades;
+* itens vindos das requisições;
+* itens manuais;
+* itens repetidos;
+* itens com problema.
+
+Exemplo:
+
+**Resumo dos itens**
+
+* 22 itens distintos
+* 186 unidades
+* 19 itens vindos das requisições
+* 3 itens adicionados manualmente
+* 2 produtos consolidados entre várias requisições
+
+Mostrar os principais itens:
+
+* Grade 2x1 — 40 un
+* Cones grandes — 20 un
+* Lixeiras aramadas — 20 un
+* +19 itens
+
+---
+
+# 15. PAINEL LATERAL SEM EXCESSO DE INFORMAÇÃO
+
+O painel lateral atual fica muito apertado e apresenta vários textos pequenos.
+
+Corrigir:
+
+* aumentar a largura;
+* usar seções e divisores;
+* não mostrar todos os dados ao mesmo tempo;
+* usar acordeões;
+* deixar “Resumo geral” aberto inicialmente;
+* deixar “Detalhes do plano” e “Resumo dos itens” acessíveis;
+* evitar uma barra de rolagem própria;
+* evitar letras muito pequenas;
+* usar altura adequada para cada informação;
+* não cortar nomes e números.
+
+---
+
+# 16. DADOS LOGÍSTICOS
+
+Organizar os campos logísticos em uma grade clara.
+
+## Veículo
+
+Mostrar:
+
+* tipo de veículo;
+* placa;
+* motorista.
+
+Se vier do plano:
+
+* preencher automaticamente;
+* mostrar a origem do preenchimento.
+
+## Doca
+
+O campo deve mostrar:
+
+* nome da doca;
+* localização ou descrição, quando existir;
+* disponibilidade, caso já exista essa informação;
+* preenchimento automático pelo plano.
+
+## Datas e horários
+
+Quando existirem no plano, mostrar em modo de leitura ou preenchimento automático.
+
+Evitar pedir novamente informações que já existem no plano selecionado.
+
+---
+
+# 17. OBSERVAÇÕES
+
+Manter o campo de observações, mas torná-lo mais útil.
+
+Placeholder:
+
+“Ex.: carga parcial, materiais frágeis, prioridade alta, restrição de acesso, conferência especial ou horário combinado.”
+
+Adicionar contador de caracteres apenas se houver limite real.
+
+---
+
+# 18. VALIDAÇÕES
+
+O painel atual mostra “1 campo obrigatório”, mas a informação pode ficar distante do campo.
+
+Melhorar assim:
+
+* destacar o campo incompleto;
+* exibir mensagem abaixo dele;
+* mostrar o nome do campo pendente no rodapé;
+* permitir clicar no aviso para navegar até o campo;
+* não usar apenas uma mensagem genérica.
+
+Exemplo no rodapé:
+
+“Falta preencher: Tipo da movimentação.”
+
+O botão “Criar Movimentação” deve permanecer desabilitado até o preenchimento dos campos obrigatórios.
+
+Não bloquear a navegação entre as etapas.
+
+---
+
+# 19. COMPORTAMENTO DO BOTÃO CRIAR
+
+Ao clicar em “Criar Movimentação”:
+
+1. validar campos obrigatórios;
+2. validar vínculos incompatíveis;
+3. validar produtos duplicados;
+4. validar quantidades;
+5. mostrar resumo final;
+6. criar somente após confirmação, se houver alguma situação de atenção.
+
+Não criar confirmação desnecessária quando todos os dados estiverem corretos.
+
+Durante o salvamento:
+
+* desabilitar o botão;
+* mostrar carregamento;
+* impedir duplo clique;
+* exibir mensagem clara de sucesso ou erro.
+
+---
+
+# 20. ESTADOS VAZIOS
+
+Melhorar os textos vazios.
+
+## Sem plano
+
+“Nenhum plano de viagens vinculado. Os dados logísticos poderão ser preenchidos manualmente.”
+
+## Sem requisições
+
+“Nenhuma requisição selecionada. Selecione uma ou mais requisições para importar seus materiais.”
+
+## Sem itens das requisições
+
+“As requisições selecionadas não possuem itens com quantidade informada.”
+
+## Sem itens manuais
+
+“Nenhum item adicional incluído manualmente.”
+
+## Sem evento
+
+“Nenhum evento vinculado. A movimentação será criada como avulsa.”
+
+---
+
+# 21. RESPONSIVIDADE
+
+No desktop:
+
+* formulário à esquerda;
+* resumo à direita.
+
+Em telas menores:
+
+* modal em tela cheia;
+* conteúdo em uma única coluna;
+* resumo acessível por botão “Revisar movimentação”;
+* painel lateral convertido em drawer;
+* rodapé sempre visível;
+* campos sem corte;
+* sem rolagem horizontal.
+
+---
+
+# 22. HIERARQUIA VISUAL
+
+Aplicar uma hierarquia clara:
+
+1. identificação;
+2. contexto operacional;
+3. origens e vínculos;
+4. requisições;
+5. itens consolidados;
+6. logística;
+7. observações;
+8. revisão final.
+
+Reduzir:
+
+* excesso de textos auxiliares;
+* repetição de informações;
+* chips demais;
+* divisores demais;
+* nomes truncados;
+* grandes áreas vazias;
+* textos em tamanho muito pequeno.
+
+Manter o visual escuro atual, mas melhorar:
+
+* contraste;
+* espaçamento;
+* alinhamento;
+* tamanho dos títulos;
+* estados de foco;
+* estados de erro;
+* estados selecionados;
+* diferenciação entre informação editável e informação automática.
+
+---
+
+# 23. REGRAS IMPORTANTES DE CONSOLIDAÇÃO
+
+Ao vincular várias requisições:
+
+* consolidar produtos iguais;
+* somar quantidades;
+* não somar produtos diferentes apenas porque os nomes são parecidos;
+* usar o ID/SKU real do produto;
+* preservar as origens;
+* permitir visualizar o detalhamento da soma;
+* atualizar os totais em tempo real;
+* recalcular o resumo quando uma requisição for removida.
+
+Ao remover uma requisição:
+
+* remover somente a quantidade originada por ela;
+* preservar quantidades vindas de outras requisições;
+* preservar inclusões manuais;
+* atualizar os totais imediatamente.
+
+---
+
+# 24. CRITÉRIOS DE ACEITE
+
+Considerar o modal concluído somente quando:
+
+1. não houver nomes de requisições ilegíveis ou totalmente cortados;
+2. for possível visualizar o nome completo de cada requisição;
+3. os itens de cada requisição estiverem disponíveis;
+4. existir resumo consolidado dos itens;
+5. os detalhes do plano de viagens estiverem visíveis;
+6. veículo, motorista e doca forem preenchidos automaticamente quando disponíveis;
+7. não existirem duas barras de rolagem competindo;
+8. não houver rolagem horizontal;
+9. o nome sugerido da movimentação não repetir o evento;
+10. o usuário conseguir entender a origem de cada item;
+11. produtos repetidos entre requisições forem consolidados corretamente;
+12. o painel lateral mostrar totais úteis;
+13. o rodapé informar claramente o que falta preencher;
+14. o fluxo funcionar corretamente em desktop e telas menores;
+15. nenhuma regra, dado ou funcionalidade existente for perdida;
+16. o usuário conseguir revisar tudo antes de criar a movimentação;
+17. a tela permanecer organizada mesmo com várias requisições, itens e nomes longos;
+18. a experiência final ficar com padrão profissional de sistema logístico operacional.
+
+Antes de concluir, testar pelo menos os seguintes cenários:
+
+* movimentação avulsa;
+* movimentação apenas com evento;
+* movimentação com plano de viagens;
+* movimentação com uma ordem de carregamento;
+* movimentação com uma requisição;
+* movimentação com várias requisições;
+* produto repetido em mais de uma requisição;
+* inclusão de produto manual;
+* remoção de uma requisição;
+* nome de evento e requisição muito longo;
+* plano sem motorista;
+* plano sem doca;
+* tentativa de criação com campo obrigatório vazio.
