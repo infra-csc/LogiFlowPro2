@@ -439,6 +439,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   const { data: trips = [] } = useQuery<TripWithRelations[]>({ queryKey: ["/api/trips"] });
   const { data: movementTypes = [] } = useQuery<MovementTypeConfig[]>({ queryKey: ["/api/movement-types-config"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+  const { data: existingMovements = [] } = useQuery<Movement[]>({ queryKey: ["/api/movements"] });
 
   const activeMovementTypes = useMemo(() => movementTypes.filter((mt) => mt.active), [movementTypes]);
 
@@ -548,9 +549,23 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     () => loadingOrders.filter((o) => o.status === "approved" || o.status === "in_progress"),
     [loadingOrders]
   );
+  // requestIds já vinculados a uma movimentação (excluindo a própria movimentação em edição)
+  const usedRequestIds = useMemo(() => {
+    const currentId = movement?.id;
+    return new Set(
+      existingMovements
+        .filter((m) => m.requestId && m.id !== currentId)
+        .map((m) => m.requestId as string)
+    );
+  }, [existingMovements, movement?.id]);
+
   const linkableRequests = useMemo(
-    () => requests.filter((r) => !["draft", "pending_approval", "rejected"].includes(r.status)),
-    [requests]
+    () => requests.filter(
+      (r) =>
+        !["draft", "pending_approval", "rejected"].includes(r.status) &&
+        !usedRequestIds.has(r.id)
+    ),
+    [requests, usedRequestIds]
   );
   const selectedType = activeMovementTypes.find((t) => t.id === watchedValues.movementTypeConfigId);
   const selectedEvents = events.filter((e) => (watchedValues.eventIds || []).includes(e.id));
