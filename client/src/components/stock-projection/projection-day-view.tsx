@@ -51,6 +51,7 @@ interface DayFlow {
   productName: string;
   direction: "outbound" | "inbound";
   qty: number;
+  alreadyPhysical: boolean;
 }
 
 // ─── Day summary sentence ─────────────────────────────────────────────────────
@@ -195,14 +196,16 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
       reserved += r.cell.reserved;
       inEvent += r.cell.inEvent;
       for (const d of r.cell.drivers) {
-        const flow: DayFlow = { productId: r.product.productId, productName: r.product.name, direction: d.direction, qty: d.qty };
+        const flow: DayFlow = { productId: r.product.productId, productName: r.product.name, direction: d.direction, qty: d.qty, alreadyPhysical: d.alreadyPhysical };
         if (d.direction === "outbound") outFlows.push(flow);
         else inFlows.push(flow);
       }
     }
     outFlows.sort((a, b) => b.qty - a.qty);
     inFlows.sort((a, b) => b.qty - a.qty);
-    return { shortage, low, outbound, inbound, reserved, inEvent, outFlows, inFlows, riskRows };
+    const outFlowsDone = outFlows.filter((f) => f.alreadyPhysical);
+    const outFlowsPlanned = outFlows.filter((f) => !f.alreadyPhysical);
+    return { shortage, low, outbound, inbound, reserved, inEvent, outFlowsDone, outFlowsPlanned, inFlows, riskRows };
   }, [rows]);
 
   if (products.length === 0) {
@@ -277,25 +280,50 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
 
       {/* ── Agenda blocks ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Saídas previstas */}
-        <AgendaBlock icon={ArrowUpRight} label="Saídas previstas" color="text-destructive" bg="bg-destructive/10" border="border-destructive/25">
-          {kpis.outFlows.length > 0 ? (
-            <div className="space-y-1.5">
-              {kpis.outFlows.slice(0, 5).map((f, i) => (
-                <button
-                  key={i}
-                  onClick={onSelectProduct ? () => onSelectProduct(f.productId) : undefined}
-                  className="flex items-center justify-between gap-2 w-full text-left rounded hover-elevate px-1 -mx-1 py-0.5"
-                  data-testid={`agenda-out-${i}`}
-                >
-                  <span className="text-xs truncate text-foreground/90">{f.productName}</span>
-                  <span className="text-xs font-semibold tabular-nums text-destructive flex-shrink-0">-{f.qty}</span>
-                </button>
-              ))}
-              {kpis.outFlows.length > 5 && <p className="text-xs text-muted-foreground">+{kpis.outFlows.length - 5} mais...</p>}
-            </div>
+        {/* Saídas (realizadas + previstas) */}
+        <AgendaBlock icon={ArrowUpRight} label="Saídas" color="text-destructive" bg="bg-destructive/10" border="border-destructive/25">
+          {kpis.outFlowsDone.length === 0 && kpis.outFlowsPlanned.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Sem saídas neste dia.</p>
           ) : (
-            <p className="text-xs text-muted-foreground">Sem saídas previstas neste dia.</p>
+            <div className="space-y-2">
+              {kpis.outFlowsDone.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Realizadas</p>
+                  {kpis.outFlowsDone.slice(0, 5).map((f, i) => (
+                    <button
+                      key={i}
+                      onClick={onSelectProduct ? () => onSelectProduct(f.productId) : undefined}
+                      className="flex items-center justify-between gap-2 w-full text-left rounded hover-elevate px-1 -mx-1 py-0.5"
+                      data-testid={`agenda-out-done-${i}`}
+                    >
+                      <span className="text-xs truncate text-foreground/90">{f.productName}</span>
+                      <span className="text-xs font-semibold tabular-nums text-destructive flex-shrink-0">-{f.qty}</span>
+                    </button>
+                  ))}
+                  {kpis.outFlowsDone.length > 5 && <p className="text-xs text-muted-foreground">+{kpis.outFlowsDone.length - 5} mais...</p>}
+                </div>
+              )}
+              {kpis.outFlowsDone.length > 0 && kpis.outFlowsPlanned.length > 0 && (
+                <div className="border-t border-border/40" />
+              )}
+              {kpis.outFlowsPlanned.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Previstas</p>
+                  {kpis.outFlowsPlanned.slice(0, 5).map((f, i) => (
+                    <button
+                      key={i}
+                      onClick={onSelectProduct ? () => onSelectProduct(f.productId) : undefined}
+                      className="flex items-center justify-between gap-2 w-full text-left rounded hover-elevate px-1 -mx-1 py-0.5"
+                      data-testid={`agenda-out-planned-${i}`}
+                    >
+                      <span className="text-xs truncate text-foreground/90">{f.productName}</span>
+                      <span className="text-xs font-semibold tabular-nums text-destructive flex-shrink-0">-{f.qty}</span>
+                    </button>
+                  ))}
+                  {kpis.outFlowsPlanned.length > 5 && <p className="text-xs text-muted-foreground">+{kpis.outFlowsPlanned.length - 5} mais...</p>}
+                </div>
+              )}
+            </div>
           )}
         </AgendaBlock>
 

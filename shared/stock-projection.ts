@@ -81,6 +81,8 @@ export interface ProjectionDriver {
   direction: DriverDirection;
   /** Always positive; direction encodes the sign. */
   qty: number;
+  /** True when the movement already happened and is reflected in currentStock. */
+  alreadyPhysical: boolean;
 }
 
 export interface ProjectionDayCell {

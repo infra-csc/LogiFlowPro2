@@ -198,6 +198,7 @@ export function registerStockProjectionRoutes(app: Express) {
         eventName: f.eventName,
         direction,
         qty,
+        alreadyPhysical: f.alreadyPhysical,
       });
 
       const situationOf = (gross: number, net: number, hasDate: boolean): ConsideredSituation => {
