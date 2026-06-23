@@ -1,0 +1,425 @@
+Aprimore o modal “Nova Movimentação” para atingir um nível máximo de clareza, eficiência operacional e acabamento visual.
+
+Não altere as regras existentes, os campos disponíveis, as integrações ou os dados cadastrados. Corrija apenas layout, hierarquia, comportamento dos vínculos e experiência de preenchimento.
+
+==================================================
+1. ESTRUTURA GERAL DO MODAL
+==================================================
+
+Transformar o modal em um modal amplo, quase em tela cheia:
+
+- largura: min(1280px, calc(100vw - 48px));
+- altura máxima: calc(100vh - 48px);
+- centralizado;
+- sem rolagem horizontal;
+- cabeçalho e rodapé fixos;
+- apenas a área principal do formulário pode possuir rolagem vertical.
+
+Não permitir duas barras de rolagem independentes visíveis.
+
+O painel lateral de resumo não deve possuir rolagem própria.
+
+Estrutura desktop:
+
+- formulário: aproximadamente 68%;
+- resumo lateral: aproximadamente 32%.
+
+Tablet e mobile:
+
+- ocultar o resumo lateral;
+- disponibilizar botão “Ver resumo”;
+- abrir o resumo em drawer ou acordeão.
+
+==================================================
+2. CABEÇALHO
+==================================================
+
+Manter:
+
+Nova Movimentação
+
+Texto auxiliar:
+
+Configure os vínculos, itens e dados logísticos da operação.
+
+Abaixo, mostrar uma linha compacta de contexto:
+
+- Tipo;
+- Evento;
+- Origem vinculada.
+
+Exemplos:
+
+Tipo não selecionado
+Sem evento
+Plano de viagens vinculado
+
+Não utilizar textos excessivamente longos dentro desses badges.
+
+Quando houver vínculo:
+
+Plano de viagens
+Carreta 1
+
+Ao passar o mouse, mostrar o nome completo em tooltip.
+
+==================================================
+3. ORDEM CORRETA DO FORMULÁRIO
+==================================================
+
+Organizar o preenchimento nesta sequência:
+
+1. Identificação
+2. Contexto operacional
+3. Origem dos itens
+4. Itens da movimentação
+5. Dados logísticos
+6. Observações
+
+Essa ordem deve acompanhar a lógica real de criação da movimentação.
+
+==================================================
+4. IDENTIFICAÇÃO
+==================================================
+
+Campos:
+
+- Nome da movimentação;
+- Tipo de movimentação.
+
+Exibir os dois campos lado a lado em desktop.
+
+Nome da movimentação:
+- largura maior;
+- placeholder objetivo;
+- permitir sugestão automática de nome após selecionar os vínculos.
+
+Exemplo de nome sugerido:
+
+Carga — Desafio Energia Petrobras — Carreta 1
+
+Tipo de movimentação:
+- carregar opções claramente;
+- ao selecionar o tipo, atualizar automaticamente o sentido da operação;
+- exibir abaixo uma descrição curta apenas quando necessário.
+
+==================================================
+5. CONTEXTO OPERACIONAL E DEPENDÊNCIA ENTRE CAMPOS
+==================================================
+
+Campos:
+
+- Evento;
+- Plano de viagens.
+
+Regra importante:
+
+Quando um plano de viagens for selecionado e ele já possuir evento vinculado:
+
+- preencher o Evento automaticamente;
+- mostrar o Evento como herdado do plano;
+- não continuar mostrando “Sem evento”;
+- permitir remover ou trocar o plano;
+- ao trocar o plano, recalcular os dados herdados.
+
+Quando um evento for selecionado primeiro:
+
+- filtrar os planos de viagens daquele evento;
+- filtrar ordens e requisições daquele evento.
+
+Quando o plano possuir dados, preencher automaticamente:
+
+- evento;
+- veículo;
+- motorista;
+- doca;
+- carregamento;
+- partida;
+- descarregamento;
+- destinos.
+
+Mostrar um badge:
+
+Dados herdados do plano de viagens
+
+Campos herdados devem ficar bloqueados ou claramente identificados como automáticos, com opção “Editar manualmente” somente quando permitido.
+
+==================================================
+6. ORIGEM DOS ITENS
+==================================================
+
+Título:
+
+Origem dos itens
+
+Texto curto:
+
+Escolha uma ordem de carregamento ou uma requisição.
+
+Usar seletor segmentado:
+
+- Ordem de carregamento
+- Requisição
+- Movimentação avulsa
+
+Os três modos são mutuamente exclusivos.
+
+No modo Ordem de carregamento:
+
+- mostrar apenas ordens compatíveis com o evento selecionado;
+- mostrar número, nome, status e quantidade de itens;
+- ao selecionar, pré-carregar os produtos da ordem.
+
+No modo Requisição:
+
+- mostrar apenas requisições compatíveis;
+- mostrar área, solicitante, status e quantidade de itens;
+- ao selecionar, pré-carregar os itens aprovados.
+
+No modo Movimentação avulsa:
+
+- permitir adicionar produtos manualmente;
+- mostrar aviso discreto de que não existe vínculo com ordem ou requisição.
+
+Não mostrar um seletor vazio acompanhado de mensagens contraditórias.
+
+==================================================
+7. ITENS DA MOVIMENTAÇÃO
+==================================================
+
+Transformar esta seção em uma pequena lista de revisão.
+
+Quando não houver itens:
+
+Nenhum item adicionado
+
+Botão:
+
+Adicionar produto
+
+Quando houver itens:
+
+Mostrar tabela compacta:
+
+- Produto;
+- SKU;
+- Quantidade;
+- Origem;
+- Ação.
+
+Permitir:
+
+- editar quantidade;
+- remover item;
+- adicionar novos produtos;
+- revisar produtos pré-carregados.
+
+Mostrar contador:
+
+4 produtos · 35 unidades
+
+Não ocupar muita altura quando não houver itens.
+
+==================================================
+8. DADOS LOGÍSTICOS
+==================================================
+
+Campos:
+
+- veículo;
+- placa;
+- motorista;
+- doca;
+- carregamento;
+- partida;
+- descarregamento;
+- destino.
+
+Se houver plano vinculado, preencher automaticamente.
+
+Organizar em cards compactos:
+
+Veículo e motorista
+Doca e carregamento
+Partida e descarregamento
+Destinos
+
+Não repetir campos automáticos como campos vazios editáveis.
+
+Exemplo:
+
+Veículo
+Carreta
+
+Placa
+ABC-1234
+
+Origem
+Plano de viagens
+
+Caso o usuário precise substituir o valor, mostrar ação:
+
+Editar manualmente
+
+==================================================
+9. PAINEL “RESUMO DA MOVIMENTAÇÃO”
+==================================================
+
+O painel lateral deve ficar fixo durante a rolagem do formulário.
+
+Não utilizar rolagem independente.
+
+Mostrar apenas:
+
+- Nome;
+- Tipo;
+- Evento;
+- Origem selecionada;
+- Plano de viagens;
+- Veículo;
+- Motorista;
+- Doca;
+- Produtos;
+- Total de unidades.
+
+Estrutura:
+
+RESUMO DA MOVIMENTAÇÃO
+
+Identificação
+Nome
+Tipo
+
+Vínculos
+Evento
+Plano de viagens
+Ordem ou requisição
+
+Logística
+Veículo
+Motorista
+Doca
+
+Itens
+4 produtos
+35 unidades
+
+Usar no máximo duas linhas por valor.
+
+Nomes longos:
+
+- aplicar reticências;
+- mostrar tooltip com o conteúdo completo;
+- nunca criar rolagem horizontal.
+
+Não exibir “Detalhes do plano” completos dentro do resumo.
+
+Adicionar uma ação discreta:
+
+Ver detalhes do plano
+
+Essa ação pode abrir um popover ou acordeão.
+
+==================================================
+10. PENDÊNCIAS PARA CRIAR
+==================================================
+
+Separar validações do resumo.
+
+Quando houver campos obrigatórios ausentes, mostrar no final do resumo:
+
+Pendências para criar
+
+- Informe o nome da movimentação.
+- Selecione o tipo de movimentação.
+
+Não mostrar apenas:
+
+Falta: nome
+Falta: tipo
+
+Usar linguagem clara e amigável.
+
+Quando todos os campos obrigatórios estiverem preenchidos:
+
+Pronto para criar
+
+Todos os campos obrigatórios foram preenchidos.
+
+==================================================
+11. RODAPÉ FIXO
+==================================================
+
+Rodapé fixo contendo:
+
+Lado esquerdo:
+- progresso de preenchimento;
+- mensagem curta sobre campos obrigatórios.
+
+Exemplo:
+
+2 campos obrigatórios pendentes
+
+Lado direito:
+
+Cancelar
+Criar movimentação
+
+Quando o botão estiver desabilitado, mostrar próximo a ele:
+
+Preencha Nome e Tipo para continuar.
+
+Não duplicar a mesma mensagem no rodapé e no painel lateral.
+
+==================================================
+12. REDUZIR ALTURA E REPETIÇÕES
+==================================================
+
+Reduzir:
+
+- espaçamento vertical excessivo;
+- textos explicativos repetidos;
+- divisores desnecessários;
+- campos vazios que dependem de outro campo;
+- blocos muito altos sem conteúdo.
+
+Textos auxiliares devem ter no máximo uma linha sempre que possível.
+
+==================================================
+13. RESPONSIVIDADE
+==================================================
+
+Desktop:
+- formulário e resumo lado a lado;
+- cabeçalho e rodapé fixos;
+- formulário com rolagem vertical única.
+
+Tablet:
+- formulário em largura total;
+- resumo acessado por botão.
+
+Mobile:
+- modal em tela cheia;
+- campos em uma coluna;
+- seletor segmentado com quebra adequada;
+- botão Criar fixo na parte inferior;
+- sem rolagem horizontal.
+
+==================================================
+14. CRITÉRIOS DE ACEITE
+==================================================
+
+O modal estará correto quando:
+
+1. Existir apenas uma rolagem vertical funcional.
+2. O resumo lateral não possuir barra de rolagem própria.
+3. O plano de viagens preencher automaticamente o evento relacionado.
+4. Veículo, motorista e doca forem herdados do plano quando disponíveis.
+5. Ordem, requisição e movimentação avulsa forem opções mutuamente exclusivas.
+6. Itens pré-carregados puderem ser revisados.
+7. Nomes longos não quebrarem o layout.
+8. As validações não ficarem duplicadas.
+9. O botão Criar explicar claramente por que está desabilitado.
+10. O usuário conseguir entender toda a movimentação sem navegar entre duas áreas roláveis.
+11. Nenhum vínculo, dado ou funcionalidade existente for removido.
+12. O visual permanecer coerente com o design escuro do EventFlow.

@@ -428,6 +428,8 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
   const [linkType, setLinkType] = useState<"order" | "request">(
     movement?.requestId ? "request" : "order"
   );
+  // Track which fields were auto-filled from a trip plan so we can show a hint
+  const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
 
   // ─ Queries ─────────────────────────────────────────────────────────────────
   const { data: loadingOrders = [] } = useQuery<LoadingOrder[]>({ queryKey: ["/api/loading-orders"] });
@@ -479,6 +481,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
           notes: undefined, productItems: [],
         });
         setLinkType("order");
+        setAutoFilledFields(new Set());
       }
     }
   }, [open, isEditMode, movement]);
@@ -572,7 +575,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
-        className="max-w-5xl max-h-[90vh] overflow-hidden p-0 flex flex-col"
+        className="w-[min(1280px,calc(100vw-48px))] max-w-none max-h-[calc(100vh-48px)] overflow-hidden p-0 flex flex-col"
         data-testid="dialog-movement"
       >
         {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
@@ -899,7 +902,48 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                                 <FormControl>
                                   <SearchableSelect
                                     value=""
-                                    onChange={(val) => { if (val) field.onChange([...selectedTripIds, val]); }}
+                                    onChange={(val) => {
+                                      if (!val) return;
+                                      field.onChange([...selectedTripIds, val]);
+                                      // ── Auto-fill from the added trip ──────
+                                      const addedTrip = trips.find((t) => t.id === val);
+                                      if (!addedTrip) return;
+                                      const filled: string[] = [];
+                                      // Placa
+                                      if (!form.getValues("vehiclePlate") && addedTrip.vehicle?.plate) {
+                                        form.setValue("vehiclePlate", addedTrip.vehicle.plate);
+                                        filled.push("vehiclePlate");
+                                      }
+                                      // Doca
+                                      if (!form.getValues("dockId") && (addedTrip as any).dockId) {
+                                        form.setValue("dockId", (addedTrip as any).dockId);
+                                        filled.push("dockId");
+                                      }
+                                      // Evento
+                                      if (addedTrip.eventId) {
+                                        const currEventIds = form.getValues("eventIds") || [];
+                                        if (!currEventIds.includes(addedTrip.eventId)) {
+                                          form.setValue("eventIds", [...currEventIds, addedTrip.eventId]);
+                                          filled.push("eventIds");
+                                        }
+                                      }
+                                      // Sugestão de nome
+                                      if (!form.getValues("name")) {
+                                        const evName = addedTrip.eventId
+                                          ? events.find((e) => e.id === addedTrip.eventId)?.name
+                                          : undefined;
+                                        const parts: string[] = [];
+                                        if (evName) parts.push(evName);
+                                        if (addedTrip.description) parts.push(addedTrip.description);
+                                        if (parts.length > 0) {
+                                          form.setValue("name", parts.join(" — "));
+                                          filled.push("name");
+                                        }
+                                      }
+                                      if (filled.length > 0) {
+                                        setAutoFilledFields((prev) => new Set([...Array.from(prev), ...filled]));
+                                      }
+                                    }}
                                     options={tripOptions}
                                     placeholder="Adicionar plano de viagens..."
                                     searchPlaceholder="Buscar plano por nome ou evento..."
@@ -1268,11 +1312,22 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                               data-testid="input-vehicle-plate"
                               className="h-10"
                               {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setAutoFilledFields((prev) => { const n = new Set(prev); n.delete("vehiclePlate"); return n; });
+                              }}
                             />
                           </FormControl>
-                          <p className="text-xs text-muted-foreground">
-                            Informe a placa quando não houver plano de viagens vinculado.
-                          </p>
+                          {autoFilledFields.has("vehiclePlate") ? (
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Preenchido automaticamente via plano de viagens.
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              Informe a placa quando não houver plano de viagens vinculado.
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1321,6 +1376,12 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                                 </Select>
                               )}
                             </FormControl>
+                            {autoFilledFields.has("dockId") && (
+                              <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Preenchido automaticamente via plano de viagens.
+                              </p>
+                            )}
                             {docks.length === 0 && (
                               <p className="text-xs text-muted-foreground mt-1">Nenhuma doca cadastrada.</p>
                             )}
@@ -1364,14 +1425,14 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
               {/* end left col */}
 
               {/* ─ RIGHT: Summary + Trip details ──────────────────────────── */}
-              <div className="w-[300px] border-l border-border flex flex-col shrink-0 overflow-hidden">
+              <div className="w-[320px] border-l border-border flex flex-col shrink-0 overflow-hidden">
                 {/* Summary header */}
                 <div className="p-3 border-b border-border/60 bg-muted/40 shrink-0">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Resumo da movimentação
                   </p>
                 </div>
-                <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+                <div className="flex-1 overflow-hidden flex flex-col">
                   {/* Summary rows */}
                   <div className="p-3 space-y-2 border-b border-border/40">
                     {/* Name */}
@@ -1460,16 +1521,40 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                       </div>
                     )}
 
-                    {/* Vehicle */}
+                    {/* Vehicle / plate */}
                     <div className="flex items-start gap-2 text-xs">
                       <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <span className="text-muted-foreground block">Placa</span>
-                        <p className={cn("font-medium leading-snug", !watchedValues.vehiclePlate && "text-muted-foreground italic")}>
-                          {watchedValues.vehiclePlate || "Não informada"}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-muted-foreground block">Veículo</span>
+                        {(() => {
+                          const tripVehicle = selectedTrips.find(t => t.vehicle)?.vehicle;
+                          const tripVehicleType = selectedTrips.find(t => t.vehicleType)?.vehicleType;
+                          const plate = watchedValues.vehiclePlate;
+                          if (tripVehicleType || tripVehicle || plate) {
+                            return (
+                              <div>
+                                {tripVehicleType && <p className="font-medium leading-snug truncate">{tripVehicleType.name}</p>}
+                                {plate && <p className="leading-snug text-muted-foreground">{plate}</p>}
+                              </div>
+                            );
+                          }
+                          return <p className="text-muted-foreground italic">Não informado</p>;
+                        })()}
                       </div>
                     </div>
+
+                    {/* Driver */}
+                    {selectedTrips.some(t => t.driver) && (
+                      <div className="flex items-start gap-2 text-xs">
+                        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="text-muted-foreground block">Motorista</span>
+                          <p className="font-medium leading-snug truncate">
+                            {selectedTrips.find(t => t.driver)?.driver?.name}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Dock */}
                     <div className="flex items-start gap-2 text-xs">
@@ -1525,7 +1610,9 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           </span>
                         </div>
                         {missing.map((m) => (
-                          <p key={m} className="text-[10px] text-muted-foreground ml-5">· Falta: {m}</p>
+                          <p key={m} className="text-[10px] text-muted-foreground ml-5">
+                            · {m === "nome" ? "Informe o nome da movimentação." : m === "tipo" ? "Selecione o tipo de movimentação." : `Preencha: ${m}.`}
+                          </p>
                         ))}
                       </div>
                     )}
@@ -1571,7 +1658,11 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                     Pronta para criação
                   </span>
                 ) : (
-                  <span>Campos obrigatórios: {missing.join(", ")}</span>
+                  <span>
+                    {missing.length === 1
+                      ? `Preencha ${missing[0] === "nome" ? "o Nome" : missing[0] === "tipo" ? "o Tipo" : missing[0]} para continuar.`
+                      : `Preencha ${missing.map(m => m === "nome" ? "Nome" : m === "tipo" ? "Tipo" : m).join(" e ")} para continuar.`}
+                  </span>
                 )}
               </div>
               {/* Right: actions */}
