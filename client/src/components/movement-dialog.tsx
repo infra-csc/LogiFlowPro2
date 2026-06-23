@@ -454,7 +454,8 @@ function calcFinalQty(
   productId?: string,
 ): number {
   if (formula.trim() === "?") {
-    return Math.max(0, Math.round((parameters[productId ?? ""] ?? 0) * multiplier));
+    // '?' means the user specifies the total quantity directly — no scaling by kit count.
+    return Math.max(0, Math.round(parameters[productId ?? ""] ?? 0));
   }
   try {
     let f = formula.trim();
