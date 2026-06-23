@@ -48,7 +48,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { userCanCreateMovement, userCanEditMovement } from "@/lib/authz";
 import type {
   LoadingOrder, Dock, Event, Trip, Movement,
-  MovementTypeConfig, MaterialRequest, Product,
+  MovementTypeConfig, MaterialRequest, Product, Kit,
   RequestItem, LoadingOrderItem,
 } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -497,26 +497,48 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
 
   const reqItemsLoading = reqItemsResults.some((r) => r.isPending);
 
-  // Consolidate items from ALL requests: merge duplicate productIds (sum quantities)
+  // Consolidate items from ALL requests: merge duplicate products/kits (sum quantities)
   // Derived directly from reqItemsResults.data values to avoid unstable array ref in deps
+  type ConsolidatedItem = { key: string; isKit: boolean; refId: string; qty: number; name: string; sku: string };
   const consolidatedReqItems = useMemo(() => {
-    const map = new Map<string, { productId: string; qty: number; name: string; sku: string }>();
+    const map = new Map<string, ConsolidatedItem>();
     for (const result of reqItemsResults) {
-      const items = (result.data as (RequestItem & { product?: Product })[] | undefined) ?? [];
+      const items = (result.data as (RequestItem & { product?: Product; kit?: Kit })[] | undefined) ?? [];
       for (const item of items) {
-        if (!item.productId) continue;
         const qty = item.approvedQuantity ?? item.quantity;
-        const prod = products.find((p) => p.id === item.productId);
-        const existing = map.get(item.productId);
-        if (existing) {
-          existing.qty += qty;
-        } else {
-          map.set(item.productId, {
-            productId: item.productId,
-            qty,
-            name: prod?.name || item.productId,
-            sku: prod?.sku || "",
-          });
+        if (item.productId) {
+          // Regular product item
+          const prod = (item as any).product as Product | undefined ?? products.find((p) => p.id === item.productId);
+          const existing = map.get(item.productId);
+          if (existing) {
+            existing.qty += qty;
+          } else {
+            map.set(item.productId, {
+              key: item.productId,
+              isKit: false,
+              refId: item.productId,
+              qty,
+              name: prod?.name || item.productId,
+              sku: prod?.sku || "",
+            });
+          }
+        } else if (item.kitId) {
+          // Kit item
+          const kitData = (item as any).kit as Kit | undefined;
+          const kitKey = `kit:${item.kitId}`;
+          const existing = map.get(kitKey);
+          if (existing) {
+            existing.qty += qty;
+          } else {
+            map.set(kitKey, {
+              key: kitKey,
+              isKit: true,
+              refId: item.kitId,
+              qty,
+              name: kitData?.name || item.kitId,
+              sku: "KIT",
+            });
+          }
         }
       }
     }
@@ -1719,10 +1741,17 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                               </p>
                             )}
                             {consolidatedReqItems.map((item) => (
-                              <div key={item.productId} className="flex items-center justify-between text-xs">
+                              <div key={item.key} className="flex items-center justify-between text-xs">
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-foreground truncate">{item.name}</p>
-                                  {item.sku && <p className="text-muted-foreground text-[10px]">{item.sku}</p>}
+                                  <p className="text-foreground truncate flex items-center gap-1">
+                                    {item.name}
+                                    {item.isKit && (
+                                      <span className="text-[9px] font-semibold uppercase tracking-wide bg-primary/15 text-primary px-1 py-px rounded-sm shrink-0">Kit</span>
+                                    )}
+                                  </p>
+                                  {item.sku && !item.isKit && (
+                                    <p className="text-muted-foreground text-[10px]">{item.sku}</p>
+                                  )}
                                 </div>
                                 <span className="text-muted-foreground shrink-0 ml-2 tabular-nums font-medium">{item.qty} un</span>
                               </div>
