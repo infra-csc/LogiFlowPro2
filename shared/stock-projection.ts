@@ -83,6 +83,8 @@ export interface ProjectionDriver {
   qty: number;
   /** True when the movement already happened and is reflected in currentStock. */
   alreadyPhysical: boolean;
+  /** Actual outbound date (yyyy-MM-dd) — may differ from the cell date for pre-range movements. */
+  outDate: string | null;
 }
 
 export interface ProjectionDayCell {

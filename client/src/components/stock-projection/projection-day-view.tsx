@@ -52,6 +52,8 @@ interface DayFlow {
   direction: "outbound" | "inbound";
   qty: number;
   alreadyPhysical: boolean;
+  /** Actual outbound date — may differ from the selected day for pre-range movements. */
+  outDate: string | null;
 }
 
 // ─── Day summary sentence ─────────────────────────────────────────────────────
@@ -196,7 +198,7 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
       reserved += r.cell.reserved;
       inEvent += r.cell.inEvent;
       for (const d of r.cell.drivers) {
-        const flow: DayFlow = { productId: r.product.productId, productName: r.product.name, direction: d.direction, qty: d.qty, alreadyPhysical: d.alreadyPhysical };
+        const flow: DayFlow = { productId: r.product.productId, productName: r.product.name, direction: d.direction, qty: d.qty, alreadyPhysical: d.alreadyPhysical, outDate: d.outDate };
         if (d.direction === "outbound") outFlows.push(flow);
         else inFlows.push(flow);
       }
@@ -288,18 +290,26 @@ export function ProjectionDayView({ result, onSelectProduct, initialDay }: Props
             <div className="space-y-2">
               {kpis.outFlowsDone.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Realizadas</p>
-                  {kpis.outFlowsDone.slice(0, 5).map((f, i) => (
-                    <button
-                      key={i}
-                      onClick={onSelectProduct ? () => onSelectProduct(f.productId) : undefined}
-                      className="flex items-center justify-between gap-2 w-full text-left rounded hover-elevate px-1 -mx-1 py-0.5"
-                      data-testid={`agenda-out-done-${i}`}
-                    >
-                      <span className="text-xs truncate text-foreground/90">{f.productName}</span>
-                      <span className="text-xs font-semibold tabular-nums text-destructive flex-shrink-0">-{f.qty}</span>
-                    </button>
-                  ))}
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Já saíram</p>
+                  {kpis.outFlowsDone.slice(0, 5).map((f, i) => {
+                    const dateDiffers = f.outDate && f.outDate !== selectedDay;
+                    const [, mo, dy] = (f.outDate || "").split("-");
+                    const dateLabel = dateDiffers ? `saiu em ${dy}/${mo}` : null;
+                    return (
+                      <button
+                        key={i}
+                        onClick={onSelectProduct ? () => onSelectProduct(f.productId) : undefined}
+                        className="flex items-start justify-between gap-2 w-full text-left rounded hover-elevate px-1 -mx-1 py-0.5"
+                        data-testid={`agenda-out-done-${i}`}
+                      >
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs truncate text-foreground/90">{f.productName}</span>
+                          {dateLabel && <span className="text-[10px] text-muted-foreground">{dateLabel}</span>}
+                        </div>
+                        <span className="text-xs font-semibold tabular-nums text-destructive flex-shrink-0 mt-0.5">-{f.qty}</span>
+                      </button>
+                    );
+                  })}
                   {kpis.outFlowsDone.length > 5 && <p className="text-xs text-muted-foreground">+{kpis.outFlowsDone.length - 5} mais...</p>}
                 </div>
               )}

@@ -199,6 +199,7 @@ export function registerStockProjectionRoutes(app: Express) {
         direction,
         qty,
         alreadyPhysical: f.alreadyPhysical,
+        outDate: f.outDate ? toDayKey(f.outDate) : null,
       });
 
       const situationOf = (gross: number, net: number, hasDate: boolean): ConsideredSituation => {
