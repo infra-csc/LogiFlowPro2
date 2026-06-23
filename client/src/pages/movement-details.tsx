@@ -239,19 +239,34 @@ export default function MovementDetails() {
     enabled: !!movement?.loadingOrderId,
   });
 
-  // Resolve the canonical requestId: prefer junction table (new), fall back to legacy column
+  // Resolve canonical request ID (for UI label) and all linked IDs (for fetching)
   const canonicalRequestId = (movement as any)?.requests?.[0]?.id ?? movement?.requestId;
-  const { data: requestItemsData = [] } = useQuery<
-    Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>
-  >({
-    queryKey: ["/api/requests", canonicalRequestId, "items"],
-    queryFn: async () => {
-      const res = await fetch(`/api/requests/${canonicalRequestId}/items`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch request items");
-      return res.json();
-    },
-    enabled: !!canonicalRequestId && !movement?.loadingOrderId,
+  const allRequestIds = useMemo<string[]>(() => {
+    const junctionIds: string[] = ((movement as any)?.requests ?? []).map((r: { id: string }) => r.id);
+    if (junctionIds.length > 0) return junctionIds;
+    const legacy = (movement as any)?.requestId as string | undefined;
+    return legacy ? [legacy] : [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(((movement as any)?.requests ?? []).map((r: { id: string }) => r.id)), (movement as any)?.requestId]);
+
+  const requestItemsResults = useQueries({
+    queries: allRequestIds.map((id) => ({
+      queryKey: ["/api/requests", id, "items"] as [string, string, string],
+      queryFn: async () => {
+        const res = await fetch(`/api/requests/${id}/items`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch request items");
+        return res.json() as Promise<Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>>;
+      },
+      enabled: !movement?.loadingOrderId,
+    })),
   });
+
+  // Flatten items from all linked requests into a single list
+  const requestItemsData = useMemo(
+    () => requestItemsResults.flatMap((r) => r.data ?? []) as Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(requestItemsResults.map((r) => r.data))],
+  );
 
   const { data: relatedMovements = [] } = useQuery<Movement[]>({
     queryKey: [`/api/loading-orders/${movement?.loadingOrderId}/movements`],

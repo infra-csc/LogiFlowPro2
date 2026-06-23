@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, isNotNull } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import {
@@ -1296,7 +1296,8 @@ export class DatabaseStorage implements IStorage {
           .where(
             and(
               inArray(movementRequests.movementId, ids),
-              sql`${requestItems.approvalStatus} != 'rejected'`
+              sql`${requestItems.approvalStatus} != 'rejected'`,
+              isNotNull(requestItems.productId)
             )
           )
           .groupBy(movementRequests.movementId)
