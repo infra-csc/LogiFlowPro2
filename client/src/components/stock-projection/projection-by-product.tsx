@@ -1,17 +1,17 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Package, ExternalLink } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Package, ExternalLink, ChevronsUpDown, Check, Search, X, Loader2,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ProjectionDriver, StockProjectionResult } from "@shared/stock-projection";
+import type { ProjectionDriver, ProjectionProduct, StockProjectionResult } from "@shared/stock-projection";
 import {
   cellToneClass,
   formatDay,
@@ -50,18 +50,321 @@ interface AggImpact {
 
 function hrefForDriver(d: ProjectionDriver): string | undefined {
   switch (d.source) {
-    case "loading_order":
-      return `/loading-orders/${d.sourceId}`;
-    case "movement":
-      return `/movements/${d.sourceId}`;
-    case "request":
-      return `/requests/${d.sourceId}`;
-    case "trip":
-      return `/trips`;
-    default:
-      return undefined;
+    case "loading_order": return `/loading-orders/${d.sourceId}`;
+    case "movement": return `/movements/${d.sourceId}`;
+    case "request": return `/requests/${d.sourceId}`;
+    case "trip": return `/trips`;
+    default: return undefined;
   }
 }
+
+// ── Combobox helpers ──────────────────────────────────────────────────────────
+
+function normalizeSearch(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function productStatusDotClass(p: ProjectionProduct): string {
+  if (p.worstStatus === "shortage" || p.maxDeficit > 0) return "bg-destructive";
+  if (p.worstStatus === "low") return "bg-chart-5";
+  if (p.currentStock === 0) return "bg-muted-foreground/40";
+  return "bg-chart-4";
+}
+
+function productStockLabel(p: ProjectionProduct): string {
+  if (p.currentStock <= 0) return "sem estoque";
+  return `${p.currentStock} ${p.unit || "un"}. disponíveis`;
+}
+
+function sortFilterProducts(products: ProjectionProduct[], query: string): ProjectionProduct[] {
+  if (!query.trim()) {
+    return [...products].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }
+  const normQ = normalizeSearch(query.trim());
+  const scored = products
+    .map((p) => {
+      const normName = normalizeSearch(p.name);
+      const normSku = normalizeSearch(p.sku);
+      let score = 99;
+      if (normSku === normQ) score = 0;
+      else if (normName.startsWith(normQ) || normSku.startsWith(normQ)) score = 1;
+      else if (normName.includes(normQ)) score = 2;
+      else if (normSku.includes(normQ)) score = 3;
+      return { p, score };
+    })
+    .filter(({ score }) => score < 99);
+  scored.sort((a, b) => a.score - b.score || a.p.name.localeCompare(b.p.name, "pt-BR"));
+  return scored.map(({ p }) => p);
+}
+
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const normText = normalizeSearch(text);
+  const normQ = normalizeSearch(query.trim());
+  const idx = normText.indexOf(normQ);
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="bg-primary/25 text-foreground rounded-sm">{text.slice(idx, idx + normQ.length)}</span>
+      {text.slice(idx + normQ.length)}
+    </>
+  );
+}
+
+// ── ProductCombobox ───────────────────────────────────────────────────────────
+
+function ProductCombobox({
+  products,
+  value,
+  onChange,
+}: {
+  products: ProjectionProduct[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [rawQuery, setRawQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [highlightedIdx, setHighlightedIdx] = useState(0);
+  const [isDebouncing, setIsDebouncing] = useState(false);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const selectedProduct = useMemo(() => products.find((p) => p.productId === value), [products, value]);
+
+  // Debounce: 200 ms
+  useEffect(() => {
+    setIsDebouncing(true);
+    const t = setTimeout(() => {
+      setDebouncedQuery(rawQuery);
+      setIsDebouncing(false);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [rawQuery]);
+
+  const filtered = useMemo(
+    () => sortFilterProducts(products, debouncedQuery).slice(0, 100),
+    [products, debouncedQuery],
+  );
+
+  // Reset highlight when results change
+  useEffect(() => { setHighlightedIdx(0); }, [filtered]);
+
+  // Open: focus input
+  useEffect(() => {
+    if (open) {
+      setRawQuery("");
+      setDebouncedQuery("");
+      setHighlightedIdx(0);
+      const t = setTimeout(() => inputRef.current?.focus(), 30);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    const item = listRef.current?.children[highlightedIdx] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [highlightedIdx]);
+
+  function selectItem(id: string) {
+    onChange(id);
+    setOpen(false);
+    setRawQuery("");
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!open) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIdx((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (filtered[highlightedIdx]) selectItem(filtered[highlightedIdx].productId);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          ref={triggerRef}
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          className="relative flex items-center w-full sm:w-[480px] min-h-[44px] gap-2 px-3 py-2 rounded-md border border-input bg-background text-sm hover-elevate focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 text-left"
+          data-testid="select-by-product"
+        >
+          <div className="flex-1 min-w-0">
+            {selectedProduct ? (
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="font-medium text-foreground leading-snug truncate">{selectedProduct.name}</span>
+                <span className="text-xs text-muted-foreground truncate">{selectedProduct.sku}</span>
+              </div>
+            ) : (
+              <span className="text-muted-foreground">Selecione o produto...</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {selectedProduct && (
+              <span
+                role="button"
+                tabIndex={-1}
+                aria-label="Limpar seleção"
+                className="inline-flex items-center justify-center h-5 w-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const first = products[0];
+                  if (first) onChange(first.productId);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.stopPropagation();
+                    const first = products[0];
+                    if (first) onChange(first.productId);
+                  }
+                }}
+                data-testid="button-clear-product-select"
+              >
+                <X className="h-3 w-3" />
+              </span>
+            )}
+            <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        className="p-0 w-[min(480px,calc(100vw-2rem))] shadow-lg"
+        align="start"
+        sideOffset={4}
+        onKeyDown={handleKeyDown}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        data-testid="product-combobox-panel"
+      >
+        {/* Search input */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60">
+          {isDebouncing ? (
+            <Loader2 className="h-4 w-4 text-muted-foreground animate-spin shrink-0" />
+          ) : (
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+          <input
+            ref={inputRef}
+            value={rawQuery}
+            onChange={(e) => setRawQuery(e.target.value)}
+            placeholder="Buscar por nome, SKU ou código de barras..."
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+            data-testid="input-product-search"
+            autoComplete="off"
+          />
+          {rawQuery && (
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => { setRawQuery(""); inputRef.current?.focus(); }}
+              tabIndex={-1}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Results */}
+        <div
+          ref={listRef}
+          role="listbox"
+          aria-label="Produtos"
+          className="overflow-y-auto"
+          style={{ maxHeight: "340px", scrollbarWidth: "thin" }}
+        >
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center gap-1 py-8 text-center px-4">
+              <Package className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-sm font-medium text-muted-foreground">Nenhum produto encontrado</p>
+              <p className="text-xs text-muted-foreground/70">Tente buscar por outro nome ou SKU.</p>
+            </div>
+          ) : (
+            filtered.map((p, idx) => {
+              const isSelected = p.productId === value;
+              const isHighlighted = idx === highlightedIdx;
+              const dotClass = productStatusDotClass(p);
+              const stockLabel = productStockLabel(p);
+              return (
+                <button
+                  key={p.productId}
+                  role="option"
+                  aria-selected={isSelected}
+                  type="button"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                    isHighlighted ? "bg-accent" : ""
+                  } ${isSelected ? "bg-primary/8" : ""}`}
+                  onClick={() => selectItem(p.productId)}
+                  onMouseEnter={() => setHighlightedIdx(idx)}
+                  data-testid={`product-option-${p.productId}`}
+                >
+                  {/* Status dot */}
+                  <div
+                    className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${dotClass}`}
+                    title={stockLabel}
+                  />
+
+                  {/* Two-line text */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-foreground leading-snug truncate">
+                      <HighlightText text={p.name} query={debouncedQuery} />
+                    </div>
+                    <div className="text-xs text-muted-foreground leading-tight truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono">
+                        <HighlightText text={p.sku} query={debouncedQuery} />
+                      </span>
+                      {p.unit && (
+                        <>
+                          <span className="opacity-40">·</span>
+                          <span>{p.unit}</span>
+                        </>
+                      )}
+                      <span className="opacity-40">·</span>
+                      <span className={p.currentStock <= 0 ? "text-muted-foreground/60 italic" : ""}>{stockLabel}</span>
+                    </div>
+                  </div>
+
+                  {/* Selected checkmark */}
+                  {isSelected && (
+                    <Check className="h-4 w-4 text-primary shrink-0" />
+                  )}
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer: result count */}
+        {filtered.length > 0 && (
+          <div className="px-3 py-1.5 border-t border-border/40 text-[10px] text-muted-foreground/60">
+            {debouncedQuery
+              ? `${filtered.length} resultado${filtered.length !== 1 ? "s" : ""} para "${debouncedQuery}"`
+              : `${filtered.length} produto${filtered.length !== 1 ? "s" : ""}`}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export function ProjectionByProduct({ result, selectedProductId, onSelectProduct }: Props) {
   const { products } = result;
@@ -139,20 +442,14 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
 
   return (
     <div className="space-y-4">
+      {/* Product selector */}
       <div className="space-y-1.5">
         <Label htmlFor="product-select">Produto</Label>
-        <Select value={internalId} onValueChange={handleChange}>
-          <SelectTrigger id="product-select" className="w-full sm:w-[340px]" data-testid="select-by-product">
-            <SelectValue placeholder="Selecione o produto" />
-          </SelectTrigger>
-          <SelectContent>
-            {products.map((p) => (
-              <SelectItem key={p.productId} value={p.productId}>
-                {p.name} · {p.sku}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ProductCombobox
+          products={products}
+          value={internalId}
+          onChange={handleChange}
+        />
       </div>
 
       {product && (
@@ -228,31 +525,28 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                         className="flex flex-col items-center gap-1 flex-shrink-0 w-10"
                         data-testid={`timeline-${product.productId}-${c.date}`}
                       >
-                        {/* Day indicators */}
                         <div className="flex gap-0.5 h-2 items-center">
                           {c.outbound > 0 && <div className="w-1.5 h-1.5 rounded-full bg-destructive" title="Saída" />}
                           {c.inbound > 0 && <div className="w-1.5 h-1.5 rounded-full bg-chart-4" title="Entrada" />}
                           {!hasFlow && <div className="w-1.5 h-1.5 rounded-full bg-transparent" />}
                         </div>
-                        {/* Balance cell */}
                         <div
                           className={`w-full text-center rounded px-1 py-1.5 text-xs tabular-nums ${cellToneClass(c.status, c.available, product.minimumStock, hasFlow)} ${isWorst ? "ring-1 ring-destructive/60" : ""}`}
                           title={`Saldo ${c.available} · Saída ${c.outbound} · Entrada ${c.inbound}${isWorst ? " · Pior dia" : ""}`}
                         >
                           {c.available}
                         </div>
-                        {/* Date label */}
                         <div
                           className={`text-[10px] leading-none ${
                             isToday(c.date)
                               ? "text-primary font-medium"
                               : isWorst
-                                ? "text-destructive font-medium"
-                                : isWeekend(c.date)
-                                  ? "text-muted-foreground/60"
-                                  : isQuiet
-                                    ? "text-muted-foreground/40"
-                                    : "text-muted-foreground"
+                              ? "text-destructive font-medium"
+                              : isWeekend(c.date)
+                              ? "text-muted-foreground/60"
+                              : isQuiet
+                              ? "text-muted-foreground/40"
+                              : "text-muted-foreground"
                           }`}
                         >
                           {formatDay(c.date)}
@@ -262,7 +556,6 @@ export function ProjectionByProduct({ result, selectedProductId, onSelectProduct
                   })}
                 </div>
               </div>
-              {/* Legend */}
               <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-destructive inline-block" /> Saída</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-chart-4 inline-block" /> Entrada</span>
