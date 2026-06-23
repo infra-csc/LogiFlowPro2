@@ -48,7 +48,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { userCanCreateMovement, userCanEditMovement } from "@/lib/authz";
 import type {
   LoadingOrder, Dock, Event, Trip, Movement,
-  MovementTypeConfig, MaterialRequest, Product, Kit,
+  MovementTypeConfig, MaterialRequest, Product, Kit, BomLine,
   RequestItem, LoadingOrderItem,
 } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -446,6 +446,30 @@ function ReviewRow({
   );
 }
 
+// ─── Kit BOM formula evaluator (mirrors server calcKitLineQty) ────────────────
+function calcFinalQty(
+  formula: string,
+  multiplier: number,
+  parameters: Record<string, number>,
+  productId?: string,
+): number {
+  if (formula.trim() === "?") {
+    return Math.max(0, Math.round((parameters[productId ?? ""] ?? 0) * multiplier));
+  }
+  try {
+    let f = formula.trim();
+    for (const [name, val] of Object.entries(parameters)) {
+      f = f.replace(new RegExp(`\\b${name}\\b`, "g"), String(val));
+    }
+    const sanitized = f.replace(/[^0-9+\-*/().\s]/g, "");
+    if (sanitized !== f) return 0;
+    const result = Function('"use strict"; return (' + sanitized + ")")() as number;
+    return Math.max(0, Math.round(result * multiplier));
+  } catch {
+    return 0;
+  }
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function MovementDialog({ children, movement }: MovementDialogProps) {
   const [open, setOpen] = useState(false);
@@ -497,58 +521,107 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
 
   const reqItemsLoading = reqItemsResults.some((r) => r.isPending);
 
-  // Consolidate items from ALL requests: merge duplicate products/kits (sum quantities)
-  // Derived directly from reqItemsResults.data values to avoid unstable array ref in deps
-  type ConsolidatedItem = { key: string; isKit: boolean; refId: string; qty: number; name: string; sku: string };
-  const consolidatedReqItems = useMemo(() => {
-    const map = new Map<string, ConsolidatedItem>();
+  // Collect all kit request-items (kitId + qty + parameters) from loaded results
+  // Used to drive BOM fetching — kept stable via JSON serialization
+  const kitRequestItems = useMemo(() => {
+    const acc: { kitId: string; qty: number; parameters: Record<string, number>; kitName?: string }[] = [];
     for (const result of reqItemsResults) {
-      const items = (result.data as (RequestItem & { product?: Product; kit?: Kit })[] | undefined) ?? [];
+      const items = (result.data as (RequestItem & { kit?: Kit })[] | undefined) ?? [];
       for (const item of items) {
-        const qty = item.approvedQuantity ?? item.quantity;
-        if (item.productId) {
-          // Regular product item
-          const prod = (item as any).product as Product | undefined ?? products.find((p) => p.id === item.productId);
-          const existing = map.get(item.productId);
+        if (item.kitId) {
+          const existing = acc.find((k) => k.kitId === item.kitId);
+          const qty = item.approvedQuantity ?? item.quantity;
+          const params = (item.kitParameters as Record<string, number> | null) ?? {};
           if (existing) {
             existing.qty += qty;
           } else {
-            map.set(item.productId, {
-              key: item.productId,
-              isKit: false,
-              refId: item.productId,
-              qty,
-              name: prod?.name || item.productId,
-              sku: prod?.sku || "",
-            });
-          }
-        } else if (item.kitId) {
-          // Kit item
-          const kitData = (item as any).kit as Kit | undefined;
-          const kitKey = `kit:${item.kitId}`;
-          const existing = map.get(kitKey);
-          if (existing) {
-            existing.qty += qty;
-          } else {
-            map.set(kitKey, {
-              key: kitKey,
-              isKit: true,
-              refId: item.kitId,
-              qty,
-              name: kitData?.name || item.kitId,
-              sku: "KIT",
-            });
+            acc.push({ kitId: item.kitId, qty, parameters: params, kitName: (item as any).kit?.name });
           }
         }
       }
     }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return acc;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(reqItemsResults.map((r) => r.data))]);
+
+  // Fetch BOM for each distinct kit found in the requests
+  const bomResults = useQueries({
+    queries: kitRequestItems.map(({ kitId }) => ({
+      queryKey: ["/api/kits", kitId, "bom"] as [string, string, string],
+      enabled: !!kitId,
+    })),
+  });
+
+  const bomLoading = bomResults.some((r) => r.isPending);
+
+  // Consolidated product items from ALL requests (regular products + kit BOM expanded)
+  // Kits are expanded into their component pieces using calcFinalQty
+  type ConsolidatedItem = { key: string; qty: number; name: string; sku: string };
+  type KitGroup = { kitId: string; kitName: string; qty: number; pieces: ConsolidatedItem[] };
+
+  const { consolidatedProducts, kitGroups } = useMemo(() => {
+    const prodMap = new Map<string, ConsolidatedItem>();
+    const kitMap = new Map<string, KitGroup>();
+
+    // 1. Regular product items across all requests
+    for (const result of reqItemsResults) {
+      const items = (result.data as (RequestItem & { product?: Product; kit?: Kit })[] | undefined) ?? [];
+      for (const item of items) {
+        if (!item.productId) continue;
+        const qty = item.approvedQuantity ?? item.quantity;
+        const prod = (item as any).product as Product | undefined ?? products.find((p) => p.id === item.productId);
+        const existing = prodMap.get(item.productId);
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          prodMap.set(item.productId, {
+            key: item.productId,
+            qty,
+            name: prod?.name || item.productId,
+            sku: prod?.sku || "",
+          });
+        }
+      }
+    }
+
+    // 2. Expand each kit into its BOM pieces
+    kitRequestItems.forEach(({ kitId, qty: kitQty, parameters, kitName }, idx) => {
+      const bom = (bomResults[idx]?.data as (BomLine & { product?: Product })[] | undefined) ?? [];
+      const pieces: ConsolidatedItem[] = [];
+      for (const line of bom) {
+        const pieceQty = calcFinalQty(line.quantityFormula, kitQty, parameters, line.productId);
+        if (pieceQty <= 0) continue;
+        const prod = (line as any).product as Product | undefined ?? products.find((p) => p.id === line.productId);
+        const existingPiece = pieces.find((p) => p.key === line.productId);
+        if (existingPiece) {
+          existingPiece.qty += pieceQty;
+        } else {
+          pieces.push({
+            key: line.productId,
+            qty: pieceQty,
+            name: prod?.name || line.productId,
+            sku: prod?.sku || "",
+          });
+        }
+      }
+      kitMap.set(kitId, {
+        kitId,
+        kitName: kitName || kitId,
+        qty: kitQty,
+        pieces: pieces.sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+      });
+    });
+
+    return {
+      consolidatedProducts: Array.from(prodMap.values()).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+      kitGroups: Array.from(kitMap.values()),
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    // Depend on the serialized data so memo only re-runs when actual data changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     JSON.stringify(reqItemsResults.map((r) => r.data)),
+    JSON.stringify(bomResults.map((r) => r.data)),
     products,
+    kitRequestItems,
   ]);
 
   // Order items
@@ -1727,46 +1800,59 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                           </span>
                         </div>
                       </div>
-                      <div className="p-4">
-                        {reqItemsLoading ? (
+                      <div className="p-4 space-y-3">
+                        {reqItemsLoading || bomLoading ? (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            Carregando itens...
-                          </div>
-                        ) : consolidatedReqItems.length > 0 ? (
-                          <div className="space-y-1.5">
-                            {selectedRequests.length > 1 && (
-                              <p className="text-xs text-muted-foreground mb-2">
-                                {consolidatedReqItems.length} produto{consolidatedReqItems.length !== 1 ? "s" : ""} consolidados de {selectedRequests.length} requisições
-                              </p>
-                            )}
-                            {consolidatedReqItems.map((item) => (
-                              <div key={item.key} className="flex items-center justify-between text-xs">
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-foreground truncate flex items-center gap-1">
-                                    {item.name}
-                                    {item.isKit && (
-                                      <span className="text-[9px] font-semibold uppercase tracking-wide bg-primary/15 text-primary px-1 py-px rounded-sm shrink-0">Kit</span>
-                                    )}
-                                  </p>
-                                  {item.sku && !item.isKit && (
-                                    <p className="text-muted-foreground text-[10px]">{item.sku}</p>
-                                  )}
-                                </div>
-                                <span className="text-muted-foreground shrink-0 ml-2 tabular-nums font-medium">{item.qty} un</span>
-                              </div>
-                            ))}
-                            <div className="border-t border-border/40 pt-1.5 mt-2">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">Total</span>
-                                <span className="font-semibold text-foreground tabular-nums">
-                                  {consolidatedReqItems.reduce((s, i) => s + i.qty, 0)} un
-                                </span>
-                              </div>
-                            </div>
+                            {reqItemsLoading ? "Carregando itens..." : "Expandindo kits..."}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground italic">Nenhum item nas requisições selecionadas.</p>
+                          <>
+                            {/* Regular product items */}
+                            {consolidatedProducts.length > 0 && (
+                              <div className="space-y-1.5">
+                                {consolidatedProducts.map((item) => (
+                                  <div key={item.key} className="flex items-center justify-between text-xs">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-foreground truncate">{item.name}</p>
+                                      {item.sku && <p className="text-muted-foreground text-[10px]">{item.sku}</p>}
+                                    </div>
+                                    <span className="text-muted-foreground shrink-0 ml-2 tabular-nums font-medium">{item.qty} un</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Kit groups — show kit header + expanded pieces */}
+                            {kitGroups.map((kit) => (
+                              <div key={kit.kitId}>
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wide bg-primary/15 text-primary px-1 py-px rounded-sm">Kit</span>
+                                  <span className="text-xs font-medium text-foreground truncate">{kit.kitName}</span>
+                                  <span className="text-[10px] text-muted-foreground ml-auto shrink-0">× {kit.qty}</span>
+                                </div>
+                                {kit.pieces.length > 0 ? (
+                                  <div className="pl-3 border-l border-border/50 space-y-1">
+                                    {kit.pieces.map((piece) => (
+                                      <div key={piece.key} className="flex items-center justify-between text-xs">
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-foreground truncate">{piece.name}</p>
+                                          {piece.sku && <p className="text-muted-foreground text-[10px]">{piece.sku}</p>}
+                                        </div>
+                                        <span className="text-muted-foreground shrink-0 ml-2 tabular-nums font-medium">{piece.qty} un</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="pl-3 text-xs text-muted-foreground italic">Sem peças cadastradas no BOM.</p>
+                                )}
+                              </div>
+                            ))}
+
+                            {consolidatedProducts.length === 0 && kitGroups.length === 0 && (
+                              <p className="text-xs text-muted-foreground italic">Nenhum item nas requisições selecionadas.</p>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
