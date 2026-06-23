@@ -349,22 +349,30 @@ export default function MovementDetails() {
       });
     }
     if (requestItemsData.length > 0) {
-      return requestItemsData
-        .filter((ri) => ri.productId && ri.product)
-        .map((ri) => {
-          const expectedQuantity =
-            ri.approvedQuantity != null && ri.approvedQuantity > 0 ? ri.approvedQuantity : ri.quantity;
-          const loadedQuantity = movementItems
-            .filter((item) => item.productId === ri.productId)
-            .reduce((sum, item) => sum + item.quantity, 0);
-          return {
-            productId: ri.productId!,
-            product: ri.product!,
-            expectedQuantity,
-            loadedQuantity,
-            remaining: Math.max(0, expectedQuantity - loadedQuantity),
-          };
-        });
+      // Consolidate same product appearing in multiple requests by summing quantities
+      const byProduct = new Map<string, { product: Product; expectedQuantity: number }>();
+      for (const ri of requestItemsData) {
+        if (!ri.productId || !ri.product) continue;
+        const qty = ri.approvedQuantity != null && ri.approvedQuantity > 0 ? ri.approvedQuantity : ri.quantity;
+        const existing = byProduct.get(ri.productId);
+        if (existing) {
+          existing.expectedQuantity += qty;
+        } else {
+          byProduct.set(ri.productId, { product: ri.product as Product, expectedQuantity: qty });
+        }
+      }
+      return Array.from(byProduct.entries()).map(([productId, { product, expectedQuantity }]) => {
+        const loadedQuantity = movementItems
+          .filter((item) => item.productId === productId)
+          .reduce((sum, item) => sum + item.quantity, 0);
+        return {
+          productId,
+          product,
+          expectedQuantity,
+          loadedQuantity,
+          remaining: Math.max(0, expectedQuantity - loadedQuantity),
+        };
+      });
     }
     return [];
   }, [loadingOrderItems, requestItemsData, movementItems, movement?.loadingOrderId, allRelatedMovementItems, products]);
