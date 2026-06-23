@@ -927,19 +927,6 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                                           filled.push("eventIds");
                                         }
                                       }
-                                      // Sugestão de nome
-                                      if (!form.getValues("name")) {
-                                        const evName = addedTrip.eventId
-                                          ? events.find((e) => e.id === addedTrip.eventId)?.name
-                                          : undefined;
-                                        const parts: string[] = [];
-                                        if (evName) parts.push(evName);
-                                        if (addedTrip.description) parts.push(addedTrip.description);
-                                        if (parts.length > 0) {
-                                          form.setValue("name", parts.join(" — "));
-                                          filled.push("name");
-                                        }
-                                      }
                                       if (filled.length > 0) {
                                         setAutoFilledFields((prev) => new Set([...Array.from(prev), ...filled]));
                                       }
@@ -1432,7 +1419,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
                     Resumo da movimentação
                   </p>
                 </div>
-                <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="flex-1 overflow-y-auto">
                   {/* Summary rows */}
                   <div className="p-3 space-y-2 border-b border-border/40">
                     {/* Name */}
