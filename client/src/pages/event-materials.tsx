@@ -7,7 +7,7 @@ import {
   Package, Boxes, Download, Search, ChevronRight, ChevronDown,
   Layers, Scale, FileText, Building2, MapPin, Calendar, ArrowLeft,
   Info, X, ExternalLink, Tag, AlertTriangle, Filter,
-  ArrowUp, ArrowDown, ChevronsUpDown,
+  ArrowUp, ArrowDown, ChevronsUpDown, Truck, RotateCcw, Activity,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -67,6 +67,17 @@ interface MaterialsData {
   pieces: PieceDetail[];
   kits: KitDetail[];
   requests: RequestDetail[];
+}
+
+interface MovementProductSummary {
+  productId: string; name: string; sku: string; unit: string;
+  outbound: number; inbound: number; balance: number;
+  movements: Array<{ id: string; number: string; status: string; nature: string; qty: number }>;
+}
+interface EventMovementsSummary {
+  eventId: string;
+  products: MovementProductSummary[];
+  totals: { outbound: number; inbound: number; balance: number; distinctProducts: number };
 }
 
 type ColSortKey = "quantity" | "direct" | "fromKits" | "totalWeight" | "reqCount";
@@ -299,6 +310,14 @@ export default function EventMaterials() {
     queryKey: ["/api/events", id, "materials-summary"],
     refetchOnWindowFocus: true,
   });
+
+  const { data: movData } = useQuery<EventMovementsSummary>({
+    queryKey: ["/api/events", id, "movements-summary"],
+    refetchOnWindowFocus: true,
+    enabled: activeTab === "movements",
+  });
+
+  const [movSearch, setMovSearch] = useState("");
 
   // ── Per-piece requisition count ────────────────────────────────────────────
 
@@ -676,6 +695,7 @@ export default function EventMaterials() {
               { value: "kits", label: "Kits", count: data.kits.length, icon: Boxes },
               { value: "categories", label: "Categorias", count: data.categories.length, icon: Tag },
               { value: "requests", label: "Por Requisição", count: data.requests.length, icon: FileText },
+              { value: "movements", label: "Movimentações", count: movData?.totals.distinctProducts ?? 0, icon: Activity },
             ].map(({ value, label, count, icon: Icon }) => (
               <TabsTrigger key={value} value={value} data-testid={`tab-${value}`}
                 className="flex items-center gap-1.5 text-xs">
@@ -1314,6 +1334,145 @@ export default function EventMaterials() {
                   );
                 })}
               </div>
+            )}
+          </TabsContent>
+
+          {/* ───────────────────── MOVIMENTAÇÕES ───────────────────── */}
+          <TabsContent value="movements" className="mt-4 space-y-4">
+            {!movData ? (
+              <Card className="border-border/60">
+                <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                  Carregando movimentações…
+                </CardContent>
+              </Card>
+            ) : movData.products.length === 0 ? (
+              <Card className="border-border/60">
+                <CardContent className="p-8">
+                  <EmptyState
+                    icon={Truck}
+                    title="Nenhuma movimentação registrada"
+                    description="Nenhum produto foi movimentado para este evento ainda."
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  <Card className="border-border/60">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
+                        <Truck className="h-3.5 w-3.5 text-amber-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold tabular-nums">{fmtNum(movData.totals.outbound)}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total saída</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-border/60">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
+                        <RotateCcw className="h-3.5 w-3.5 text-emerald-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold tabular-nums">{fmtNum(movData.totals.inbound)}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total retorno</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-border/60">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className={`h-8 w-8 rounded-md flex items-center justify-center shrink-0 ${movData.totals.balance > 0 ? "bg-orange-500/10" : "bg-emerald-500/10"}`}>
+                        <Activity className={`h-3.5 w-3.5 ${movData.totals.balance > 0 ? "text-orange-500" : "text-emerald-500"}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold tabular-nums">{fmtNum(movData.totals.balance)}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo em campo</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome ou SKU…"
+                    value={movSearch}
+                    onChange={(e) => setMovSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 h-8 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                    data-testid="input-search-movements"
+                  />
+                </div>
+
+                {/* Table */}
+                <Card className="border-border/60">
+                  <CardContent className="p-0">
+                    {/* Header */}
+                    <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-4 py-2 border-b border-border/40 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                      <span>Produto</span>
+                      <span className="w-16 text-right">Solicitado</span>
+                      <span className="w-14 text-right flex items-center justify-end gap-1"><Truck className="h-3 w-3" />Saída</span>
+                      <span className="w-16 text-right flex items-center justify-end gap-1"><RotateCcw className="h-3 w-3" />Retorno</span>
+                      <span className="w-14 text-right">Saldo</span>
+                    </div>
+                    <div className="overflow-y-auto max-h-[520px]">
+                      {movData.products
+                        .filter((p) => {
+                          const q = movSearch.trim().toLowerCase();
+                          return !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
+                        })
+                        .map((p) => {
+                          const requested = data?.pieces.find((piece) => piece.productId === p.productId)?.quantity ?? null;
+                          const allBack = p.balance === 0;
+                          const partBack = p.balance > 0 && p.inbound > 0;
+                          const noneBack = p.inbound === 0 && p.outbound > 0;
+                          return (
+                            <div
+                              key={p.productId}
+                              className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-4 py-3 border-b border-border/40 last:border-0 hover-elevate items-center"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{p.name}</p>
+                                <p className="font-mono text-[10px] text-muted-foreground">{p.sku}</p>
+                              </div>
+                              <span className="w-16 text-right text-sm tabular-nums text-muted-foreground">
+                                {requested != null ? fmtNum(requested) : "—"}
+                              </span>
+                              <span className="w-14 text-right text-sm tabular-nums font-medium text-amber-600 dark:text-amber-400">
+                                {fmtNum(p.outbound)}
+                              </span>
+                              <span className="w-16 text-right text-sm tabular-nums font-medium text-emerald-600 dark:text-emerald-400">
+                                {fmtNum(p.inbound)}
+                              </span>
+                              <span className={`w-14 text-right text-sm tabular-nums font-semibold ${allBack ? "text-emerald-600 dark:text-emerald-400" : partBack ? "text-amber-600 dark:text-amber-400" : noneBack ? "text-orange-600 dark:text-orange-400" : ""}`}>
+                                {fmtNum(p.balance)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    <div className="px-4 py-2 border-t border-border/40 text-[11px] text-muted-foreground">
+                      {movData.products.filter((p) => {
+                        const q = movSearch.trim().toLowerCase();
+                        return !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
+                      }).length} produto(s)
+                      {movData.products.filter((p) => p.balance === 0).length > 0 && (
+                        <span className="ml-3 text-emerald-600 dark:text-emerald-400">
+                          · {movData.products.filter((p) => p.balance === 0).length} retornados completamente
+                        </span>
+                      )}
+                      {movData.products.filter((p) => p.balance > 0).length > 0 && (
+                        <span className="ml-3 text-orange-600 dark:text-orange-400">
+                          · {movData.products.filter((p) => p.balance > 0).length} ainda em campo
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             )}
           </TabsContent>
         </Tabs>

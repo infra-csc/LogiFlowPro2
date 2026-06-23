@@ -1204,6 +1204,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Event movements summary ────────────────────────────────────────────────
+  app.get("/api/events/:id/movements-summary", requireAuth, async (req, res) => {
+    try {
+      const eventId = req.params.id;
+      const event = await storage.getEvent(eventId);
+      if (!event) return res.status(404).json({ error: "Event not found" });
+
+      // Fetch per-product movement totals for this event (junction + legacy eventId)
+      const rows = await db.execute(sql`
+        SELECT
+          p.id            AS product_id,
+          p.name,
+          p.sku,
+          p.unit,
+          COALESCE(mtc.nature, 'outbound') AS nature,
+          m.status,
+          m.id            AS movement_id,
+          m.movement_number,
+          SUM(mi.quantity)::int AS qty
+        FROM movements m
+        JOIN movement_items mi ON mi.movement_id = m.id
+        JOIN products p        ON p.id = mi.product_id
+        LEFT JOIN movement_types_config mtc ON mtc.id = m.movement_type_config_id
+        WHERE (
+          m.id IN (SELECT movement_id FROM movement_events WHERE event_id = ${eventId})
+          OR m.event_id = ${eventId}
+        )
+        AND m.status NOT IN ('cancelled', 'created')
+        GROUP BY p.id, p.name, p.sku, p.unit, mtc.nature, m.status, m.id, m.movement_number
+        ORDER BY p.name
+      `);
+
+      // Aggregate by product
+      type ProductEntry = {
+        productId: string; name: string; sku: string; unit: string;
+        outbound: number; inbound: number;
+        movements: Array<{ id: string; number: string; status: string; nature: string; qty: number }>;
+      };
+      const byProduct = new Map<string, ProductEntry>();
+      for (const r of rows.rows as any[]) {
+        let entry = byProduct.get(r.product_id);
+        if (!entry) {
+          entry = { productId: r.product_id, name: r.name, sku: r.sku, unit: r.unit, outbound: 0, inbound: 0, movements: [] };
+          byProduct.set(r.product_id, entry);
+        }
+        const qty = Number(r.qty ?? 0);
+        if (r.nature === "inbound") entry.inbound += qty;
+        else if (r.nature === "outbound") entry.outbound += qty;
+        entry.movements.push({ id: r.movement_id, number: r.movement_number, status: r.status, nature: r.nature, qty });
+      }
+
+      const products = Array.from(byProduct.values()).map((p) => ({
+        ...p,
+        balance: p.outbound - p.inbound,
+      }));
+
+      return res.json({
+        eventId,
+        products,
+        totals: {
+          outbound: products.reduce((s, p) => s + p.outbound, 0),
+          inbound: products.reduce((s, p) => s + p.inbound, 0),
+          balance: products.reduce((s, p) => s + p.balance, 0),
+          distinctProducts: products.length,
+        },
+      });
+    } catch (error) {
+      console.error("[events/movements-summary] error:", error);
+      res.status(500).json({ error: "Failed to fetch movements summary" });
+    }
+  });
+
   app.post("/api/events", requireAuth, requireAdmin({ message: "Apenas administradores podem criar eventos" }), async (req, res) => {
     try {
       const data = insertEventSchema.parse(req.body);
