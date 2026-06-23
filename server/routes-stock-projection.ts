@@ -387,14 +387,20 @@ export function registerStockProjectionRoutes(app: Express) {
               if (productFilter && !productFilter.has(it.productId)) continue;
               addQty(acc.grossByProduct, it.productId, it.quantity);
               if (primaryEventId) addQty(movementOutboundQty, `${primaryEventId}::${it.productId}`, it.quantity);
-              // Cap the inDate per product: if a physical inbound movement returned
-              // this product earlier than the event teardown, close the in-event
-              // window at the actual return date.
               const physicalReturn = physicalInboundByProduct.get(it.productId) ?? null;
-              const inDate: Date | null =
-                teardownDate && physicalReturn
+              // For physical outbound flows (product already shipped), the "em evento"
+              // window must only close when a physical inbound return movement is
+              // registered — not at the scheduled teardown date. Using teardownDate as
+              // the return proxy is wrong: if teardown is already past (e.g. 21/06) but
+              // the product is still physically at the event, every day in the range would
+              // appear as "returned=true", zeroing inEventByDay.
+              // For non-physical (committed/planned) flows, teardownDate is the correct
+              // deadline for the demand window.
+              const inDate: Date | null = isPhysical
+                ? physicalReturn
+                : (teardownDate && physicalReturn
                   ? (physicalReturn < teardownDate ? physicalReturn : teardownDate)
-                  : physicalReturn ?? teardownDate;
+                  : physicalReturn ?? teardownDate);
               flows.push({
                 productId: it.productId,
                 qty: it.quantity,
