@@ -521,22 +521,18 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
 
   const reqItemsLoading = reqItemsResults.some((r) => r.isPending);
 
-  // Collect all kit request-items (kitId + qty + parameters) from loaded results
-  // Used to drive BOM fetching — kept stable via JSON serialization
+  // Collect all kit request-items per request — NOT aggregated.
+  // Each entry keeps its own qty + kitParameters so that variable formulas ("?")
+  // and parameter-based formulas are evaluated correctly per requisition.
   const kitRequestItems = useMemo(() => {
     const acc: { kitId: string; qty: number; parameters: Record<string, number>; kitName?: string }[] = [];
     for (const result of reqItemsResults) {
       const items = (result.data as (RequestItem & { kit?: Kit })[] | undefined) ?? [];
       for (const item of items) {
         if (item.kitId) {
-          const existing = acc.find((k) => k.kitId === item.kitId);
           const qty = item.approvedQuantity ?? item.quantity;
           const params = (item.kitParameters as Record<string, number> | null) ?? {};
-          if (existing) {
-            existing.qty += qty;
-          } else {
-            acc.push({ kitId: item.kitId, qty, parameters: params, kitName: (item as any).kit?.name });
-          }
+          acc.push({ kitId: item.kitId, qty, parameters: params, kitName: (item as any).kit?.name });
         }
       }
     }
@@ -544,9 +540,15 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(reqItemsResults.map((r) => r.data))]);
 
+  // Unique kit IDs — used to fetch one BOM per kit (not one per request item)
+  const uniqueKitIds = useMemo(
+    () => [...new Set(kitRequestItems.map((k) => k.kitId))],
+    [kitRequestItems],
+  );
+
   // Fetch BOM for each distinct kit found in the requests
   const bomResults = useQueries({
-    queries: kitRequestItems.map(({ kitId }) => ({
+    queries: uniqueKitIds.map((kitId) => ({
       queryKey: ["/api/kits", kitId, "bom"] as [string, string, string],
       enabled: !!kitId,
     })),
@@ -584,21 +586,32 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
       }
     }
 
-    // 2. Expand each kit into its BOM pieces
-    kitRequestItems.forEach(({ kitId, qty: kitQty, parameters, kitName }, idx) => {
+    // 2. Expand each unique kit into its BOM pieces.
+    // Each request item that belongs to a kit is evaluated separately so that
+    // variable formulas ("?") and parameter-based formulas use the correct
+    // kitParameters per requisition. Contributions are then summed.
+    uniqueKitIds.forEach((kitId, idx) => {
       const bom = (bomResults[idx]?.data as (BomLine & { product?: Product })[] | undefined) ?? [];
-      const pieces: ConsolidatedItem[] = [];
+      const itemsForKit = kitRequestItems.filter((k) => k.kitId === kitId);
+      const totalKitQty = itemsForKit.reduce((sum, k) => sum + k.qty, 0);
+      const kitName = itemsForKit[0]?.kitName ?? kitId;
+
+      const pieceMap = new Map<string, ConsolidatedItem>();
       for (const line of bom) {
-        const pieceQty = calcFinalQty(line.quantityFormula, kitQty, parameters, line.productId);
-        if (pieceQty <= 0) continue;
+        // Sum the piece qty across all request items for this kit
+        let totalPieceQty = 0;
+        for (const kitItem of itemsForKit) {
+          totalPieceQty += calcFinalQty(line.quantityFormula, kitItem.qty, kitItem.parameters, line.productId);
+        }
+        if (totalPieceQty <= 0) continue;
         const prod = (line as any).product as Product | undefined ?? products.find((p) => p.id === line.productId);
-        const existingPiece = pieces.find((p) => p.key === line.productId);
-        if (existingPiece) {
-          existingPiece.qty += pieceQty;
+        const existing = pieceMap.get(line.productId);
+        if (existing) {
+          existing.qty += totalPieceQty;
         } else {
-          pieces.push({
+          pieceMap.set(line.productId, {
             key: line.productId,
-            qty: pieceQty,
+            qty: totalPieceQty,
             name: prod?.name || line.productId,
             sku: prod?.sku || "",
           });
@@ -606,9 +619,9 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
       }
       kitMap.set(kitId, {
         kitId,
-        kitName: kitName || kitId,
-        qty: kitQty,
-        pieces: pieces.sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+        kitName,
+        qty: totalKitQty,
+        pieces: Array.from(pieceMap.values()).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
       });
     });
 
@@ -622,6 +635,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
     JSON.stringify(bomResults.map((r) => r.data)),
     products,
     kitRequestItems,
+    uniqueKitIds,
   ]);
 
   // Order items
