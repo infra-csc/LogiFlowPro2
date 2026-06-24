@@ -2451,6 +2451,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Helper: convert ISO string timestamps to Date objects for trip schema parsing
+  function parseTripTimestamps(data: Record<string, any>) {
+    const tsFields = [
+      "loadingStartTime", "loadingEndTime", "departureDateTime",
+      "outboundArrivalDateTime",
+      "unloadingStartTime", "unloadingEndTime",
+      "returnLoadingStartTime", "returnLoadingEndTime",
+      "returnDepartureDateTime", "returnArrivalDateTime",
+      "returnUnloadingStartTime", "returnUnloadingEndTime",
+      "scheduledStart", "scheduledEnd", "actualStart", "actualEnd",
+    ];
+    const result = { ...data };
+    for (const field of tsFields) {
+      if (typeof result[field] === "string" && result[field]) {
+        result[field] = new Date(result[field]);
+      } else if (result[field] === null || result[field] === "") {
+        result[field] = null;
+      }
+    }
+    return result;
+  }
+
   // Trips
   app.get("/api/trips", requireAuth, async (req, res) => {
     try {
@@ -2481,7 +2503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
     try {
       const { destinations, ...tripData } = req.body;
-      const data = insertTripSchema.parse({ ...tripData, createdBy: req.user!.id });
+      const data = insertTripSchema.parse({ ...parseTripTimestamps(tripData), createdBy: req.user!.id });
       const trip = await storage.createTrip(data);
       
       // Save destinations if provided
@@ -2524,7 +2546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { destinations, ...tripData } = req.body;
-      const data = insertTripSchema.partial().parse(tripData);
+      const data = insertTripSchema.partial().parse(parseTripTimestamps(tripData));
       const trip = await storage.updateTrip(req.params.id, data);
       
       // Update destinations if provided
