@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import {
+  format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, addDays,
+} from "date-fns";
+import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 import {
   AlertTriangle,
@@ -571,6 +574,15 @@ export default function StockProjection() {
   const [excludedEventIds, setExcludedEventIds] = useState<string[]>([]);
   const [expandedTripEventIds, setExpandedTripEventIds] = useState<string[]>([]);
 
+  // ── Drawer UI state ──────────────────────────────────────────────────────────
+  const [configMode, setConfigMode] = useState<"quick" | "advanced">(() => {
+    try { return (sessionStorage.getItem("projection-config-mode") as "quick" | "advanced") || "advanced"; } catch { return "advanced"; }
+  });
+  const [granularity, setGranularity] = useState<"hour" | "shift" | "day" | "week">("day");
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    () => new Set(["period", "tripMode", "sources"])
+  );
+
   const { data: events } = useQuery<any[]>({ queryKey: ["/api/events"] });
   const { data: products } = useQuery<any[]>({ queryKey: ["/api/products"] });
 
@@ -789,16 +801,90 @@ export default function StockProjection() {
   const openConflictDetail = (conflict: ProjectionConflict) =>
     setDetail({ kind: "conflict", conflict });
 
-  const dateShortcuts = [
-    { label: "7 dias", days: 7 },
-    { label: "15 dias", days: 15 },
-    { label: "30 dias", days: 30 },
-    { label: "60 dias", days: 60 },
-  ];
   function applyShortcut(days: number) {
-    setStartDate(format(new Date(), "yyyy-MM-dd"));
-    setEndDate(format(new Date(Date.now() + days * 86400000), "yyyy-MM-dd"));
+    const s = format(new Date(), "yyyy-MM-dd");
+    const e = format(addDays(new Date(), days), "yyyy-MM-dd");
+    setStartDate(s);
+    setEndDate(e);
   }
+
+  const dateShortcuts: Array<{ label: string; apply: () => void; matchFn?: () => boolean }> = useMemo(() => {
+    const now = new Date();
+    const todayStr = format(now, "yyyy-MM-dd");
+    return [
+      {
+        label: "Hoje",
+        apply: () => { setStartDate(todayStr); setEndDate(todayStr); },
+        matchFn: () => startDate === todayStr && endDate === todayStr,
+      },
+      { label: "7 dias", apply: () => applyShortcut(7), matchFn: () => startDate === todayStr && endDate === format(addDays(now, 7), "yyyy-MM-dd") },
+      { label: "15 dias", apply: () => applyShortcut(15), matchFn: () => startDate === todayStr && endDate === format(addDays(now, 15), "yyyy-MM-dd") },
+      { label: "30 dias", apply: () => applyShortcut(30), matchFn: () => startDate === todayStr && endDate === format(addDays(now, 30), "yyyy-MM-dd") },
+      { label: "60 dias", apply: () => applyShortcut(60), matchFn: () => startDate === todayStr && endDate === format(addDays(now, 60), "yyyy-MM-dd") },
+      {
+        label: "Sem. atual",
+        apply: () => {
+          setStartDate(format(startOfWeek(now, { locale: ptBR }), "yyyy-MM-dd"));
+          setEndDate(format(endOfWeek(now, { locale: ptBR }), "yyyy-MM-dd"));
+        },
+      },
+      {
+        label: "Próx. sem.",
+        apply: () => {
+          const next = addDays(endOfWeek(now, { locale: ptBR }), 1);
+          setStartDate(format(startOfWeek(next, { locale: ptBR }), "yyyy-MM-dd"));
+          setEndDate(format(endOfWeek(next, { locale: ptBR }), "yyyy-MM-dd"));
+        },
+      },
+      {
+        label: "Mês atual",
+        apply: () => {
+          setStartDate(format(startOfMonth(now), "yyyy-MM-dd"));
+          setEndDate(format(endOfMonth(now), "yyyy-MM-dd"));
+        },
+      },
+      {
+        label: "Próx. mês",
+        apply: () => {
+          const next = addMonths(now, 1);
+          setStartDate(format(startOfMonth(next), "yyyy-MM-dd"));
+          setEndDate(format(endOfMonth(next), "yyyy-MM-dd"));
+        },
+      },
+    ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate]);
+
+  function toggleSection(key: string) {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  function setConfigModePersist(mode: "quick" | "advanced") {
+    setConfigMode(mode);
+    try { sessionStorage.setItem("projection-config-mode", mode); } catch { /* noop */ }
+  }
+
+  const summaryChips = useMemo(() => {
+    const chips: string[] = [];
+    if (startDate && endDate) {
+      const days = daysBetween(startDate, endDate);
+      chips.push(`${days} dia${days !== 1 ? "s" : ""}`);
+    }
+    if (selectedEventIds.length > 0) {
+      chips.push(`${selectedEventIds.length} evento${selectedEventIds.length !== 1 ? "s" : ""}`);
+    }
+    if (selectedProductIds.length > 0) {
+      chips.push(`${selectedProductIds.length} produto${selectedProductIds.length !== 1 ? "s" : ""}`);
+    }
+    const activeSrc = Object.values(sources).filter(Boolean).length;
+    chips.push(`${activeSrc} fonte${activeSrc !== 1 ? "s" : ""}`);
+    if (useEventTripDates) chips.push("Modo Evento-Viagem");
+    return chips;
+  }, [startDate, endDate, selectedEventIds, selectedProductIds, sources, useEventTripDates]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1063,299 +1149,679 @@ export default function StockProjection() {
         </div>
       )}
 
-      {/* ── Advanced Filters Sheet ── */}
+      {/* ── Filtros Avançados Sheet ── */}
       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent className="w-full sm:max-w-md flex flex-col projection-scroll" data-testid="filters-sheet">
-          <SheetHeader className="flex-shrink-0">
-            <SheetTitle className="flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4" /> Filtros Avançados
+        <SheetContent
+          className="w-full sm:w-[680px] p-0 flex flex-col"
+          style={{ maxWidth: "min(760px, 96vw)" }}
+          data-testid="filters-sheet"
+        >
+          {/* ── Cabeçalho fixo ── */}
+          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border/40 flex-shrink-0 space-y-2">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <SlidersHorizontal className="w-4 h-4 text-primary" />
+              Configurar projeção de estoque
             </SheetTitle>
-            <SheetDescription>Defina o período, as fontes e os itens da projeção</SheetDescription>
+            <SheetDescription className="text-xs">
+              Defina o período e escolha exatamente quais operações devem entrar no cálculo.
+            </SheetDescription>
+
+            {/* Chips de resumo em tempo real */}
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {summaryChips.map((chip, i) => (
+                <Badge key={i} variant="secondary" className="text-xs font-normal px-2 py-0.5">
+                  {chip}
+                </Badge>
+              ))}
+            </div>
+
+            {/* Toggle Rápido / Avançado */}
+            <div className="flex gap-1 pt-1">
+              <Button
+                size="sm"
+                variant={configMode === "quick" ? "default" : "outline"}
+                className="h-7 text-xs"
+                onClick={() => setConfigModePersist("quick")}
+                data-testid="button-mode-quick"
+              >
+                <Zap className="w-3 h-3 mr-1.5" /> Configuração rápida
+              </Button>
+              <Button
+                size="sm"
+                variant={configMode === "advanced" ? "default" : "outline"}
+                className="h-7 text-xs"
+                onClick={() => setConfigModePersist("advanced")}
+                data-testid="button-mode-advanced"
+              >
+                <SlidersHorizontal className="w-3 h-3 mr-1.5" /> Avançado
+              </Button>
+            </div>
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto py-4 space-y-5 projection-scroll" style={{ scrollbarWidth: "thin" }}>
-            {/* ── Modo Evento-Viagem ─────────────────────────────────────────── */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
+          {/* ── Conteúdo rolável ── */}
+          <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+
+            {/* ════════ MODO RÁPIDO ════════ */}
+            {configMode === "quick" && (
+              <div className="px-5 py-4 space-y-5">
+                {/* Período — atalhos */}
+                <section className="space-y-2">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-primary/70" /> Modo Evento-Viagem
+                    <CalendarRange className="w-4 h-4 text-primary/70" /> Período
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Escopo automático por eventos com viagens no período
-                  </p>
-                </div>
-                <Switch
-                  checked={useEventTripDates}
-                  onCheckedChange={(v) => {
-                    setUseEventTripDates(v);
-                    if (v) fetchEventsWithTrips(startDate, endDate);
-                    else { setEventsWithTrips([]); setExcludedEventIds([]); }
-                  }}
-                  data-testid="switch-trip-mode"
-                />
-              </div>
-
-              {useEventTripDates && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      Saída = 1ª viagem · Retorno = última viagem por evento
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-1.5"
-                      onClick={() => fetchEventsWithTrips(startDate, endDate)}
-                      disabled={loadingEventsWithTrips}
-                      data-testid="button-refresh-events-trips"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${loadingEventsWithTrips ? "animate-spin" : ""}`} />
-                    </Button>
+                  <div className="flex flex-wrap gap-1.5">
+                    {dateShortcuts.map(({ label, apply, matchFn }) => (
+                      <Button
+                        key={label}
+                        size="sm"
+                        variant={matchFn?.() ? "default" : "outline"}
+                        className="h-7 text-xs px-2.5"
+                        onClick={apply}
+                      >
+                        {label}
+                      </Button>
+                    ))}
                   </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="space-y-1">
+                      <Label htmlFor="qs-start" className="text-xs text-muted-foreground">Início</Label>
+                      <Input id="qs-start" type="date" value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className={`h-8 text-sm ${dateError ? "border-destructive" : ""}`}
+                        data-testid="input-start-date" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="qs-end" className="text-xs text-muted-foreground">Fim</Label>
+                      <Input id="qs-end" type="date" value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className={`h-8 text-sm ${dateError ? "border-destructive" : ""}`}
+                        data-testid="input-end-date" />
+                    </div>
+                  </div>
+                  {dateError && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 flex-shrink-0" /> Data de início deve ser anterior à data fim
+                    </p>
+                  )}
+                </section>
 
-                  {loadingEventsWithTrips ? (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
-                      <RefreshCw className="w-3 h-3 animate-spin" />
-                      Buscando eventos com viagens…
-                    </div>
-                  ) : eventsWithTrips.length === 0 ? (
-                    <div className="text-xs text-muted-foreground text-center p-3 border border-border/60 rounded-md">
-                      Nenhum evento com viagens no período selecionado
-                    </div>
-                  ) : (
-                    <div className="border border-border/60 rounded-md divide-y divide-border/40 max-h-60 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-                      {eventsWithTrips.map((ev) => {
-                        const isExcluded = excludedEventIds.includes(ev.id);
-                        const isExpanded = expandedTripEventIds.includes(ev.id);
-                        return (
-                          <div key={ev.id} className={`p-2 transition-opacity ${isExcluded ? "opacity-40" : ""}`}>
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                checked={!isExcluded}
-                                onCheckedChange={(v) =>
-                                  setExcludedEventIds((prev) =>
-                                    v ? prev.filter((x) => x !== ev.id) : [...prev, ev.id],
-                                  )
-                                }
-                                data-testid={`checkbox-event-trip-${ev.id}`}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium truncate">{ev.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {ev.firstDepartureDate && ev.lastReturnDate
-                                    ? `${ev.firstDepartureDate} → ${ev.lastReturnDate}`
-                                    : ev.firstDepartureDate
-                                      ? `Saída ${ev.firstDepartureDate}`
-                                      : "Sem datas de viagem"}
-                                  {ev.requestCount > 0 && ` · ${ev.requestCount} req.`}
-                                </div>
-                              </div>
-                              {ev.trips.length > 0 && (
-                                <button
-                                  className="flex items-center gap-0.5 text-xs text-muted-foreground px-1 py-0.5 hover-elevate rounded"
-                                  onClick={() =>
-                                    setExpandedTripEventIds((prev) =>
-                                      isExpanded ? prev.filter((x) => x !== ev.id) : [...prev, ev.id],
-                                    )
-                                  }
-                                >
-                                  <span>{ev.trips.length}v</span>
-                                  {isExpanded ? (
-                                    <ChevronUp className="w-3 h-3" />
-                                  ) : (
-                                    <ChevronDown className="w-3 h-3" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
-                            {isExpanded && ev.trips.length > 0 && (
-                              <div className="mt-1.5 ml-6 space-y-1">
-                                {ev.trips.map((t) => (
-                                  <div
-                                    key={t.id}
-                                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                                  >
-                                    <Truck className="w-3 h-3 flex-shrink-0" />
-                                    <span className="truncate">{t.description || "Viagem"}</span>
-                                    <span className="ml-auto whitespace-nowrap shrink-0">
-                                      {t.departureDate ?? "?"} → {t.returnDate ?? "?"}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                <Separator />
+
+                {/* Fontes rápidas */}
+                <section className="space-y-2">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-primary/70" /> Fontes da projeção
+                    {!anySource && <span className="text-xs text-destructive font-normal">(selecione ao menos 1)</span>}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { key: "loadingOrders" as const, label: "Ordens de carregamento" },
+                      { key: "requests" as const, label: "Requisições aprovadas" },
+                      { key: "movements" as const, label: "Movimentações" },
+                      { key: "trips" as const, label: "Planos de viagens avulsos" },
+                    ] as const).map((s) => (
+                      <label key={s.key}
+                        className={`flex items-center gap-2 rounded-md border p-2.5 cursor-pointer transition-colors ${
+                          sources[s.key] ? "border-primary/40 bg-primary/5" : "border-border/60 hover:bg-muted/50"
+                        }`}
+                      >
+                        <Checkbox
+                          checked={sources[s.key]}
+                          onCheckedChange={(v) => setSources((prev) => ({ ...prev, [s.key]: !!v }))}
+                          data-testid={`checkbox-source-${s.key}`}
+                        />
+                        <span className="text-xs leading-tight">{s.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+
+                <Separator />
+
+                {/* Exibição */}
+                <section className="space-y-1">
+                  <h3 className="text-sm font-semibold mb-2">Exibição</h3>
+                  <label htmlFor="qs-shortages" className="flex items-center gap-2.5 rounded px-1 py-1.5 cursor-pointer hover:bg-muted/50">
+                    <Checkbox id="qs-shortages" checked={onlyShortages} onCheckedChange={(v) => setOnlyShortages(!!v)} data-testid="checkbox-only-shortages" />
+                    <span className="text-sm">Apenas produtos em falta</span>
+                  </label>
+                  <label htmlFor="qs-impacted" className="flex items-center gap-2.5 rounded px-1 py-1.5 cursor-pointer hover:bg-muted/50">
+                    <Checkbox id="qs-impacted" checked={onlyImpacted} onCheckedChange={(v) => setOnlyImpacted(!!v)} data-testid="checkbox-only-impacted" />
+                    <span className="text-sm">Apenas produtos impactados</span>
+                  </label>
+                </section>
+              </div>
+            )}
+
+            {/* ════════ MODO AVANÇADO ════════ */}
+            {configMode === "advanced" && (
+              <div className="divide-y divide-border/40">
+
+                {/* ── SEÇÃO: Período ── */}
+                <div>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover-elevate text-left"
+                    onClick={() => toggleSection("period")}
+                    data-testid="section-toggle-period"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <CalendarRange className="w-4 h-4 text-primary/70" /> Período
+                      {startDate && endDate && (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {fmtDateFull(startDate)} → {fmtDateFull(endDate)}
+                        </span>
+                      )}
+                    </span>
+                    {expandedSections.has("period") ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {expandedSections.has("period") && (
+                    <div className="px-5 pb-5 space-y-3">
+                      {/* Data inputs */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="filter-start" className="text-xs">Data início</Label>
+                          <Input id="filter-start" type="date" value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className={`h-8 text-sm ${dateError ? "border-destructive" : ""}`}
+                            data-testid="input-start-date" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="filter-end" className="text-xs">Data fim</Label>
+                          <Input id="filter-end" type="date" value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className={`h-8 text-sm ${dateError ? "border-destructive" : ""}`}
+                            data-testid="input-end-date" />
+                        </div>
+                      </div>
+                      {dateError && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 flex-shrink-0" /> Data de início deve ser anterior à data fim
+                        </p>
+                      )}
+
+                      {/* Atalhos */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {dateShortcuts.map(({ label, apply, matchFn }) => (
+                          <Button
+                            key={label}
+                            size="sm"
+                            variant={matchFn?.() ? "default" : "outline"}
+                            className="h-7 text-xs px-2.5"
+                            onClick={apply}
+                          >
+                            {label}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {/* Granularidade */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Granularidade da projeção</Label>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {([
+                            { value: "hour", label: "Por hora" },
+                            { value: "shift", label: "Por turno" },
+                            { value: "day", label: "Por dia" },
+                            { value: "week", label: "Por semana" },
+                          ] as const).map(({ value, label }) => (
+                            <Button
+                              key={value}
+                              size="sm"
+                              variant={granularity === value ? "default" : "outline"}
+                              className="h-7 text-xs px-2.5"
+                              onClick={() => setGranularity(value)}
+                              data-testid={`btn-granularity-${value}`}
+                            >
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                        {granularity === "shift" && (
+                          <div className="rounded-md bg-muted/40 border border-border/40 p-2.5 text-xs text-muted-foreground space-y-0.5">
+                            <p className="font-medium text-foreground mb-1">Turnos configurados:</p>
+                            <p>Madrugada: 00:00 – 05:59</p>
+                            <p>Manhã: 06:00 – 11:59</p>
+                            <p>Tarde: 12:00 – 17:59</p>
+                            <p>Noite: 18:00 – 23:59</p>
                           </div>
-                        );
-                      })}
+                        )}
+                        <p className="text-[10px] text-muted-foreground">Máximo de 90 dias. Granularidade por hora/turno disponível em versão futura.</p>
+                      </div>
                     </div>
                   )}
+                </div>
 
-                  {eventsWithTrips.length > 0 && (
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>
-                        {eventsWithTrips.length - excludedEventIds.length} de {eventsWithTrips.length} evento(s) incluídos
-                      </span>
-                      {excludedEventIds.length > 0 && (
-                        <button
-                          className="text-primary hover-elevate rounded px-1"
-                          onClick={() => setExcludedEventIds([])}
-                        >
-                          Incluir todos
-                        </button>
+                {/* ── SEÇÃO: Modo Evento-Viagem ── */}
+                <div>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover-elevate text-left"
+                    onClick={() => toggleSection("tripMode")}
+                    data-testid="section-toggle-tripmode"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <Truck className="w-4 h-4 text-primary/70" /> Modo Evento-Viagem
+                      {useEventTripDates && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Ativo</Badge>
+                      )}
+                    </span>
+                    {expandedSections.has("tripMode") ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {expandedSections.has("tripMode") && (
+                    <div className="px-5 pb-5 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            Utiliza as viagens vinculadas ao evento para identificar quando os materiais saem, permanecem fora e retornam ao estoque.
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <span className="font-medium text-foreground">Regra aplicada:</span> Saída = 1ª viagem · Retorno = última viagem por evento
+                          </p>
+                        </div>
+                        <Switch
+                          checked={useEventTripDates}
+                          onCheckedChange={(v) => {
+                            setUseEventTripDates(v);
+                            if (v) fetchEventsWithTrips(startDate, endDate);
+                            else { setEventsWithTrips([]); setExcludedEventIds([]); }
+                          }}
+                          data-testid="switch-trip-mode"
+                        />
+                      </div>
+
+                      {useEventTripDates && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground font-medium">
+                              Eventos com viagens no período
+                              {eventsWithTrips.length > 0 && (
+                                <span className="ml-1 text-foreground">
+                                  ({eventsWithTrips.length - excludedEventIds.length} de {eventsWithTrips.length} incluídos)
+                                </span>
+                              )}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              {excludedEventIds.length > 0 && (
+                                <Button variant="ghost" size="sm" className="h-6 text-xs px-2"
+                                  onClick={() => setExcludedEventIds([])}>
+                                  Incluir todos
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+                                onClick={() => fetchEventsWithTrips(startDate, endDate)}
+                                disabled={loadingEventsWithTrips}
+                                data-testid="button-refresh-events-trips">
+                                <RefreshCw className={`w-3 h-3 ${loadingEventsWithTrips ? "animate-spin" : ""}`} />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {loadingEventsWithTrips ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground p-3">
+                              <RefreshCw className="w-3 h-3 animate-spin" /> Buscando eventos com viagens…
+                            </div>
+                          ) : eventsWithTrips.length === 0 ? (
+                            <div className="text-xs text-muted-foreground text-center p-4 border border-border/60 rounded-md">
+                              Nenhum evento com viagens no período selecionado
+                            </div>
+                          ) : (
+                            <div className="border border-border/60 rounded-md divide-y divide-border/40">
+                              {eventsWithTrips.map((ev) => {
+                                const isExcluded = excludedEventIds.includes(ev.id);
+                                const isExpanded = expandedTripEventIds.includes(ev.id);
+                                return (
+                                  <div key={ev.id} className={`transition-opacity ${isExcluded ? "opacity-50" : ""}`}>
+                                    <div className="flex items-center gap-2 px-3 py-2.5">
+                                      <Checkbox
+                                        checked={!isExcluded}
+                                        onCheckedChange={(v) =>
+                                          setExcludedEventIds((prev) =>
+                                            v ? prev.filter((x) => x !== ev.id) : [...prev, ev.id]
+                                          )
+                                        }
+                                        data-testid={`checkbox-event-trip-${ev.id}`}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-medium leading-tight">{ev.name}</div>
+                                        <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2 mt-0.5">
+                                          {ev.firstDepartureDate && ev.lastReturnDate
+                                            ? <span>{ev.firstDepartureDate} → {ev.lastReturnDate}</span>
+                                            : ev.firstDepartureDate
+                                            ? <span>Saída {ev.firstDepartureDate}</span>
+                                            : <span className="text-amber-500">Sem datas de viagem</span>}
+                                          {ev.requestCount > 0 && <span>{ev.requestCount} req.</span>}
+                                          {ev.trips.length > 0 && <span>{ev.trips.length} viagem{ev.trips.length > 1 ? "s" : ""}</span>}
+                                        </div>
+                                      </div>
+                                      {ev.trips.length > 0 && (
+                                        <button
+                                          type="button"
+                                          className="flex items-center gap-0.5 text-xs text-muted-foreground px-1.5 py-1 hover-elevate rounded"
+                                          onClick={() =>
+                                            setExpandedTripEventIds((prev) =>
+                                              isExpanded ? prev.filter((x) => x !== ev.id) : [...prev, ev.id]
+                                            )
+                                          }
+                                        >
+                                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                        </button>
+                                      )}
+                                    </div>
+                                    {isExpanded && ev.trips.length > 0 && (
+                                      <div className="ml-9 mr-3 mb-2 space-y-1.5">
+                                        {ev.trips.map((t) => (
+                                          <div key={t.id} className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1.5">
+                                            <Truck className="w-3 h-3 flex-shrink-0 text-primary/50" />
+                                            <span className="truncate flex-1">{t.description || "Viagem sem descrição"}</span>
+                                            <span className="whitespace-nowrap shrink-0 font-mono">
+                                              {t.departureDate ?? "?"} → {t.returnDate ?? "?"}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
                 </div>
-              )}
-            </section>
 
-            <Separator />
-
-            {/* Período */}
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <CalendarRange className="w-4 h-4 text-primary/70" /> Período
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="filter-start">Data início</Label>
-                  <Input id="filter-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={dateError ? "border-destructive" : ""} data-testid="input-start-date" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="filter-end">Data fim</Label>
-                  <Input id="filter-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={dateError ? "border-destructive" : ""} data-testid="input-end-date" />
-                </div>
-              </div>
-              {dateError && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3 flex-shrink-0" /> Data de início deve ser anterior à data fim
-                </p>
-              )}
-              <div className="flex flex-wrap gap-1.5">
-                {dateShortcuts.map(({ label, days }) => {
-                  const s = format(new Date(), "yyyy-MM-dd");
-                  const e = format(new Date(Date.now() + days * 86400000), "yyyy-MM-dd");
-                  const isActive = startDate === s && endDate === e;
-                  return (
-                    <Button key={label} size="sm" variant={isActive ? "default" : "outline"} className="h-7 text-xs px-2.5" onClick={() => applyShortcut(days)} data-testid={`shortcut-${days}`}>
-                      {label}
-                    </Button>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">Período máximo de 90 dias.</p>
-            </section>
-
-            <Separator />
-
-            {/* Fontes */}
-            <section className="space-y-2">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Truck className="w-4 h-4 text-primary/70" /> Fontes da projeção
-                {!anySource && <span className="text-xs text-destructive font-normal">(selecione ao menos 1)</span>}
-              </h3>
-              {([
-                { key: "loadingOrders" as const, label: "Ordens de carregamento", id: "src-loading" },
-                { key: "requests" as const, label: "Requisições aprovadas", id: "src-requests" },
-                { key: "movements" as const, label: "Movimentações", id: "src-movements" },
-                { key: "trips" as const, label: "Planos de Viagens avulsos", id: "src-trips" },
-              ] as const).map((s) => (
-                <label key={s.key} htmlFor={s.id} className="flex items-center gap-2.5 rounded px-2 py-2 cursor-pointer hover:bg-muted/50">
-                  <Checkbox id={s.id} checked={sources[s.key]} onCheckedChange={(v) => setSources((prev) => ({ ...prev, [s.key]: !!v }))} data-testid={`checkbox-source-${s.key}`} />
-                  <span className="text-sm">{s.label}</span>
-                </label>
-              ))}
-            </section>
-
-            <Separator />
-
-            {/* Eventos */}
-            <section className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">
-                  Eventos
-                  {selectedEventIds.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{selectedEventIds.length}</Badge>}
-                </h3>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setSelectedEventIds((events || []).map((e: any) => e.id))} data-testid="button-select-all-events">Todos</Button>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setSelectedEventIds([])} disabled={selectedEventIds.length === 0} data-testid="button-clear-events">Limpar</Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">Se nenhum evento for selecionado, todos os eventos do período serão considerados.</p>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input placeholder="Buscar evento..." value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} className="pl-8 h-8 text-sm" data-testid="input-event-search" />
-              </div>
-              <div className="border border-border/60 rounded-md p-1.5 max-h-52 overflow-y-auto space-y-0.5 projection-scroll" style={{ scrollbarWidth: "thin" }}>
-                {filteredEvents.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">{!events?.length ? "Nenhum evento disponível" : "Nenhum resultado"}</p>
-                ) : filteredEvents.map((event: any) => (
-                  <label key={event.id} htmlFor={`ev-${event.id}`} className={`flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors ${selectedEventIds.includes(event.id) ? "bg-primary/10" : "hover:bg-muted/50"}`}>
-                    <Checkbox id={`ev-${event.id}`} checked={selectedEventIds.includes(event.id)} onCheckedChange={() => toggleEvent(event.id)} className="mt-0.5" data-testid={`checkbox-event-${event.id}`} />
-                    <div className="min-w-0">
-                      <div className="text-sm leading-tight truncate">{event.name}</div>
-                      {event.eventDate && <div className="text-xs text-muted-foreground">{new Date(event.eventDate).toLocaleDateString("pt-BR")}</div>}
+                {/* ── SEÇÃO: Fontes ── */}
+                <div>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover-elevate text-left"
+                    onClick={() => toggleSection("sources")}
+                    data-testid="section-toggle-sources"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <BarChart3 className="w-4 h-4 text-primary/70" /> Fontes da projeção
+                      {!anySource && <span className="text-xs font-normal text-destructive">(ao menos 1)</span>}
+                    </span>
+                    {expandedSections.has("sources") ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {expandedSections.has("sources") && (
+                    <div className="px-5 pb-5 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Prioridade na deduplicação: Movimentações {'>'} Ordens {'>'} Requisições {'>'} Viagens.
+                      </p>
+                      {([
+                        {
+                          key: "loadingOrders" as const,
+                          label: "Ordens de carregamento",
+                          desc: "Ordens com status pronta, aprovada ou em andamento",
+                          id: "src-loading",
+                        },
+                        {
+                          key: "requests" as const,
+                          label: "Requisições aprovadas",
+                          desc: "Demanda planejada das requisições com aprovação total ou parcial",
+                          id: "src-requests",
+                        },
+                        {
+                          key: "movements" as const,
+                          label: "Movimentações",
+                          desc: "Movimentações físicas concluídas ou em andamento",
+                          id: "src-movements",
+                        },
+                        {
+                          key: "trips" as const,
+                          label: "Planos de viagens avulsos",
+                          desc: "Viagens sem vínculo a evento — baseadas apenas nos horários de saída e retorno",
+                          id: "src-trips",
+                        },
+                      ] as const).map((s) => (
+                        <label
+                          key={s.key}
+                          htmlFor={s.id}
+                          className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors ${
+                            sources[s.key] ? "border-primary/40 bg-primary/5" : "border-border/60 hover:bg-muted/30"
+                          }`}
+                        >
+                          <Checkbox
+                            id={s.id}
+                            checked={sources[s.key]}
+                            onCheckedChange={(v) => setSources((prev) => ({ ...prev, [s.key]: !!v }))}
+                            className="mt-0.5"
+                            data-testid={`checkbox-source-${s.key}`}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium leading-tight">{s.label}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{s.desc}</div>
+                          </div>
+                        </label>
+                      ))}
                     </div>
-                  </label>
-                ))}
-              </div>
-            </section>
+                  )}
+                </div>
 
-            <Separator />
-
-            {/* Produtos */}
-            <section className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">
-                  Produtos
-                  {selectedProductIds.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{selectedProductIds.length}</Badge>}
-                </h3>
-                <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setSelectedProductIds([])} disabled={selectedProductIds.length === 0} data-testid="button-clear-products">Limpar</Button>
-              </div>
-              <p className="text-xs text-muted-foreground">Se nenhum produto for selecionado, todos os produtos impactados serão considerados.</p>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input placeholder="Buscar produto..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="pl-8 h-8 text-sm" data-testid="input-product-search" />
-              </div>
-              <div className="border border-border/60 rounded-md p-1.5 max-h-52 overflow-y-auto space-y-0.5 projection-scroll" style={{ scrollbarWidth: "thin" }}>
-                {filteredProducts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">{!products?.length ? "Nenhum produto disponível" : "Nenhum resultado"}</p>
-                ) : filteredProducts.slice(0, 200).map((product: any) => (
-                  <label key={product.id} htmlFor={`pr-${product.id}`} className={`flex items-start gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors ${selectedProductIds.includes(product.id) ? "bg-primary/10" : "hover:bg-muted/50"}`}>
-                    <Checkbox id={`pr-${product.id}`} checked={selectedProductIds.includes(product.id)} onCheckedChange={() => toggleProduct(product.id)} className="mt-0.5" data-testid={`checkbox-product-${product.id}`} />
-                    <div className="min-w-0">
-                      <div className="text-sm leading-tight truncate">{product.name}</div>
-                      <div className="text-xs text-muted-foreground">{product.sku}</div>
+                {/* ── SEÇÃO: Eventos ── */}
+                <div>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover-elevate text-left"
+                    onClick={() => toggleSection("events")}
+                    data-testid="section-toggle-events"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <Calendar className="w-4 h-4 text-primary/70" /> Eventos
+                      {selectedEventIds.length > 0
+                        ? <Badge variant="secondary" className="text-xs">{selectedEventIds.length} selecionados</Badge>
+                        : <span className="text-xs font-normal text-muted-foreground">todos do período</span>
+                      }
+                    </span>
+                    {expandedSections.has("events") ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {expandedSections.has("events") && (
+                    <div className="px-5 pb-5 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          Sem seleção = todos os eventos do período.
+                        </p>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2"
+                            onClick={() => setSelectedEventIds((events || []).map((e: any) => e.id))}
+                            data-testid="button-select-all-events">
+                            Todos
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2"
+                            onClick={() => setSelectedEventIds([])}
+                            disabled={selectedEventIds.length === 0}
+                            data-testid="button-clear-events">
+                            Limpar
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar evento, cliente ou local..."
+                          value={eventSearch}
+                          onChange={(e) => setEventSearch(e.target.value)}
+                          className="pl-8 h-8 text-sm"
+                          data-testid="input-event-search"
+                        />
+                      </div>
+                      <div className="border border-border/60 rounded-md divide-y divide-border/40 max-h-64 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+                        {filteredEvents.length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-4">
+                            {!events?.length ? "Nenhum evento disponível" : "Nenhum resultado para a busca"}
+                          </p>
+                        ) : filteredEvents.map((event: any) => (
+                          <label
+                            key={event.id}
+                            htmlFor={`ev-${event.id}`}
+                            className={`flex items-start gap-2.5 px-3 py-2.5 cursor-pointer transition-colors ${
+                              selectedEventIds.includes(event.id) ? "bg-primary/8" : "hover:bg-muted/40"
+                            }`}
+                          >
+                            <Checkbox
+                              id={`ev-${event.id}`}
+                              checked={selectedEventIds.includes(event.id)}
+                              onCheckedChange={() => toggleEvent(event.id)}
+                              className="mt-0.5"
+                              data-testid={`checkbox-event-${event.id}`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm leading-tight font-medium">{event.name}</div>
+                              <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground mt-0.5">
+                                {event.eventDate && <span>{new Date(event.eventDate).toLocaleDateString("pt-BR")}</span>}
+                                {event.location && <span>{event.location}</span>}
+                                {event.client && <span>{event.client}</span>}
+                              </div>
+                            </div>
+                            {selectedEventIds.includes(event.id) && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                            )}
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </label>
-                ))}
+                  )}
+                </div>
+
+                {/* ── SEÇÃO: Produtos ── */}
+                <div>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover-elevate text-left"
+                    onClick={() => toggleSection("products")}
+                    data-testid="section-toggle-products"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <Package className="w-4 h-4 text-primary/70" /> Produtos
+                      {selectedProductIds.length > 0
+                        ? <Badge variant="secondary" className="text-xs">{selectedProductIds.length} selecionados</Badge>
+                        : <span className="text-xs font-normal text-muted-foreground">todos os impactados</span>
+                      }
+                    </span>
+                    {expandedSections.has("products") ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {expandedSections.has("products") && (
+                    <div className="px-5 pb-5 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          Sem seleção = todos os produtos impactados.
+                        </p>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs px-2"
+                          onClick={() => setSelectedProductIds([])}
+                          disabled={selectedProductIds.length === 0}
+                          data-testid="button-clear-products">
+                          Limpar
+                        </Button>
+                      </div>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar por nome ou SKU..."
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          className="pl-8 h-8 text-sm"
+                          data-testid="input-product-search"
+                        />
+                      </div>
+                      <div className="border border-border/60 rounded-md divide-y divide-border/40 max-h-64 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+                        {filteredProducts.length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-4">
+                            {!products?.length ? "Nenhum produto disponível" : "Nenhum resultado para a busca"}
+                          </p>
+                        ) : filteredProducts.slice(0, 200).map((product: any) => (
+                          <label
+                            key={product.id}
+                            htmlFor={`pr-${product.id}`}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors ${
+                              selectedProductIds.includes(product.id) ? "bg-primary/8" : "hover:bg-muted/40"
+                            }`}
+                          >
+                            <Checkbox
+                              id={`pr-${product.id}`}
+                              checked={selectedProductIds.includes(product.id)}
+                              onCheckedChange={() => toggleProduct(product.id)}
+                              data-testid={`checkbox-product-${product.id}`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm leading-tight font-medium truncate">{product.name}</div>
+                              <div className="text-xs text-muted-foreground font-mono">{product.sku}</div>
+                            </div>
+                            {selectedProductIds.includes(product.id) && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                            )}
+                          </label>
+                        ))}
+                        {filteredProducts.length > 200 && (
+                          <p className="text-xs text-muted-foreground text-center py-2">
+                            Mostrando 200 de {filteredProducts.length}. Refine a busca.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── SEÇÃO: Exibição ── */}
+                <div>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover-elevate text-left"
+                    onClick={() => toggleSection("display")}
+                    data-testid="section-toggle-display"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <LayoutGrid className="w-4 h-4 text-primary/70" /> Exibição
+                      {(onlyShortages || onlyImpacted) && (
+                        <Badge variant="secondary" className="text-xs">
+                          {[onlyShortages && "apenas faltas", onlyImpacted && "apenas impactados"].filter(Boolean).join(" · ")}
+                        </Badge>
+                      )}
+                    </span>
+                    {expandedSections.has("display") ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {expandedSections.has("display") && (
+                    <div className="px-5 pb-5 space-y-1">
+                      <label htmlFor="only-shortages" className="flex items-center gap-2.5 rounded-md px-2 py-2.5 cursor-pointer hover:bg-muted/40">
+                        <Checkbox id="only-shortages" checked={onlyShortages} onCheckedChange={(v) => setOnlyShortages(!!v)} data-testid="checkbox-only-shortages" />
+                        <div>
+                          <div className="text-sm">Apenas produtos em falta</div>
+                          <div className="text-xs text-muted-foreground">Mostra somente produtos com saldo negativo no período</div>
+                        </div>
+                      </label>
+                      <label htmlFor="only-impacted" className="flex items-center gap-2.5 rounded-md px-2 py-2.5 cursor-pointer hover:bg-muted/40">
+                        <Checkbox id="only-impacted" checked={onlyImpacted} onCheckedChange={(v) => setOnlyImpacted(!!v)} data-testid="checkbox-only-impacted" />
+                        <div>
+                          <div className="text-sm">Apenas produtos impactados</div>
+                          <div className="text-xs text-muted-foreground">Oculta produtos sem movimentação no período selecionado</div>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
               </div>
-            </section>
-
-            <Separator />
-
-            {/* Exibição */}
-            <section className="space-y-1">
-              <h3 className="text-sm font-semibold mb-2">Exibição</h3>
-              <label htmlFor="only-shortages" className="flex items-center gap-2.5 rounded px-1 py-2 cursor-pointer hover:bg-muted/50">
-                <Checkbox id="only-shortages" checked={onlyShortages} onCheckedChange={(v) => setOnlyShortages(!!v)} data-testid="checkbox-only-shortages" />
-                <span className="text-sm">Mostrar apenas produtos em falta</span>
-              </label>
-              <label htmlFor="only-impacted" className="flex items-center gap-2.5 rounded px-1 py-2 cursor-pointer hover:bg-muted/50">
-                <Checkbox id="only-impacted" checked={onlyImpacted} onCheckedChange={(v) => setOnlyImpacted(!!v)} data-testid="checkbox-only-impacted" />
-                <span className="text-sm">Mostrar apenas produtos impactados</span>
-              </label>
-            </section>
+            )}
           </div>
 
-          <SheetFooter className="flex-shrink-0 flex gap-2 border-t border-border/60 pt-4">
-            <Button variant="outline" className="flex-1" onClick={handleClearAllFilters} data-testid="button-clear-filters">
-              Limpar filtros
-            </Button>
-            <Button className="flex-1" onClick={handleApplyFilters} disabled={!canGenerate || isGenerating} data-testid="button-apply-filters">
-              {isGenerating ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Calculando...</> : "Aplicar filtros"}
-            </Button>
+          {/* ── Rodapé fixo ── */}
+          <SheetFooter className="px-5 py-4 border-t border-border/60 flex-shrink-0 flex-col gap-2">
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={handleClearAllFilters} data-testid="button-clear-filters">
+                <X className="w-3.5 h-3.5 mr-1.5" /> Limpar filtros
+              </Button>
+              <Button className="flex-1" onClick={handleApplyFilters} disabled={!canGenerate || isGenerating} data-testid="button-apply-filters">
+                {isGenerating
+                  ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Calculando...</>
+                  : <><BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Gerar projeção</>
+                }
+              </Button>
+            </div>
+            {!canGenerate && (
+              <p className="text-xs text-destructive text-center">Selecione ao menos uma fonte de dados</p>
+            )}
           </SheetFooter>
         </SheetContent>
       </Sheet>

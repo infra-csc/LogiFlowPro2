@@ -1,0 +1,688 @@
+Quero reformular completamente o drawer **Filtros Avançados** da tela **Projeção de Estoque**, tornando-o mais amplo, detalhado e operacional.
+
+O objetivo é permitir que o usuário controle exatamente quais eventos, viagens, requisições, ordens, movimentações, produtos, datas e horários serão considerados na simulação.
+
+Não alterar as regras gerais de estoque já existentes. Melhorar a interface, a hierarquia dos filtros e dar mais liberdade ao usuário para incluir ou excluir individualmente cada origem do cálculo.
+
+# 1. TAMANHO E ESTRUTURA DO DRAWER
+
+Aumentar a largura do drawer.
+
+No desktop:
+
+* largura mínima de 620 px;
+* largura ideal entre 42% e 48% da tela;
+* limite máximo de 760 px.
+
+No tablet e celular:
+
+* ocupar 100% da largura.
+
+Evitar várias caixas pequenas com rolagens internas independentes.
+
+Utilizar:
+
+* uma única rolagem vertical principal no conteúdo;
+* cabeçalho fixo;
+* rodapé fixo;
+* resumo da seleção sempre visível;
+* seções expansíveis.
+
+O drawer deve ter três áreas:
+
+1. Cabeçalho;
+2. Conteúdo rolável;
+3. Rodapé fixo com resumo e ações.
+
+# 2. CABEÇALHO
+
+Exibir:
+
+**Configurar projeção de estoque**
+
+Texto de apoio:
+
+“Defina o período e escolha exatamente quais operações devem entrar no cálculo.”
+
+Adicionar no cabeçalho chips de resumo em tempo real:
+
+* período selecionado;
+* quantidade de eventos;
+* quantidade de viagens;
+* quantidade de requisições;
+* quantidade de produtos;
+* fontes ativas.
+
+Exemplo:
+
+`30 dias • 1 evento • 3 viagens • 4 requisições • 89 produtos`
+
+# 3. MODOS DE CONFIGURAÇÃO
+
+Criar dois modos:
+
+## Configuração rápida
+
+Para usuários que desejam gerar a projeção automaticamente.
+
+Opções:
+
+* todos os eventos do período;
+* todas as viagens vinculadas;
+* todas as requisições aprovadas;
+* todas as movimentações válidas;
+* todos os produtos impactados.
+
+## Configuração avançada
+
+Permitir controle individual de cada item considerado no cálculo.
+
+A preferência escolhida deve permanecer durante a sessão.
+
+# 4. PERÍODO E HORÁRIO
+
+Além da data, permitir definir horários.
+
+Campos:
+
+* Data inicial;
+* Hora inicial;
+* Data final;
+* Hora final.
+
+Exemplo:
+
+`24/06/2026 00:00 → 24/07/2026 23:59`
+
+Adicionar atalhos:
+
+* Hoje;
+* Próximos 7 dias;
+* Próximos 15 dias;
+* Próximos 30 dias;
+* Próximos 60 dias;
+* Semana atual;
+* Próxima semana;
+* Mês atual;
+* Próximo mês.
+
+Adicionar seletor de granularidade:
+
+* Por hora;
+* Por turno;
+* Por dia;
+* Por semana.
+
+## Turnos
+
+Caso o usuário selecione “Por turno”, utilizar:
+
+* Madrugada: 00:00–05:59;
+* Manhã: 06:00–11:59;
+* Tarde: 12:00–17:59;
+* Noite: 18:00–23:59.
+
+A projeção deve respeitar o horário real das operações.
+
+Exemplo:
+
+* uma saída às 09:00 reduz o saldo a partir das 09:00;
+* um retorno às 18:00 aumenta o saldo somente a partir das 18:00;
+* não considerar o produto disponível durante todo o dia quando ele só retorna no fim do dia.
+
+# 5. MODO EVENTO–VIAGEM
+
+Manter o modo automático Evento–Viagem, mas deixá-lo mais claro.
+
+Texto:
+
+“Utiliza as viagens vinculadas ao evento para identificar quando os materiais saem, permanecem fora e retornam ao estoque.”
+
+Mostrar regra aplicada:
+
+* saída do estoque: primeira viagem válida;
+* retorno ao estoque: última viagem válida;
+* permanência no evento: intervalo entre saída e retorno.
+
+Adicionar opções:
+
+* Considerar primeira viagem como saída;
+* Considerar última viagem como retorno;
+* Usar horários de carregamento;
+* Usar horário de saída do veículo;
+* Usar horário de chegada ao evento;
+* Usar horário de carregamento da desmontagem;
+* Usar horário de chegada ao CD;
+* Usar horário de descarga no CD.
+
+Permitir que o usuário escolha qual marco altera o saldo.
+
+## Regra de saída
+
+Selecionar entre:
+
+* início do carregamento no CD;
+* fim do carregamento no CD;
+* saída do veículo do CD;
+* horário manual.
+
+## Regra de retorno
+
+Selecionar entre:
+
+* chegada do veículo ao CD;
+* início da descarga no CD;
+* fim da descarga no CD;
+* horário manual.
+
+Exibir claramente a opção selecionada.
+
+# 6. SELEÇÃO HIERÁRQUICA POR EVENTO
+
+Substituir a lista simples de eventos por uma estrutura hierárquica expansível.
+
+Exemplo:
+
+`☑ Circuito da Longevidade — São Paulo`
+
+Ao expandir:
+
+* resumo do evento;
+* data de montagem;
+* data do evento;
+* data de desmontagem;
+* viagens vinculadas;
+* requisições vinculadas;
+* ordens de carregamento;
+* movimentações;
+* produtos envolvidos.
+
+Cada evento deve possuir:
+
+* checkbox principal;
+* botão expandir/recolher;
+* contador de viagens;
+* contador de requisições;
+* contador de produtos;
+* indicador de dados incompletos.
+
+Exemplo:
+
+`☑ Evento • 3 viagens • 4 requisições • 46 produtos`
+
+Ao desmarcar o evento, todas as origens internas devem ser desmarcadas.
+
+Ao marcar parcialmente, utilizar estado intermediário no checkbox.
+
+# 7. CONTROLE INDIVIDUAL DAS VIAGENS
+
+Dentro de cada evento, mostrar todas as viagens vinculadas.
+
+Exemplo:
+
+## Viagens
+
+`☑ Carreta 1 — Ida ao evento`
+
+* veículo;
+* motorista;
+* doca;
+* saída do CD;
+* chegada ao evento;
+* tipo: ida;
+* produtos vinculados;
+* quantidade total.
+
+`☑ Carreta 2 — Retorno ao CD`
+
+* saída do evento;
+* chegada ao CD;
+* descarga no CD;
+* tipo: retorno.
+
+Permitir ao usuário:
+
+* marcar ou desmarcar cada viagem;
+* marcar todas;
+* desmarcar todas;
+* selecionar somente viagens de ida;
+* selecionar somente viagens de volta;
+* visualizar detalhes;
+* identificar viagens sem horário;
+* definir horário manual para a projeção;
+* ignorar uma viagem apenas nessa simulação.
+
+Mostrar badges:
+
+* Ida;
+* Retorno;
+* Transferência;
+* Carregamento;
+* Descarregamento;
+* Sem horário;
+* Dados incompletos;
+* Considerada;
+* Ignorada.
+
+# 8. CONTROLE INDIVIDUAL DAS REQUISIÇÕES
+
+Dentro de cada evento, listar as requisições.
+
+Exemplo:
+
+## Requisições
+
+`☑ Arena — Aprovada`
+
+* solicitante;
+* área;
+* data da requisição;
+* montagem relacionada;
+* quantidade de produtos;
+* total de unidades;
+* status.
+
+Permitir:
+
+* marcar ou desmarcar cada requisição;
+* marcar todas;
+* desmarcar todas;
+* selecionar somente aprovadas;
+* incluir requisições pendentes como cenário;
+* excluir requisições sem data;
+* definir manualmente uma data para requisições sem data;
+* visualizar os itens da requisição;
+* selecionar somente alguns itens da requisição.
+
+Requisições pendentes não devem entrar silenciosamente no cálculo.
+
+Quando selecionadas, mostrar:
+
+`Cenário: inclui requisição ainda não aprovada`
+
+# 9. ITENS DAS REQUISIÇÕES
+
+Ao expandir uma requisição, mostrar seus itens:
+
+* nome do produto;
+* SKU;
+* quantidade solicitada;
+* quantidade aprovada;
+* unidade;
+* origem;
+* data e horário considerados;
+* situação no cálculo.
+
+Permitir marcar ou desmarcar produtos individualmente.
+
+Exemplo:
+
+`☑ Cavalete reto • 20 unidades`
+
+`☐ Tina 1000 L • 2 unidades`
+
+Ao selecionar apenas parte dos produtos, a requisição deve ficar em estado parcialmente selecionado.
+
+Adicionar ações:
+
+* Incluir todos os itens;
+* Excluir todos os itens;
+* Incluir somente itens com estoque;
+* Incluir somente itens em risco;
+* Revisar itens sem cadastro completo.
+
+# 10. ORDENS DE CARREGAMENTO
+
+Criar seção própria para ordens de carregamento.
+
+Mostrar:
+
+* número da ordem;
+* evento;
+* viagem;
+* tipo;
+* status;
+* data e hora;
+* produtos;
+* total de unidades;
+* vínculo com movimentação física.
+
+Permitir marcar ou desmarcar cada ordem.
+
+Evitar duplicidade:
+
+Se uma ordem já tiver gerado uma movimentação física, informar:
+
+`Já movimentado fisicamente`
+
+Nesse caso, permitir escolher:
+
+* considerar somente a movimentação;
+* considerar somente a ordem;
+* revisar manualmente.
+
+Nunca somar ordem e movimentação quando representam a mesma operação.
+
+# 11. MOVIMENTAÇÕES
+
+Criar seção específica para movimentações.
+
+Mostrar:
+
+* código;
+* tipo;
+* sentido;
+* evento;
+* viagem;
+* data e hora;
+* produtos;
+* quantidade;
+* status.
+
+Permitir:
+
+* marcar ou desmarcar individualmente;
+* incluir movimentações concluídas;
+* incluir movimentações em andamento;
+* incluir movimentações planejadas;
+* ignorar movimentações canceladas;
+* visualizar detalhes;
+* detectar duplicidade com ordens ou requisições.
+
+# 12. PLANOS DE VIAGEM AVULSOS
+
+Manter a fonte “Planos de viagens avulsos”, mas substituir o checkbox único por uma seção expansível.
+
+Permitir:
+
+* ativar a fonte;
+* selecionar planos individualmente;
+* filtrar por veículo;
+* filtrar por motorista;
+* filtrar por doca;
+* filtrar por ida ou retorno;
+* selecionar somente viagens dentro do período;
+* selecionar viagens que iniciaram antes, mas continuam no período;
+* selecionar viagens que terminam depois do período.
+
+# 13. FONTES DA PROJEÇÃO
+
+Organizar as fontes em cards ou linhas detalhadas:
+
+* Ordens de carregamento;
+* Requisições;
+* Movimentações;
+* Planos de viagens;
+* Ajustes manuais de estoque;
+* Entradas previstas;
+* Devoluções;
+* Transferências entre locais;
+* Reservas;
+* Materiais já em evento.
+
+Para cada fonte, mostrar:
+
+* toggle;
+* quantidade encontrada;
+* quantidade incluída;
+* quantidade ignorada;
+* quantidade com erro.
+
+Exemplo:
+
+`Requisições: 4 encontradas • 3 incluídas • 1 sem data`
+
+# 14. PRODUTOS
+
+Melhorar completamente a seleção de produtos.
+
+O campo atual com uma lista pequena e rolagem interna não é suficiente.
+
+Adicionar:
+
+* busca por nome;
+* busca por SKU;
+* busca por código de barras;
+* busca parcial;
+* busca sem diferenciar maiúsculas e acentos;
+* seleção múltipla;
+* botão “Selecionar todos os resultados”;
+* botão “Limpar seleção”;
+* quantidade selecionada;
+* filtros por propriedade;
+* filtros por unidade;
+* filtros por local;
+* filtros por estoque atual;
+* filtros por status de risco.
+
+Filtros de produto:
+
+* Todos os produtos impactados;
+* Apenas produtos com movimentação;
+* Apenas produtos solicitados;
+* Apenas produtos em evento;
+* Apenas produtos em falta;
+* Apenas produtos abaixo do mínimo;
+* Apenas produtos com saldo zerado;
+* Apenas produtos com entrada ou saída no período;
+* Produtos próprios;
+* Produtos alugados;
+* Produtos de terceiros.
+
+A lista deve mostrar:
+
+* produto;
+* SKU;
+* estoque atual;
+* mínimo;
+* quantidade prevista de saída;
+* quantidade prevista de entrada;
+* pior saldo projetado;
+* status.
+
+# 15. DADOS INCOMPLETOS
+
+Criar uma seção chamada:
+
+## Tratamento de dados incompletos
+
+Permitir configurar o que fazer com:
+
+* requisição sem data;
+* viagem sem saída;
+* viagem sem retorno;
+* movimentação sem horário;
+* produto sem estoque inicial;
+* produto sem estoque mínimo;
+* operação vinculada a vários eventos;
+* ordem duplicada com movimentação.
+
+Opções:
+
+* Ignorar;
+* Exibir como aviso;
+* Bloquear aplicação dos filtros;
+* Utilizar data estimada;
+* Definir manualmente.
+
+Nunca corrigir ou presumir silenciosamente.
+
+# 16. CENÁRIOS DE SIMULAÇÃO
+
+Adicionar seção “Cenário”.
+
+Opções:
+
+* Operação confirmada;
+* Cenário conservador;
+* Cenário máximo;
+* Cenário personalizado.
+
+## Operação confirmada
+
+Considerar somente:
+
+* requisições aprovadas;
+* movimentações confirmadas;
+* viagens válidas;
+* ordens ativas.
+
+## Cenário conservador
+
+Considerar também:
+
+* requisições aguardando aprovação;
+* viagens ainda planejadas;
+* retorno na última data possível.
+
+## Cenário máximo
+
+Considerar todas as demandas não canceladas.
+
+## Personalizado
+
+Respeitar exatamente as seleções feitas pelo usuário.
+
+Mostrar claramente qual cenário está ativo.
+
+# 17. AJUSTE MANUAL PARA SIMULAÇÃO
+
+Permitir criar ajustes temporários que não alterem o estoque real.
+
+Exemplos:
+
+* entrada prevista de 100 unidades;
+* compra emergencial;
+* locação adicional;
+* antecipação de retorno;
+* atraso de retorno;
+* perda ou avaria;
+* transferência entre estoques.
+
+Campos:
+
+* produto;
+* quantidade;
+* entrada ou saída;
+* data;
+* horário;
+* observação.
+
+Mostrar badge:
+
+`Ajuste apenas nesta simulação`
+
+# 18. RESUMO FIXO DA SELEÇÃO
+
+Antes do rodapé, manter um resumo fixo:
+
+* período;
+* granularidade;
+* cenário;
+* eventos incluídos;
+* viagens incluídas;
+* requisições incluídas;
+* ordens incluídas;
+* movimentações incluídas;
+* produtos analisados;
+* fontes desativadas;
+* avisos;
+* erros.
+
+Exemplo:
+
+`1 evento • 3 viagens • 4 requisições • 2 ordens • 89 produtos`
+
+Se houver dados problemáticos:
+
+`3 origens serão ignoradas por falta de data`
+
+# 19. RODAPÉ
+
+Rodapé fixo com:
+
+* Limpar filtros;
+* Salvar como cenário;
+* Cancelar;
+* Aplicar e recalcular.
+
+Texto do botão principal:
+
+`Aplicar e recalcular`
+
+Não utilizar somente “Aplicar filtros”, pois a ação também refaz a projeção.
+
+Exibir abaixo:
+
+`A projeção será recalculada automaticamente com as seleções acima.`
+
+Desabilitar o botão quando houver erro impeditivo.
+
+# 20. FILTROS SALVOS
+
+Permitir salvar configurações frequentes.
+
+Exemplos:
+
+* Próxima semana — todos os eventos;
+* Apenas operações confirmadas;
+* Cenário conservador;
+* Retornos ao CD;
+* Eventos de São Paulo;
+* Produtos em risco.
+
+Permitir:
+
+* salvar;
+* renomear;
+* aplicar;
+* definir como padrão;
+* excluir.
+
+# 21. EXPERIÊNCIA VISUAL
+
+Não utilizar listas muito estreitas.
+
+Não cortar nomes de eventos, viagens ou requisições.
+
+Permitir até duas linhas e tooltip com o nome completo.
+
+Não criar rolagem horizontal.
+
+Evitar mais de uma rolagem vertical por área.
+
+Usar:
+
+* seções expansíveis;
+* hierarquia clara;
+* checkboxes com estado intermediário;
+* contadores;
+* badges de situação;
+* tooltips;
+* divisores leves;
+* cabeçalho e rodapé fixos.
+
+# 22. CRITÉRIOS DE ACEITE
+
+A reformulação só estará concluída quando:
+
+1. o drawer for maior e confortável no desktop;
+2. o usuário puder escolher eventos individualmente;
+3. cada evento puder ser expandido;
+4. viagens puderem ser marcadas e desmarcadas individualmente;
+5. requisições puderem ser marcadas e desmarcadas individualmente;
+6. itens de cada requisição puderem ser visualizados;
+7. produtos puderem ser selecionados individualmente;
+8. data e horário puderem ser configurados;
+9. a granularidade por hora, turno, dia ou semana estiver disponível;
+10. o usuário puder escolher o marco de saída e retorno do estoque;
+11. fontes duplicadas não forem somadas duas vezes;
+12. dados incompletos forem informados claramente;
+13. ajustes temporários puderem ser simulados;
+14. o resumo da seleção estiver sempre visível;
+15. o sistema mostrar quantos registros serão incluídos e ignorados;
+16. o botão principal recalcular a projeção automaticamente;
+17. nomes importantes não forem cortados;
+18. o drawer não tiver várias rolagens internas confusas;
+19. o funcionamento for responsivo;
+20. nenhuma alteração temporária da simulação modificar o estoque real.
