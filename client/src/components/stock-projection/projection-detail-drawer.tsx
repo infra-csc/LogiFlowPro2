@@ -323,7 +323,7 @@ function InEventSection({ product, cms }: { product: ProjectionProduct; cms: Con
   const events = Array.from(eventMap.values());
 
   return (
-    <Section title="Em evento" count={events.length} icon={MapPin} defaultOpen={events.length > 0}>
+    <Section title="Em evento" count={events.length} icon={MapPin} defaultOpen={false}>
       <div className="space-y-2">
         <div className="text-xs text-muted-foreground">
           Total fora do CD: <span className="font-semibold text-foreground">{totalInEvent} un.</span>
@@ -811,7 +811,7 @@ function ProductBody({ product, onGoToProduct, cms }: {
         title="Saídas"
         count={outDrivers.length}
         icon={ArrowUpRight}
-        defaultOpen={outDrivers.length > 0}
+        defaultOpen={false}
         badge={outDrivers.length === 0 ? undefined : (
           <span className="text-xs font-normal text-muted-foreground ml-1">
             {totalOutboundUnits || product.totalOutbound} un. em {outDrivers.length} operação{outDrivers.length !== 1 ? "ões" : ""}
