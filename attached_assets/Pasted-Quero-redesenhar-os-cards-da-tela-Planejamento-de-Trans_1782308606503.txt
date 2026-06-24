@@ -1,0 +1,497 @@
+Quero redesenhar os cards da tela **Planejamento de Transporte** para que apresentem as informações operacionais mais importantes de cada plano de viagens.
+
+Atualmente, os cards mostram apenas veículo, motorista, carregamento e descarregamento de forma genérica. Isso não representa corretamente o fluxo completo de ida e volta do veículo.
+
+Não alterar os dados cadastrados, regras, permissões ou integrações existentes. Apenas reorganizar a apresentação e utilizar os novos campos de ida e retorno quando estiverem disponíveis.
+
+# OBJETIVO DO CARD
+
+O administrador deve conseguir responder rapidamente, sem abrir o plano:
+
+* Qual é o evento?
+* Qual veículo será utilizado?
+* Quem é o motorista?
+* De qual doca ele sai?
+* Quando começa e termina o carregamento no CD?
+* Quando o veículo sai do CD?
+* Quando chega ao evento?
+* Quando ocorre a descarga no evento?
+* Quando começa o carregamento da desmontagem?
+* Quando o veículo sai do evento?
+* Quando chega ao CD?
+* Quando ocorre a descarga no CD?
+* Em qual etapa operacional o plano está?
+* Existem pendências ou conflitos?
+
+# 1. CABEÇALHO DO CARD
+
+Organizar o topo do card da seguinte forma:
+
+## Linha principal
+
+À esquerda:
+
+* badge do status;
+* nome curto do plano;
+* identificação do veículo ou número da carreta.
+
+À direita:
+
+* menu de ações;
+* botão “Ver detalhes”;
+* botão de edição apenas para usuários autorizados.
+
+Exemplo:
+
+`Planejado | Carreta 2 — Desafio Energia Petrobras`
+
+Não repetir o nome completo do evento duas vezes.
+
+## Linha secundária
+
+Mostrar:
+
+* nome completo do evento;
+* data principal do evento;
+* cidade ou local;
+* cliente, quando disponível.
+
+O nome do evento não pode ser cortado sem possibilidade de visualização.
+
+Permitir quebra em até duas linhas ou exibir tooltip com o nome completo.
+
+# 2. RESUMO OPERACIONAL PRINCIPAL
+
+Logo abaixo do cabeçalho, mostrar quatro informações prioritárias:
+
+* Veículo;
+* Motorista;
+* Doca de saída;
+* Doca de retorno.
+
+Exemplo:
+
+| Veículo            | Motorista    | Saída  | Retorno |
+| ------------------ | ------------ | ------ | ------- |
+| Carreta • ABC-1234 | Paulo Dantas | Doca 7 | Doca 6  |
+
+Quando um dado não estiver preenchido, exibir:
+
+`Não informado`
+
+Não utilizar apenas “—”, pois isso pode parecer erro de carregamento.
+
+# 3. DIVIDIR O CARD ENTRE IDA E VOLTA
+
+Criar dois blocos internos claramente identificados:
+
+## IDA — CD → EVENTO
+
+Mostrar:
+
+* carregamento no CD: início e término;
+* saída do CD;
+* chegada prevista ao evento;
+* descarga no evento: início e término;
+* rota resumida;
+* número de paradas intermediárias.
+
+Exemplo:
+
+`18/06 • Carregamento 09:30–16:30`
+
+`Saída do CD: 18/06 às 17:00`
+
+`Chegada ao evento: 18/06 às 21:00`
+
+`Descarga no evento: 18/06 21:30–23:00`
+
+## VOLTA — EVENTO → CD
+
+Mostrar:
+
+* carregamento no evento durante a desmontagem;
+* saída do evento;
+* chegada prevista ao CD;
+* descarga no CD: início e término.
+
+Exemplo:
+
+`19/06 • Carregamento da desmontagem 18:00–21:00`
+
+`Saída do evento: 19/06 às 21:30`
+
+`Chegada ao CD: 20/06 às 01:30`
+
+`Descarga no CD: 20/06 08:00–10:00`
+
+Não utilizar apenas os títulos genéricos:
+
+* Carregamento;
+* Descarregamento.
+
+Sempre informar onde a atividade acontece:
+
+* Carregamento no CD;
+* Descarga no evento;
+* Carregamento no evento;
+* Descarga no CD.
+
+# 4. LINHA DO TEMPO COMPACTA
+
+Apresentar uma linha do tempo visual entre os blocos de ida e volta:
+
+`CD → Carregamento → Saída → Evento → Desmontagem → Retorno → CD`
+
+Cada etapa deve ter um pequeno indicador de status:
+
+* concluída;
+* em andamento;
+* planejada;
+* atrasada;
+* pendente.
+
+Não colorir o card inteiro.
+
+Utilizar cores somente em:
+
+* ícones;
+* badges;
+* bordas pequenas;
+* indicadores da linha do tempo.
+
+# 5. ETAPA ATUAL DO PLANO
+
+Além do status geral, exibir a etapa operacional atual.
+
+Exemplos:
+
+* Aguardando carregamento no CD;
+* Carregamento no CD em andamento;
+* Em trânsito para o evento;
+* Aguardando descarga no evento;
+* Materiais no evento;
+* Carregamento da desmontagem;
+* Em retorno ao CD;
+* Aguardando descarga no CD;
+* Concluído.
+
+O status “Planejado” sozinho não informa ao administrador o que está acontecendo.
+
+Exemplo visual:
+
+`Etapa atual: Aguardando carregamento no CD`
+
+# 6. INFORMAÇÕES DE MATERIAIS
+
+Adicionar um resumo compacto dos materiais relacionados ao plano:
+
+* quantidade de requisições vinculadas;
+* quantidade de produtos distintos;
+* total de unidades previstas;
+* total já carregado;
+* total pendente;
+* quantidade de movimentações vinculadas.
+
+Exemplo:
+
+`3 requisições • 18 produtos • 240 unidades`
+
+Quando houver carregamento iniciado:
+
+`180 de 240 unidades carregadas • 60 pendentes`
+
+Não listar todos os produtos diretamente no card principal.
+
+Adicionar ação:
+
+`Ver materiais`
+
+Ao clicar, abrir drawer ou expansão com:
+
+* produto;
+* SKU;
+* quantidade prevista;
+* quantidade carregada;
+* pendência;
+* origem da quantidade.
+
+# 7. PENDÊNCIAS E ALERTAS
+
+Mostrar alertas somente quando existirem.
+
+Exemplos:
+
+* motorista não informado;
+* placa não informada;
+* doca não definida;
+* chegada ao evento não informada;
+* retorno ao CD não planejado;
+* descarga no CD sem horário;
+* conflito de veículo;
+* conflito de motorista;
+* conflito de doca;
+* materiais ainda pendentes;
+* plano com datas fora da ordem cronológica.
+
+Exemplo:
+
+`2 pendências`
+
+Ao clicar, mostrar exatamente quais são.
+
+Não ocupar espaço do card com mensagens de normalidade quando não houver problema.
+
+# 8. ROTA
+
+Substituir a apresentação atual:
+
+`Doca 7 → Ibirapuera +1 destino`
+
+por uma rota mais clara:
+
+`Doca 7 → Parada intermediária → Ibirapuera → Doca 6`
+
+Se não houver espaço, apresentar:
+
+`Doca 7 → 1 parada → Ibirapuera → Doca 6`
+
+Mostrar tooltip ou expansão com todos os destinos.
+
+# 9. DESIGN COMPACTO
+
+O card não deve ficar excessivamente alto.
+
+Estrutura sugerida:
+
+1. cabeçalho;
+2. dados de transporte;
+3. ida e volta lado a lado;
+4. materiais e alertas;
+5. ações.
+
+No desktop:
+
+* bloco de ida à esquerda;
+* bloco de volta à direita.
+
+No mobile:
+
+* ida acima;
+* volta abaixo.
+
+Utilizar divisores leves e boa hierarquia tipográfica.
+
+# 10. VISUALIZAÇÃO COMPACTA E DETALHADA
+
+Adicionar opção de densidade:
+
+* Compacta;
+* Detalhada.
+
+## Compacta
+
+Mostrar:
+
+* status;
+* etapa atual;
+* evento;
+* veículo;
+* motorista;
+* próxima atividade;
+* horário;
+* alertas.
+
+## Detalhada
+
+Mostrar todos os dados de ida, volta, rota e materiais.
+
+Manter a preferência do usuário durante a sessão.
+
+# 11. PRÓXIMA ATIVIDADE
+
+Destacar a próxima atividade do plano.
+
+Exemplos:
+
+`Próxima atividade: carregamento no CD em 2h`
+
+`Próxima atividade: saída para o evento amanhã às 07:00`
+
+`Próxima atividade: descarga no CD em 20/06 às 08:00`
+
+Se houver atraso:
+
+`Carregamento atrasado há 45 minutos`
+
+Esse deve ser um dos elementos com maior destaque no card.
+
+# 12. ORDENAÇÃO DA LISTA
+
+Permitir ordenar por:
+
+* próxima atividade;
+* data de saída;
+* data de chegada ao evento;
+* data de retorno;
+* evento;
+* veículo;
+* motorista;
+* status;
+* quantidade de pendências;
+* planos com conflito primeiro.
+
+A ordenação padrão deve ser:
+
+`Próxima atividade mais próxima`
+
+# 13. FILTROS
+
+Expandir os filtros da tela para incluir:
+
+* período;
+* evento;
+* cliente;
+* cidade;
+* veículo;
+* motorista;
+* doca;
+* status;
+* etapa atual;
+* ida ou retorno;
+* com pendências;
+* com conflitos;
+* com materiais pendentes.
+
+Exibir os filtros aplicados como chips removíveis.
+
+# 14. CARDS DE RESUMO DO TOPO
+
+Revisar os indicadores atuais.
+
+Substituir ou complementar:
+
+* Total;
+* Agendadas;
+* Em andamento;
+* Concluídas.
+
+Utilizar:
+
+* Planos ativos;
+* Saídas hoje;
+* Retornos hoje;
+* Em trânsito;
+* Aguardando carregamento;
+* Aguardando descarga;
+* Com pendências;
+* Com conflito.
+
+Os cards devem ser clicáveis e filtrar a listagem.
+
+# 15. AÇÕES DO CARD
+
+Disponibilizar:
+
+* Ver plano;
+* Editar;
+* Duplicar;
+* Abrir evento;
+* Abrir movimentação;
+* Ver materiais;
+* Ver no calendário;
+* Cancelar plano, conforme permissão.
+
+Não deixar apenas um texto “Editar” isolado no canto.
+
+Utilizar menu de ações ou botões com área clicável adequada.
+
+# 16. EXEMPLO DE CARD
+
+Estrutura visual esperada:
+
+`[Planejado] Carreta 2 — Desafio Energia Petrobras`
+
+`Desafio Energia Petrobras — Bike — São Paulo 2026`
+
+`Etapa atual: Aguardando carregamento no CD`
+
+`Próxima atividade: Carregamento no CD • 18/06 às 09:30`
+
+Transporte:
+
+`Carreta • ABC-1234 | Paulo Dantas | Doca 7 → Doca 6`
+
+IDA — CD → EVENTO
+
+`Carregamento: 18/06 09:30–16:30`
+
+`Saída: 18/06 17:00`
+
+`Chegada: 18/06 21:00`
+
+`Descarga: 18/06 21:30–23:00`
+
+VOLTA — EVENTO → CD
+
+`Carregamento da desmontagem: 19/06 18:00–21:00`
+
+`Saída: 19/06 21:30`
+
+`Chegada ao CD: 20/06 01:30`
+
+`Descarga no CD: 20/06 08:00–10:00`
+
+Materiais:
+
+`3 requisições • 18 produtos • 240 unidades`
+
+Alertas:
+
+`1 pendência: placa não informada`
+
+# 17. DADOS AUSENTES
+
+Quando ainda não existir informação de volta, não esconder silenciosamente.
+
+Exibir:
+
+`Retorno ainda não planejado`
+
+Adicionar ação:
+
+`Planejar retorno`
+
+Quando a descarga no CD não estiver definida:
+
+`Descarga no CD ainda não programada`
+
+# 18. REGRA PARA PLANOS ANTIGOS
+
+Para planos antigos que possuem somente os campos genéricos atuais:
+
+* mapear carregamento existente como carregamento no CD;
+* mapear descarregamento existente como descarga no evento;
+* não inventar datas de retorno;
+* mostrar “Retorno ainda não planejado”;
+* permitir completar os dados posteriormente.
+
+# 19. CRITÉRIOS DE ACEITE
+
+Considerar a tela concluída somente quando:
+
+1. o nome completo do evento puder ser visualizado;
+2. ida e volta estiverem claramente separadas;
+3. os termos carregamento e descarregamento indicarem o local;
+4. a próxima atividade estiver destacada;
+5. a etapa operacional atual estiver visível;
+6. veículo, motorista, placa e docas estiverem disponíveis no resumo;
+7. materiais previstos, carregados e pendentes estiverem resumidos;
+8. alertas e conflitos estiverem visíveis;
+9. os cards puderem ser exibidos nos modos compacto e detalhado;
+10. a lista puder ser ordenada pela próxima atividade;
+11. o card não tiver rolagem horizontal;
+12. nenhum texto importante estiver cortado;
+13. o layout funcionar em desktop, tablet e celular;
+14. os cards permitirem abrir evento, materiais, calendário e movimentações;
+15. nenhuma regra ou dado existente for removido.
