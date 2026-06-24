@@ -543,7 +543,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
 
   // Unique kit IDs — used to fetch one BOM per kit (not one per request item)
   const uniqueKitIds = useMemo(
-    () => [...new Set(kitRequestItems.map((k) => k.kitId))],
+    () => Array.from(new Set(kitRequestItems.map((k) => k.kitId))),
     [kitRequestItems],
   );
 

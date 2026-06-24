@@ -2,7 +2,7 @@ import { Express, Request, Response } from "express";
 import { db } from "./db";
 import { requireAuth } from "./ownership";
 import { requireAdmin } from "./authz";
-import { eq, asc, ilike, sql } from "drizzle-orm";
+import { eq, asc, ilike, sql, count, getTableColumns } from "drizzle-orm";
 import {
   requestAreaTemplates,
   requestAreaTemplateItems,
@@ -17,18 +17,15 @@ export function registerRequestTemplateRoutes(app: Express) {
     try {
       const templates = await db
         .select({
-          id: requestAreaTemplates.id,
-          name: requestAreaTemplates.name,
-          area: requestAreaTemplates.area,
-          description: requestAreaTemplates.description,
-          isActive: requestAreaTemplates.isActive,
-          internalNotes: requestAreaTemplates.internalNotes,
-          createdBy: requestAreaTemplates.createdBy,
-          createdAt: requestAreaTemplates.createdAt,
-          updatedAt: requestAreaTemplates.updatedAt,
-          itemCount: sql<number>`(SELECT COUNT(*) FROM request_area_template_items WHERE template_id = ${requestAreaTemplates.id})::int`,
+          ...getTableColumns(requestAreaTemplates),
+          itemCount: count(requestAreaTemplateItems.id),
         })
         .from(requestAreaTemplates)
+        .leftJoin(
+          requestAreaTemplateItems,
+          eq(requestAreaTemplateItems.templateId, requestAreaTemplates.id)
+        )
+        .groupBy(requestAreaTemplates.id)
         .orderBy(asc(requestAreaTemplates.name));
       res.json(templates);
     } catch {
