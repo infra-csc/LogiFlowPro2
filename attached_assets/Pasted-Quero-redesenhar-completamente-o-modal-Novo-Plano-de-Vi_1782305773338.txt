@@ -1,0 +1,784 @@
+Quero redesenhar completamente o modal **“Novo Plano de Viagens”**, reorganizando sua lógica operacional e melhorando a experiência de preenchimento.
+
+Atualmente, carregamento, destinos, saída e descarregamento estão misturados em um único fluxo, o que dificulta entender quais informações pertencem à ida e quais pertencem ao retorno.
+
+O plano deve ser estruturado claramente em dois trajetos:
+
+1. **Ida — CD para o Evento**
+2. **Volta — Evento para o CD**
+
+Não remover funcionalidades existentes, não quebrar integrações e não excluir dados já cadastrados. Adaptar o modelo atual preservando banco, vínculos, regras e permissões sempre que possível.
+
+---
+
+# 1. NOVA ESTRUTURA DO MODAL
+
+Transformar o modal em um fluxo dividido em quatro etapas:
+
+1. Identificação e transporte
+2. Ida — CD → Evento
+3. Volta — Evento → CD
+4. Revisão
+
+Exibir um stepper no topo:
+
+`Identificação → Ida ao evento → Retorno ao CD → Revisão`
+
+O usuário deve poder avançar e voltar entre as etapas sem perder os dados preenchidos.
+
+No rodapé fixo, mostrar:
+
+* Voltar;
+* Continuar;
+* Cancelar;
+* Criar Plano de Viagens, somente na última etapa.
+
+Não deixar o botão principal escondido durante a rolagem.
+
+---
+
+# 2. TAMANHO E COMPORTAMENTO DO MODAL
+
+No desktop:
+
+* largura entre 1100px e 1280px;
+* largura máxima de 94vw;
+* altura máxima de 90vh;
+* cabeçalho fixo;
+* rodapé fixo;
+* somente uma rolagem vertical no conteúdo;
+* nenhuma rolagem horizontal;
+* nenhum campo cortado;
+* dropdowns devem abrir completamente.
+
+Evitar o modal excessivamente comprido atual.
+
+Nas etapas de ida e volta, utilizar cards e grupos compactos, com campos de data e hora separados.
+
+---
+
+# 3. ETAPA 1 — IDENTIFICAÇÃO E TRANSPORTE
+
+## Identificação
+
+Campos:
+
+* Descrição do plano;
+* Evento;
+* Tipo de veículo;
+* Motorista;
+* Placa;
+* Doca de origem;
+* Observações gerais.
+
+## Descrição do plano
+
+Sugerir automaticamente uma descrição curta:
+
+`Carreta 1 — Desafio Energia Petrobras — São Paulo 2026`
+
+Evitar nomes repetidos ou excessivamente longos.
+
+A descrição deve continuar editável.
+
+## Evento
+
+O evento é obrigatório.
+
+O seletor deve permitir pesquisa por:
+
+* nome;
+* cliente;
+* local;
+* data.
+
+Após selecionar o evento, mostrar um card resumido com:
+
+* nome completo;
+* cliente;
+* local;
+* montagem;
+* data do evento;
+* desmontagem.
+
+Utilizar somente os dados já disponíveis.
+
+## Transporte
+
+Organizar em uma única linha ou grade:
+
+* Tipo de veículo;
+* Motorista;
+* Placa;
+* Doca.
+
+Se a placa estiver vinculada ao veículo, preencher automaticamente.
+
+Se o motorista estiver vinculado ao veículo, sugerir automaticamente, mas permitir alteração quando a regra atual permitir.
+
+---
+
+# 4. USO DO MESMO TRANSPORTE NA VOLTA
+
+Adicionar a opção:
+
+`Usar o mesmo veículo, motorista e doca no retorno`
+
+Deixar marcada por padrão.
+
+Quando marcada:
+
+* reutilizar veículo;
+* reutilizar motorista;
+* reutilizar placa;
+* sugerir a doca de retorno.
+
+Quando desmarcada, permitir informar separadamente para a volta:
+
+* tipo de veículo;
+* veículo;
+* motorista;
+* placa;
+* doca de retorno.
+
+Não duplicar campos desnecessariamente enquanto a opção estiver marcada.
+
+---
+
+# 5. ETAPA 2 — IDA: CD → EVENTO
+
+Criar uma seção visual destacada:
+
+## Ida — CD para o Evento
+
+Subtítulo:
+
+`Planejamento da retirada dos materiais no CD, saída do veículo, chegada e descarga no evento.`
+
+Apresentar uma linha do tempo:
+
+`Carregamento no CD → Saída do CD → Chegada ao evento → Descarga no evento`
+
+---
+
+# 6. CARREGAMENTO NO CD
+
+Campos:
+
+* Local de carregamento;
+* Doca de carregamento;
+* Data de início do carregamento;
+* Hora de início do carregamento;
+* Data de término do carregamento;
+* Hora de término do carregamento.
+
+Não utilizar um único campo datetime difícil de preencher.
+
+Utilizar:
+
+* campo de data;
+* campo de hora;
+* seletor de calendário;
+* seletor de horário;
+* suporte a digitação;
+* máscara brasileira.
+
+Exemplo visual:
+
+| Início do carregamento | Término do carregamento |
+| ---------------------- | ----------------------- |
+| Data + hora            | Data + hora             |
+
+O local de carregamento pode vir preenchido como o CD ou armazém padrão, quando disponível.
+
+---
+
+# 7. SAÍDA DO CD
+
+Campos:
+
+* Data da saída do veículo;
+* Hora da saída do veículo.
+
+Mostrar uma indicação:
+
+`Saída prevista após o término do carregamento.`
+
+Sugerir inicialmente a saída alguns minutos após o fim do carregamento, mas permitir alteração.
+
+Não salvar automaticamente a sugestão sem o usuário visualizar.
+
+---
+
+# 8. CHEGADA AO EVENTO
+
+Campos:
+
+* Data prevista de chegada do veículo;
+* Hora prevista de chegada do veículo;
+* Local de chegada;
+* Observação de acesso, quando necessário.
+
+O local de chegada deve ser preenchido com o endereço ou local do evento, quando disponível.
+
+Permitir edição, pois a entrada operacional pode ser diferente do endereço geral do evento.
+
+---
+
+# 9. DESCARGA NO EVENTO
+
+Campos:
+
+* Data de início da descarga no evento;
+* Hora de início;
+* Data de término da descarga;
+* Hora de término;
+* Local ou ponto de descarga;
+* Observação da descarga.
+
+Apresentar claramente:
+
+`A descarga no evento acontece após a chegada do veículo.`
+
+Não chamar esse bloco apenas de “Descarregamento”, pois deve ficar evidente que se trata da **descarga da ida no evento**.
+
+---
+
+# 10. MÚLTIPLOS DESTINOS
+
+Preservar a funcionalidade de múltiplos destinos, mas reorganizá-la.
+
+Caso a viagem possua apenas um destino:
+
+* utilizar o local do evento como destino principal;
+* não exigir que o usuário cadastre novamente o mesmo local.
+
+Adicionar botão:
+
+`Adicionar parada intermediária`
+
+Cada parada deve permitir:
+
+* nome/local;
+* endereço;
+* ordem da parada;
+* chegada prevista;
+* saída prevista;
+* observação.
+
+Não utilizar “Incluir destino” como etapa obrigatória quando o próprio evento já é o destino.
+
+Exibir a rota:
+
+`CD → Parada 1 → Parada 2 → Evento`
+
+---
+
+# 11. ETAPA 3 — VOLTA: EVENTO → CD
+
+Criar uma segunda seção visual claramente diferente:
+
+## Volta — Evento para o CD
+
+Subtítulo:
+
+`Planejamento do carregamento durante a desmontagem, retorno do veículo e descarga dos materiais no CD.`
+
+Apresentar uma linha do tempo:
+
+`Carregamento no evento → Saída do evento → Chegada ao CD → Descarga no CD`
+
+A volta não deve ser tratada apenas como uma “data de retorno”. Ela é uma operação completa.
+
+---
+
+# 12. CARREGAMENTO NO EVENTO — DESMONTAGEM
+
+Criar o bloco:
+
+## Carregamento no Evento — Desmontagem
+
+Campos:
+
+* Local do carregamento no evento;
+* Data de início do carregamento;
+* Hora de início;
+* Data de término do carregamento;
+* Hora de término;
+* Observações da desmontagem/carregamento.
+
+O local deve vir preenchido com o local do evento.
+
+As datas podem ser sugeridas com base na desmontagem cadastrada no evento.
+
+Mostrar texto de apoio:
+
+`Período em que os materiais serão recolhidos e carregados no veículo após o evento.`
+
+Não utilizar o termo “carregamento” sozinho, pois isso pode ser confundido com o carregamento de ida no CD.
+
+---
+
+# 13. SAÍDA DO EVENTO
+
+Campos:
+
+* Data de saída do veículo do evento;
+* Hora de saída do veículo.
+
+A saída deve ocorrer após o término do carregamento da desmontagem.
+
+Sugerir o horário de saída com base no término do carregamento, permitindo alteração.
+
+---
+
+# 14. CHEGADA DO VEÍCULO AO CD
+
+Criar o bloco:
+
+## Chegada ao CD
+
+Campos:
+
+* Data prevista de chegada do veículo ao CD;
+* Hora prevista de chegada;
+* CD ou local de retorno;
+* Doca de retorno.
+
+Este campo representa a chegada física do veículo ao centro de distribuição.
+
+Não confundir com o início da descarga.
+
+A chegada ao CD pode ocorrer antes do início da descarga, principalmente quando o veículo chega fora do horário operacional.
+
+---
+
+# 15. DESCARGA NO CD — RETORNO
+
+Criar o bloco:
+
+## Descarga no CD — Retorno
+
+Campos obrigatórios ou opcionais conforme a regra atual:
+
+* Data de início da descarga no CD;
+* Hora de início;
+* Data de término da descarga no CD;
+* Hora de término;
+* Doca de descarga;
+* Responsável pelo recebimento, caso esse dado já exista;
+* Observações da descarga.
+
+Mostrar texto de apoio:
+
+`Período em que os materiais retornados serão retirados do veículo e recebidos no estoque.`
+
+Deve existir diferença clara entre:
+
+* chegada do veículo ao CD;
+* início da descarga;
+* término da descarga.
+
+---
+
+# 16. DATAS E HORAS SEPARADAS
+
+Substituir os campos atuais no formato:
+
+`dd/mm/aaaa --:--`
+
+por componentes separados e mais fáceis de usar.
+
+Exemplo:
+
+* Data: `18/06/2026`
+* Hora: `10:00`
+
+Regras:
+
+* calendário ao clicar no campo de data;
+* seletor de hora;
+* entrada manual permitida;
+* máscara automática;
+* atalhos de horário;
+* não apagar a data ao alterar apenas a hora;
+* navegação por teclado;
+* exibir claramente o fuso horário utilizado.
+
+Em telas maiores, data e hora podem aparecer lado a lado.
+
+Em telas menores, devem ficar empilhadas.
+
+---
+
+# 17. ATALHOS DE PREENCHIMENTO
+
+Adicionar atalhos contextuais:
+
+* Usar data da montagem;
+* Usar data do evento;
+* Usar data da desmontagem;
+* Iniciar 1 hora antes;
+* Saída após carregamento;
+* Chegada após saída;
+* Copiar dados da ida;
+* Usar mesmo local do evento;
+* Usar CD padrão.
+
+Esses atalhos devem apenas preencher os campos e permitir revisão.
+
+---
+
+# 18. VALIDAÇÃO CRONOLÓGICA DA IDA
+
+Validar a sequência:
+
+1. início do carregamento no CD;
+2. fim do carregamento no CD;
+3. saída do CD;
+4. chegada ao evento;
+5. início da descarga no evento;
+6. fim da descarga no evento.
+
+Não permitir:
+
+* fim anterior ao início;
+* saída anterior ao término do carregamento;
+* chegada anterior à saída;
+* descarga anterior à chegada;
+* término da descarga anterior ao início.
+
+Mostrar o erro diretamente abaixo do campo envolvido.
+
+Exemplo:
+
+`A saída do veículo não pode ocorrer antes do término do carregamento.`
+
+---
+
+# 19. VALIDAÇÃO CRONOLÓGICA DA VOLTA
+
+Validar a sequência:
+
+1. início do carregamento da desmontagem;
+2. fim do carregamento da desmontagem;
+3. saída do evento;
+4. chegada ao CD;
+5. início da descarga no CD;
+6. fim da descarga no CD.
+
+Também validar que o retorno não começa antes da operação de ida ter terminado.
+
+Exemplo:
+
+`O carregamento de retorno não pode começar antes do término da descarga no evento.`
+
+Permitir exceções apenas se houver uma justificativa operacional e se a regra atual autorizar.
+
+---
+
+# 20. AVISOS DE INCONSISTÊNCIA
+
+Mostrar avisos quando:
+
+* o carregamento da ida estiver fora do período de montagem;
+* a chegada ao evento ocorrer após o início do evento;
+* o carregamento da volta começar antes da desmontagem;
+* a saída do evento ocorrer antes do fim do carregamento;
+* a chegada ao CD não tiver descarga programada;
+* houver sobreposição de horários para o mesmo veículo;
+* houver sobreposição de horários para o mesmo motorista;
+* a doca estiver ocupada no horário informado, caso exista controle de disponibilidade.
+
+Não bloquear todos os avisos automaticamente. Diferenciar:
+
+* erro impeditivo;
+* alerta operacional;
+* informação.
+
+---
+
+# 21. ETAPA 4 — REVISÃO DO PLANO
+
+Criar uma revisão final visual em formato de linha do tempo.
+
+## Identificação
+
+* descrição;
+* evento;
+* veículo;
+* motorista;
+* placa;
+* doca.
+
+## Ida — CD → Evento
+
+Exibir:
+
+* carregamento no CD;
+* saída do CD;
+* chegada ao evento;
+* descarga no evento;
+* duração total estimada.
+
+## Volta — Evento → CD
+
+Exibir:
+
+* carregamento da desmontagem;
+* saída do evento;
+* chegada ao CD;
+* descarga no CD;
+* duração total estimada.
+
+## Rota
+
+Exibir:
+
+`CD → paradas → evento → CD`
+
+Mostrar alertas e campos pendentes antes da criação.
+
+---
+
+# 22. RESUMO FIXO DO PLANO
+
+Durante o preenchimento, manter um resumo lateral ou superior compacto.
+
+Mostrar:
+
+* evento;
+* veículo;
+* motorista;
+* doca;
+* saída para o evento;
+* chegada ao evento;
+* saída de retorno;
+* chegada ao CD;
+* quantidade de destinos;
+* avisos encontrados.
+
+Não mostrar apenas:
+
+* veículo;
+* motorista;
+* doca;
+* status.
+
+O resumo deve ajudar a verificar a operação completa.
+
+---
+
+# 23. STATUS
+
+Na criação, não é necessário perguntar o status ao usuário.
+
+Criar o plano automaticamente como:
+
+`Planejado`
+
+Remover o campo editável “Status” do modal de criação.
+
+O status poderá ser alterado posteriormente conforme o andamento operacional.
+
+Isso reduz campos desnecessários e evita que um plano novo seja criado com status incorreto.
+
+---
+
+# 24. OBSERVAÇÕES
+
+Separar:
+
+## Observações gerais
+
+Informações sobre toda a viagem.
+
+## Observações da ida
+
+Informações sobre:
+
+* carregamento no CD;
+* acesso ao evento;
+* descarga no evento.
+
+## Observações da volta
+
+Informações sobre:
+
+* desmontagem;
+* carregamento no evento;
+* chegada ao CD;
+* descarga no CD.
+
+Não obrigar o preenchimento.
+
+---
+
+# 25. CAMPOS OBRIGATÓRIOS
+
+Inicialmente, considerar obrigatórios:
+
+* evento;
+* tipo de veículo;
+* descrição do plano;
+* data e hora de saída da ida;
+* data e hora de chegada ao evento;
+* data e hora de saída do retorno;
+* data e hora de chegada ao CD.
+
+Manter outros campos obrigatórios conforme as regras atuais do sistema.
+
+No rodapé, não mostrar apenas:
+
+`Preencha Evento e Tipo de Veículo.`
+
+Mostrar todos os campos pendentes de forma clara:
+
+`Faltam 3 informações: tipo de veículo, chegada ao evento e chegada ao CD.`
+
+Ao clicar na mensagem, levar o usuário ao primeiro campo pendente.
+
+---
+
+# 26. VISUAL DOS BLOCOS
+
+Diferenciar visualmente os dois trajetos.
+
+## Ida
+
+Usar uma cor de apoio associada à saída, como âmbar discreto.
+
+## Volta
+
+Usar uma cor de apoio associada ao retorno, como verde ou roxo discreto.
+
+Não preencher cards inteiros com cores fortes.
+
+Utilizar:
+
+* ícones;
+* bordas laterais;
+* títulos;
+* linha do tempo;
+* pequenos indicadores.
+
+---
+
+# 27. NOMENCLATURA FINAL
+
+Padronizar os termos em todo o app:
+
+## Ida
+
+* Carregamento no CD;
+* Saída do CD;
+* Chegada ao evento;
+* Descarga no evento.
+
+## Volta
+
+* Carregamento no evento — desmontagem;
+* Saída do evento;
+* Chegada ao CD;
+* Descarga no CD — retorno.
+
+Evitar termos genéricos como:
+
+* Carregamento;
+* Descarregamento;
+* Chegada/volta;
+* Retorno.
+
+Esses termos isolados deixam a operação ambígua.
+
+---
+
+# 28. INTEGRAÇÃO COM CALENDÁRIO E ESTOQUE
+
+Cada etapa deve gerar um marco operacional separado no calendário:
+
+* carregamento no CD;
+* saída para o evento;
+* chegada ao evento;
+* descarga no evento;
+* carregamento da desmontagem;
+* saída do evento;
+* chegada ao CD;
+* descarga no CD.
+
+Aplicar a diferenciação visual já utilizada no calendário para:
+
+* carregamento;
+* saída;
+* chegada;
+* descarga;
+* retorno.
+
+A projeção de estoque deve utilizar:
+
+* a saída efetiva dos materiais no carregamento da ida;
+* os materiais em trânsito;
+* os materiais em evento;
+* o retorno dos materiais somente após a descarga no CD.
+
+A simples chegada do veículo ao CD não deve devolver automaticamente os itens ao estoque disponível, caso a regra operacional considere a descarga ou conferência.
+
+---
+
+# 29. REGRAS PARA O ESTOQUE
+
+A posição dos materiais deve seguir esta sequência:
+
+1. disponível no estoque;
+2. reservado para o evento;
+3. carregado;
+4. em trânsito para o evento;
+5. em evento;
+6. em trânsito de retorno;
+7. aguardando descarga no CD;
+8. disponível novamente após a descarga ou conferência.
+
+Não devolver o material ao saldo disponível apenas com a data de retorno prevista.
+
+Usar a data e hora de término da descarga no CD ou o status operacional correspondente.
+
+---
+
+# 30. CRITÉRIOS DE ACEITE
+
+Considerar a alteração concluída somente quando:
+
+1. ida e volta estiverem claramente separadas;
+2. carregamento da desmontagem estiver na etapa de volta;
+3. existir data e hora de chegada do veículo ao evento;
+4. existir data e hora de chegada do veículo ao CD;
+5. descarga no CD possuir início e término com data e hora;
+6. carregamento no evento possuir início e término com data e hora;
+7. os campos de data e hora forem fáceis de preencher;
+8. a sequência cronológica for validada;
+9. não houver rolagem horizontal;
+10. não existirem campos cortados;
+11. o rodapé permanecer visível;
+12. o resumo mostrar ida e volta;
+13. o status inicial for definido automaticamente como Planejado;
+14. o calendário receber os marcos operacionais corretos;
+15. a projeção de estoque considerar corretamente saída, evento, retorno e descarga;
+16. nenhuma funcionalidade existente for perdida;
+17. o usuário conseguir entender a operação completa sem precisar interpretar campos genéricos.
+
+Testar os cenários:
+
+* ida e volta completas;
+* ida e volta no mesmo dia;
+* retorno no dia seguinte;
+* chegada ao CD antes da abertura da doca;
+* descarga no CD horas após a chegada;
+* veículo diferente na volta;
+* motorista diferente na volta;
+* múltiplas paradas;
+* plano sem paradas intermediárias;
+* conflito de veículo;
+* conflito de motorista;
+* conflito de doca;
+* campos obrigatórios incompletos;
+* datas fora da ordem cronológica.

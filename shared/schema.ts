@@ -503,28 +503,43 @@ export const trips = pgTable("trips", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   description: text("description"),
   eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
-  vehicleId: varchar("vehicle_id").references(() => vehicles.id), // Opcional
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id),
   vehicleTypeId: varchar("vehicle_type_id").notNull().references(() => vehicleTypes.id),
-  driverId: varchar("driver_id").references(() => drivers.id), // Opcional
+  driverId: varchar("driver_id").references(() => drivers.id),
   dockId: varchar("dock_id").references(() => docks.id),
-  
-  // Seção Carregamento
+  vehiclePlate: text("vehicle_plate"),
+
+  // Ida — CD → Evento
   loadingLocation: text("loading_location"),
   loadingStartTime: timestamp("loading_start_time"),
   loadingEndTime: timestamp("loading_end_time"),
   departureDateTime: timestamp("departure_date_time"),
-  
-  // Seção Descarregamento
+  outboundArrivalDateTime: timestamp("outbound_arrival_date_time"),
+  outboundArrivalLocation: text("outbound_arrival_location"),
   unloadingLocation: text("unloading_location"),
   unloadingStartTime: timestamp("unloading_start_time"),
   unloadingEndTime: timestamp("unloading_end_time"),
-  
-  // Campos legados (manter por compatibilidade)
+
+  // Volta — Evento → CD
+  sameTransportReturn: boolean("same_transport_return").default(true),
+  returnVehicleTypeId: varchar("return_vehicle_type_id").references(() => vehicleTypes.id),
+  returnDriverId: varchar("return_driver_id").references(() => drivers.id),
+  returnDockId: varchar("return_dock_id").references(() => docks.id),
+  returnLoadingLocation: text("return_loading_location"),
+  returnLoadingStartTime: timestamp("return_loading_start_time"),
+  returnLoadingEndTime: timestamp("return_loading_end_time"),
+  returnDepartureDateTime: timestamp("return_departure_date_time"),
+  returnArrivalDateTime: timestamp("return_arrival_date_time"),
+  returnUnloadingLocation: text("return_unloading_location"),
+  returnUnloadingStartTime: timestamp("return_unloading_start_time"),
+  returnUnloadingEndTime: timestamp("return_unloading_end_time"),
+
+  // Campos legados
   scheduledStart: timestamp("scheduled_start"),
   scheduledEnd: timestamp("scheduled_end"),
   actualStart: timestamp("actual_start"),
   actualEnd: timestamp("actual_end"),
-  
+
   status: tripStatusEnum("status").notNull().default("planned"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   notes: text("notes"),
