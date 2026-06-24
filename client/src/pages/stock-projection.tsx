@@ -1826,7 +1826,12 @@ export default function StockProjection() {
         </SheetContent>
       </Sheet>
 
-      <ProjectionDetailDrawer target={detail} onClose={() => setDetail(null)} onGoToProduct={openProduct} />
+      <ProjectionDetailDrawer
+        target={detail}
+        onClose={() => setDetail(null)}
+        onGoToProduct={openProduct}
+        consideredMovements={result?.consideredMovements}
+      />
     </div>
   );
 }
