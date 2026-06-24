@@ -655,7 +655,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       </div>
 
       {/* — Transporte — */}
-      <SectionLabel label="Transporte" icon={Truck} description="Veículo, motorista, placa e doca para a operação." />
+      <SectionLabel label="Transporte" icon={Truck} description="Tipo de veículo, motorista e placa do caminhão para esta viagem." />
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -704,23 +704,6 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
           />
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="dockId" className="text-xs">Doca de Saída</Label>
-          <Select
-            value={formData.dockId || "__none__"}
-            onValueChange={(v) => update({ dockId: noneVal(v) })}
-          >
-            <SelectTrigger id="dockId" className="h-8 text-sm" data-testid="select-dock">
-              <SelectValue placeholder="Selecione" />
-            </SelectTrigger>
-            <SelectContent>
-              {renderNoneOption("Nenhuma doca")}
-              {docks.map((d) => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {/* Same-transport toggle */}
@@ -801,15 +784,21 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       <div className="space-y-3">
         <SectionLabel label="Carregamento no CD" icon={PackageCheck} />
         <div className="space-y-1">
-          <Label htmlFor="loadingLocation" className="text-xs">Local de carregamento</Label>
-          <Input
-            id="loadingLocation"
-            value={formData.loadingLocation || ""}
-            onChange={(e) => update({ loadingLocation: e.target.value })}
-            placeholder="Ex: Armazém Central / CD São Paulo"
-            className="h-8 text-sm"
-            data-testid="input-loading-location"
-          />
+          <Label className="text-xs">Doca de carregamento</Label>
+          <Select
+            value={formData.dockId || "__none__"}
+            onValueChange={(v) => update({ dockId: noneVal(v) })}
+          >
+            <SelectTrigger className="h-8 text-sm" data-testid="select-loading-dock">
+              <SelectValue placeholder="Selecione a doca de saída" />
+            </SelectTrigger>
+            <SelectContent>
+              {renderNoneOption("Nenhuma doca")}
+              {docks.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <DateTimeField
@@ -1076,7 +1065,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       <div className="space-y-3">
         <SectionLabel label="Chegada ao CD" icon={MapPin}
           description="Chegada física do veículo ao centro de distribuição. Pode ocorrer antes do início da descarga." />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:w-1/2">
           <DateTimeField
             label="Data e hora de chegada"
             value={formData.returnArrivalDateTime || ""}
@@ -1087,23 +1076,6 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
               { label: "+4h", value: () => addMinutes(formData.returnDepartureDateTime, 240) },
             ] : []}
           />
-          <div className="space-y-1">
-            <Label className="text-xs">Doca de retorno</Label>
-            <Select
-              value={formData.returnDockId || "__none__"}
-              onValueChange={(v) => update({ returnDockId: noneVal(v) })}
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Selecione a doca" />
-              </SelectTrigger>
-              <SelectContent>
-                {renderNoneOption("Nenhuma doca")}
-                {docks.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       </div>
 
@@ -1112,13 +1084,21 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         <SectionLabel label="Descarga no CD — Retorno" icon={PackageCheck}
           description="Período em que os materiais retornados serão retirados do veículo e recebidos no estoque." />
         <div className="space-y-1">
-          <Label className="text-xs">Local de descarga no CD</Label>
-          <Input
-            value={formData.returnUnloadingLocation || ""}
-            onChange={(e) => update({ returnUnloadingLocation: e.target.value })}
-            placeholder={formData.loadingLocation || "Ex: Doca de recebimento — CD"}
-            className="h-8 text-sm"
-          />
+          <Label className="text-xs">Doca de descarga</Label>
+          <Select
+            value={formData.returnDockId || "__none__"}
+            onValueChange={(v) => update({ returnDockId: noneVal(v) })}
+          >
+            <SelectTrigger className="h-8 text-sm" data-testid="select-return-dock">
+              <SelectValue placeholder="Selecione a doca de retorno" />
+            </SelectTrigger>
+            <SelectContent>
+              {renderNoneOption("Nenhuma doca")}
+              {docks.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <DateTimeField
@@ -1163,7 +1143,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         <ReviewRow label="Tipo de Veículo" value={selectedVehicleType?.name} />
         <ReviewRow label="Motorista" value={selectedDriver?.name} dim />
         <ReviewRow label="Placa" value={formData.vehiclePlate} dim />
-        <ReviewRow label="Doca de Saída" value={selectedDock?.name} dim />
+        <ReviewRow label="Doca de carregamento" value={selectedDock?.name} dim />
       </div>
 
       {/* Ida */}
