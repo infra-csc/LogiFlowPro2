@@ -797,7 +797,7 @@ export default function EventDetails() {
           icon={RefreshCw}
           title="Movimentações"
           count={movementsSummary.total}
-          linkHref="/movements"
+          linkHref={`/events/${id}/movements`}
         />
         <CardContent className="p-0">
           {movements.length === 0 ? (

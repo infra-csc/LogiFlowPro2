@@ -1276,6 +1276,217 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Event Movements Dashboard ─────────────────────────────────────────────────
+  app.get("/api/events/:id/movements-dashboard", requireAuth, async (req, res) => {
+    try {
+      const eventId = req.params.id;
+      const event = await storage.getEvent(eventId);
+      if (!event) return res.status(404).json({ error: "Event not found" });
+
+      // Request count + trip count
+      const [reqCount, tripCount] = await Promise.all([
+        db.execute(sql`SELECT COUNT(*)::int AS c FROM requests WHERE event_id = ${eventId}`),
+        db.execute(sql`SELECT COUNT(*)::int AS c FROM trips WHERE event_id = ${eventId}`),
+      ]);
+
+      // ── Requested per product (approved/partially_approved requests) ──────────
+      const requestedRows = await db.execute(sql`
+        SELECT
+          ri.product_id,
+          SUM(COALESCE(ri.approved_quantity, ri.quantity))::int AS requested
+        FROM request_items ri
+        JOIN requests r ON r.id = ri.request_id
+        WHERE r.event_id = ${eventId}
+          AND r.status IN ('approved', 'partially_approved', 'completed')
+          AND ri.product_id IS NOT NULL
+        GROUP BY ri.product_id
+      `);
+
+      // ── Movement quantities per product (outbound/inbound, completed) ─────────
+      const movQtyRows = await db.execute(sql`
+        SELECT
+          mi.product_id,
+          COALESCE(mtc.nature, 'outbound') AS nature,
+          SUM(mi.quantity)::int            AS qty,
+          MAX(m.completed_at)              AS last_at
+        FROM movement_items mi
+        JOIN movements m ON m.id = mi.movement_id
+        LEFT JOIN movement_types_config mtc ON mtc.id = m.movement_type_config_id
+        WHERE (
+          m.event_id = ${eventId}
+          OR m.id IN (SELECT movement_id FROM movement_events WHERE event_id = ${eventId})
+        )
+          AND m.status = 'completed'
+          AND mi.product_id IS NOT NULL
+        GROUP BY mi.product_id, COALESCE(mtc.nature, 'outbound')
+      `);
+
+      // ── All distinct products touched by this event ───────────────────────────
+      const productIds = new Set<string>();
+      for (const r of requestedRows.rows as any[]) productIds.add(r.product_id);
+      for (const r of movQtyRows.rows as any[]) productIds.add(r.product_id);
+
+      // Fetch product info in bulk
+      const productRows = productIds.size > 0
+        ? await db.execute(sql`
+            SELECT id, name, sku, unit, ownership, category
+            FROM products
+            WHERE id = ANY(${Array.from(productIds)})
+          `)
+        : { rows: [] };
+
+      const productMap = new Map<string, any>();
+      for (const p of productRows.rows as any[]) productMap.set(p.id, p);
+
+      // ── Product-level request IDs ─────────────────────────────────────────────
+      const productRequestRows = await db.execute(sql`
+        SELECT DISTINCT ri.product_id, r.id AS request_id, r.area, r.requested_by_name, r.status
+        FROM request_items ri
+        JOIN requests r ON r.id = ri.request_id
+        WHERE r.event_id = ${eventId}
+          AND ri.product_id IS NOT NULL
+      `);
+      const productRequestsMap = new Map<string, Array<{ id: string; area: string | null; requestedByName: string; status: string }>>();
+      for (const r of productRequestRows.rows as any[]) {
+        const arr = productRequestsMap.get(r.product_id) || [];
+        arr.push({ id: r.request_id, area: r.area, requestedByName: r.requested_by_name, status: r.status });
+        productRequestsMap.set(r.product_id, arr);
+      }
+
+      // ── Aggregate by product ──────────────────────────────────────────────────
+      const requestedMap = new Map<string, number>();
+      for (const r of requestedRows.rows as any[]) requestedMap.set(r.product_id, Number(r.requested ?? 0));
+
+      const outboundMap = new Map<string, number>();
+      const returnedMap = new Map<string, number>();
+      const lastMovMap = new Map<string, Date | null>();
+      for (const r of movQtyRows.rows as any[]) {
+        const qty = Number(r.qty ?? 0);
+        if (r.nature === "outbound") outboundMap.set(r.product_id, (outboundMap.get(r.product_id) || 0) + qty);
+        else if (r.nature === "inbound") returnedMap.set(r.product_id, (returnedMap.get(r.product_id) || 0) + qty);
+        const lastAt = r.last_at ? new Date(r.last_at) : null;
+        const existing = lastMovMap.get(r.product_id);
+        if (!existing || (lastAt && lastAt > existing)) lastMovMap.set(r.product_id, lastAt);
+      }
+
+      const calcSituation = (requested: number, outbound: number, returned: number): string => {
+        if (outbound === 0 && requested === 0) return "no_movement";
+        if (outbound === 0 && requested > 0) return "awaiting_exit";
+        if (outbound > 0 && outbound < requested && returned === 0) return "partial_exit";
+        if (outbound > 0 && returned === 0) return "in_field";
+        if (returned > 0 && returned < outbound) return "partial_return";
+        if (returned >= outbound && outbound > 0) return "returned";
+        return "in_field";
+      };
+
+      const products = Array.from(productIds).map((productId) => {
+        const info = productMap.get(productId) || { name: productId, sku: "", unit: "", ownership: null, category: null };
+        const requested = requestedMap.get(productId) || 0;
+        const outbound = outboundMap.get(productId) || 0;
+        const returned = returnedMap.get(productId) || 0;
+        const inField = Math.max(0, outbound - returned);
+        const pendingExit = Math.max(0, requested - outbound);
+        const pendingResolution = Math.max(0, inField);
+        return {
+          productId,
+          name: info.name,
+          sku: info.sku,
+          unit: info.unit,
+          ownership: info.ownership,
+          category: info.category,
+          requested,
+          outbound,
+          returned,
+          inField,
+          pendingExit,
+          pendingResolution,
+          situation: calcSituation(requested, outbound, returned),
+          lastMovementAt: lastMovMap.get(productId)?.toISOString() || null,
+          requests: productRequestsMap.get(productId) || [],
+        };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+
+      // ── Recent movements for this event ──────────────────────────────────────
+      const recentMovRows = await db.execute(sql`
+        SELECT
+          m.id, m.movement_number, m.name, m.status, m.created_at, m.completed_at,
+          COALESCE(mtc.name, m.type::text) AS type_name,
+          COALESCE(mtc.nature, 'outbound')  AS nature,
+          u.username                         AS created_by_name,
+          COUNT(DISTINCT mi.product_id)::int AS product_count,
+          COALESCE(SUM(mi.quantity),0)::int  AS total_qty
+        FROM movements m
+        LEFT JOIN movement_types_config mtc ON mtc.id = m.movement_type_config_id
+        LEFT JOIN users u ON u.id = m.created_by
+        LEFT JOIN movement_items mi ON mi.movement_id = m.id
+        WHERE (
+          m.event_id = ${eventId}
+          OR m.id IN (SELECT movement_id FROM movement_events WHERE event_id = ${eventId})
+        )
+          AND m.status != 'cancelled'
+        GROUP BY m.id, m.movement_number, m.name, m.status, m.created_at, m.completed_at,
+                 mtc.name, m.type, mtc.nature, u.username
+        ORDER BY m.created_at DESC
+        LIMIT 200
+      `);
+
+      // ── Last movement date for the event ─────────────────────────────────────
+      const lastMovAll = products.reduce<Date | null>((best, p) => {
+        if (!p.lastMovementAt) return best;
+        const d = new Date(p.lastMovementAt);
+        return !best || d > best ? d : best;
+      }, null);
+
+      // ── Totals ────────────────────────────────────────────────────────────────
+      const totals = products.reduce(
+        (acc, p) => {
+          acc.distinctProducts++;
+          acc.totalRequested += p.requested;
+          acc.totalOutbound += p.outbound;
+          acc.totalReturned += p.returned;
+          acc.totalInField += p.inField;
+          acc.totalPendingExit += p.pendingExit;
+          if (p.pendingResolution > 0) acc.withPendingResolution++;
+          return acc;
+        },
+        { distinctProducts: 0, totalRequested: 0, totalOutbound: 0, totalReturned: 0, totalInField: 0, totalPendingExit: 0, withPendingResolution: 0 }
+      );
+
+      return res.json({
+        event: {
+          id: event.id,
+          name: event.name,
+          client: event.client,
+          location: event.location,
+          eventDate: event.eventDate,
+          status: event.status,
+          requestCount: Number((reqCount.rows[0] as any)?.c ?? 0),
+          tripCount: Number((tripCount.rows[0] as any)?.c ?? 0),
+          lastMovementAt: lastMovAll?.toISOString() || null,
+          calculatedAt: new Date().toISOString(),
+        },
+        products,
+        movements: recentMovRows.rows.map((m: any) => ({
+          id: m.id,
+          movementNumber: m.movement_number,
+          name: m.name,
+          typeName: m.type_name,
+          nature: m.nature,
+          status: m.status,
+          productCount: Number(m.product_count),
+          totalQty: Number(m.total_qty),
+          createdAt: m.created_at,
+          completedAt: m.completed_at,
+          createdByName: m.created_by_name,
+        })),
+        totals,
+      });
+    } catch (error) {
+      console.error("[events/movements-dashboard] error:", error);
+      res.status(500).json({ error: "Failed to fetch event movements dashboard" });
+    }
+  });
+
   app.post("/api/events", requireAuth, requireAdmin({ message: "Apenas administradores podem criar eventos" }), async (req, res) => {
     try {
       const data = insertEventSchema.parse(req.body);

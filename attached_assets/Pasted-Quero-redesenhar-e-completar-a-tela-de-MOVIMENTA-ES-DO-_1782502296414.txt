@@ -1,0 +1,1266 @@
+Quero redesenhar e completar a tela de MOVIMENTAÇÕES DO EVENTO.
+
+Esta deve ser a principal tela para acompanhar tudo o que saiu do estoque para um evento, o que retornou, o que ainda permanece em campo e quais produtos tiveram perda, avaria, transferência ou outra ocorrência.
+
+IMPORTANTE:
+
+- Não alterar diretamente o estoque por meio de botões ou atalhos.
+- Não criar movimentações automaticamente ao clicar em um atalho.
+- Todo atalho deve apenas abrir o formulário existente de “Nova Movimentação”.
+- O formulário deve abrir parcialmente preenchido, mas o usuário precisa revisar, completar e confirmar.
+- Somente depois da confirmação a movimentação deve ser salva e os saldos recalculados.
+- Reutilizar a estrutura e os componentes existentes do sistema.
+- Não criar dados fictícios.
+- Não quebrar as telas de movimentações, requisições, eventos, planos de viagens ou projeção de estoque.
+- Manter o tema escuro e o design system atual do EventFlow.
+
+==================================================
+1. OBJETIVO DA TELA
+==================================================
+
+A tela deve responder rapidamente:
+
+- Quantas unidades foram solicitadas para o evento?
+- Quantas realmente saíram do estoque?
+- Quantas já retornaram ao CD?
+- Quantas ainda estão em campo?
+- Quantas retornaram disponíveis para uso?
+- Quantas retornaram avariadas?
+- Quantas foram perdidas ou extraviadas?
+- Quais produtos ainda possuem pendências?
+- Onde cada produto está atualmente?
+- Qual foi a última movimentação registrada?
+- Quais movimentações ainda precisam ser feitas?
+
+Não utilizar uma coluna genérica chamada apenas “Saldo”, pois isso está causando confusão.
+
+Substituir por informações com significado operacional claro:
+
+- Solicitado;
+- Saída confirmada;
+- Retornado ao CD;
+- Disponível após retorno;
+- Em campo;
+- Avariado;
+- Perdido/Extraviado;
+- Transferido;
+- Pendente de saída;
+- Pendente de resolução.
+
+==================================================
+2. CABEÇALHO DA TELA
+==================================================
+
+Título:
+
+Movimentações do Evento
+
+Subtítulo:
+
+Acompanhe saídas, retornos, produtos em campo e ocorrências relacionadas ao evento.
+
+Exibir abaixo:
+
+- nome completo do evento, sem cortar;
+- data do evento;
+- local;
+- área ou departamento;
+- quantidade de requisições vinculadas;
+- quantidade de planos de viagens;
+- data e horário da última movimentação;
+- data e horário da última atualização dos cálculos.
+
+Ações do cabeçalho:
+
+- Nova movimentação;
+- Exportar Excel;
+- Voltar ao evento.
+
+Não adicionar botão “Atualizar”.
+
+Depois de registrar uma movimentação, a tela deve recalcular automaticamente e mostrar:
+
+“Dados recalculados às HH:mm”.
+
+==================================================
+3. CARDS DE RESUMO
+==================================================
+
+Organizar os cards em duas áreas.
+
+ÁREA 1 — FLUXO DO EVENTO
+
+- Produtos distintos;
+- Unidades solicitadas;
+- Unidades com saída confirmada;
+- Unidades retornadas ao CD;
+- Unidades ainda em campo.
+
+ÁREA 2 — OCORRÊNCIAS
+
+- Pendente de saída;
+- Avariadas;
+- Perdidas/Extraviadas;
+- Transferidas;
+- Pendências de resolução.
+
+Os cards devem ser compactos e clicáveis.
+
+Ao clicar em um card, filtrar a tabela.
+
+Exemplos:
+
+- clicar em “Em campo” mostra somente produtos que ainda estão fora;
+- clicar em “Avariadas” mostra somente produtos com avaria;
+- clicar em “Pendente de saída” mostra produtos solicitados, mas ainda não movimentados;
+- clicar em “Pendências de resolução” mostra produtos cuja quantidade de saída ainda não foi totalmente distribuída entre retorno, campo, perda, avaria ou transferência.
+
+Cores:
+
+- verde: retorno concluído ou situação regular;
+- amarelo/âmbar: pendência;
+- vermelho: perda, extravio ou falta;
+- laranja: avaria;
+- azul/cinza: informação neutra;
+- não aplicar azul forte em grandes áreas.
+
+==================================================
+4. ALERTAS OPERACIONAIS
+==================================================
+
+Abaixo dos cards, exibir alertas somente quando necessário.
+
+Exemplos:
+
+“12 unidades ainda permanecem em campo.”
+
+“3 produtos possuem retorno parcial.”
+
+“2 produtos possuem avaria registrada.”
+
+“1 movimentação não possui evidência anexada.”
+
+“Existem produtos com saída registrada sem previsão de retorno.”
+
+Cada alerta deve ser clicável e direcionar para os produtos relacionados.
+
+Não ocupar espaço com alertas positivos quando não houver problemas.
+
+Quando estiver tudo regular, mostrar apenas uma faixa discreta:
+
+“Todas as movimentações do evento estão conciliadas.”
+
+==================================================
+5. ABAS DA TELA
+==================================================
+
+Criar as abas:
+
+1. Visão geral;
+2. Produtos;
+3. Movimentações;
+4. Pendências;
+5. Histórico.
+
+ABA PADRÃO:
+
+Produtos.
+
+==================================================
+6. ABA “PRODUTOS”
+==================================================
+
+Criar uma tabela operacional com as colunas:
+
+- Produto;
+- SKU;
+- Solicitado;
+- Saída;
+- Retornado;
+- Em campo;
+- Ocorrências;
+- Situação;
+- Última movimentação;
+- Ações.
+
+Não exibir todas as informações em colunas separadas, para não deixar a tabela excessivamente larga.
+
+Na coluna “Ocorrências”, mostrar chips compactos:
+
+- 2 avariados;
+- 1 perdido;
+- 3 transferidos;
+- sem ocorrência.
+
+Na coluna “Situação”, utilizar:
+
+- Aguardando saída;
+- Saída parcial;
+- Em campo;
+- Retorno parcial;
+- Retornado;
+- Com ocorrência;
+- Resolvido;
+- Sem movimentação.
+
+Exemplo de linha:
+
+CAVALETE RETO
+ITEM_CAVALETE_RETO
+
+Solicitado: 20
+Saída: 20
+Retornado: 17
+Em campo: 3
+Situação: Retorno parcial
+
+Não marcar um produto como “Adequado” apenas porque o estoque mínimo é zero.
+
+Nesta tela, o status deve representar a situação do produto dentro do evento.
+
+==================================================
+7. FILTROS E ORDENAÇÃO
+==================================================
+
+Adicionar acima da tabela:
+
+Campo de busca:
+
+“Buscar por produto, SKU ou código de barras...”
+
+Filtros:
+
+- Todos;
+- Aguardando saída;
+- Em campo;
+- Retorno parcial;
+- Retornado;
+- Com avaria;
+- Perdido/Extraviado;
+- Transferido;
+- Com pendência;
+- Sem evidência.
+
+Filtro por tipo de produto:
+
+- Próprio;
+- Alugado;
+- Terceiro.
+
+Filtro por movimentação:
+
+- Saída;
+- Retorno;
+- Transferência;
+- Avaria;
+- Perda;
+- Manutenção;
+- Ajuste.
+
+Ordenação:
+
+- Maior quantidade solicitada;
+- Maior quantidade em campo;
+- Maior quantidade pendente;
+- Última movimentação;
+- Nome A–Z;
+- SKU A–Z.
+
+Adicionar botão:
+
+“Limpar filtros”.
+
+==================================================
+8. EXPANSÃO DA LINHA DO PRODUTO
+==================================================
+
+Ao clicar em uma linha, expandir os detalhes abaixo dela.
+
+Exibir:
+
+RESUMO DO PRODUTO
+
+- solicitado;
+- saída confirmada;
+- retorno físico ao CD;
+- disponível após conferência;
+- em campo;
+- avariado;
+- perdido/extraviado;
+- em manutenção;
+- transferido para outro evento/local;
+- pendente de saída;
+- pendente de resolução.
+
+LOCALIZAÇÃO ATUAL
+
+Exibir a distribuição das unidades:
+
+- 10 disponíveis no CD;
+- 3 no Evento X;
+- 2 em trânsito;
+- 1 em manutenção;
+- 1 avariada;
+- 1 perdida.
+
+ÚLTIMA MOVIMENTAÇÃO
+
+- tipo;
+- origem;
+- destino;
+- quantidade;
+- data e horário;
+- responsável;
+- veículo;
+- plano de viagens;
+- evidências.
+
+ORIGENS
+
+Exibir as requisições que geraram a demanda:
+
+- nome completo da requisição;
+- área;
+- solicitante;
+- quantidade solicitada;
+- status;
+- botão “Abrir requisição”.
+
+Não cortar o nome das requisições.
+
+Usar quebra de linha ou tooltip quando necessário.
+
+==================================================
+9. COLUNA DE AÇÕES E ATALHOS
+==================================================
+
+Na última coluna da tabela, adicionar um botão:
+
+“Movimentar”
+
+Ao clicar, abrir um menu contextual com os atalhos disponíveis.
+
+Atalhos possíveis:
+
+- Registrar saída;
+- Registrar saída parcial;
+- Registrar retorno;
+- Registrar retorno parcial;
+- Registrar avaria;
+- Registrar perda ou extravio;
+- Enviar para manutenção;
+- Transferir para outro evento;
+- Transferir para outro local;
+- Manter temporariamente em campo;
+- Corrigir divergência;
+- Resolver pendência.
+
+Mostrar somente atalhos compatíveis com a situação atual.
+
+Exemplos:
+
+Produto sem saída:
+
+- Registrar saída;
+- Registrar saída parcial.
+
+Produto em campo:
+
+- Registrar retorno;
+- Registrar retorno parcial;
+- Registrar avaria;
+- Registrar perda ou extravio;
+- Transferir;
+- Manter em campo;
+- Resolver pendência.
+
+Produto totalmente retornado:
+
+- não mostrar “Registrar retorno”;
+- permitir apenas ajuste, avaria identificada na conferência ou transferência.
+
+Produto em manutenção:
+
+- Registrar retorno da manutenção;
+- Registrar baixa definitiva;
+- Transferir manutenção.
+
+==================================================
+10. COMPORTAMENTO DOS ATALHOS
+==================================================
+
+REGRA PRINCIPAL:
+
+O clique no atalho não deve registrar nenhuma movimentação.
+
+O clique deve abrir o formulário já existente de “Nova Movimentação”.
+
+O formulário deve abrir com os campos aplicáveis previamente preenchidos.
+
+Exibir no topo do formulário:
+
+“Movimentação iniciada pelo atalho do Evento X.”
+
+O usuário deve poder:
+
+- revisar;
+- alterar os campos permitidos;
+- informar quantidade;
+- informar data e horário;
+- selecionar origem;
+- selecionar destino;
+- informar motivo;
+- adicionar observação;
+- anexar evidências;
+- cancelar;
+- confirmar.
+
+Somente após clicar em “Criar movimentação” ou “Confirmar movimentação”:
+
+- salvar a movimentação;
+- atualizar o estoque;
+- atualizar a situação do evento;
+- atualizar os cards;
+- atualizar a tabela;
+- registrar no histórico.
+
+Ao cancelar, não alterar nenhum dado.
+
+==================================================
+11. ATALHO “REGISTRAR SAÍDA”
+==================================================
+
+Abrir “Nova Movimentação” com:
+
+Tipo:
+Saída para evento
+
+Categoria:
+Saída
+
+Evento:
+evento atual
+
+Produto:
+produto selecionado
+
+Origem sugerida:
+CD, armazém ou doca vinculada
+
+Destino sugerido:
+evento atual
+
+Requisição:
+requisição vinculada ao produto
+
+Plano de viagens:
+plano vinculado ao evento, quando houver
+
+Quantidade sugerida:
+quantidade ainda pendente de saída
+
+A quantidade pode vir preenchida, mas deve permanecer editável.
+
+Exibir:
+
+“Solicitado: 20”
+“Já saiu: 17”
+“Pendente de saída: 3”
+
+O usuário deve revisar e confirmar.
+
+==================================================
+12. ATALHO “REGISTRAR RETORNO”
+==================================================
+
+Abrir “Nova Movimentação” com:
+
+Tipo:
+Retorno de evento
+
+Categoria:
+Entrada
+
+Evento:
+evento atual
+
+Produto:
+produto selecionado
+
+Origem:
+evento atual / em campo
+
+Destino:
+CD, área de conferência ou estoque
+
+Movimentação original:
+saída relacionada
+
+Plano de viagens:
+viagem de retorno, quando houver
+
+Quantidade sugerida:
+quantidade ainda em campo
+
+Exibir:
+
+“Saída confirmada: 20”
+“Já retornado: 17”
+“Ainda em campo: 3”
+
+O usuário deve informar ou revisar:
+
+- quantidade;
+- data e horário;
+- local de retorno;
+- responsável pela conferência;
+- condição do produto;
+- observações;
+- fotos ou vídeos.
+
+Condição do retorno:
+
+- Disponível para uso;
+- Aguardando conferência;
+- Avariado;
+- Enviado para manutenção.
+
+==================================================
+13. ATALHO “REGISTRAR AVARIA”
+==================================================
+
+Abrir o formulário com:
+
+Tipo:
+Avaria identificada
+
+Categoria:
+Reclassificação
+
+Produto:
+produto selecionado
+
+Evento:
+evento atual
+
+Origem sugerida:
+
+- Em campo;
+- Área de conferência;
+- Estoque disponível.
+
+Destino:
+
+- Avariado;
+- Aguardando avaliação;
+- Manutenção.
+
+Não registrar automaticamente.
+
+O usuário deve informar:
+
+- quantidade;
+- data e horário;
+- tipo de avaria;
+- gravidade;
+- descrição;
+- possibilidade de reparo;
+- responsável;
+- local;
+- fotos ou vídeos.
+
+==================================================
+14. ATALHO “REGISTRAR PERDA OU EXTRAVIO”
+==================================================
+
+Abrir o formulário com:
+
+Tipo:
+Perda ou extravio
+
+Categoria:
+Reclassificação ou ocorrência
+
+Evento:
+evento atual
+
+Produto:
+produto selecionado
+
+Origem:
+Em campo
+
+Destino:
+Perdido/Extraviado
+
+Exibir aviso:
+
+“Este registro não descontará novamente a unidade do estoque disponível, pois ela já saiu anteriormente. A movimentação apenas atualizará a localização e a situação da unidade.”
+
+O usuário deve preencher:
+
+- quantidade;
+- data e horário;
+- motivo;
+- local da última conferência;
+- responsável;
+- observações;
+- evidências.
+
+Depois, uma baixa definitiva poderá ser feita em outra movimentação, caso seja aprovada.
+
+==================================================
+15. ATALHO “ENVIAR PARA MANUTENÇÃO”
+==================================================
+
+Abrir o formulário com:
+
+Tipo:
+Envio para manutenção
+
+Categoria:
+Transferência interna
+
+Origem sugerida:
+
+- Avariado;
+- Área de conferência;
+- Em campo;
+- Estoque disponível.
+
+Destino:
+Manutenção
+
+Preencher:
+
+- evento;
+- produto;
+- movimentação relacionada.
+
+Solicitar:
+
+- quantidade;
+- oficina ou fornecedor;
+- responsável;
+- previsão de retorno;
+- motivo;
+- observações;
+- anexos.
+
+==================================================
+16. ATALHO “TRANSFERIR”
+==================================================
+
+Criar duas opções:
+
+- Transferir para outro evento;
+- Transferir para outro local.
+
+TRANSFERÊNCIA ENTRE EVENTOS
+
+Origem:
+evento atual
+
+Destino:
+evento selecionado pelo usuário
+
+A unidade continua fora do estoque disponível.
+
+TRANSFERÊNCIA ENTRE LOCAIS
+
+Origem:
+localização atual
+
+Destino:
+
+- outro CD;
+- outro armazém;
+- área de manutenção;
+- área de conferência;
+- fornecedor;
+- evento;
+- local temporário.
+
+O formulário deve exigir confirmação do usuário.
+
+==================================================
+17. ATALHO “MANTER EM CAMPO”
+==================================================
+
+Abrir o formulário com:
+
+Tipo:
+Prorrogação de permanência em campo
+
+Categoria:
+Atualização operacional
+
+Origem:
+evento atual
+
+Destino:
+evento atual
+
+Essa movimentação não altera a quantidade.
+
+O usuário deve informar:
+
+- nova previsão de retorno;
+- motivo;
+- responsável;
+- localização;
+- viagem de retorno;
+- observações.
+
+==================================================
+18. ATALHO “RESOLVER PENDÊNCIA”
+==================================================
+
+Esse atalho deve abrir uma tela ou modal específico de conciliação.
+
+Exemplo:
+
+Produto: CAVALETE RETO
+
+Saída confirmada: 20
+Já retornado: 15
+Ainda sem resolução: 5
+
+Permitir ao usuário distribuir as cinco unidades entre:
+
+- Retorno;
+- Permanência em campo;
+- Avaria;
+- Perda;
+- Transferência;
+- Manutenção.
+
+Exemplo:
+
+Retorno: 2
+Avaria: 1
+Perda: 1
+Transferência: 1
+
+A soma deve obrigatoriamente ser igual à quantidade pendente.
+
+IMPORTANTE:
+
+Ao confirmar essa distribuição, o sistema deve mostrar uma revisão final e, somente depois da confirmação do usuário, criar as movimentações correspondentes.
+
+Não criar movimentações enquanto o usuário estiver apenas preenchendo.
+
+==================================================
+19. DRAWER “DETALHE DO PRODUTO”
+==================================================
+
+Ao clicar no nome do produto ou em “Ver detalhes”, abrir um drawer lateral.
+
+Cabeçalho:
+
+- nome completo;
+- SKU;
+- titularidade;
+- situação no evento.
+
+Cards:
+
+- solicitado;
+- saída;
+- retornado;
+- em campo;
+- avariado;
+- perdido;
+- transferido.
+
+Remover deste drawer:
+
+- pior saldo;
+- déficit máximo;
+- estoque mínimo.
+
+Esta tela é de movimentação de evento, não de análise de mínimo de estoque.
+
+SEÇÃO “ONDE ESTÃO AS UNIDADES”
+
+Mostrar:
+
+- quantidade;
+- localização;
+- evento;
+- plano de viagens;
+- veículo;
+- motorista;
+- previsão de retorno;
+- última movimentação.
+
+Exemplo:
+
+20 unidades saíram.
+
+- 15 retornaram ao CD;
+- 2 permanecem no Evento X;
+- 1 está em trânsito;
+- 1 está em manutenção;
+- 1 foi registrada como perdida.
+
+SEÇÃO “MOVIMENTAÇÕES QUE IMPACTARAM O PRODUTO”
+
+Exibir uma timeline:
+
+- Saída de 20 unidades;
+- Retorno de 10 unidades;
+- Retorno de 5 unidades;
+- Transferência de 1 unidade;
+- Avaria de 1 unidade;
+- Perda de 1 unidade.
+
+Cada movimentação deve mostrar:
+
+- tipo;
+- quantidade;
+- data e horário;
+- origem;
+- destino;
+- responsável;
+- evento;
+- veículo;
+- evidências;
+- botão “Abrir movimentação”.
+
+Adicionar botão:
+
+“Nova movimentação para este produto”.
+
+==================================================
+20. ABA “MOVIMENTAÇÕES”
+==================================================
+
+Exibir todas as movimentações vinculadas ao evento.
+
+Colunas:
+
+- data e horário;
+- tipo;
+- produto;
+- quantidade;
+- origem;
+- destino;
+- plano de viagens;
+- veículo;
+- responsável;
+- situação;
+- evidências;
+- ação.
+
+Permitir filtros por:
+
+- período;
+- tipo;
+- produto;
+- usuário;
+- origem;
+- destino;
+- com ou sem evidência.
+
+Status:
+
+- Planejada;
+- Em andamento;
+- Concluída;
+- Cancelada;
+- Aguardando aprovação;
+- Revertida.
+
+Não permitir edição silenciosa de uma movimentação concluída.
+
+Correções devem criar:
+
+- movimentação de ajuste;
+- movimentação de reversão;
+- nova movimentação corrigida.
+
+==================================================
+21. ABA “PENDÊNCIAS”
+==================================================
+
+Separar as pendências em grupos.
+
+PENDÊNCIAS DE SAÍDA
+
+Produtos solicitados que ainda não saíram totalmente.
+
+PENDÊNCIAS DE RETORNO
+
+Produtos que ainda permanecem em campo.
+
+OCORRÊNCIAS
+
+Produtos avariados, perdidos ou enviados para manutenção.
+
+DADOS INCOMPLETOS
+
+Movimentações sem:
+
+- data;
+- responsável;
+- origem;
+- destino;
+- evidência, quando obrigatória;
+- vínculo com a saída original.
+
+Cada pendência deve possuir uma ação rápida que abre o formulário para o usuário completar.
+
+Exemplo:
+
+“Registrar retorno”
+
+Ao clicar, abrir o formulário preenchido, sem salvar automaticamente.
+
+==================================================
+22. ABA “HISTÓRICO”
+==================================================
+
+Transformar o histórico em uma timeline organizada.
+
+Agrupar por:
+
+- Hoje;
+- Ontem;
+- Esta semana;
+- Datas anteriores.
+
+Exemplo:
+
+22/06/2026 às 17:04
+
+Yan Neves Araujo registrou uma saída
+
+Produto: CAVALETE RETO
+Quantidade: 2
+Origem: Doca 6
+Destino: Evento X
+
+Outro exemplo:
+
+22/06/2026 às 18:30
+
+Yan Neves Araujo registrou um retorno parcial
+
+Produto: CAVALETE RETO
+Quantidade: 1
+Ainda em campo: 1
+
+Não utilizar textos genéricos como:
+
+“Registrou item.”
+
+Usar textos claros:
+
+- Registrou saída de 2 unidades;
+- Registrou retorno de 1 unidade;
+- Removeu 1 unidade por correção;
+- Registrou avaria em 1 unidade;
+- Transferiu 3 unidades para o Evento Y;
+- Reverteu a movimentação MVT-0001.
+
+Filtros do histórico:
+
+- Todos;
+- Saídas;
+- Retornos;
+- Ocorrências;
+- Ajustes;
+- Status;
+- Evidências.
+
+==================================================
+23. CÁLCULOS
+==================================================
+
+Para cada produto:
+
+SOLICITADO =
+soma das quantidades aprovadas nas requisições do evento.
+
+SAÍDA CONFIRMADA =
+soma das movimentações de saída concluídas para o evento.
+
+RETORNADO AO CD =
+soma das movimentações de retorno concluídas.
+
+DISPONÍVEL APÓS RETORNO =
+quantidade retornada e aprovada na conferência como disponível.
+
+EM CAMPO =
+saída confirmada
+- retorno físico
+- perda registrada
+- avaria transferida para outro status
+- transferência para outro evento ou local
+- baixa relacionada.
+
+PENDENTE DE SAÍDA =
+máximo entre solicitado - saída confirmada e zero.
+
+PENDENTE DE RESOLUÇÃO =
+quantidade da saída original que ainda não foi classificada como:
+
+- retornada;
+- em campo confirmada;
+- perdida;
+- avariada;
+- transferida;
+- em manutenção;
+- baixada.
+
+Nunca permitir valor negativo.
+
+Nunca descontar uma mesma unidade duas vezes.
+
+==================================================
+24. EXEMPLO CORRETO
+==================================================
+
+Produto solicitado: 10
+
+Saída registrada: 10
+
+Retorno: 0
+
+Resultado:
+
+Solicitado: 10
+Saída: 10
+Retornado: 0
+Em campo: 10
+Pendente de saída: 0
+
+Não mostrar “Saldo: 10”.
+
+Depois de registrar retorno de 6:
+
+Solicitado: 10
+Saída: 10
+Retornado: 6
+Em campo: 4
+
+Depois de registrar:
+
+- 1 perda;
+- 1 avaria;
+- 1 transferência;
+- 1 permanece em campo.
+
+Resultado:
+
+Solicitado: 10
+Saída: 10
+Retornado: 6
+Em campo: 1
+Perdido: 1
+Avariado: 1
+Transferido: 1
+
+==================================================
+25. EVIDÊNCIAS
+==================================================
+
+Movimentações devem permitir anexar:
+
+- fotos;
+- vídeos;
+- documentos;
+- comprovantes;
+- termos;
+- registros de avaria.
+
+Na tela do evento, mostrar:
+
+- quantidade de evidências;
+- miniaturas;
+- tipo;
+- data;
+- usuário;
+- movimentação relacionada.
+
+A evidência deve estar vinculada à movimentação correta, e não apenas ao evento de forma genérica.
+
+==================================================
+26. UX DO FORMULÁRIO ABERTO PELO ATALHO
+==================================================
+
+Quando o formulário abrir por um atalho:
+
+- mostrar claramente quais campos foram preenchidos automaticamente;
+- usar texto “Preenchido a partir do evento”;
+- permitir alteração quando a regra permitir;
+- manter evento e produto visíveis durante todo o preenchimento;
+- exibir resumo antes e depois da movimentação;
+- mostrar quantidade máxima permitida;
+- impedir quantidade maior que a quantidade disponível na origem;
+- destacar campos obrigatórios;
+- manter os botões fixos no rodapé.
+
+Botões:
+
+- Cancelar;
+- Revisar movimentação;
+- Confirmar movimentação.
+
+Antes de salvar, mostrar uma etapa de revisão:
+
+Você está registrando:
+
+Tipo: Retorno de evento
+Produto: CAVALETE RETO
+Quantidade: 3
+Origem: Evento X
+Destino: CD Central
+Data: 25/06/2026 às 18:00
+
+Impacto previsto:
+
+Em campo: 3 → 0
+Retornado ao CD: 17 → 20
+
+Somente depois dessa revisão permitir a confirmação.
+
+==================================================
+27. RESPONSIVIDADE E VISUAL
+==================================================
+
+Desktop:
+
+- usar toda a largura disponível;
+- cards compactos;
+- tabela com cabeçalho fixo;
+- filtros bem distribuídos;
+- ações visíveis;
+- sem grandes áreas vazias.
+
+Tablet:
+
+- cards em duas colunas;
+- tabela com rolagem horizontal apenas quando necessária;
+- drawer ocupando aproximadamente 70% da largura.
+
+Mobile:
+
+- substituir tabela por cards de produto;
+- mostrar informações principais;
+- menu “Movimentar” acessível;
+- filtros em drawer.
+
+Não utilizar:
+
+- textos cortados sem tooltip;
+- nomes de evento truncados de forma que impeçam identificação;
+- excesso de azul;
+- cards excessivamente altos;
+- grandes espaços vazios;
+- múltiplas barras de rolagem próximas;
+- status verdes para produto com situação pendente.
+
+==================================================
+28. ESTADOS DA TELA
+==================================================
+
+Carregamento:
+
+Usar skeleton nos cards e na tabela.
+
+Sem produtos:
+
+“Nenhum produto foi solicitado ou movimentado neste evento.”
+
+Sem movimentações:
+
+“Ainda não existem movimentações registradas para este evento.”
+
+Sem resultado no filtro:
+
+“Nenhum produto corresponde aos filtros aplicados.”
+
+Erro:
+
+“Não foi possível carregar as movimentações. Tente novamente.”
+
+Após criar uma movimentação:
+
+“Movimentação registrada com sucesso.”
+
+Atualizar automaticamente os números sem exigir recarregamento manual.
+
+==================================================
+29. BACK-END E AUDITORIA
+==================================================
+
+Reutilizar o modelo de movimentações já existente.
+
+Se necessário, adicionar somente os vínculos que estiverem faltando:
+
+- eventId;
+- productId;
+- requestId;
+- travelPlanId;
+- originalMovementId;
+- originLocation;
+- destinationLocation;
+- originStatus;
+- destinationStatus;
+- movementCategory;
+- movementReason;
+- operationGroupId;
+- createdBy;
+- confirmedBy;
+- occurredAt;
+- evidenceIds.
+
+Toda movimentação deve registrar:
+
+- valores anteriores;
+- valores posteriores;
+- usuário;
+- data e horário;
+- origem;
+- destino;
+- quantidade;
+- evento;
+- produto;
+- justificativa;
+- movimentação original relacionada.
+
+Não apagar histórico.
+
+==================================================
+30. CRITÉRIOS DE ACEITE
+==================================================
+
+A alteração só estará concluída quando:
+
+1. A tela mostrar claramente solicitado, saída, retorno e em campo.
+2. Não existir uma coluna ambígua chamada apenas “Saldo”.
+3. O nome completo do evento estiver visível.
+4. A tabela mostrar produtos e movimentações reais.
+5. Os atalhos abrirem o formulário de movimentação.
+6. Nenhum atalho salvar movimentação automaticamente.
+7. Nenhum atalho alterar estoque diretamente.
+8. O usuário precisar revisar e confirmar a movimentação.
+9. Os campos possíveis vierem preenchidos pelo atalho.
+10. O usuário puder alterar quantidade, data, horário e demais campos permitidos.
+11. O sistema impedir quantidade maior que a disponível na origem.
+12. A saída original estiver vinculada aos retornos e ocorrências.
+13. Não houver desconto duplicado.
+14. A perda não gerar uma segunda saída do estoque.
+15. A avaria atualizar a localização e o status correto.
+16. A transferência não aumentar nem reduzir indevidamente o patrimônio.
+17. O retorno atualizar o estoque somente após confirmação.
+18. A tela recalcular automaticamente após salvar.
+19. O histórico mostrar textos completos e específicos.
+20. O drawer do produto mostrar onde as unidades estão.
+21. Nomes de requisições não aparecerem cortados.
+22. Evidências ficarem vinculadas à movimentação correta.
+23. A visualização funcionar em desktop, tablet e celular.
+24. Todas as regras existentes continuarem funcionando.
+25. A tela ficar operacional, clara e visualmente consistente com o restante do EventFlow.

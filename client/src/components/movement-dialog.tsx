@@ -112,9 +112,21 @@ type MovementWithRelations = Movement & {
   requests?: Array<{ id: string; area: string | null; eventId: string | null; status: string; event?: { id: string | null; name: string } | null }>;
 };
 
+export interface MovementPrefill {
+  name?: string;
+  eventIds?: string[];
+  movementTypeConfigId?: string;
+  notes?: string;
+  productItems?: Array<{ productId: string; quantity: number }>;
+  hint?: string;
+}
+
 interface MovementDialogProps {
   children: React.ReactNode;
   movement?: MovementWithRelations;
+  prefill?: MovementPrefill;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // ─── Label/hint helpers ───────────────────────────────────────────────────────
@@ -472,8 +484,15 @@ function calcFinalQty(
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function MovementDialog({ children, movement }: MovementDialogProps) {
-  const [open, setOpen] = useState(false);
+export function MovementDialog({ children, movement, prefill, open: controlledOpen, onOpenChange: controlledOnOpenChange }: MovementDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+
+  const setOpen = (val: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(val);
+    controlledOnOpenChange?.(val);
+  };
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -663,6 +682,21 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
           productItems: [],
         });
         setLinkType((movement.requests && movement.requests.length > 0) || (movement as any).requestId ? "request" : "order");
+      } else if (prefill) {
+        form.reset({
+          name: prefill.name || "",
+          movementTypeConfigId: prefill.movementTypeConfigId || "",
+          eventIds: prefill.eventIds || [],
+          tripIds: [],
+          loadingOrderId: undefined,
+          requestIds: [],
+          vehiclePlate: undefined,
+          dockId: undefined,
+          notes: prefill.notes || undefined,
+          productItems: prefill.productItems || [],
+        });
+        setLinkType("order");
+        setAutoFilledFields(new Set(["eventIds", ...(prefill.movementTypeConfigId ? ["movementTypeConfigId"] : []), ...(prefill.productItems?.length ? ["productItems"] : [])]));
       } else {
         form.reset({
           name: "", movementTypeConfigId: "",
@@ -675,7 +709,7 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
         setAutoFilledFields(new Set());
       }
     }
-  }, [open, isEditMode, movement]);
+  }, [open, isEditMode, movement, prefill]);
 
   // ─ Mutations ────────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -841,6 +875,14 @@ export function MovementDialog({ children, movement }: MovementDialogProps) {
               </DialogDescription>
             </DialogHeader>
           </div>
+
+          {/* Prefill hint banner */}
+          {!isEditMode && prefill?.hint && (
+            <div className="mx-6 mb-1 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs text-primary">
+              <Info className="h-3.5 w-3.5 shrink-0" />
+              <span>{prefill.hint}</span>
+            </div>
+          )}
 
           {/* Stepper */}
           <StepIndicator currentStep={step} isEditMode={isEditMode} />

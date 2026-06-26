@@ -16,6 +16,7 @@ import Dashboard from "@/pages/dashboard";
 import Events from "@/pages/events";
 import EventDetails from "@/pages/event-details";
 import EventMaterials from "@/pages/event-materials";
+import EventMovements from "@/pages/event-movements";
 import Requests from "@/pages/requests";
 import RequestDetails from "@/pages/request-details";
 import Inventory from "@/pages/inventory";
@@ -87,6 +88,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/events/upload" component={EventUpload} />
       <ProtectedRoute path="/events/:id/materials" component={EventMaterials} />
+      <ProtectedRoute path="/events/:id/movements" component={EventMovements} />
       <ProtectedRoute path="/events/:id" component={EventDetails} />
       <ProtectedRoute path="/events" component={Events} />
       <ProtectedRoute path="/approvals/:id" component={ApprovalDetail} />
