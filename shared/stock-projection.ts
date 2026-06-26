@@ -13,15 +13,48 @@ export interface StockProjectionInclude {
   trips?: boolean;
 }
 
+export type ProjectionGranularity = "hour" | "shift" | "day" | "week";
+
 export interface StockProjectionParams {
   /** Inclusive range start, yyyy-MM-dd. */
   startDate: string;
   /** Inclusive range end, yyyy-MM-dd. */
   endDate: string;
+  /** HH:mm — restricts the analysis window start within startDate. */
+  startTime?: string;
+  /** HH:mm — restricts the analysis window end within endDate. */
+  endTime?: string;
+  /** Projection granularity. Default: 'day'. */
+  granularity?: ProjectionGranularity;
+  /**
+   * When granularity='day', the daily balance is snapped at this HH:mm.
+   * Default: '23:59' (end of day). E.g. '18:00' = closing position at 18h.
+   */
+  dailyCutoffTime?: string;
   /** Limit to these events (empty/undefined = all). */
   eventIds?: string[];
   /** Limit to these products (empty/undefined = all involved). */
   productIds?: string[];
+  /**
+   * Limit to specific approved request IDs.
+   * When provided, only these requests are included (regardless of `include.requests`).
+   */
+  requestIds?: string[];
+  /**
+   * Limit to specific loading order IDs.
+   * When provided, only these orders are included (regardless of `include.loadingOrders`).
+   */
+  orderIds?: string[];
+  /**
+   * Limit to specific trip IDs.
+   * When provided, only these trips are included (regardless of `include.trips`).
+   */
+  tripIds?: string[];
+  /**
+   * Limit to specific movement IDs.
+   * When provided, only these movements are included (regardless of `include.movements`).
+   */
+  movementIds?: string[];
   /** Which data sources to feed into the projection. */
   include?: StockProjectionInclude;
   /** When true, only return products that hit shortage on some day. */
@@ -64,6 +97,68 @@ export interface EventsWithTripsResult {
   endDate: string;
   events: EventTripSummary[];
 }
+
+// ── Operations catalog (for the config modal) ─────────────────────────────────
+
+export interface ProjectionOpRequest {
+  id: string;
+  eventId: string;
+  eventName: string | null;
+  area: string | null;
+  status: string;
+  productCount: number;
+  totalQty: number;
+  /** yyyy-MM-dd or null */
+  setupDate: string | null;
+}
+
+export interface ProjectionOpOrder {
+  id: string;
+  orderNumber: string;
+  eventId: string;
+  eventName: string | null;
+  status: string;
+  productCount: number;
+  totalQty: number;
+  /** yyyy-MM-dd or null */
+  loadingDate: string | null;
+}
+
+export interface ProjectionOpTrip {
+  id: string;
+  description: string | null;
+  eventId: string | null;
+  eventName: string | null;
+  status: string;
+  /** ISO string or null */
+  departureDateTime: string | null;
+  /** ISO string or null */
+  returnDateTime: string | null;
+  requestCount: number;
+  productCount: number;
+  totalQty: number;
+}
+
+export interface ProjectionOpMovement {
+  id: string;
+  movementNumber: string;
+  name: string | null;
+  eventId: string | null;
+  eventName: string | null;
+  status: string;
+  nature: "outbound" | "inbound" | null;
+  productCount: number;
+  totalQty: number;
+}
+
+export interface ProjectionOperations {
+  requests: ProjectionOpRequest[];
+  orders: ProjectionOpOrder[];
+  trips: ProjectionOpTrip[];
+  movements: ProjectionOpMovement[];
+}
+
+// ── Projection result ─────────────────────────────────────────────────────────
 
 export type ProjectionDayStatus = "ok" | "low" | "shortage";
 

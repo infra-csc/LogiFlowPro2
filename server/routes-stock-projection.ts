@@ -1,7 +1,7 @@
 import { Express, Request, Response } from "express";
 import { db } from "./db";
 import { requireAuth } from "./ownership";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import {
   events,
   products,
@@ -35,6 +35,7 @@ import type {
   ConsideredSituation,
   EventTripSummary,
   EventsWithTripsResult,
+  ProjectionOperations,
 } from "@shared/stock-projection";
 
 // --- Date helpers (bucket everything by UTC calendar day) ---------------------
@@ -126,6 +127,14 @@ export function registerStockProjectionRoutes(app: Express) {
       const eventFilter = params.eventIds && params.eventIds.length > 0 ? params.eventIds : null;
       const productFilter =
         params.productIds && params.productIds.length > 0 ? new Set(params.productIds) : null;
+      const requestIdFilter =
+        params.requestIds && params.requestIds.length > 0 ? new Set(params.requestIds) : null;
+      const orderIdFilter =
+        params.orderIds && params.orderIds.length > 0 ? new Set(params.orderIds) : null;
+      const tripIdFilter =
+        params.tripIds && params.tripIds.length > 0 ? new Set(params.tripIds) : null;
+      const movementIdFilter =
+        params.movementIds && params.movementIds.length > 0 ? new Set(params.movementIds) : null;
 
       const rangeStart = parseDayKey(startDate);
       const rangeEnd = parseDayKey(endDate);
@@ -311,6 +320,7 @@ export function registerStockProjectionRoutes(app: Express) {
 
         for (const m of movementRows) {
           if (m.status === "cancelled") continue;
+          if (movementIdFilter && !movementIdFilter.has(m.id)) continue;
           const resolvedNature =
             (m.typeConfigId && natureMap.get(m.typeConfigId)) ||
             (m.legacyType?.startsWith("inbound") ? "inbound" : m.legacyType?.startsWith("outbound") ? "outbound" : null);
@@ -472,6 +482,7 @@ export function registerStockProjectionRoutes(app: Express) {
       if (include.loadingOrders) {
         const orderConds: any[] = [inArray(loadingOrders.status, ["ready", "approved", "in_progress"] as any)];
         if (eventFilter) orderConds.push(inArray(loadingOrders.eventId, eventFilter));
+        if (orderIdFilter) orderConds.push(inArray(loadingOrders.id, Array.from(orderIdFilter)));
         const orderRows = await db
           .select({
             id: loadingOrders.id,
@@ -646,7 +657,7 @@ export function registerStockProjectionRoutes(app: Express) {
           })
           .from(trips)
           .where(tripConds.length ? and(...tripConds) : undefined);
-        const standalone = tripRows.filter((t) => !linkedTripIds.has(t.id));
+        const standalone = tripRows.filter((t) => !linkedTripIds.has(t.id) && (!tripIdFilter || tripIdFilter.has(t.id)));
         const standaloneIds = standalone.map((t) => t.id);
 
         const tripItemRows = standaloneIds.length
@@ -763,6 +774,7 @@ export function registerStockProjectionRoutes(app: Express) {
           inArray(materialRequests.eventId, scopeEventIds),
           inArray(materialRequests.status, ["approved", "cutoff_locked"] as any),
         ];
+        if (requestIdFilter) reqConds.push(inArray(materialRequests.id, Array.from(requestIdFilter)));
         const reqRows = await db
           .select({
             id: materialRequests.id,
@@ -1335,6 +1347,153 @@ export function registerStockProjectionRoutes(app: Express) {
     } catch (error: any) {
       console.error("events-with-trips error:", error);
       return res.status(500).json({ error: "Erro ao buscar eventos com viagens" });
+    }
+  });
+
+  // ── Operations catalog ──────────────────────────────────────────────────────
+  app.get("/api/reports/stock-projection/operations", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const rawEventIds = req.query.eventIds as string | undefined;
+      const eventIds = rawEventIds ? rawEventIds.split(",").filter(Boolean) : null;
+
+      // ── Requests ──────────────────────────────────────────────────────────
+      const reqConds: any[] = [inArray(materialRequests.status, ["approved", "cutoff_locked"] as any)];
+      if (eventIds && eventIds.length > 0) reqConds.push(inArray(materialRequests.eventId, eventIds));
+      const reqRows = await db
+        .select({ id: materialRequests.id, eventId: materialRequests.eventId, area: materialRequests.area, status: materialRequests.status })
+        .from(materialRequests)
+        .where(and(...reqConds));
+      const reqIds = reqRows.map((r) => r.id);
+      const reqItemRows = reqIds.length
+        ? await db.select({ requestId: requestItems.requestId, productId: requestItems.productId, quantity: requestItems.quantity, approvedQty: requestItems.approvedQuantity, approvalStatus: requestItems.approvalStatus })
+            .from(requestItems).where(inArray(requestItems.requestId, reqIds))
+        : [];
+      const reqItemsByReq = new Map<string, typeof reqItemRows>();
+      for (const it of reqItemRows) {
+        if (!reqItemsByReq.has(it.requestId)) reqItemsByReq.set(it.requestId, []);
+        reqItemsByReq.get(it.requestId)!.push(it);
+      }
+
+      // ── Loading orders ─────────────────────────────────────────────────────
+      const orderConds: any[] = [inArray(loadingOrders.status, ["ready", "approved", "in_progress"] as any)];
+      if (eventIds && eventIds.length > 0) orderConds.push(inArray(loadingOrders.eventId, eventIds));
+      const orderRows = await db
+        .select({ id: loadingOrders.id, number: loadingOrders.orderNumber, eventId: loadingOrders.eventId, status: loadingOrders.status, loadingDate: loadingOrders.loadingDate })
+        .from(loadingOrders)
+        .where(and(...orderConds));
+      const orderIds = orderRows.map((o) => o.id);
+      const orderItemRows = orderIds.length
+        ? await db.select({ orderId: loadingOrderItems.loadingOrderId, productId: loadingOrderItems.productId, quantity: loadingOrderItems.consolidatedQuantity })
+            .from(loadingOrderItems).where(inArray(loadingOrderItems.loadingOrderId, orderIds))
+        : [];
+      const orderItemsByOrder = new Map<string, typeof orderItemRows>();
+      for (const it of orderItemRows) {
+        if (!orderItemsByOrder.has(it.orderId)) orderItemsByOrder.set(it.orderId, []);
+        orderItemsByOrder.get(it.orderId)!.push(it);
+      }
+
+      // ── Trips ──────────────────────────────────────────────────────────────
+      const tripConds: any[] = [];
+      if (eventIds && eventIds.length > 0) tripConds.push(inArray(trips.eventId, eventIds));
+      const tripRows = await db
+        .select({ id: trips.id, description: trips.description, eventId: trips.eventId, status: trips.status, departure: trips.departureDateTime, returnTime: trips.unloadingEndTime })
+        .from(trips)
+        .where(tripConds.length ? and(...tripConds) : undefined);
+      const tripIds = tripRows.map((t) => t.id);
+      const tripItemRows = tripIds.length
+        ? await db.select({ tripId: tripItems.tripId, productId: tripItems.productId, quantity: tripItems.plannedQuantity })
+            .from(tripItems).where(inArray(tripItems.tripId, tripIds))
+        : [];
+      const tripItemsByTrip = new Map<string, typeof tripItemRows>();
+      for (const it of tripItemRows) {
+        if (!tripItemsByTrip.has(it.tripId)) tripItemsByTrip.set(it.tripId, []);
+        tripItemsByTrip.get(it.tripId)!.push(it);
+      }
+
+      // ── Movements ─────────────────────────────────────────────────────────
+      let movRows: { id: string; movementNumber: string; name: string | null; eventId: string | null; status: string; typeConfigId: string | null; legacyType: string | null }[] = [];
+      if (!eventIds || eventIds.length === 0) {
+        movRows = await db
+          .select({ id: movements.id, movementNumber: movements.movementNumber, name: movements.name, eventId: movements.eventId, status: movements.status, typeConfigId: movements.movementTypeConfigId, legacyType: movements.type })
+          .from(movements)
+          .where(ne(movements.status, "cancelled" as any));
+      } else {
+        const junctionRows = await db
+          .select({ movementId: movementEvents.movementId })
+          .from(movementEvents)
+          .where(inArray(movementEvents.eventId, eventIds));
+        const movIds = junctionRows.map((r) => r.movementId);
+        if (movIds.length > 0) {
+          movRows = await db
+            .select({ id: movements.id, movementNumber: movements.movementNumber, name: movements.name, eventId: movements.eventId, status: movements.status, typeConfigId: movements.movementTypeConfigId, legacyType: movements.type })
+            .from(movements)
+            .where(and(inArray(movements.id, movIds), ne(movements.status, "cancelled" as any)));
+        }
+      }
+      const movIds2 = movRows.map((m) => m.id);
+      const movItemRows = movIds2.length
+        ? await db.select({ movementId: movementItems.movementId, productId: movementItems.productId, quantity: movementItems.quantity })
+            .from(movementItems).where(inArray(movementItems.movementId, movIds2))
+        : [];
+      const movItemsByMov = new Map<string, typeof movItemRows>();
+      for (const it of movItemRows) {
+        if (!movItemsByMov.has(it.movementId)) movItemsByMov.set(it.movementId, []);
+        movItemsByMov.get(it.movementId)!.push(it);
+      }
+      // Resolve nature for movements with typeConfigId
+      const movTypeIds = Array.from(new Set(movRows.map((m) => m.typeConfigId).filter(Boolean))) as string[];
+      const movTypeRows = movTypeIds.length
+        ? await db.select({ id: movementTypesConfig.id, nature: movementTypesConfig.nature }).from(movementTypesConfig).where(inArray(movementTypesConfig.id, movTypeIds))
+        : [];
+      const movNatureMap = new Map(movTypeRows.map((t) => [t.id, t.nature]));
+
+      // ── Event names ────────────────────────────────────────────────────────
+      const allEvIds = Array.from(new Set([
+        ...reqRows.map((r) => r.eventId),
+        ...orderRows.map((o) => o.eventId),
+        ...tripRows.map((t) => t.eventId),
+      ])).filter(Boolean) as string[];
+      const eventNameRows = allEvIds.length
+        ? await db.select({ id: events.id, name: events.name, setupDate: events.setupDate }).from(events).where(inArray(events.id, allEvIds))
+        : [];
+      const eventNameMap = new Map(eventNameRows.map((e) => [e.id, { name: e.name, setupDate: e.setupDate }]));
+
+      const result: ProjectionOperations = {
+        requests: reqRows.map((r) => {
+          const items = reqItemsByReq.get(r.id) || [];
+          const productIds = new Set(items.map((i) => i.productId).filter(Boolean));
+          const totalQty = items.reduce((s, i) => s + (i.approvalStatus === "approved" && i.approvedQty != null ? i.approvedQty : i.quantity), 0);
+          const ev = eventNameMap.get(r.eventId);
+          return { id: r.id, eventId: r.eventId, eventName: ev?.name || null, area: r.area, status: r.status, productCount: productIds.size, totalQty, setupDate: ev?.setupDate ? toDayKey(ev.setupDate) : null };
+        }),
+        orders: orderRows.map((o) => {
+          const items = orderItemsByOrder.get(o.id) || [];
+          const productIds = new Set(items.map((i) => i.productId).filter(Boolean));
+          const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
+          const ev = eventNameMap.get(o.eventId);
+          return { id: o.id, orderNumber: o.number, eventId: o.eventId, eventName: ev?.name || null, status: o.status, productCount: productIds.size, totalQty, loadingDate: o.loadingDate ? toDayKey(o.loadingDate) : null };
+        }),
+        trips: tripRows.map((t) => {
+          const items = tripItemsByTrip.get(t.id) || [];
+          const productIds = new Set(items.map((i) => i.productId).filter(Boolean));
+          const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
+          const ev = eventNameMap.get(t.eventId);
+          return { id: t.id, description: t.description, eventId: t.eventId, eventName: ev?.name || null, status: t.status, departureDateTime: t.departure ? t.departure.toISOString() : null, returnDateTime: t.returnTime ? t.returnTime.toISOString() : null, requestCount: 0, productCount: productIds.size, totalQty };
+        }),
+        movements: movRows.map((m) => {
+          const items = movItemsByMov.get(m.id) || [];
+          const productIds = new Set(items.map((i) => i.productId).filter(Boolean));
+          const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
+          const rawNature = (m.typeConfigId && movNatureMap.get(m.typeConfigId)) || (m.legacyType?.startsWith("inbound") ? "inbound" : m.legacyType?.startsWith("outbound") ? "outbound" : null);
+          const nature: "outbound" | "inbound" | null = rawNature === "inbound" || rawNature === "outbound" ? rawNature : null;
+          return { id: m.id, movementNumber: m.movementNumber, name: m.name, eventId: m.eventId || null, eventName: null, status: m.status, nature, productCount: productIds.size, totalQty };
+        }),
+      };
+
+      return res.json(result);
+    } catch (error: any) {
+      console.error("stock-projection/operations error:", error);
+      return res.status(500).json({ error: "Erro ao buscar operações" });
     }
   });
 }
