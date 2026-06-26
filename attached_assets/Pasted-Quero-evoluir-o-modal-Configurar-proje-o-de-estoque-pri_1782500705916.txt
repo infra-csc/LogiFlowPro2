@@ -1,0 +1,813 @@
+Quero evoluir o modal “Configurar projeção de estoque”, principalmente no modo Avançado.
+
+O objetivo é permitir que o usuário controle exatamente quais operações entram na projeção e consiga analisar o estoque por data e hora, pois um caminhão pode ainda estar em trânsito, ter chegado ao CD ou já ter terminado a descarga dependendo do horário consultado.
+
+Não alterar o restante do sistema nem remover funcionalidades existentes. Preservar o design dark atual, mas melhorar a organização, a clareza e a lógica do modal.
+
+==================================================
+1. PRINCIPAL PROBLEMA ATUAL
+==================================================
+
+Atualmente o usuário consegue apenas ativar ou desativar fontes genéricas:
+
+- Ordens de carregamento
+- Requisições aprovadas
+- Movimentações
+- Planos de viagens avulsos
+
+Isso não é suficiente.
+
+O usuário precisa conseguir:
+
+- escolher requisições aprovadas individualmente;
+- escolher planos de viagens individualmente;
+- escolher ordens de carregamento individualmente;
+- escolher movimentações individualmente;
+- selecionar ou desmarcar operações específicas de cada evento;
+- consultar o saldo em uma data e hora exatas;
+- gerar uma projeção realmente por hora;
+- visualizar antes de gerar quais operações serão consideradas;
+- entender quais operações foram ignoradas para evitar contagem duplicada.
+
+==================================================
+2. TAMANHO E ESTRUTURA DO MODAL
+==================================================
+
+Aumentar o modal avançado.
+
+Desktop:
+
+- largura entre 1.100 px e 1.250 px;
+- largura máxima de 92vw;
+- altura máxima de 92vh;
+- header fixo;
+- footer fixo;
+- apenas o conteúdo central deve possuir rolagem;
+- não permitir rolagem horizontal;
+- não cortar textos, nomes de eventos ou operações.
+
+Estruturar o conteúdo em duas colunas:
+
+COLUNA PRINCIPAL — aproximadamente 68%
+- período e horário;
+- granularidade;
+- eventos;
+- fontes;
+- operações selecionadas;
+- produtos;
+- exibição.
+
+COLUNA LATERAL — aproximadamente 32%
+- resumo da projeção;
+- quantidades selecionadas;
+- intervalo analisado;
+- operações incluídas;
+- operações ignoradas;
+- alertas de dados incompletos;
+- botão para revisar operações.
+
+No mobile e tablet, transformar as duas colunas em uma única coluna.
+
+==================================================
+3. NAVEGAÇÃO INTERNA
+==================================================
+
+Manter os modos:
+
+- Configuração rápida
+- Avançado
+
+No modo Avançado, organizar por etapas ou abas internas:
+
+1. Período e horário
+2. Eventos e operações
+3. Produtos
+4. Exibição
+5. Revisão
+
+O usuário deve conseguir navegar entre as etapas sem perder as seleções.
+
+Também pode ser usado um layout com seções expansíveis, desde que:
+
+- fique claro onde o usuário está;
+- não exista uma página extremamente comprida e confusa;
+- as operações selecionadas permaneçam visíveis no resumo lateral.
+
+==================================================
+4. PERÍODO COM DATA E HORA
+==================================================
+
+Substituir os campos atuais apenas de data por:
+
+DATA/HORA INICIAL
+- campo de data;
+- campo de horário.
+
+DATA/HORA FINAL
+- campo de data;
+- campo de horário.
+
+Exemplo:
+
+Início:
+26/06/2026 às 08:00
+
+Fim:
+27/06/2026 às 22:00
+
+Adicionar atalhos:
+
+- Agora
+- Hoje
+- Próximas 6 horas
+- Próximas 12 horas
+- Próximas 24 horas
+- 3 dias
+- 7 dias
+- 15 dias
+- 30 dias
+- Semana atual
+- Próxima semana
+- Mês atual
+- Próximo mês
+
+Usar o fuso horário:
+
+America/Sao_Paulo
+
+Mostrar abaixo:
+
+“Período analisado: 26/06/2026 08:00 até 27/06/2026 22:00.”
+
+==================================================
+5. GRANULARIDADE FUNCIONAL
+==================================================
+
+Implementar de verdade as opções:
+
+- Por hora
+- Por turno
+- Por dia
+- Por semana
+
+Não mostrar “disponível em versão futura”.
+
+POR HORA
+- mostrar o saldo de hora em hora;
+- permitir intervalos de até 7 dias;
+- considerar o horário exato de saída, chegada, retorno e descarga;
+- exibir colunas como 08h, 09h, 10h, 11h etc.
+
+POR TURNO
+Turnos padrões:
+
+- Madrugada: 00:00–05:59
+- Manhã: 06:00–11:59
+- Tarde: 12:00–17:59
+- Noite: 18:00–23:59
+
+POR DIA
+Adicionar configuração:
+
+“Horário de corte diário”
+
+Exemplo:
+
+18:00
+
+Nesse caso, o saldo de cada dia deverá representar a posição do estoque às 18:00 daquele dia.
+
+POR SEMANA
+Mostrar o saldo ao final de cada semana.
+
+Regras de limite:
+
+- Por hora: máximo 7 dias;
+- Por turno: máximo 31 dias;
+- Por dia: máximo 90 dias;
+- Por semana: máximo 12 meses.
+
+Caso o intervalo seja incompatível, mostrar uma orientação e sugerir outra granularidade.
+
+==================================================
+6. MOMENTO EM QUE O ESTOQUE MUDA
+==================================================
+
+A projeção deve respeitar os horários operacionais reais.
+
+ORDEM DE PRIORIDADE DOS DADOS:
+
+1. Movimentação física registrada
+2. Ordem de carregamento
+3. Plano de viagens
+4. Requisição aprovada
+
+Essa prioridade serve para evitar duplicidade.
+
+SAÍDA DO ESTOQUE
+
+Por padrão, considerar que o material deixa de estar disponível na:
+
+- data e hora da saída do veículo do CD.
+
+Opcionalmente, permitir uma configuração:
+
+“Reservar estoque desde o início do carregamento”
+
+Quando ativada:
+
+- o produto fica reservado no início do carregamento;
+- fica indisponível após a saída do veículo.
+
+RETORNO AO ESTOQUE
+
+O material só volta a ficar disponível após:
+
+- chegada ao CD;
+- conclusão da descarga no CD.
+
+Usar como momento de retorno:
+
+“Fim da descarga no CD”
+
+Não considerar o material disponível apenas porque o veículo chegou ao CD.
+
+Caso não exista horário de fim da descarga:
+
+- manter como “Aguardando descarga”;
+- não devolver automaticamente ao estoque;
+- exibir aviso de dado incompleto.
+
+==================================================
+7. SELEÇÃO DE EVENTOS
+==================================================
+
+Na seção “Eventos”, permitir:
+
+- pesquisar por nome;
+- filtrar por período;
+- filtrar por status;
+- selecionar todos;
+- limpar seleção;
+- selecionar vários eventos.
+
+Cada evento deve mostrar:
+
+- nome completo;
+- data do evento;
+- montagem;
+- desmontagem;
+- quantidade de requisições;
+- quantidade de planos de viagens;
+- quantidade de ordens;
+- quantidade de movimentações.
+
+Exemplo:
+
+Desafio Energia Petrobras – Bike – São Paulo 2026
+Montagem: 21/06/2026
+4 requisições · 2 viagens · 2 ordens · 1 movimentação
+
+Não cortar o nome do evento.
+
+Ao selecionar um evento, carregar abaixo todas as operações vinculadas.
+
+==================================================
+8. SELEÇÃO INDIVIDUAL DE REQUISIÇÕES
+==================================================
+
+Criar uma seção:
+
+“Requisições aprovadas”
+
+Não deixar apenas um checkbox geral.
+
+Permitir:
+
+- marcar todas;
+- desmarcar todas;
+- pesquisar requisição;
+- filtrar por área;
+- filtrar por evento;
+- filtrar por status;
+- selecionar individualmente.
+
+Exibir cada requisição em uma linha ou card compacto:
+
+- nome completo;
+- evento;
+- área solicitante;
+- solicitante;
+- status da aprovação;
+- data de montagem utilizada;
+- quantidade de produtos distintos;
+- total de unidades;
+- plano de viagens vinculado, quando houver;
+- ordem vinculada, quando houver;
+- movimentação vinculada, quando houver.
+
+Exemplo:
+
+Ativação
+Desafio Energia Petrobras – Bike – São Paulo 2026
+Área: Arena
+Aprovada
+12 produtos · 146 unidades
+Montagem: 21/06/2026 às 08:00
+
+Cada requisição deve possuir checkbox quadrado de seleção.
+
+Não usar botão circular de rádio para seleção múltipla.
+
+Ao expandir a requisição, mostrar seus produtos:
+
+Produto | SKU | Quantidade | Situação
+
+O usuário deve poder:
+
+- incluir ou excluir a requisição inteira;
+- incluir ou excluir produtos específicos daquela requisição.
+
+Exibir no cabeçalho:
+
+“3 de 4 requisições selecionadas”
+
+==================================================
+9. SELEÇÃO INDIVIDUAL DE PLANOS DE VIAGENS
+==================================================
+
+Criar uma seção:
+
+“Planos de viagens”
+
+Permitir:
+
+- marcar todos;
+- desmarcar todos;
+- pesquisar por nome, veículo, motorista ou evento;
+- filtrar por status;
+- filtrar por evento;
+- filtrar por data;
+- selecionar individualmente.
+
+Cada plano deve mostrar:
+
+- nome completo;
+- evento;
+- veículo;
+- motorista;
+- doca;
+- saída do CD;
+- chegada ao evento;
+- carregamento;
+- descarregamento no evento;
+- retorno;
+- chegada ao CD;
+- início da descarga no CD;
+- fim da descarga no CD;
+- quantidade de requisições vinculadas;
+- quantidade de produtos;
+- total de unidades.
+
+Exemplo:
+
+Carreta 2 – Desafio Energia Petrobras
+Evento: Desafio Energia Petrobras – Bike – São Paulo 2026
+Veículo: Carreta
+Motorista: Paulo Dantas
+Saída CD: 26/06/2026 às 10:00
+Chegada evento: 26/06/2026 às 13:30
+Retorno: 28/06/2026 às 18:00
+Fim da descarga CD: 28/06/2026 às 22:00
+3 requisições · 28 produtos · 813 unidades
+
+Ao expandir o plano, mostrar:
+
+- requisições vinculadas;
+- produtos transportados;
+- quantidades;
+- datas e horários;
+- rota;
+- destinos.
+
+Exibir:
+
+“2 de 3 planos selecionados”
+
+==================================================
+10. MODO EVENTO–VIAGEM
+==================================================
+
+Manter o “Modo Evento–Viagem”, mas melhorar sua lógica.
+
+Quando ativado:
+
+- agrupar os planos por evento;
+- permitir selecionar quais viagens daquele evento entram no cálculo;
+- não obrigar que todas as viagens do evento sejam consideradas;
+- mostrar visualmente a primeira saída e o último retorno;
+- permitir substituir manualmente a viagem usada como saída ou retorno.
+
+Exemplo:
+
+Evento: Desafio Energia Petrobras
+
+Viagens encontradas: 3
+
+[✓] Carreta 1
+Saída: 26/06 10:00
+Retorno ao estoque: 28/06 22:00
+
+[✓] Carreta 2
+Saída: 26/06 11:00
+Retorno ao estoque: 29/06 01:00
+
+[ ] Caminhão de apoio
+Saída: 27/06 06:00
+Retorno ao estoque: 27/06 23:00
+
+Regra automática sugerida:
+
+- saída geral: primeira saída selecionada;
+- retorno geral: último fim de descarga no CD entre as viagens selecionadas.
+
+Mas o usuário deve conseguir revisar quais viagens estão incluídas.
+
+==================================================
+11. SELEÇÃO INDIVIDUAL DE ORDENS
+==================================================
+
+Criar seção:
+
+“Ordens de carregamento”
+
+Permitir selecionar cada ordem individualmente.
+
+Mostrar:
+
+- código;
+- evento;
+- plano de viagens;
+- requisições vinculadas;
+- status;
+- data/hora prevista;
+- data/hora efetiva;
+- produtos;
+- unidades;
+- movimentação física relacionada.
+
+Status aceitos:
+
+- Pronta
+- Aprovada
+- Em andamento
+- Finalizada
+
+Ordens canceladas, rejeitadas ou em rascunho não devem entrar por padrão.
+
+==================================================
+12. SELEÇÃO INDIVIDUAL DE MOVIMENTAÇÕES
+==================================================
+
+Criar seção:
+
+“Movimentações físicas”
+
+Permitir selecionar movimentações individualmente.
+
+Mostrar:
+
+- código;
+- tipo;
+- evento;
+- veículo;
+- plano;
+- ordem;
+- requisição;
+- status;
+- horário;
+- produtos;
+- quantidades;
+- evidências anexadas.
+
+Movimentações concluídas devem ter prioridade sobre fontes planejadas.
+
+Movimentações em andamento devem utilizar a quantidade efetivamente registrada até aquele momento.
+
+==================================================
+13. EVITAR CONTAGEM DUPLICADA
+==================================================
+
+Aplicar deduplicação obrigatória.
+
+Exemplo:
+
+Uma mesma requisição está vinculada a:
+
+- um plano de viagens;
+- uma ordem de carregamento;
+- uma movimentação física.
+
+Não contar o material três vezes.
+
+Prioridade:
+
+Movimentação física
+>
+Ordem de carregamento
+>
+Plano de viagens
+>
+Requisição aprovada
+
+Exibir no resumo:
+
+Operações selecionadas: 12
+Consideradas no cálculo: 7
+Ignoradas por duplicidade: 5
+
+Permitir abrir:
+
+“Ver operações ignoradas”
+
+Mostrar o motivo:
+
+“Requisição Ativação ignorada porque já está representada pela movimentação MVT-20260622-001.”
+
+Caso o usuário desmarque a fonte prioritária, utilizar a próxima fonte disponível como fallback.
+
+==================================================
+14. RESUMO DAS OPERAÇÕES SELECIONADAS
+==================================================
+
+Na coluna lateral, mostrar um resumo em tempo real:
+
+PERÍODO
+
+26/06/2026 08:00
+até
+27/06/2026 22:00
+
+GRANULARIDADE
+
+Por hora
+
+EVENTOS
+
+2 selecionados
+
+OPERAÇÕES SELECIONADAS
+
+3 requisições
+2 planos de viagens
+2 ordens
+1 movimentação
+
+PRODUTOS
+
+38 produtos
+813 unidades movimentadas
+
+DEDUPLICAÇÃO
+
+8 fontes selecionadas
+5 consideradas
+3 ignoradas por vínculo duplicado
+
+DADOS INCOMPLETOS
+
+1 plano sem horário de fim da descarga
+2 requisições sem data de montagem
+
+Adicionar links:
+
+- Ver operações consideradas
+- Ver operações ignoradas
+- Corrigir dados incompletos
+
+==================================================
+15. PRÉVIA DA LINHA DO TEMPO
+==================================================
+
+Antes de clicar em “Gerar projeção”, mostrar uma pequena prévia cronológica:
+
+26/06 — 08:00
+Reserva iniciada
+Ordem OC-1024
+−120 unidades
+
+26/06 — 10:00
+Saída do veículo
+Carreta 1
+−120 disponíveis
+
+27/06 — 15:30
+Chegada ao CD
+Ainda aguardando descarga
+
+27/06 — 17:00
+Fim da descarga
++120 disponíveis
+
+Isso ajuda o usuário a validar se os horários selecionados estão corretos.
+
+==================================================
+16. PRODUTOS
+==================================================
+
+Manter a seleção de produtos, mas melhorar:
+
+- busca por nome ou SKU;
+- seleção múltipla com checkbox quadrado;
+- selecionar todos;
+- limpar;
+- mostrar quantidade selecionada;
+- filtrar apenas produtos presentes nas operações selecionadas;
+- filtrar por evento;
+- filtrar por requisição;
+- filtrar por plano;
+- filtrar por disponibilidade;
+- filtrar por titularidade.
+
+Exibir:
+
+“12 de 89 produtos selecionados”
+
+Cada produto deve mostrar:
+
+Nome completo
+SKU
+Estoque atual
+Quantidade envolvida nas operações selecionadas
+
+Não usar uma lista sem contexto mostrando apenas nome e SKU.
+
+==================================================
+17. EXIBIÇÃO
+==================================================
+
+Na seção “Exibição”, disponibilizar:
+
+- Apenas produtos em falta
+- Apenas produtos abaixo do mínimo
+- Apenas produtos sem estoque
+- Apenas produtos impactados
+- Apenas produtos com movimentação no intervalo
+- Ocultar produtos sem alteração
+- Mostrar operações nas células
+- Mostrar saldo inicial e final
+- Mostrar produtos em trânsito
+- Mostrar produtos em evento
+- Mostrar reservas futuras
+
+Essas opções devem usar checkboxes.
+
+Não usar controles circulares que pareçam botões de opção.
+
+==================================================
+18. CONFIGURAÇÃO RÁPIDA
+==================================================
+
+A configuração rápida deve continuar simples.
+
+Mostrar apenas:
+
+- período;
+- granularidade;
+- eventos;
+- fontes principais;
+- produtos;
+- gerar projeção.
+
+Ao selecionar um evento na configuração rápida:
+
+- considerar automaticamente todas as operações válidas;
+- aplicar deduplicação;
+- usar horários planejados ou efetivos disponíveis;
+- exibir uma mensagem:
+
+“Todas as operações válidas deste evento serão consideradas. Use o modo Avançado para escolher operações individualmente.”
+
+==================================================
+19. BOTÃO GERAR PROJEÇÃO
+==================================================
+
+Manter o botão fixo no rodapé:
+
+“Gerar projeção”
+
+Antes de habilitar, validar:
+
+- data e hora inicial;
+- data e hora final;
+- granularidade compatível;
+- ao menos uma fonte selecionada;
+- ao menos uma operação válida encontrada.
+
+Caso não existam operações:
+
+“Não foram encontradas operações válidas para o período e filtros selecionados.”
+
+Ao gerar:
+
+- fechar o modal;
+- recalcular automaticamente;
+- mostrar no cabeçalho da tela os filtros aplicados;
+- mostrar o horário exato do cálculo.
+
+Exemplo:
+
+Projeção calculada às 14:32
+Período: 26/06 08:00 até 27/06 22:00
+Granularidade: Por hora
+2 eventos · 5 operações · 38 produtos
+
+==================================================
+20. REGRAS PARA DADOS INCOMPLETOS
+==================================================
+
+Não inventar datas ou horários.
+
+Quando uma operação não tiver horário:
+
+- mostrar “Horário não informado”;
+- alertar o usuário;
+- permitir ignorar a operação;
+- permitir usar um horário manual apenas para aquela simulação;
+- identificar claramente que houve ajuste manual.
+
+Exemplo:
+
+Plano Carreta 2 sem horário de fim da descarga.
+
+Opções:
+
+- Ignorar nesta projeção
+- Considerar retorno às 18:00
+- Abrir plano para corrigir
+
+O ajuste manual da simulação não deve alterar automaticamente o cadastro original.
+
+==================================================
+21. MELHORIAS VISUAIS
+==================================================
+
+Não usar grandes áreas azuis para tudo.
+
+Usar azul apenas para:
+
+- ação principal;
+- item selecionado;
+- foco;
+- link.
+
+Cores semânticas:
+
+- verde: entrada, retorno ou situação adequada;
+- vermelho: saída, falta ou saldo negativo;
+- amarelo: atenção, dado incompleto ou ambiguidade;
+- cinza: operação ignorada ou indisponível;
+- azul: configuração e seleção.
+
+Mostrar chips compactos no topo:
+
+Por hora
+2 eventos
+5 operações
+38 produtos
+1 alerta
+
+Não cortar nomes com reticências sem fornecer tooltip.
+
+Quando o nome precisar ser reduzido:
+
+- permitir duas linhas;
+- mostrar nome completo no hover;
+- permitir abrir o registro.
+
+==================================================
+22. CRITÉRIOS DE ACEITE
+==================================================
+
+A alteração só estará concluída quando:
+
+1. O usuário conseguir selecionar requisições aprovadas individualmente.
+2. O usuário conseguir selecionar planos de viagens individualmente.
+3. O usuário conseguir selecionar ordens individualmente.
+4. O usuário conseguir selecionar movimentações individualmente.
+5. Os registros estiverem agrupados por evento.
+6. A projeção por hora estiver realmente funcionando.
+7. Existirem data e hora inicial e final.
+8. O usuário puder analisar o saldo em um horário exato.
+9. O retorno ao estoque acontecer apenas após o fim da descarga no CD.
+10. A saída respeitar o horário real ou previsto da operação.
+11. A mesma demanda não for contada mais de uma vez.
+12. O sistema mostrar quais fontes foram ignoradas por deduplicação.
+13. Os produtos mostrarem a quantidade envolvida nas operações.
+14. Os nomes não forem cortados sem possibilidade de leitura.
+15. O resumo lateral atualizar em tempo real.
+16. O modal não possuir rolagem horizontal.
+17. Header e footer permanecerem fixos.
+18. Nenhum dado fictício for adicionado.
+19. Nenhuma funcionalidade atual for removida.
+20. A configuração rápida continuar disponível.
