@@ -121,6 +121,7 @@ type ExpectedItem = {
   expectedQuantity: number;
   loadedQuantity: number;
   remaining: number;
+  kitRefs?: Array<{ kitId: string; kitName: string }>;
 };
 
 const getStatusLabel = (status: string) => {
@@ -406,15 +407,18 @@ export default function MovementDetails() {
     }
     if (requestItemsData.length > 0) {
       // Consolidate products from direct items + kit BOM expansion
-      const byProduct = new Map<string, { product: Product; expectedQuantity: number }>();
+      const byProduct = new Map<string, { product: Product; expectedQuantity: number; kitRefs: Array<{ kitId: string; kitName: string }> }>();
 
-      const addProduct = (prod: Product, qty: number) => {
+      const addProduct = (prod: Product, qty: number, kitRef?: { kitId: string; kitName: string }) => {
         if (qty <= 0) return;
         const existing = byProduct.get(prod.id);
         if (existing) {
           existing.expectedQuantity += qty;
+          if (kitRef && !existing.kitRefs.find((k) => k.kitId === kitRef.kitId)) {
+            existing.kitRefs.push(kitRef);
+          }
         } else {
-          byProduct.set(prod.id, { product: prod, expectedQuantity: qty });
+          byProduct.set(prod.id, { product: prod, expectedQuantity: qty, kitRefs: kitRef ? [kitRef] : [] });
         }
       };
 
@@ -422,27 +426,27 @@ export default function MovementDetails() {
         const qty = ri.approvedQuantity != null && ri.approvedQuantity > 0 ? ri.approvedQuantity : ri.quantity;
 
         if (ri.productId && ri.product) {
-          // Direct product item
+          // Direct product item — no kit ref
           addProduct(ri.product as Product, qty);
         } else if (ri.kitId) {
-          // Kit item — expand via BOM
+          // Kit item — expand via BOM, tagging each component with the kit reference
+          const kitRef = { kitId: ri.kitId, kitName: (ri.kit as Kit | null)?.name ?? ri.kitId };
           const bomLines = kitBomMap.get(ri.kitId);
           if (bomLines) {
             const params = (ri.kitParameters as Record<string, number> | null) ?? {};
             for (const line of bomLines) {
               const lineQty = calcKitItemQty(line.quantityFormula, qty, params, line.productId);
               if (lineQty > 0) {
-                // Find the product from the already-loaded products list
                 const prod = products.find((p) => p.id === line.productId);
-                if (prod) addProduct(prod, lineQty);
+                if (prod) addProduct(prod, lineQty, kitRef);
               }
             }
           }
-          // If BOM not yet loaded, skip (will re-compute once queries resolve)
+          // BOM not yet loaded → skip; expectedItems re-computes when kitBomMap updates
         }
       }
 
-      return Array.from(byProduct.entries()).map(([productId, { product, expectedQuantity }]) => {
+      return Array.from(byProduct.entries()).map(([productId, { product, expectedQuantity, kitRefs }]) => {
         const loadedQuantity = movementItems
           .filter((item) => item.productId === productId)
           .reduce((sum, item) => sum + item.quantity, 0);
@@ -452,6 +456,7 @@ export default function MovementDetails() {
           expectedQuantity,
           loadedQuantity,
           remaining: Math.max(0, expectedQuantity - loadedQuantity),
+          kitRefs: kitRefs.length > 0 ? kitRefs : undefined,
         };
       });
     }
@@ -1817,6 +1822,19 @@ export default function MovementDetails() {
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm leading-snug">{item.product.name}</p>
                                 <p className="text-xs text-muted-foreground font-mono mt-0.5">SKU: {item.product.sku}</p>
+                                {item.kitRefs && item.kitRefs.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {item.kitRefs.map((kr) => (
+                                      <span
+                                        key={kr.kitId}
+                                        className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase tracking-wide bg-primary/15 text-primary px-1.5 py-px rounded-sm"
+                                      >
+                                        <Layers className="h-2.5 w-2.5" />
+                                        {kr.kitName}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                               <div className="shrink-0">
                                 {isExceeded && <Badge className="bg-rose-500 text-white no-default-hover-elevate text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Excedido</Badge>}
