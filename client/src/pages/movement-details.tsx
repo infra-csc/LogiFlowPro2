@@ -79,7 +79,30 @@ import type {
   MovementTypeConfig,
   MovementAuditLog,
   MovementAttachment,
+  Kit,
+  BomLine,
 } from "@shared/schema";
+
+// ── Kit BOM formula evaluator (mirrors server calcKitLineQty) ─────────────────
+function calcKitItemQty(
+  formula: string,
+  multiplier: number,
+  parameters: Record<string, number>,
+  productId: string,
+): number {
+  const f = (formula ?? "").trim();
+  if (f === "?") return Math.max(0, Math.round(parameters[productId] ?? 0));
+  try {
+    let expr = f;
+    for (const [name, val] of Object.entries(parameters)) {
+      expr = expr.replace(new RegExp(`\\b${name}\\b`, "g"), String(val));
+    }
+    const sanitized = expr.replace(/[^0-9+\-*/().\s]/g, "");
+    if (sanitized !== expr) return 0;
+    const result = Function('"use strict"; return (' + sanitized + ")")() as number;
+    return Math.max(0, Math.round(result * multiplier));
+  } catch { return 0; }
+}
 
 type MovementWithDetails = Movement & {
   loadingOrder?: { id: string; orderNumber: string };
@@ -254,18 +277,52 @@ export default function MovementDetails() {
       queryFn: async () => {
         const res = await fetch(`/api/requests/${id}/items`, { credentials: "include" });
         if (!res.ok) throw new Error("Failed to fetch request items");
-        return res.json() as Promise<Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>>;
+        return res.json() as Promise<Array<{ id: string; productId: string | null; kitId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null; kit: Kit | null; kitParameters: Record<string, number> | null }>>;
       },
       enabled: !movement?.loadingOrderId,
     })),
   });
 
   // Flatten items from all linked requests into a single list
+  type RequestItemRich = {
+    id: string; productId: string | null; kitId: string | null;
+    quantity: number; approvedQuantity: number | null; approvalStatus: string;
+    product: Product | null; kit: Kit | null; kitParameters: Record<string, number> | null;
+  };
+
   const requestItemsData = useMemo(
-    () => requestItemsResults.flatMap((r) => r.data ?? []) as Array<{ id: string; productId: string | null; quantity: number; approvedQuantity: number | null; approvalStatus: string; product: Product | null }>,
+    () => requestItemsResults.flatMap((r) => r.data ?? []) as RequestItemRich[],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [JSON.stringify(requestItemsResults.map((r) => r.data))],
   );
+
+  // Fetch BOM for each unique kit found in request items (for expansion)
+  const uniqueKitIdsInRequests = useMemo(
+    () => Array.from(new Set(requestItemsData.filter((ri) => ri.kitId).map((ri) => ri.kitId!))),
+    [requestItemsData],
+  );
+
+  const kitBomQueries = useQueries({
+    queries: uniqueKitIdsInRequests.map((kitId) => ({
+      queryKey: ["/api/kits", kitId, "bom"] as [string, string, string],
+      queryFn: async () => {
+        const res = await fetch(`/api/kits/${kitId}/bom`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch kit BOM");
+        return res.json() as Promise<BomLine[]>;
+      },
+      enabled: uniqueKitIdsInRequests.length > 0,
+    })),
+  });
+
+  // Map kitId → BomLine[]
+  const kitBomMap = useMemo(() => {
+    const map = new Map<string, BomLine[]>();
+    uniqueKitIdsInRequests.forEach((kitId, idx) => {
+      const data = kitBomQueries[idx]?.data;
+      if (data) map.set(kitId, data);
+    });
+    return map;
+  }, [uniqueKitIdsInRequests, kitBomQueries]);
 
   const { data: relatedMovements = [] } = useQuery<Movement[]>({
     queryKey: [`/api/loading-orders/${movement?.loadingOrderId}/movements`],
@@ -348,18 +405,43 @@ export default function MovementDetails() {
       });
     }
     if (requestItemsData.length > 0) {
-      // Consolidate same product appearing in multiple requests by summing quantities
+      // Consolidate products from direct items + kit BOM expansion
       const byProduct = new Map<string, { product: Product; expectedQuantity: number }>();
-      for (const ri of requestItemsData) {
-        if (!ri.productId || !ri.product) continue;
-        const qty = ri.approvedQuantity != null && ri.approvedQuantity > 0 ? ri.approvedQuantity : ri.quantity;
-        const existing = byProduct.get(ri.productId);
+
+      const addProduct = (prod: Product, qty: number) => {
+        if (qty <= 0) return;
+        const existing = byProduct.get(prod.id);
         if (existing) {
           existing.expectedQuantity += qty;
         } else {
-          byProduct.set(ri.productId, { product: ri.product as Product, expectedQuantity: qty });
+          byProduct.set(prod.id, { product: prod, expectedQuantity: qty });
+        }
+      };
+
+      for (const ri of requestItemsData) {
+        const qty = ri.approvedQuantity != null && ri.approvedQuantity > 0 ? ri.approvedQuantity : ri.quantity;
+
+        if (ri.productId && ri.product) {
+          // Direct product item
+          addProduct(ri.product as Product, qty);
+        } else if (ri.kitId) {
+          // Kit item — expand via BOM
+          const bomLines = kitBomMap.get(ri.kitId);
+          if (bomLines) {
+            const params = (ri.kitParameters as Record<string, number> | null) ?? {};
+            for (const line of bomLines) {
+              const lineQty = calcKitItemQty(line.quantityFormula, qty, params, line.productId);
+              if (lineQty > 0) {
+                // Find the product from the already-loaded products list
+                const prod = products.find((p) => p.id === line.productId);
+                if (prod) addProduct(prod, lineQty);
+              }
+            }
+          }
+          // If BOM not yet loaded, skip (will re-compute once queries resolve)
         }
       }
+
       return Array.from(byProduct.entries()).map(([productId, { product, expectedQuantity }]) => {
         const loadedQuantity = movementItems
           .filter((item) => item.productId === productId)
@@ -374,7 +456,7 @@ export default function MovementDetails() {
       });
     }
     return [];
-  }, [loadingOrderItems, requestItemsData, movementItems, movement?.loadingOrderId, allRelatedMovementItems, products]);
+  }, [loadingOrderItems, requestItemsData, movementItems, movement?.loadingOrderId, allRelatedMovementItems, products, kitBomMap]);
 
   const totalExpected = expectedItems.reduce((s, i) => s + i.expectedQuantity, 0);
   const totalLoaded = expectedItems.reduce((s, i) => s + i.loadedQuantity, 0);
