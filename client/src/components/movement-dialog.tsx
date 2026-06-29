@@ -77,7 +77,8 @@ const formSchema = z.object({
   dockId: z.string().optional(),
   notes: z.string().optional(),
   productItems: z.array(z.object({
-    productId: z.string(),
+    productId: z.string().optional(),
+    kitId: z.string().optional(),
     quantity: z.number().int().positive(),
   })).optional().default([]),
 });
@@ -512,6 +513,7 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
   const { data: trips = [] } = useQuery<TripWithRelations[]>({ queryKey: ["/api/trips"] });
   const { data: movementTypes = [] } = useQuery<MovementTypeConfig[]>({ queryKey: ["/api/movement-types-config"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+  const { data: kits = [] } = useQuery<Kit[]>({ queryKey: ["/api/kits"] });
   const { data: existingMovements = [] } = useQuery<Movement[]>({ queryKey: ["/api/movements"] });
 
   const activeMovementTypes = useMemo(() => movementTypes.filter((mt) => mt.active), [movementTypes]);
@@ -1450,30 +1452,52 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                           control={form.control}
                           name="productItems"
                           render={({ field }) => {
-                            const items: { productId: string; quantity: number }[] = field.value || [];
-                            const usedIds = items.map((i) => i.productId);
+                            const items: { productId?: string; kitId?: string; quantity: number }[] = field.value || [];
+                            const usedProductIds = items.filter((i) => i.productId).map((i) => i.productId!);
+                            const usedKitIds = items.filter((i) => i.kitId).map((i) => i.kitId!);
+
+                            // Combined options: products first, then kits (with "Kit" prefix to distinguish)
                             const productOptions = products
-                              .filter((p) => !usedIds.includes(p.id))
+                              .filter((p) => !usedProductIds.includes(p.id))
                               .map((p) => ({
-                                value: p.id,
+                                value: `product:${p.id}`,
                                 label: `${p.name} (${p.sku})`,
                                 searchText: `${p.name} ${p.sku}`.toLowerCase(),
                               }));
+                            const kitOptions = kits
+                              .filter((k) => !usedKitIds.includes(k.id))
+                              .map((k) => ({
+                                value: `kit:${k.id}`,
+                                label: `[Kit] ${k.name}`,
+                                searchText: `kit ${k.name}`.toLowerCase(),
+                              }));
+                            const allOptions = [...productOptions, ...kitOptions];
+
                             return (
                               <FormItem>
                                 <div className="space-y-3">
                                   {items.length > 0 && (
                                     <div className="space-y-1.5">
                                       {items.map((item, idx) => {
-                                        const prod = products.find((p) => p.id === item.productId);
+                                        const isKit = !!item.kitId;
+                                        const prod = !isKit ? products.find((p) => p.id === item.productId) : null;
+                                        const kit = isKit ? kits.find((k) => k.id === item.kitId) : null;
+                                        const displayName = isKit ? (kit?.name || item.kitId) : (prod?.name || item.productId);
+                                        const displaySub = isKit ? "Kit — será expandido em produtos via BOM" : prod?.sku;
+                                        const itemKey = item.kitId ? `kit-${item.kitId}` : `prod-${item.productId}`;
                                         return (
                                           <div
-                                            key={item.productId}
+                                            key={itemKey}
                                             className="flex items-center gap-2 rounded-md border border-border/60 bg-card px-3 py-2"
                                           >
                                             <div className="flex-1 min-w-0">
-                                              <p className="text-sm font-medium truncate">{prod?.name || item.productId}</p>
-                                              <p className="text-[10px] text-muted-foreground">{prod?.sku}</p>
+                                              <div className="flex items-center gap-1.5">
+                                                {isKit && (
+                                                  <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">Kit</Badge>
+                                                )}
+                                                <p className="text-sm font-medium truncate">{displayName}</p>
+                                              </div>
+                                              <p className="text-[10px] text-muted-foreground">{displaySub}</p>
                                             </div>
                                             <div className="flex items-center gap-1 shrink-0">
                                               <Button
@@ -1511,18 +1535,38 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                                   {items.length === 0 && (
                                     <p className="text-xs text-muted-foreground">Nenhum item adicionado à movimentação.</p>
                                   )}
-                                  {productOptions.length > 0 ? (
+                                  {allOptions.length > 0 ? (
                                     <FormControl>
                                       <SearchableSelect
                                         value=""
-                                        onChange={(val) => { if (val) field.onChange([...items, { productId: val, quantity: 1 }]); }}
-                                        options={productOptions}
-                                        placeholder="Adicionar produto..."
-                                        searchPlaceholder="Buscar produto por nome ou SKU..."
-                                        emptyText="Nenhum produto encontrado"
+                                        onChange={(val) => {
+                                          if (!val) return;
+                                          if (val.startsWith("kit:")) {
+                                            const kitId = val.slice(4);
+                                            field.onChange([...items, { kitId, quantity: 1 }]);
+                                          } else {
+                                            const productId = val.startsWith("product:") ? val.slice(8) : val;
+                                            field.onChange([...items, { productId, quantity: 1 }]);
+                                          }
+                                        }}
+                                        options={allOptions}
+                                        placeholder="Adicionar produto ou kit..."
+                                        searchPlaceholder="Buscar por nome ou SKU..."
+                                        emptyText="Nenhum produto ou kit encontrado"
                                         dataTestid="select-product-item"
                                         renderItem={(option) => {
-                                          const prod = products.find((p) => p.id === option.value);
+                                          if (option.value.startsWith("kit:")) {
+                                            const kitId = option.value.slice(4);
+                                            const kit = kits.find((k) => k.id === kitId);
+                                            return (
+                                              <div className="flex items-center gap-2">
+                                                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">Kit</Badge>
+                                                <span className="text-sm font-medium">{kit?.name}</span>
+                                              </div>
+                                            );
+                                          }
+                                          const productId = option.value.startsWith("product:") ? option.value.slice(8) : option.value;
+                                          const prod = products.find((p) => p.id === productId);
                                           return (
                                             <div className="flex flex-col">
                                               <span className="text-sm font-medium">{prod?.name}</span>
@@ -1531,12 +1575,12 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                                           );
                                         }}
                                         renderSelected={() => (
-                                          <span className="text-muted-foreground">Adicionar produto...</span>
+                                          <span className="text-muted-foreground">Adicionar produto ou kit...</span>
                                         )}
                                       />
                                     </FormControl>
                                   ) : items.length > 0 ? (
-                                    <p className="text-xs text-muted-foreground">Todos os produtos foram adicionados.</p>
+                                    <p className="text-xs text-muted-foreground">Todos os produtos e kits foram adicionados.</p>
                                   ) : null}
                                 </div>
                                 <FormMessage />

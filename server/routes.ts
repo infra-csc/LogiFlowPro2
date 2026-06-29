@@ -3365,12 +3365,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Validate product items if provided
+      // Validate product items if provided (supports productId or kitId)
       if (productItems && productItems.length > 0) {
         for (const item of productItems) {
-          const product = await storage.getProduct(item.productId);
-          if (!product) {
-            return res.status(404).json({ error: `Product not found: ${item.productId}` });
+          if (!item.productId && !item.kitId) {
+            return res.status(400).json({ error: "Cada item deve ter productId ou kitId" });
+          }
+          if (item.productId) {
+            const product = await storage.getProduct(item.productId);
+            if (!product) {
+              return res.status(404).json({ error: `Produto não encontrado: ${item.productId}` });
+            }
+          } else if (item.kitId) {
+            const kit = await storage.getKit(item.kitId);
+            if (!kit) {
+              return res.status(404).json({ error: `Kit não encontrado: ${item.kitId}` });
+            }
           }
         }
       }
@@ -3394,15 +3404,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy,
       } as any);
 
-      // Create pre-defined product items if provided
+      // Create pre-defined product items if provided (kits are expanded via BOM)
       if (productItems && productItems.length > 0) {
+        const expandKitQty = (formula: string, multiplier: number, productId: string): number => {
+          const f = (formula ?? "").trim();
+          if (f === "?") return 0; // variable params unknown at this stage — skip
+          try {
+            const sanitized = f.replace(/[^0-9+\-*/().\s]/g, "");
+            if (sanitized !== f) return 0;
+            const result = Function('"use strict"; return (' + sanitized + ")")() as number;
+            const total = result * multiplier;
+            return Number.isFinite(total) ? Math.max(0, Math.round(total)) : 0;
+          } catch { return 0; }
+        };
+
+        // Accumulate expanded products to merge duplicates (same productId from different kits)
+        const expandedMap = new Map<string, number>();
+
         for (const item of productItems) {
-          await storage.createMovementItem({
-            movementId: movement.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            scanned: false,
-          });
+          if (item.productId) {
+            expandedMap.set(item.productId, (expandedMap.get(item.productId) ?? 0) + item.quantity);
+          } else if (item.kitId) {
+            const bomLines = await storage.getBomLinesByKit(item.kitId);
+            for (const line of bomLines) {
+              const qty = expandKitQty(line.quantityFormula, item.quantity, line.productId);
+              if (qty > 0) {
+                expandedMap.set(line.productId, (expandedMap.get(line.productId) ?? 0) + qty);
+              }
+            }
+          }
+        }
+
+        for (const [productId, quantity] of Array.from(expandedMap.entries())) {
+          if (quantity > 0) {
+            await storage.createMovementItem({
+              movementId: movement.id,
+              productId,
+              quantity,
+              scanned: false,
+            });
+          }
         }
       }
 
