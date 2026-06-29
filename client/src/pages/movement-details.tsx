@@ -1275,13 +1275,19 @@ export default function MovementDetails() {
                           <ClipboardList className="h-3 w-3 shrink-0" />
                           {allLinkedRequests.length === 1 ? "Requisição" : `Requisições (${allLinkedRequests.length})`}
                         </div>
-                        <div className="mt-0.5 space-y-1">
+                        <div className="mt-0.5 space-y-1.5">
                           {allLinkedRequests.map((req) => {
                             const label = `${req.event?.name ? req.event.name + " — " : ""}${req.area}`;
                             return (
-                              <p key={req.id} className="text-sm font-semibold leading-snug line-clamp-1" title={label}>
+                              <a
+                                key={req.id}
+                                href={`/requests/${req.id}`}
+                                className="block text-sm font-semibold leading-snug text-primary hover:underline"
+                                title={label}
+                                onClick={(e) => { e.stopPropagation(); navigate(`/requests/${req.id}`); e.preventDefault(); }}
+                              >
                                 {label}
-                              </p>
+                              </a>
                             );
                           })}
                         </div>
