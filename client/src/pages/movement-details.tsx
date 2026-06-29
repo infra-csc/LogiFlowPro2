@@ -104,9 +104,14 @@ function calcKitItemQty(
   } catch { return 0; }
 }
 
+type MovementRequestRef = { id: string; area: string; event?: { id: string; name: string } };
+
 type MovementWithDetails = Movement & {
   loadingOrder?: { id: string; orderNumber: string };
-  request?: { id: string; area: string; event?: { id: string; name: string } };
+  /** legacy single-request ref (kept for backwards compat) */
+  request?: MovementRequestRef;
+  /** junction-table array of all linked requests */
+  requests?: MovementRequestRef[];
   dock?: { id: string; name: string };
   events?: Array<{ id: string; name: string; sku: string }>;
   trips?: Array<{ id: string; description: string | null; status: string; departureDateTime: string | null; loadingStartTime: string | null }>;
@@ -1244,30 +1249,45 @@ export default function MovementDetails() {
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-0.5">Contexto da movimentação</p>
 
             {/* Row A — primary links: Evento / Requisição / Plano de viagens / Ordem */}
-            {(movement.events?.length || movement.request || movement.trips?.length || movement.loadingOrder) ? (
-              <div className="rounded-lg overflow-hidden border border-border/60">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-px bg-border/40">
-                  {movement.events && movement.events.length > 0 && (
-                    <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
-                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                        <Tag className="h-3 w-3 shrink-0" />Evento
+            {(() => {
+              const allLinkedRequests: MovementRequestRef[] =
+                (movement.requests && movement.requests.length > 0)
+                  ? movement.requests
+                  : movement.request
+                    ? [movement.request]
+                    : [];
+              return (movement.events?.length || allLinkedRequests.length || movement.trips?.length || movement.loadingOrder) ? (
+                <div className="rounded-lg overflow-hidden border border-border/60">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-px bg-border/40">
+                    {movement.events && movement.events.length > 0 && (
+                      <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          <Tag className="h-3 w-3 shrink-0" />Evento
+                        </div>
+                        <p className="text-sm font-semibold leading-snug line-clamp-2 mt-0.5" title={movement.events.map((e) => e.name).join(", ")}>
+                          {movement.events.map((e) => e.name).join(", ")}
+                        </p>
                       </div>
-                      <p className="text-sm font-semibold leading-snug line-clamp-2 mt-0.5" title={movement.events.map((e) => e.name).join(", ")}>
-                        {movement.events.map((e) => e.name).join(", ")}
-                      </p>
-                    </div>
-                  )}
-                  {movement.request && (
-                    <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
-                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                        <ClipboardList className="h-3 w-3 shrink-0" />Requisição
+                    )}
+                    {allLinkedRequests.length > 0 && (
+                      <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          <ClipboardList className="h-3 w-3 shrink-0" />
+                          {allLinkedRequests.length === 1 ? "Requisição" : `Requisições (${allLinkedRequests.length})`}
+                        </div>
+                        <div className="mt-0.5 space-y-1">
+                          {allLinkedRequests.map((req) => {
+                            const label = `${req.event?.name ? req.event.name + " — " : ""}${req.area}`;
+                            return (
+                              <p key={req.id} className="text-sm font-semibold leading-snug line-clamp-1" title={label}>
+                                {label}
+                              </p>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <p className="text-sm font-semibold leading-snug line-clamp-2 mt-0.5" title={`${movement.request.event?.name ? movement.request.event.name + " — " : ""}${movement.request.area}`}>
-                        {movement.request.event?.name ? `${movement.request.event.name} — ` : ""}{movement.request.area}
-                      </p>
-                    </div>
-                  )}
-                  {movement.trips && movement.trips.length > 0 && (
+                    )}
+                    {movement.trips && movement.trips.length > 0 && (
                     <div className="bg-card p-3 flex flex-col gap-0.5 min-w-0">
                       <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                         <Truck className="h-3 w-3 shrink-0" />Plano de viagens
@@ -1289,7 +1309,8 @@ export default function MovementDetails() {
                   )}
                 </div>
               </div>
-            ) : null}
+            ) : null;
+            })()}
 
             {/* Row B — operational details: Tipo / Sentido / Veículo / Doca / Criado em */}
             <div className="rounded-lg overflow-hidden border border-border/60">
