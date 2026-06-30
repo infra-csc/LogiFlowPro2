@@ -1340,16 +1340,16 @@ export class DatabaseStorage implements IStorage {
       const loadedStat = loadedStatsByMovement.get(m.id);
       const evidenceStat = evidenceStatsByMovement.get(m.id);
       // Loading order takes priority over requests (matches movement-details.tsx behavior).
-      // If requests contain kit items, the true expected requires BOM expansion which
-      // can't be done in SQL — so suppress the request-based expected to avoid showing
-      // misleading "excedentes" on the card.
+      // When requests contain kit items, BOM expansion can't be done in SQL so
+      // the product-only sum underestimates expected — we flag it so the UI can
+      // compensate (show max(loaded, expected) instead of raw expected).
       const requestStat = expectedFromRequestsByMovement.get(m.id);
       const requestHasKits = requestStat?.hasKitItems === "true";
       const expectedStat =
         ((m as any).loadingOrderId
           ? expectedFromLOByLOId.get((m as any).loadingOrderId)
           : undefined) ??
-        (requestHasKits ? undefined : requestStat);
+        requestStat;
 
       const _stats = {
         itemsLoaded: Number(loadedStat?.itemCount ?? 0),
@@ -1357,6 +1357,7 @@ export class DatabaseStorage implements IStorage {
         itemsExpected: Number(expectedStat?.itemCount ?? 0),
         unitsExpected: Number(expectedStat?.totalUnits ?? 0),
         evidenceCount: Number(evidenceStat?.evidenceCount ?? 0),
+        hasKitItems: requestHasKits && !(m as any).loadingOrderId,
       };
 
       return {

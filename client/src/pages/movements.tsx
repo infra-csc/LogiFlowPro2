@@ -44,6 +44,7 @@ type MovementStats = {
   itemsExpected: number;
   unitsExpected: number;
   evidenceCount: number;
+  hasKitItems?: boolean;
 };
 
 type MovementWithRelations = Movement & {
@@ -180,13 +181,20 @@ function MovementCard({
   const eventName =
     movement.events?.[0]?.name ?? movement.event?.name ?? undefined;
 
-  // Progress computation
-  const hasExpected = stats.unitsExpected > 0;
+  // Progress computation.
+  // When kit items are present in linked requests, the SQL-side "expected" is the
+  // product-only sum (no BOM expansion). To avoid showing false "excedentes", we
+  // use max(loaded, expected) as the effective expected — so the bar is always ≤ 100%.
+  const rawExpected = stats.unitsExpected;
+  const effectiveExpected = stats.hasKitItems
+    ? Math.max(stats.unitsLoaded, rawExpected)
+    : rawExpected;
+  const hasExpected = effectiveExpected > 0;
   const progressPct = hasExpected
-    ? Math.min(100, Math.round((stats.unitsLoaded / stats.unitsExpected) * 100))
+    ? Math.min(100, Math.round((stats.unitsLoaded / effectiveExpected) * 100))
     : null;
-  const unitsPending = hasExpected ? Math.max(0, stats.unitsExpected - stats.unitsLoaded) : null;
-  const unitsExceeded = hasExpected ? Math.max(0, stats.unitsLoaded - stats.unitsExpected) : null;
+  const unitsPending = hasExpected ? Math.max(0, effectiveExpected - stats.unitsLoaded) : null;
+  const unitsExceeded = hasExpected ? Math.max(0, stats.unitsLoaded - effectiveExpected) : null;
 
   // Vehicle: prefer movement's own plate, fall back to first linked trip's plate
   const tripVehicle = movement.trips?.find((t: any) => t.vehiclePlate)?.vehiclePlate ?? null;
