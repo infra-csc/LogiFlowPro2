@@ -1284,20 +1284,23 @@ export class DatabaseStorage implements IStorage {
       : [];
 
     // ── Batch aggregate: expected from requests (junction table) ─────────
+    // NOTE: kit items (productId IS NULL, kitId IS NOT NULL) require BOM
+    // expansion that can't be done in SQL. We detect their presence so we
+    // can suppress the misleading "expected" when kits are involved.
     const expectedFromRequestRows = ids.length
       ? await db
           .select({
             movementId: movementRequests.movementId,
-            itemCount: sql<string>`COUNT(DISTINCT ${requestItems.id})`,
-            totalUnits: sql<string>`COALESCE(SUM(CASE WHEN ${requestItems.approvedQuantity} IS NOT NULL THEN ${requestItems.approvedQuantity} ELSE ${requestItems.quantity} END), 0)`,
+            itemCount: sql<string>`COUNT(DISTINCT CASE WHEN ${requestItems.productId} IS NOT NULL THEN ${requestItems.id} END)`,
+            totalUnits: sql<string>`COALESCE(SUM(CASE WHEN ${requestItems.productId} IS NOT NULL AND (${requestItems.approvedQuantity} IS NOT NULL) THEN ${requestItems.approvedQuantity} WHEN ${requestItems.productId} IS NOT NULL THEN ${requestItems.quantity} ELSE 0 END), 0)`,
+            hasKitItems: sql<string>`(COUNT(CASE WHEN ${requestItems.kitId} IS NOT NULL THEN 1 END) > 0)::text`,
           })
           .from(movementRequests)
           .innerJoin(requestItems, eq(movementRequests.requestId, requestItems.requestId))
           .where(
             and(
               inArray(movementRequests.movementId, ids),
-              sql`${requestItems.approvalStatus} != 'rejected'`,
-              isNotNull(requestItems.productId)
+              sql`${requestItems.approvalStatus} != 'rejected'`
             )
           )
           .groupBy(movementRequests.movementId)
@@ -1336,12 +1339,17 @@ export class DatabaseStorage implements IStorage {
 
       const loadedStat = loadedStatsByMovement.get(m.id);
       const evidenceStat = evidenceStatsByMovement.get(m.id);
-      // Loading order takes priority over requests (matches movement-details.tsx behavior)
+      // Loading order takes priority over requests (matches movement-details.tsx behavior).
+      // If requests contain kit items, the true expected requires BOM expansion which
+      // can't be done in SQL — so suppress the request-based expected to avoid showing
+      // misleading "excedentes" on the card.
+      const requestStat = expectedFromRequestsByMovement.get(m.id);
+      const requestHasKits = requestStat?.hasKitItems === "true";
       const expectedStat =
         ((m as any).loadingOrderId
           ? expectedFromLOByLOId.get((m as any).loadingOrderId)
           : undefined) ??
-        expectedFromRequestsByMovement.get(m.id);
+        (requestHasKits ? undefined : requestStat);
 
       const _stats = {
         itemsLoaded: Number(loadedStat?.itemCount ?? 0),
