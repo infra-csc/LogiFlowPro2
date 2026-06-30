@@ -28,6 +28,7 @@ interface ProductListProps {
   products: Product[];
   canWrite: boolean;
   onEdit: (product: Product) => void;
+  onViewHistory?: (product: Product) => void;
   sortKey: SortKey;
   sortDir: SortDir;
   onSort: (key: SortKey) => void;
@@ -81,6 +82,7 @@ export function ProductList({
   products,
   canWrite,
   onEdit,
+  onViewHistory,
   sortKey,
   sortDir,
   onSort,
@@ -116,8 +118,8 @@ export function ProductList({
                 return (
                   <TableRow
                     key={product.id}
-                    className={canWrite ? "cursor-pointer" : ""}
-                    onClick={canWrite ? () => onEdit(product) : undefined}
+                    className="cursor-pointer"
+                    onClick={() => onViewHistory ? onViewHistory(product) : canWrite ? onEdit(product) : undefined}
                     data-testid={`row-product-${product.id}`}
                   >
                     {/* Thumbnail */}

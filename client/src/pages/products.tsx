@@ -24,6 +24,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { ProductViewToggle } from "@/components/products/product-view-toggle";
 import { ProductGrid } from "@/components/products/product-grid";
 import { ProductList } from "@/components/products/product-list";
+import { ProductHistoryModal } from "@/components/products/product-history-modal";
 import {
   isLowStock,
   stockStatus,
@@ -44,6 +45,7 @@ export default function Products() {
   const canWrite = userIsAdmin(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
+  const [historyProduct, setHistoryProduct] = useState<Product | undefined>();
 
   // Search + filters
   const [search, setSearch] = useState("");
@@ -503,12 +505,18 @@ export default function Products() {
           />
         )
       ) : viewMode === "grid" ? (
-        <ProductGrid products={filteredProducts} canWrite={canWrite} onEdit={handleEdit} />
+        <ProductGrid
+          products={filteredProducts}
+          canWrite={canWrite}
+          onEdit={handleEdit}
+          onViewHistory={setHistoryProduct}
+        />
       ) : (
         <ProductList
           products={filteredProducts}
           canWrite={canWrite}
           onEdit={handleEdit}
+          onViewHistory={setHistoryProduct}
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={handleColumnSort}
@@ -520,6 +528,11 @@ export default function Products() {
         open={showDialog}
         onOpenChange={handleClose}
         product={selectedProduct}
+      />
+
+      <ProductHistoryModal
+        product={historyProduct}
+        onOpenChange={(open) => { if (!open) setHistoryProduct(undefined); }}
       />
     </div>
   );

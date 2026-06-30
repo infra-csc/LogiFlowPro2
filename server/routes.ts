@@ -1795,6 +1795,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/products/:id/history", requireAuth, async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const product = await storage.getProduct(productId);
+      if (!product) return res.status(404).json({ error: "Product not found" });
+
+      const [movementsResult, requestsResult, statsResult, reqCountResult] = await Promise.all([
+        db.execute(sql`
+          SELECT
+            m.id,
+            m.movement_number,
+            m.name,
+            m.status,
+            m.created_at,
+            m.completed_at,
+            mtc.name  AS type_name,
+            mtc.nature,
+            SUM(mi.quantity) AS quantity,
+            e.name AS event_name
+          FROM movement_items mi
+          JOIN movements m ON mi.movement_id = m.id
+          LEFT JOIN movement_types_config mtc ON m.movement_type_config_id = mtc.id
+          LEFT JOIN events e ON m.event_id = e.id
+          WHERE mi.product_id = ${productId}
+          GROUP BY m.id, m.movement_number, m.name, m.status, m.created_at, m.completed_at, mtc.name, mtc.nature, e.name
+          ORDER BY m.created_at DESC
+          LIMIT 30
+        `),
+        db.execute(sql`
+          SELECT
+            ri.id,
+            ri.quantity,
+            ri.approved_quantity,
+            ri.approval_status,
+            mr.id          AS request_id,
+            mr.request_code,
+            mr.status      AS request_status,
+            mr.created_at,
+            e.name         AS event_name
+          FROM request_items ri
+          JOIN material_requests mr ON ri.request_id = mr.id
+          LEFT JOIN events e ON mr.event_id = e.id
+          WHERE ri.product_id = ${productId}
+          ORDER BY mr.created_at DESC
+          LIMIT 20
+        `),
+        db.execute(sql`
+          SELECT
+            COUNT(DISTINCT m.id)::int AS movement_count,
+            COALESCE(SUM(CASE WHEN mtc.nature = 'outbound' THEN mi.quantity ELSE 0 END), 0)::int AS total_outbound,
+            COALESCE(SUM(CASE WHEN mtc.nature = 'inbound'  THEN mi.quantity ELSE 0 END), 0)::int AS total_inbound
+          FROM movement_items mi
+          JOIN movements m ON mi.movement_id = m.id
+          LEFT JOIN movement_types_config mtc ON m.movement_type_config_id = mtc.id
+          WHERE mi.product_id = ${productId}
+        `),
+        db.execute(sql`
+          SELECT COUNT(DISTINCT request_id)::int AS request_count
+          FROM request_items
+          WHERE product_id = ${productId}
+        `),
+      ]);
+
+      res.json({
+        product,
+        movements: movementsResult.rows,
+        requests: requestsResult.rows,
+        stats: {
+          ...(statsResult.rows[0] ?? { movement_count: 0, total_outbound: 0, total_inbound: 0 }),
+          request_count: (reqCountResult.rows[0] as any)?.request_count ?? 0,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching product history:", error);
+      res.status(500).json({ error: "Failed to fetch product history" });
+    }
+  });
+
   app.post("/api/products", requireAdmin({ message: "Apenas administradores podem gerenciar produtos" }), async (req, res) => {
     try {
       const data = insertProductSchema.parse(req.body);

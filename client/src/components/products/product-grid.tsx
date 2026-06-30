@@ -13,9 +13,10 @@ interface ProductGridProps {
   products: Product[];
   canWrite: boolean;
   onEdit: (product: Product) => void;
+  onViewHistory?: (product: Product) => void;
 }
 
-export function ProductGrid({ products, canWrite, onEdit }: ProductGridProps) {
+export function ProductGrid({ products, canWrite, onEdit, onViewHistory }: ProductGridProps) {
   return (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {products.map((product) => {
@@ -33,8 +34,8 @@ export function ProductGrid({ products, canWrite, onEdit }: ProductGridProps) {
                 : low
                 ? "border-amber-500/40"
                 : ""
-            } ${canWrite ? "hover-elevate cursor-pointer group" : ""}`}
-            onClick={canWrite ? () => onEdit(product) : undefined}
+            } hover-elevate cursor-pointer group`}
+            onClick={() => onViewHistory ? onViewHistory(product) : canWrite ? onEdit(product) : undefined}
             data-testid={`card-product-${product.id}`}
           >
             {/* Image area — fixed height for consistent card height */}
