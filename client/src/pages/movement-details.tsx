@@ -388,6 +388,44 @@ export default function MovementDetails() {
     return Array.from(itemsByProduct.values());
   }, [movementItems, movement?.loadingOrderId, expectedProductIds]);
 
+  const isInboundMovement = movement?.movementTypeConfig?.nature === "inbound";
+
+  // Inbound: items pre-loaded from reference movement (scanned=false)
+  const consolidatedRefItems = useMemo(() => {
+    if (!isInboundMovement) return [] as typeof consolidatedLoadedItems;
+    const itemsByProduct = new Map<string, { productId: string; totalQuantity: number; itemIds: string[]; isNotInOrder: boolean; ownerTypes: Set<string>; owners: Set<string> }>();
+    movementItems.filter((i) => !i.scanned).forEach((item) => {
+      const existing = itemsByProduct.get(item.productId);
+      if (existing) {
+        existing.totalQuantity += item.quantity;
+        existing.itemIds.push(item.id);
+        if (item.ownerType) existing.ownerTypes.add(item.ownerType);
+        if (item.ownerName) existing.owners.add(item.ownerName);
+      } else {
+        itemsByProduct.set(item.productId, { productId: item.productId, totalQuantity: item.quantity, itemIds: [item.id], isNotInOrder: false, ownerTypes: new Set(item.ownerType ? [item.ownerType] : []), owners: new Set(item.ownerName ? [item.ownerName] : []) });
+      }
+    });
+    return Array.from(itemsByProduct.values());
+  }, [movementItems, isInboundMovement]);
+
+  // Inbound: items confirmed by scanner (scanned=true)
+  const consolidatedConfirmedItems = useMemo(() => {
+    if (!isInboundMovement) return consolidatedLoadedItems;
+    const itemsByProduct = new Map<string, { productId: string; totalQuantity: number; itemIds: string[]; isNotInOrder: boolean; ownerTypes: Set<string>; owners: Set<string> }>();
+    movementItems.filter((i) => i.scanned).forEach((item) => {
+      const existing = itemsByProduct.get(item.productId);
+      if (existing) {
+        existing.totalQuantity += item.quantity;
+        existing.itemIds.push(item.id);
+        if (item.ownerType) existing.ownerTypes.add(item.ownerType);
+        if (item.ownerName) existing.owners.add(item.ownerName);
+      } else {
+        itemsByProduct.set(item.productId, { productId: item.productId, totalQuantity: item.quantity, itemIds: [item.id], isNotInOrder: false, ownerTypes: new Set(item.ownerType ? [item.ownerType] : []), owners: new Set(item.ownerName ? [item.ownerName] : []) });
+      }
+    });
+    return Array.from(itemsByProduct.values());
+  }, [movementItems, isInboundMovement, consolidatedLoadedItems]);
+
   const expectedItems: ExpectedItem[] = useMemo(() => {
     if (loadingOrderItems.length > 0) {
       const itemsToConsider = movement?.loadingOrderId ? allRelatedMovementItems : movementItems;
@@ -507,13 +545,14 @@ export default function MovementDetails() {
   }, [expectedItems, orderSearchQuery, expectedFilter]);
 
   const filteredLoadedItems = useMemo(() => {
-    if (!loadedSearchQuery.trim()) return consolidatedLoadedItems;
+    const base = isInboundMovement ? consolidatedConfirmedItems : consolidatedLoadedItems;
+    if (!loadedSearchQuery.trim()) return base;
     const q = loadedSearchQuery.toLowerCase();
-    return consolidatedLoadedItems.filter((item) => {
+    return base.filter((item) => {
       const p = products.find((x) => x.id === item.productId);
       return p?.name.toLowerCase().includes(q) || p?.sku?.toLowerCase().includes(q) || p?.barcode?.toLowerCase().includes(q);
     });
-  }, [consolidatedLoadedItems, loadedSearchQuery, products]);
+  }, [consolidatedConfirmedItems, consolidatedLoadedItems, isInboundMovement, loadedSearchQuery, products]);
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -720,6 +759,7 @@ export default function MovementDetails() {
       scannedSku?: string;
       ownerName?: string;
       ownerType?: string;
+      scanned?: boolean;
     }) => {
       const res = await apiRequest("POST", `/api/movements/${id}/items`, { movementId: id, ...data });
       if (!res.ok) {
@@ -962,6 +1002,7 @@ export default function MovementDetails() {
       scannedSku: options.scannedSku,
       ownerName: options.ownerName,
       ownerType: options.ownerType || "owned",
+      scanned: true,
     });
   };
 
@@ -1778,15 +1819,21 @@ export default function MovementDetails() {
 
       {/* Lista dupla: Esperado vs Carregado */}
       {(() => {
-        const isInbound = movement?.movementTypeConfig?.nature === "inbound";
-        const totalRegistered = consolidatedLoadedItems.length;
+        const confirmedCount = consolidatedConfirmedItems.length;
+        const confirmedUnits = isInboundMovement
+          ? movementItems.filter((i) => i.scanned).reduce((s, i) => s + i.quantity, 0)
+          : movementItems.reduce((s, i) => s + i.quantity, 0);
         const sectionTitle = expectedItems.length > 0
           ? `Itens — ${expectedItems.length} produto${expectedItems.length !== 1 ? "s" : ""}`
-          : totalRegistered > 0
-            ? `Itens — ${totalRegistered} produto${totalRegistered !== 1 ? "s" : ""} registrado${totalRegistered !== 1 ? "s" : ""}`
-            : "Itens — 0 produtos";
-        const sectionDesc = isInbound
-          ? "Registre os produtos recebidos no retorno"
+          : isInboundMovement
+            ? confirmedCount > 0
+              ? `Itens — ${confirmedCount} produto${confirmedCount !== 1 ? "s" : ""} retornado${confirmedCount !== 1 ? "s" : ""}`
+              : "Itens — aguardando conferência"
+            : consolidatedLoadedItems.length > 0
+              ? `Itens — ${consolidatedLoadedItems.length} produto${consolidatedLoadedItems.length !== 1 ? "s" : ""} registrado${consolidatedLoadedItems.length !== 1 ? "s" : ""}`
+              : "Itens — 0 produtos";
+        const sectionDesc = isInboundMovement
+          ? "Escaneie os produtos que chegaram no retorno — referência mostra o que foi enviado"
           : "Acompanhe o progresso de carregamento";
         return (
       <PageSection
@@ -1794,8 +1841,36 @@ export default function MovementDetails() {
         description={sectionDesc}
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Itens da Requisição/Ordem */}
-          {expectedItems.length > 0 && (
+          {/* Referência (inbound) — produtos pré-carregados da saída */}
+          {isInboundMovement && consolidatedRefItems.length > 0 && (
+            <Card className="border-border/60 bg-muted/20">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3 font-semibold text-base text-muted-foreground">
+                  <ClipboardList className="h-5 w-5" />
+                  Referência (enviado) — {consolidatedRefItems.length} produto{consolidatedRefItems.length !== 1 ? "s" : ""}
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">Carga de referência desta movimentação. Use o scanner para confirmar o que retornou.</p>
+                <div className="overflow-y-auto max-h-[400px] pr-1 space-y-1.5" style={{ scrollbarWidth: "thin" }}>
+                  {consolidatedRefItems.map((item) => {
+                    const product = products.find((p) => p.id === item.productId);
+                    return (
+                      <div key={item.productId} className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-background/60 border border-border/40">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{product?.name || "Produto desconhecido"}</p>
+                          <p className="text-xs font-mono text-muted-foreground">{product?.sku || "-"}</p>
+                        </div>
+                        <Badge variant="outline" className="text-sm px-2.5 py-0.5 font-bold tabular-nums shrink-0 no-default-hover-elevate no-default-active-elevate">
+                          {item.totalQuantity}x
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {/* Itens da Requisição/Ordem (outbound) */}
+          {!isInboundMovement && expectedItems.length > 0 && (
             <Card className="border-border/60">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3 font-semibold text-base">
@@ -1928,12 +2003,14 @@ export default function MovementDetails() {
             </Card>
           )}
 
-          {/* Itens Carregados */}
+          {/* Itens Carregados / Retornados */}
           <Card className="border-border/60">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3 font-semibold text-base">
                 <PackageCheck className="h-5 w-5" />
-                Produtos Registrados — {consolidatedLoadedItems.length} produto{consolidatedLoadedItems.length !== 1 ? "s" : ""} / {movementItems.reduce((s, i) => s + i.quantity, 0)} unidade{movementItems.reduce((s, i) => s + i.quantity, 0) !== 1 ? "s" : ""}
+                {isInboundMovement
+                  ? `Retornados — ${confirmedCount} produto${confirmedCount !== 1 ? "s" : ""} / ${confirmedUnits} unidade${confirmedUnits !== 1 ? "s" : ""}`
+                  : `Produtos Registrados — ${consolidatedLoadedItems.length} produto${consolidatedLoadedItems.length !== 1 ? "s" : ""} / ${movementItems.reduce((s, i) => s + i.quantity, 0)} unidade${movementItems.reduce((s, i) => s + i.quantity, 0) !== 1 ? "s" : ""}`}
               </div>
               {(consolidatedLoadedItems.some((i) => i.isNotInOrder) || consolidatedLoadedItems.some((i) => i.ownerTypes.has("rented"))) && (
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -1964,7 +2041,7 @@ export default function MovementDetails() {
                 {filteredLoadedItems.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
                     <PackageCheck className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                    <p className="text-sm">{loadedSearchQuery ? "Nenhum produto encontrado" : "Nenhum produto registrado ainda"}</p>
+                    <p className="text-sm">{loadedSearchQuery ? "Nenhum produto encontrado" : isInboundMovement ? "Use o scanner para registrar os produtos recebidos" : "Nenhum produto registrado ainda"}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
