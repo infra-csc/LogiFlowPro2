@@ -1336,11 +1336,12 @@ export class DatabaseStorage implements IStorage {
 
       const loadedStat = loadedStatsByMovement.get(m.id);
       const evidenceStat = evidenceStatsByMovement.get(m.id);
+      // Loading order takes priority over requests (matches movement-details.tsx behavior)
       const expectedStat =
-        expectedFromRequestsByMovement.get(m.id) ??
         ((m as any).loadingOrderId
           ? expectedFromLOByLOId.get((m as any).loadingOrderId)
-          : undefined);
+          : undefined) ??
+        expectedFromRequestsByMovement.get(m.id);
 
       const _stats = {
         itemsLoaded: Number(loadedStat?.itemCount ?? 0),
