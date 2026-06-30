@@ -1073,7 +1073,7 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                         name="eventIds"
                         render={({ field }) => {
                           const currentIds: string[] = field.value || [];
-                          const unselected = events.filter((e) => !currentIds.includes(e.id));
+                          const unselected = events.filter((e) => !currentIds.includes(e.id)).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
                           const selectedList = events.filter((e) => currentIds.includes(e.id));
                           const eventOptions = unselected.map((e) => ({
                             value: e.id,
