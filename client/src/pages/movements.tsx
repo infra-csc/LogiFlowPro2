@@ -316,48 +316,65 @@ function MovementCard({
           <div className="flex items-center justify-between gap-3 flex-wrap">
             {/* Left: counts in plain readable format */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Product count */}
-              <span className="text-sm tabular-nums">
-                <span className="font-bold">{stats.itemsLoaded}</span>
-                <span className="text-muted-foreground ml-1 text-xs">
-                  {stats.itemsLoaded === 1 ? "produto" : "produtos"}
-                </span>
-              </span>
-
-              <span className="text-border/70 text-xs">·</span>
-
-              {/* Units: "349 un." or "349 / 500 un." */}
-              <span className="text-sm tabular-nums">
-                <span className="font-bold">{stats.unitsLoaded}</span>
-                {hasExpected && (
-                  <span className="text-muted-foreground text-xs"> / {stats.unitsExpected}</span>
-                )}
-                <span className="text-muted-foreground ml-1 text-xs">un.</span>
-              </span>
-
-              {/* Pending badge */}
-              {unitsPending !== null && unitsPending > 0 && (
+              {/* Awaiting state: nothing loaded yet but has a planned quantity */}
+              {stats.unitsLoaded === 0 && hasExpected ? (
                 <>
-                  <span className="text-border/70 text-xs">·</span>
-                  <span className="text-xs font-medium text-amber-500 tabular-nums">
-                    {unitsPending} pendente{unitsPending !== 1 ? "s" : ""}
+                  <span className="text-sm tabular-nums">
+                    <span className="font-bold">{stats.unitsExpected}</span>
+                    <span className="text-muted-foreground ml-1 text-xs">un. planejadas</span>
                   </span>
+                  <span className="text-border/70 text-xs">·</span>
+                  <span className="text-xs text-muted-foreground italic">Aguardando início</span>
                 </>
-              )}
-
-              {/* Exceeded badge */}
-              {unitsExceeded !== null && unitsExceeded > 0 && (
+              ) : (
                 <>
-                  <span className="text-border/70 text-xs">·</span>
-                  <span className="text-xs font-medium text-red-500 tabular-nums">
-                    {unitsExceeded} excedente{unitsExceeded !== 1 ? "s" : ""}
-                  </span>
-                </>
-              )}
+                  {/* Product count — only show when something is loaded */}
+                  {stats.itemsLoaded > 0 && (
+                    <>
+                      <span className="text-sm tabular-nums">
+                        <span className="font-bold">{stats.itemsLoaded}</span>
+                        <span className="text-muted-foreground ml-1 text-xs">
+                          {stats.itemsLoaded === 1 ? "produto" : "produtos"}
+                        </span>
+                      </span>
+                      <span className="text-border/70 text-xs">·</span>
+                    </>
+                  )}
 
-              {/* Empty state */}
-              {stats.itemsLoaded === 0 && !hasExpected && (
-                <span className="text-xs text-muted-foreground italic">Nenhum item registrado</span>
+                  {/* Units: "349 un." or "349 / 500 un." */}
+                  <span className="text-sm tabular-nums">
+                    <span className="font-bold">{stats.unitsLoaded}</span>
+                    {hasExpected && (
+                      <span className="text-muted-foreground text-xs"> / {stats.unitsExpected}</span>
+                    )}
+                    <span className="text-muted-foreground ml-1 text-xs">un.</span>
+                  </span>
+
+                  {/* Pending badge — only meaningful when partially loaded */}
+                  {unitsPending !== null && unitsPending > 0 && stats.unitsLoaded > 0 && (
+                    <>
+                      <span className="text-border/70 text-xs">·</span>
+                      <span className="text-xs font-medium text-amber-500 tabular-nums">
+                        {unitsPending} pendente{unitsPending !== 1 ? "s" : ""}
+                      </span>
+                    </>
+                  )}
+
+                  {/* Exceeded badge */}
+                  {unitsExceeded !== null && unitsExceeded > 0 && (
+                    <>
+                      <span className="text-border/70 text-xs">·</span>
+                      <span className="text-xs font-medium text-red-500 tabular-nums">
+                        {unitsExceeded} excedente{unitsExceeded !== 1 ? "s" : ""}
+                      </span>
+                    </>
+                  )}
+
+                  {/* Empty state: no items, no plan */}
+                  {stats.itemsLoaded === 0 && !hasExpected && (
+                    <span className="text-xs text-muted-foreground italic">Nenhum item registrado</span>
+                  )}
+                </>
               )}
             </div>
 
