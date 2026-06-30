@@ -127,6 +127,8 @@ export function ProductHistoryModal({ product, onOpenChange }: ProductHistoryMod
   const { data, isLoading } = useQuery<HistoryData>({
     queryKey: ["/api/products", product?.id, "history"],
     enabled: !!product?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   if (!product) return null;
