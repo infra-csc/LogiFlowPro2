@@ -1059,7 +1059,7 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                 )}
 
                 {/* ╔══ STEP 2: Vínculos e itens ════════════════════════════╗ */}
-                {(effectiveStep === 2 || effectiveStep === 3 || isEditMode) && (
+                {(effectiveStep === 2 || isEditMode) && (
                   <>
                     {/* BLOCO: Eventos */}
                     <div>
