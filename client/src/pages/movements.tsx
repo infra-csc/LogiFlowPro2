@@ -187,9 +187,13 @@ function MovementCard({
   const unitsPending = hasExpected ? Math.max(0, stats.unitsExpected - stats.unitsLoaded) : null;
   const unitsExceeded = hasExpected ? Math.max(0, stats.unitsLoaded - stats.unitsExpected) : null;
 
+  // Vehicle: prefer movement's own plate, fall back to first linked trip's plate
+  const tripVehicle = movement.trips?.find((t: any) => t.vehiclePlate)?.vehiclePlate ?? null;
+  const resolvedVehicle = movement.vehiclePlate || tripVehicle;
+
   // Status indicator chips
   const chips: Array<{ label: string; icon: React.ElementType; variant: "warn" | "ok" | "info" | "muted" }> = [];
-  if (!movement.vehiclePlate) chips.push({ label: "Sem veículo", icon: AlertTriangle, variant: "warn" });
+  if (!resolvedVehicle) chips.push({ label: "Sem veículo", icon: AlertTriangle, variant: "warn" });
   if (stats.evidenceCount === 0) chips.push({ label: "Sem evidências", icon: Camera, variant: "muted" });
   if (stats.evidenceCount > 0) chips.push({ label: `${stats.evidenceCount} evidência${stats.evidenceCount !== 1 ? "s" : ""}`, icon: Camera, variant: "info" });
   if (progressPct === 100 && unitsExceeded === 0) chips.push({ label: "100% concluída", icon: CheckCircle, variant: "ok" });
@@ -382,8 +386,12 @@ function MovementCard({
           {tripsLabel && (
             <MetaRow icon={Route} label="Plano de viagens" value={tripsLabel} />
           )}
-          {movement.vehiclePlate && (
-            <MetaRow icon={Truck} label="Veículo" value={movement.vehiclePlate} />
+          {resolvedVehicle && (
+            <MetaRow
+              icon={Truck}
+              label="Veículo"
+              value={resolvedVehicle + (tripVehicle && !movement.vehiclePlate ? " (viagem)" : "")}
+            />
           )}
           {movement.dock && (
             <MetaRow icon={Anchor} label="Doca" value={(movement.dock as any).name} truncate />
