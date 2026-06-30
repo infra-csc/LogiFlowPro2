@@ -49,7 +49,7 @@ import { userCanCreateMovement, userCanEditMovement } from "@/lib/authz";
 import type {
   LoadingOrder, Dock, Event, Trip, Movement,
   MovementTypeConfig, MaterialRequest, Product, Kit, BomLine,
-  RequestItem, LoadingOrderItem,
+  RequestItem, LoadingOrderItem, MovementItem,
 } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -60,7 +60,7 @@ import {
   Calendar, Clock, User, Navigation, ChevronRight,
   Building2, CheckCircle2, AlertTriangle, StickyNote,
   ListOrdered, Layers, ChevronDown, ChevronLeft,
-  ArrowRight, Circle,
+  ArrowRight, Circle, Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -504,6 +504,7 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
   );
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
   const [tripDetailExpanded, setTripDetailExpanded] = useState(false);
+  const [sourceMovementId, setSourceMovementId] = useState<string | null>(null);
 
   // ─ Queries ──────────────────────────────────────────────────────────────────
   const { data: loadingOrders = [] } = useQuery<LoadingOrder[]>({ queryKey: ["/api/loading-orders"] });
@@ -518,6 +519,12 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
 
   const activeMovementTypes = useMemo(() => movementTypes.filter((mt) => mt.active), [movementTypes]);
 
+  // ─ Source movement items query (carga de referência em descargas) ──────────
+  const { data: sourceMovementItems = [], isLoading: sourceItemsLoading } = useQuery<MovementItem[]>({
+    queryKey: ["/api/movements", sourceMovementId, "items"],
+    enabled: !!sourceMovementId,
+  });
+
   // ─ Form ─────────────────────────────────────────────────────────────────────
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -531,6 +538,20 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
   });
 
   const watchedValues = form.watch();
+
+  // ─ Outbound movements for reference selection ────────────────────────────────
+  const outboundMovementsForEvents = useMemo(() => {
+    const selectedEventIds = watchedValues.eventIds || [];
+    if (!selectedEventIds.length) return [];
+    return (existingMovements as any[]).filter((m: any) => {
+      if (m.status === "cancelled") return false;
+      const typeConfig = activeMovementTypes.find((t) => t.id === m.movementTypeConfigId);
+      if (!typeConfig || typeConfig.nature !== "outbound") return false;
+      const mEventIds: string[] = (m.events || []).map((e: any) => e.id);
+      if (m.eventId && !mEventIds.includes(m.eventId)) mEventIds.push(m.eventId);
+      return mEventIds.some((id) => selectedEventIds.includes(id));
+    });
+  }, [existingMovements, activeMovementTypes, watchedValues.eventIds]);
 
   // ─ Multiple request items via useQueries ─────────────────────────────────────
   const selectedRequestIds = watchedValues.requestIds || [];
@@ -710,6 +731,7 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
         setLinkType("order");
         setAutoFilledFields(new Set());
       }
+      setSourceMovementId(null);
     }
   }, [open, isEditMode, movement, prefill]);
 
@@ -1439,6 +1461,101 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                         )}
                       </div>
                     </div>
+
+                    {/* BLOCO: Carga de referência (inbound + eventos selecionados) */}
+                    {!isEditMode && selectedType?.nature === "inbound" && selectedEvents.length > 0 && outboundMovementsForEvents.length > 0 && (
+                      <div>
+                        <BlockSection
+                          icon={Copy}
+                          title="Carga de referência"
+                          description="Copie os itens de uma saída anterior do mesmo evento para agilizar o registro de retorno."
+                        />
+                        <div className="space-y-3">
+                          <SearchableSelect
+                            value={sourceMovementId || ""}
+                            onChange={(val) => setSourceMovementId(val || null)}
+                            options={outboundMovementsForEvents.map((m: any) => ({
+                              value: m.id,
+                              label: `${m.movementNumber} — ${m.name}`,
+                              searchText: `${m.movementNumber} ${m.name}`.toLowerCase(),
+                            }))}
+                            placeholder="Selecionar carga de referência (opcional)..."
+                            searchPlaceholder="Buscar por número ou nome..."
+                            emptyText="Nenhuma carga encontrada"
+                            dataTestid="select-source-movement"
+                            renderItem={(option) => {
+                              const m = outboundMovementsForEvents.find((x: any) => x.id === option.value) as any;
+                              const statusLabels: Record<string, string> = {
+                                created: "Criada", in_progress: "Em andamento",
+                                paused: "Pausada", completed: "Concluída",
+                                pending_approval: "Aguardando aprovação", approved: "Aprovada",
+                                cancelled: "Cancelada",
+                              };
+                              return (
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">{m?.name}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {m?.movementNumber} · {statusLabels[m?.status] ?? m?.status}
+                                  </span>
+                                </div>
+                              );
+                            }}
+                            renderSelected={(val) => {
+                              const m = outboundMovementsForEvents.find((x: any) => x.id === val) as any;
+                              return m ? (
+                                <span className="truncate">{m.movementNumber} — {m.name}</span>
+                              ) : (
+                                <span className="text-muted-foreground">Selecionar carga de referência (opcional)...</span>
+                              );
+                            }}
+                          />
+
+                          {sourceMovementId && (
+                            <div className="rounded-md border border-border/60 bg-card px-3 py-2.5">
+                              {sourceItemsLoading ? (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Carregando itens da carga...
+                                </div>
+                              ) : sourceMovementItems.length > 0 ? (
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-medium">
+                                      {sourceMovementItems.length} item{sourceMovementItems.length !== 1 ? "s" : ""} disponíveis para cópia
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                                      {sourceMovementItems.slice(0, 3).map((i) => {
+                                        const prod = products.find((p) => p.id === i.productId);
+                                        return `${prod?.name ?? i.productId} ×${i.quantity}`;
+                                      }).join(", ")}{sourceMovementItems.length > 3 ? "…" : ""}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="shrink-0"
+                                    data-testid="button-copy-source-items"
+                                    onClick={() => {
+                                      const newItems = sourceMovementItems
+                                        .filter((i) => i.productId)
+                                        .map((i) => ({ productId: i.productId!, quantity: i.quantity }));
+                                      form.setValue("productItems", newItems, { shouldDirty: true });
+                                      setSourceMovementId(null);
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5 mr-1.5" />
+                                    Copiar itens
+                                  </Button>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">Esta carga não possui itens registrados.</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* BLOCO: Itens (create mode only) */}
                     {!isEditMode && (
