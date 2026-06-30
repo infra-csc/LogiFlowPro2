@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Truck, Edit, Trash2, Ruler, Tag, Search } from "lucide-react";
+import { Plus, Truck, Edit, Trash2, Ruler, Tag, Search, Weight, Box } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Vehicle, VehicleType } from "@shared/schema";
@@ -23,7 +22,7 @@ import { EmptyState } from "@/components/empty-state";
 import { FilterBar } from "@/components/filter-bar";
 
 const vehicleFormSchema = insertVehicleSchema.extend({
-  type: z.string().min(1, "Tipo é obrigatório"),
+  type: z.string().optional().default(""),
 });
 type InsertVehicle = z.infer<typeof vehicleFormSchema>;
 
@@ -36,6 +35,19 @@ function parseApiError(err: Error): string {
     }
   } catch {}
   return err.message;
+}
+
+function SectionDivider({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <div className="flex-1 border-t border-border/40" />
+      <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+        <Icon className="h-3 w-3" />
+        {label}
+      </span>
+      <div className="flex-1 border-t border-border/40" />
+    </div>
+  );
 }
 
 export default function Vehicles() {
@@ -68,18 +80,27 @@ export default function Vehicles() {
     },
   });
 
+  const watchedVehicleTypeId = form.watch("vehicleTypeId");
+  useEffect(() => {
+    if (watchedVehicleTypeId && vehicleTypes) {
+      const vt = vehicleTypes.find((v) => v.id === watchedVehicleTypeId);
+      if (vt) form.setValue("type", vt.name);
+    }
+  }, [watchedVehicleTypeId, vehicleTypes]);
+
   const createMutation = useMutation({
     mutationFn: async (data: InsertVehicle) => {
+      const payload = { ...data, type: data.type || "" };
       if (editingVehicle) {
-        return await apiRequest("PATCH", `/api/vehicles/${editingVehicle.id}`, data);
+        return await apiRequest("PATCH", `/api/vehicles/${editingVehicle.id}`, payload);
       }
-      return await apiRequest("POST", "/api/vehicles", data);
+      return await apiRequest("POST", "/api/vehicles", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
       toast({
         title: editingVehicle ? "Veículo atualizado" : "Veículo criado",
-        description: editingVehicle 
+        description: editingVehicle
           ? "O veículo foi atualizado com sucesso."
           : "O veículo foi criado com sucesso.",
       });
@@ -102,17 +123,10 @@ export default function Vehicles() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
-      toast({
-        title: "Veículo excluído",
-        description: "O veículo foi excluído com sucesso.",
-      });
+      toast({ title: "Veículo excluído", description: "O veículo foi excluído com sucesso." });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Erro ao excluir veículo",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao excluir veículo", description: error.message, variant: "destructive" });
     },
   });
 
@@ -156,8 +170,8 @@ export default function Vehicles() {
 
   const getVehicleTypeName = (vehicleTypeId: string | null) => {
     if (!vehicleTypeId || !vehicleTypes) return "-";
-    const type = vehicleTypes.find(vt => vt.id === vehicleTypeId);
-    return type?.name || "-";
+    const vt = vehicleTypes.find((v) => v.id === vehicleTypeId);
+    return vt?.name || "-";
   };
 
   const filteredVehicles = (vehicles ?? []).filter((v) => {
@@ -170,18 +184,11 @@ export default function Vehicles() {
     );
   });
 
-  if (isLoading) {
-    return (
-      <PageLoading message="Carregando veículos..." />
-    );
-  }
+  if (isLoading) return <PageLoading message="Carregando veículos..." />;
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Veículos"
-        description="Gerencie a frota e seus tipos"
-      >
+      <PageHeader title="Veículos" description="Gerencie a frota e seus tipos">
         <Dialog open={isCreateOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-vehicle">
@@ -189,130 +196,112 @@ export default function Vehicles() {
               Adicionar Veículo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-border/60">
+
+          <DialogContent className="max-w-2xl border-border/60">
             <DialogHeader>
               <DialogTitle>
                 {editingVehicle ? "Editar Veículo" : "Criar Novo Veículo"}
               </DialogTitle>
               <DialogDescription>
-                {editingVehicle 
-                  ? "Atualize as informações do veículo"
-                  : "Adicione um novo veículo à frota"}
+                {editingVehicle ? "Atualize as informações do veículo." : "Preencha os dados do veículo a ser adicionado à frota."}
               </DialogDescription>
             </DialogHeader>
+
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Informações Básicas */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-foreground">Informações Básicas</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="plate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Placa <span className="text-muted-foreground text-xs">(opcional)</span></FormLabel>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+                {/* Identificação principal */}
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="plate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Placa
+                          <span className="text-muted-foreground text-xs font-normal ml-1">(opcional)</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="ABC-1234"
+                            data-testid="input-vehicle-plate"
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="vehicleTypeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de Veículo</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
-                            <Input
-                              placeholder="ABC-1234"
-                              data-testid="input-vehicle-plate"
-                              {...field}
-                              value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.value || undefined)}
-                            />
+                            <SelectTrigger data-testid="select-vehicle-type">
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo (compatibilidade)</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Ex: Caminhão"
-                              data-testid="input-vehicle-type"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="vehicleTypeId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Veículo</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value || undefined}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-vehicle-type">
-                                <SelectValue placeholder="Selecione o tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {vehicleTypes?.map((vt) => (
-                                <SelectItem key={vt.id} value={vt.id}>
-                                  {vt.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="model"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Modelo</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Ex: Mercedes-Benz Atego"
-                              data-testid="input-vehicle-model"
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value || undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                          <SelectContent>
+                            {vehicleTypes?.map((vt) => (
+                              <SelectItem key={vt.id} value={vt.id}>
+                                {vt.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                {/* Medidas do Baú */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-                    <Ruler className="h-4 w-4" />
-                    Medidas do Baú (metros)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="model"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Modelo</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Ex: Mercedes-Benz Atego 2430"
+                          data-testid="input-vehicle-model"
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(e.target.value || undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Baú */}
+                <SectionDivider icon={Ruler} label="Baú (metros)" />
+
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { name: "cargoLength" as const, label: "Comprimento", testid: "input-cargo-length" },
+                    { name: "cargoWidth" as const, label: "Largura", testid: "input-cargo-width" },
+                    { name: "cargoHeight" as const, label: "Altura", testid: "input-cargo-height" },
+                  ].map(({ name, label, testid }) => (
                     <FormField
+                      key={name}
                       control={form.control}
-                      name="cargoLength"
+                      name={name}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Comprimento</FormLabel>
+                          <FormLabel>{label}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               step="0.01"
                               placeholder="0.00"
-                              data-testid="input-cargo-length"
+                              data-testid={testid}
                               {...field}
                               value={field.value || ""}
                               onChange={(e) => field.onChange(e.target.value || undefined)}
@@ -322,149 +311,103 @@ export default function Vehicles() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="cargoWidth"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Largura</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              data-testid="input-cargo-width"
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value || undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="cargoHeight"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Altura</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              data-testid="input-cargo-height"
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value || undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  ))}
                 </div>
 
                 {/* Placas */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-                    <Tag className="h-4 w-4" />
-                    Placas
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="truckPlate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Chapa Cavalo</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="ABC-1234"
-                              data-testid="input-truck-plate"
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value || undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="trailerPlate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Chapa Carreta</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="XYZ-5678"
-                              data-testid="input-trailer-plate"
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value || undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <SectionDivider icon={Tag} label="Placas adicionais" />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="truckPlate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Chapa Cavalo</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="ABC-1234"
+                            data-testid="input-truck-plate"
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value || undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="trailerPlate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Chapa Carreta</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="XYZ-5678"
+                            data-testid="input-trailer-plate"
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value || undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 {/* Capacidades */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-foreground">Capacidades</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="maxWeight"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Peso Máximo (kg)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              data-testid="input-max-weight"
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value || undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="maxVolume"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Volume Máximo (m³)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              data-testid="input-max-volume"
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value || undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <SectionDivider icon={Weight} label="Capacidades" />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="maxWeight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Peso Máximo (kg)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            data-testid="input-max-weight"
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value || undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="maxVolume"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Volume Máximo (m³)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            data-testid="input-max-volume"
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value || undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4">
+                {/* Footer */}
+                <div className="flex justify-end gap-2 pt-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -473,12 +416,16 @@ export default function Vehicles() {
                   >
                     Cancelar
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createMutation.isPending}
                     data-testid="button-submit"
                   >
-                    {createMutation.isPending ? "Salvando..." : (editingVehicle ? "Salvar Veículo" : "Criar Veículo")}
+                    {createMutation.isPending
+                      ? "Salvando..."
+                      : editingVehicle
+                      ? "Salvar Veículo"
+                      : "Criar Veículo"}
                   </Button>
                 </div>
               </form>
@@ -517,133 +464,118 @@ export default function Vehicles() {
           action={!search && canWrite ? { label: "Adicionar Veículo", onClick: () => setIsCreateOpen(true) } : undefined}
         />
       ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredVehicles.map((vehicle) => (
-          <Card key={vehicle.id} className="hover-elevate border-border/60">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-muted-foreground" />
-                    <span data-testid={`text-vehicle-plate-${vehicle.id}`}>
-                      {vehicle.plate}
-                    </span>
-                  </h3>
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  {canWrite && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleEdit(vehicle)}
-                      data-testid={`button-edit-${vehicle.id}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {canWrite && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleDelete(vehicle.id)}
-                      data-testid={`button-delete-${vehicle.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-border/40 space-y-2 text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Tipo</p>
-                    <p className="font-medium" data-testid={`text-vehicle-type-${vehicle.id}`}>
-                      {getVehicleTypeName(vehicle.vehicleTypeId)}
-                    </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredVehicles.map((vehicle) => (
+            <Card key={vehicle.id} className="hover-elevate border-border/60">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span data-testid={`text-vehicle-plate-${vehicle.id}`} className="truncate">
+                        {vehicle.plate || "Sem placa"}
+                      </span>
+                    </h3>
                   </div>
-                  {vehicle.model && (
+                  <div className="flex gap-1 shrink-0">
+                    {canWrite && (
+                      <Button size="icon" variant="ghost" onClick={() => handleEdit(vehicle)} data-testid={`button-edit-${vehicle.id}`}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canWrite && (
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(vehicle.id)} data-testid={`button-delete-${vehicle.id}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-border/40 space-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <p className="text-xs text-muted-foreground">Modelo</p>
-                      <p className="font-medium" data-testid={`text-vehicle-model-${vehicle.id}`}>
-                        {vehicle.model}
+                      <p className="text-xs text-muted-foreground">Tipo</p>
+                      <p className="font-medium" data-testid={`text-vehicle-type-${vehicle.id}`}>
+                        {getVehicleTypeName(vehicle.vehicleTypeId)}
                       </p>
                     </div>
+                    {vehicle.model && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Modelo</p>
+                        <p className="font-medium truncate" data-testid={`text-vehicle-model-${vehicle.id}`}>
+                          {vehicle.model}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {(vehicle.cargoLength || vehicle.cargoWidth || vehicle.cargoHeight) && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Medidas do Baú (m)</p>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        {vehicle.cargoLength && (
+                          <div>
+                            <p className="text-muted-foreground">Comp.</p>
+                            <p className="font-medium">{vehicle.cargoLength}</p>
+                          </div>
+                        )}
+                        {vehicle.cargoWidth && (
+                          <div>
+                            <p className="text-muted-foreground">Larg.</p>
+                            <p className="font-medium">{vehicle.cargoWidth}</p>
+                          </div>
+                        )}
+                        {vehicle.cargoHeight && (
+                          <div>
+                            <p className="text-muted-foreground">Alt.</p>
+                            <p className="font-medium">{vehicle.cargoHeight}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {(vehicle.truckPlate || vehicle.trailerPlate) && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Placas</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {vehicle.truckPlate && (
+                          <div>
+                            <p className="text-muted-foreground">Cavalo</p>
+                            <p className="font-medium">{vehicle.truckPlate}</p>
+                          </div>
+                        )}
+                        {vehicle.trailerPlate && (
+                          <div>
+                            <p className="text-muted-foreground">Carreta</p>
+                            <p className="font-medium">{vehicle.trailerPlate}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {(vehicle.maxWeight || vehicle.maxVolume) && (
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {vehicle.maxWeight && (
+                        <div>
+                          <p className="text-muted-foreground">Peso máx.</p>
+                          <p className="font-medium">{vehicle.maxWeight} kg</p>
+                        </div>
+                      )}
+                      {vehicle.maxVolume && (
+                        <div>
+                          <p className="text-muted-foreground">Volume máx.</p>
+                          <p className="font-medium">{vehicle.maxVolume} m³</p>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-
-                {(vehicle.cargoLength || vehicle.cargoWidth || vehicle.cargoHeight) && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Medidas do Baú (m)</p>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      {vehicle.cargoLength && (
-                        <div>
-                          <p className="text-muted-foreground">Comp.</p>
-                          <p className="font-medium">{vehicle.cargoLength}</p>
-                        </div>
-                      )}
-                      {vehicle.cargoWidth && (
-                        <div>
-                          <p className="text-muted-foreground">Larg.</p>
-                          <p className="font-medium">{vehicle.cargoWidth}</p>
-                        </div>
-                      )}
-                      {vehicle.cargoHeight && (
-                        <div>
-                          <p className="text-muted-foreground">Alt.</p>
-                          <p className="font-medium">{vehicle.cargoHeight}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {(vehicle.truckPlate || vehicle.trailerPlate) && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Placas</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {vehicle.truckPlate && (
-                        <div>
-                          <p className="text-muted-foreground">Cavalo</p>
-                          <p className="font-medium">{vehicle.truckPlate}</p>
-                        </div>
-                      )}
-                      {vehicle.trailerPlate && (
-                        <div>
-                          <p className="text-muted-foreground">Carreta</p>
-                          <p className="font-medium">{vehicle.trailerPlate}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {(vehicle.maxWeight || vehicle.maxVolume) && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {vehicle.maxWeight && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Peso Máx.</p>
-                        <p className="font-medium">{vehicle.maxWeight} kg</p>
-                      </div>
-                    )}
-                    {vehicle.maxVolume && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Volume Máx.</p>
-                        <p className="font-medium">{vehicle.maxVolume} m³</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="pt-2 border-t border-border/40">
-                  <Badge variant={vehicle.active ? "secondary" : "outline"} className={!vehicle.active ? "text-muted-foreground" : ""}>
-                    {vehicle.active ? "Ativo" : "Inativo"}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );
