@@ -48,6 +48,7 @@ import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
+import { EventFilterCombobox } from "@/components/event-filter-combobox";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -850,27 +851,12 @@ export default function OperationalCalendar() {
           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
             Evento
           </p>
-          <Select
-            value={filters.eventId || "all"}
-            onValueChange={(v) =>
-              setFilters((p) => ({ ...p, eventId: v === "all" ? "" : v }))
-            }
-          >
-            <SelectTrigger
-              className="h-9 text-sm bg-card border-border/60"
-              data-testid="select-event-filter"
-            >
-              <SelectValue placeholder="Todos os eventos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os eventos</SelectItem>
-              {(eventsData ?? []).map((ev) => (
-                <SelectItem key={ev.id} value={ev.id}>
-                  {ev.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <EventFilterCombobox
+            events={eventsData ?? []}
+            value={filters.eventId || ""}
+            onValueChange={(v) => setFilters((p) => ({ ...p, eventId: v }))}
+            data-testid="select-event-filter"
+          />
         </div>
       </FilterBar>
 

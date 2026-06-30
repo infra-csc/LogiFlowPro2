@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EventFilterCombobox } from "@/components/event-filter-combobox";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
@@ -250,19 +251,12 @@ export default function Requests() {
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Evento</label>
-            <Select value={eventFilter} onValueChange={setEventFilter}>
-              <SelectTrigger data-testid="select-event-filter" className="h-9 bg-card border-border/60 rounded-md text-sm">
-                <SelectValue placeholder="Todos os eventos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os eventos</SelectItem>
-                {events?.map((event) => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {event.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <EventFilterCombobox
+              events={events ?? []}
+              value={eventFilter === "all" ? "" : eventFilter}
+              onValueChange={(v) => setEventFilter(v || "all")}
+              data-testid="select-event-filter"
+            />
           </div>
         </FilterBar>
       )}

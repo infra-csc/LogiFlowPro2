@@ -39,6 +39,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
+import { EventFilterCombobox } from "@/components/event-filter-combobox";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -903,20 +904,13 @@ export default function Trips() {
 
         <div className="space-y-1.5">
           <Label htmlFor="filter-event" className="text-xs text-muted-foreground">Evento</Label>
-          <Select
-            value={filters.eventId || "all"}
-            onValueChange={(v) => setFilters((p) => ({ ...p, eventId: v === "all" ? undefined : v }))}
-          >
-            <SelectTrigger id="filter-event" className="h-8 text-sm" data-testid="select-filter-event">
-              <SelectValue placeholder="Todos os eventos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os eventos</SelectItem>
-              {events?.map((ev) => (
-                <SelectItem key={ev.id} value={String(ev.id)}>{ev.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <EventFilterCombobox
+            events={events ?? []}
+            value={filters.eventId || ""}
+            onValueChange={(v) => setFilters((p) => ({ ...p, eventId: v || undefined }))}
+            data-testid="select-filter-event"
+            triggerClassName="h-8"
+          />
         </div>
 
         <div className="space-y-1.5">

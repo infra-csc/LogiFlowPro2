@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
 import { FilterBar } from "@/components/filter-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EventFilterCombobox } from "@/components/event-filter-combobox";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { LoadingOrder, Event } from "@shared/schema";
@@ -180,18 +181,11 @@ export default function LoadingOrders() {
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Evento</label>
-          <Select value={filterEventId || undefined} onValueChange={(value) => setFilterEventId(value || "")}>
-            <SelectTrigger className="h-9 bg-card border-border/60 rounded-md text-sm">
-              <SelectValue placeholder="Todos os eventos" />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((event) => (
-                <SelectItem key={event.id} value={event.id}>
-                  {event.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <EventFilterCombobox
+            events={events}
+            value={filterEventId}
+            onValueChange={setFilterEventId}
+          />
         </div>
       </FilterBar>
 

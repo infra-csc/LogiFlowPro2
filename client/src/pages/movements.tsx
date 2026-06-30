@@ -16,6 +16,7 @@ import {
   Camera, AlertTriangle, CheckCircle, Route, Anchor, User,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { EventFilterCombobox } from "@/components/event-filter-combobox";
 import {
   Select,
   SelectContent,
@@ -680,16 +681,12 @@ export default function Movements() {
       <FilterBar badgeCount={activeFiltersCount} onClear={activeFiltersCount > 0 ? clearAllFilters : undefined}>
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Evento</label>
-          <Select value={filterEventId || undefined} onValueChange={(v) => setFilterEventId(v || "")}>
-            <SelectTrigger data-testid="select-filter-event" className="h-9 bg-card border-border/60 rounded-md text-sm">
-              <SelectValue placeholder="Todos os eventos" />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((event) => (
-                <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <EventFilterCombobox
+            events={events}
+            value={filterEventId}
+            onValueChange={setFilterEventId}
+            data-testid="select-filter-event"
+          />
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Status</label>

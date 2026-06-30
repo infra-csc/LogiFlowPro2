@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EventFilterCombobox } from "@/components/event-filter-combobox";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -221,19 +222,12 @@ export default function Approvals() {
 
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Evento</Label>
-          <Select value={eventFilter} onValueChange={setEventFilter}>
-            <SelectTrigger data-testid="select-event-filter">
-              <SelectValue placeholder="Todos os eventos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os eventos</SelectItem>
-              {uniqueEvents.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <EventFilterCombobox
+            events={uniqueEvents}
+            value={eventFilter === "all" ? "" : eventFilter}
+            onValueChange={(v) => setEventFilter(v || "all")}
+            data-testid="select-event-filter"
+          />
         </div>
 
         <div className="space-y-1.5">
