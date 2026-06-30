@@ -31,7 +31,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Trip, InsertTrip, Event, VehicleType, Driver, Dock } from "@shared/schema";
+import type { Trip, InsertTrip, Event, VehicleType, Vehicle, Driver, Dock } from "@shared/schema";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -53,6 +53,7 @@ interface Destination {
 interface TripFormData {
   description?: string;
   eventId?: string;
+  vehicleId?: string;
   vehicleTypeId?: string;
   driverId?: string;
   dockId?: string;
@@ -88,6 +89,7 @@ interface TripFormData {
 const EMPTY_FORM: TripFormData = {
   description: "",
   eventId: "",
+  vehicleId: "",
   vehicleTypeId: "",
   driverId: "",
   dockId: "",
@@ -345,6 +347,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   // ── Data queries ──
   const { data: events = [] } = useQuery<Event[]>({ queryKey: ["/api/events"] });
   const { data: vehicleTypes = [] } = useQuery<VehicleType[]>({ queryKey: ["/api/vehicle-types"] });
+  const { data: vehicles = [] } = useQuery<Vehicle[]>({ queryKey: ["/api/vehicles"] });
   const { data: drivers = [] } = useQuery<Driver[]>({ queryKey: ["/api/drivers"] });
   const { data: docks = [] } = useQuery<Dock[]>({ queryKey: ["/api/docks"] });
 
@@ -409,11 +412,23 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   // ── Derived lookups ──
   const selectedEvent = events.find((e) => String(e.id) === formData.eventId);
   const selectedVehicleType = vehicleTypes.find((v) => String(v.id) === formData.vehicleTypeId);
+  const selectedVehicle = vehicles.find((v) => v.id === formData.vehicleId);
   const selectedDriver = drivers.find((d) => d.id === formData.driverId);
   const selectedDock = docks.find((d) => d.id === formData.dockId);
   const selectedReturnVehicleType = vehicleTypes.find((v) => String(v.id) === formData.returnVehicleTypeId);
   const selectedReturnDriver = drivers.find((d) => d.id === formData.returnDriverId);
   const selectedReturnDock = docks.find((d) => d.id === formData.returnDockId);
+
+  // ── Auto-fill from selected vehicle ──
+  useEffect(() => {
+    if (!formData.vehicleId || formData.vehicleId === "__none__") return;
+    const veh = vehicles.find((v) => v.id === formData.vehicleId);
+    if (!veh) return;
+    const patch: Partial<TripFormData> = {};
+    if (veh.plate) patch.vehiclePlate = veh.plate;
+    if (veh.vehicleTypeId) patch.vehicleTypeId = String(veh.vehicleTypeId);
+    update(patch);
+  }, [formData.vehicleId]);
 
   // ── Auto-suggest description ──
   useEffect(() => {
@@ -655,7 +670,40 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       </div>
 
       {/* — Transporte — */}
-      <SectionLabel label="Transporte" icon={Truck} description="Tipo de veículo, motorista e placa do caminhão para esta viagem." />
+      <SectionLabel label="Transporte" icon={Truck} description="Selecione o veículo ou preencha manualmente o tipo e a placa." />
+
+      {/* Veículo cadastrado (opcional) */}
+      <div className="space-y-1">
+        <Label className="text-xs flex items-center gap-1.5">
+          Veículo
+          <span className="text-muted-foreground font-normal">(opcional — preenche tipo e placa automaticamente)</span>
+        </Label>
+        <Select
+          value={formData.vehicleId || "__none__"}
+          onValueChange={(v) => update({ vehicleId: noneVal(v), ...(v === "__none__" ? { vehiclePlate: "", vehicleTypeId: "" } : {}) })}
+        >
+          <SelectTrigger className="h-8 text-sm" data-testid="select-vehicle">
+            <SelectValue placeholder="Selecionar veículo cadastrado..." />
+          </SelectTrigger>
+          <SelectContent>
+            {renderNoneOption("Nenhum (preencher manualmente)")}
+            {vehicles.map((vh) => {
+              const typeName = vehicleTypes.find((vt) => String(vt.id) === String(vh.vehicleTypeId))?.name;
+              const label = [vh.plate || vh.truckPlate, vh.model, typeName].filter(Boolean).join(" · ");
+              return (
+                <SelectItem key={vh.id} value={vh.id}>
+                  {label || `Veículo ${vh.id.slice(0, 8)}`}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+        {selectedVehicle && (
+          <p className="text-[10px] text-muted-foreground">
+            Tipo e placa preenchidos a partir do veículo selecionado. Editáveis abaixo.
+          </p>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
