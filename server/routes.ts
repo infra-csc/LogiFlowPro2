@@ -1297,7 +1297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FROM request_items ri
         JOIN material_requests r ON r.id = ri.request_id
         WHERE r.event_id = ${eventId}
-          AND r.status IN ('approved', 'partially_approved', 'completed')
+          AND r.status::text IN ('approved', 'partially_approved', 'completed')
           AND ri.product_id IS NOT NULL
         GROUP BY ri.product_id
       `);
@@ -1345,7 +1345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         JOIN material_requests r ON r.id = ri.request_id
         LEFT JOIN users u ON u.id = r.requested_by
         WHERE r.event_id = ${eventId}
-          AND r.status IN ('approved', 'partially_approved', 'completed')
+          AND r.status::text IN ('approved', 'partially_approved', 'completed')
           AND ri.product_id IS NOT NULL
 
         UNION
@@ -1356,7 +1356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         LEFT JOIN users u ON u.id = r.requested_by
         JOIN bom_lines bl ON bl.kit_id = ri.kit_id
         WHERE r.event_id = ${eventId}
-          AND r.status IN ('approved', 'partially_approved', 'completed')
+          AND r.status::text IN ('approved', 'partially_approved', 'completed')
           AND ri.kit_id IS NOT NULL
           AND ri.product_id IS NULL
       `);
@@ -1857,7 +1857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ri.product_id = ${productId}
             OR ri.kit_id IN (SELECT kit_id FROM bom_lines WHERE product_id = ${productId})
           )
-          AND mr.status IN ('approved', 'partially_approved', 'completed')
+          AND mr.status::text IN ('approved', 'partially_approved', 'completed')
           ORDER BY mr.created_at DESC
           LIMIT 20
         `),
@@ -1879,7 +1879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ri.product_id = ${productId}
             OR ri.kit_id IN (SELECT kit_id FROM bom_lines WHERE product_id = ${productId})
           )
-          AND mr.status IN ('approved', 'partially_approved', 'completed')
+          AND mr.status::text IN ('approved', 'partially_approved', 'completed')
         `),
       ]);
 
