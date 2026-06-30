@@ -513,6 +513,13 @@ export default function MovementDetails() {
   const totalExceeded = expectedItems.reduce((s, i) => s + Math.max(0, i.loadedQuantity - i.expectedQuantity), 0);
   const totalPending = expectedItems.reduce((s, i) => s + Math.max(0, i.expectedQuantity - i.loadedQuantity), 0);
   const progress = totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0;
+
+  // Inbound-specific stats (referência vs confirmados pelo scanner)
+  const totalInboundRef = isInboundMovement ? consolidatedRefItems.reduce((s, i) => s + i.totalQuantity, 0) : 0;
+  const totalInboundConfirmed = isInboundMovement ? consolidatedConfirmedItems.reduce((s, i) => s + i.totalQuantity, 0) : 0;
+  const totalInboundPending = Math.max(0, totalInboundRef - totalInboundConfirmed);
+  const totalInboundExceeded = Math.max(0, totalInboundConfirmed - totalInboundRef);
+  const inboundProgress = totalInboundRef > 0 ? Math.round((totalInboundConfirmed / totalInboundRef) * 100) : (totalInboundConfirmed > 0 ? 100 : 0);
   const completedProductCount = expectedItems.filter(
     (i) => i.remaining === 0 && i.loadedQuantity <= i.expectedQuantity
   ).length;
@@ -1233,60 +1240,82 @@ export default function MovementDetails() {
               <CardContent className="p-2.5 flex flex-col min-h-[80px]">
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
                   <ClipboardList className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">Esperados</span>
+                  <span className="truncate">{isInboundMovement ? "Referência" : "Esperados"}</span>
                 </div>
                 <div className="mt-auto pt-1">
-                  <div className="text-xl font-bold tabular-nums leading-none">{totalExpected}</div>
+                  <div className="text-xl font-bold tabular-nums leading-none">{isInboundMovement ? totalInboundRef : totalExpected}</div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
                 </div>
               </CardContent>
             </Card>
-            <Card className={`border-border/60 min-w-0 ${totalExpected > 0 && totalLoaded >= totalExpected ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}>
-              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
-                  <PackageCheck className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">Carregados</span>
-                </div>
-                <div className="mt-auto pt-1">
-                  <div className={`text-xl font-bold tabular-nums leading-none ${totalExpected > 0 && totalLoaded >= totalExpected ? "text-emerald-500" : ""}`}>{totalLoaded}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className={`border-border/60 min-w-0 ${totalPending > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
-              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
-                <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${totalPending > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
-                  <AlertTriangle className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">Pendentes</span>
-                </div>
-                <div className="mt-auto pt-1">
-                  <div className={`text-xl font-bold tabular-nums leading-none ${totalPending > 0 ? "text-amber-500" : ""}`}>{totalPending}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className={`border-border/60 min-w-0 ${totalExceeded > 0 ? "border-rose-500/40 bg-rose-500/5" : ""}`}>
-              <CardContent className="p-2.5 flex flex-col min-h-[80px]">
-                <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${totalExceeded > 0 ? "text-rose-500" : "text-muted-foreground"}`}>
-                  <Plus className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">Excedentes</span>
-                </div>
-                <div className="mt-auto pt-1">
-                  <div className={`text-xl font-bold tabular-nums leading-none ${totalExceeded > 0 ? "text-rose-500" : ""}`}>{totalExceeded}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
-                </div>
-              </CardContent>
-            </Card>
+            {(() => {
+              const val = isInboundMovement ? totalInboundConfirmed : totalLoaded;
+              const ref = isInboundMovement ? totalInboundRef : totalExpected;
+              const isDone = ref > 0 && val >= ref;
+              return (
+                <Card className={`border-border/60 min-w-0 ${isDone ? "border-emerald-500/40 bg-emerald-500/5" : ""}`}>
+                  <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
+                      <PackageCheck className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{isInboundMovement ? "Retornados" : "Carregados"}</span>
+                    </div>
+                    <div className="mt-auto pt-1">
+                      <div className={`text-xl font-bold tabular-nums leading-none ${isDone ? "text-emerald-500" : ""}`}>{val}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+            {(() => {
+              const pending = isInboundMovement ? totalInboundPending : totalPending;
+              return (
+                <Card className={`border-border/60 min-w-0 ${pending > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
+                  <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                    <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${pending > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+                      <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Pendentes</span>
+                    </div>
+                    <div className="mt-auto pt-1">
+                      <div className={`text-xl font-bold tabular-nums leading-none ${pending > 0 ? "text-amber-500" : ""}`}>{pending}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+            {(() => {
+              const exceeded = isInboundMovement ? totalInboundExceeded : totalExceeded;
+              return (
+                <Card className={`border-border/60 min-w-0 ${exceeded > 0 ? "border-rose-500/40 bg-rose-500/5" : ""}`}>
+                  <CardContent className="p-2.5 flex flex-col min-h-[80px]">
+                    <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${exceeded > 0 ? "text-rose-500" : "text-muted-foreground"}`}>
+                      <Plus className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Excedentes</span>
+                    </div>
+                    <div className="mt-auto pt-1">
+                      <div className={`text-xl font-bold tabular-nums leading-none ${exceeded > 0 ? "text-rose-500" : ""}`}>{exceeded}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">unidades</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
             <Card className="border-border/60 min-w-0">
               <CardContent className="p-2.5 flex flex-col min-h-[80px]">
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
                   <TrendingUp className="h-3 w-3 flex-shrink-0" />
                   <span className="truncate">Progresso</span>
                 </div>
-                <div className="mt-auto pt-1">
-                  <div className={`text-xl font-bold tabular-nums leading-none ${progress === 100 ? "text-emerald-500" : progress >= 50 ? "text-amber-500" : progress > 0 ? "text-foreground" : "text-muted-foreground"}`}>{progress}%</div>
-                  <Progress value={Math.min(progress, 100)} className="h-1 mt-1.5" />
-                </div>
+                {(() => {
+                  const p = isInboundMovement ? inboundProgress : progress;
+                  return (
+                    <div className="mt-auto pt-1">
+                      <div className={`text-xl font-bold tabular-nums leading-none ${p === 100 ? "text-emerald-500" : p >= 50 ? "text-amber-500" : p > 0 ? "text-foreground" : "text-muted-foreground"}`}>{p}%</div>
+                      <Progress value={Math.min(p, 100)} className="h-1 mt-1.5" />
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
             <button
@@ -1919,14 +1948,19 @@ export default function MovementDetails() {
                         size="sm"
                         className="text-xs h-7 ml-auto text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/10"
                         disabled={addItemMutation.isPending}
-                        onClick={() => {
-                          consolidatedRefItems.forEach((item) => {
+                        onClick={async () => {
+                          const pending = consolidatedRefItems.filter((item) => {
                             const confirmed = consolidatedConfirmedItems.find((c) => c.productId === item.productId)?.totalQuantity ?? 0;
-                            const remaining = item.totalQuantity - confirmed;
-                            if (remaining > 0) {
-                              addItemMutation.mutate({ productId: item.productId, quantity: remaining, scanned: true });
-                            }
+                            return item.totalQuantity - confirmed > 0;
                           });
+                          await Promise.all(
+                            pending.map((item) => {
+                              const confirmed = consolidatedConfirmedItems.find((c) => c.productId === item.productId)?.totalQuantity ?? 0;
+                              const remaining = item.totalQuantity - confirmed;
+                              return addItemMutation.mutateAsync({ productId: item.productId, quantity: remaining, scanned: true });
+                            })
+                          ).catch(() => {});
+                          queryClient.refetchQueries({ queryKey: ["/api/movements", id, "items"] });
                         }}
                         data-testid="button-confirm-all-ref"
                       >
