@@ -1777,9 +1777,21 @@ export default function MovementDetails() {
       )}
 
       {/* Lista dupla: Esperado vs Carregado */}
+      {(() => {
+        const isInbound = movement?.movementTypeConfig?.nature === "inbound";
+        const totalRegistered = consolidatedLoadedItems.length;
+        const sectionTitle = expectedItems.length > 0
+          ? `Itens — ${expectedItems.length} produto${expectedItems.length !== 1 ? "s" : ""}`
+          : totalRegistered > 0
+            ? `Itens — ${totalRegistered} produto${totalRegistered !== 1 ? "s" : ""} registrado${totalRegistered !== 1 ? "s" : ""}`
+            : "Itens — 0 produtos";
+        const sectionDesc = isInbound
+          ? "Registre os produtos recebidos no retorno"
+          : "Acompanhe o progresso de carregamento";
+        return (
       <PageSection
-        title={`Itens — ${expectedItems.length > 0 ? `${expectedItems.length} produto${expectedItems.length !== 1 ? "s" : ""}` : "0 produtos"}`}
-        description="Acompanhe o progresso de carregamento"
+        title={sectionTitle}
+        description={sectionDesc}
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Itens da Requisição/Ordem */}
@@ -2040,6 +2052,8 @@ export default function MovementDetails() {
           </Card>
         </div>
       </PageSection>
+        );
+      })()}
 
       {/* Evidências */}
       {!focusMode && (
