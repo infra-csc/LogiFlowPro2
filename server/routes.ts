@@ -1345,7 +1345,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         JOIN material_requests r ON r.id = ri.request_id
         LEFT JOIN users u ON u.id = r.requested_by
         WHERE r.event_id = ${eventId}
+          AND r.status IN ('approved', 'partially_approved', 'completed')
           AND ri.product_id IS NOT NULL
+
+        UNION
+
+        SELECT DISTINCT bl.product_id, r.id AS request_id, r.area, u.username AS requested_by_name, r.status
+        FROM request_items ri
+        JOIN material_requests r ON r.id = ri.request_id
+        LEFT JOIN users u ON u.id = r.requested_by
+        JOIN bom_lines bl ON bl.kit_id = ri.kit_id
+        WHERE r.event_id = ${eventId}
+          AND r.status IN ('approved', 'partially_approved', 'completed')
+          AND ri.kit_id IS NOT NULL
+          AND ri.product_id IS NULL
       `);
       const productRequestsMap = new Map<string, Array<{ id: string; area: string | null; requestedByName: string; status: string }>>();
       for (const r of productRequestRows.rows as any[]) {
@@ -1834,11 +1847,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             mr.area        AS request_area,
             mr.status      AS request_status,
             mr.created_at,
-            e.name         AS event_name
+            e.name         AS event_name,
+            k.name         AS kit_name
           FROM request_items ri
           JOIN material_requests mr ON ri.request_id = mr.id
           LEFT JOIN events e ON mr.event_id = e.id
-          WHERE ri.product_id = ${productId}
+          LEFT JOIN kits k ON k.id = ri.kit_id
+          WHERE (
+            ri.product_id = ${productId}
+            OR ri.kit_id IN (SELECT kit_id FROM bom_lines WHERE product_id = ${productId})
+          )
+          AND mr.status IN ('approved', 'partially_approved', 'completed')
           ORDER BY mr.created_at DESC
           LIMIT 20
         `),
@@ -1853,9 +1872,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           WHERE mi.product_id = ${productId}
         `),
         db.execute(sql`
-          SELECT COUNT(DISTINCT request_id)::int AS request_count
-          FROM request_items
-          WHERE product_id = ${productId}
+          SELECT COUNT(DISTINCT ri.request_id)::int AS request_count
+          FROM request_items ri
+          JOIN material_requests mr ON ri.request_id = mr.id
+          WHERE (
+            ri.product_id = ${productId}
+            OR ri.kit_id IN (SELECT kit_id FROM bom_lines WHERE product_id = ${productId})
+          )
+          AND mr.status IN ('approved', 'partially_approved', 'completed')
         `),
       ]);
 

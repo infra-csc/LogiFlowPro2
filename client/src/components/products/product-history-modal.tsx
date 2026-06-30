@@ -57,6 +57,7 @@ interface RequestRow {
   request_status: string;
   created_at: string;
   event_name: string | null;
+  kit_name: string | null;
 }
 
 interface Stats {
@@ -352,6 +353,11 @@ export function ProductHistoryModal({ product, onOpenChange }: ProductHistoryMod
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono text-xs text-muted-foreground">{rq.request_area ?? "Requisição"}</span>
                             <Badge variant="outline" className={`text-[10px] ${rsm.className}`}>{rsm.label}</Badge>
+                            {rq.kit_name && (
+                              <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30">
+                                Kit: {rq.kit_name}
+                              </Badge>
+                            )}
                           </div>
                           {rq.event_name && (
                             <p className="text-sm font-medium text-foreground mt-0.5 truncate">{rq.event_name}</p>
