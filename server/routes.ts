@@ -2888,6 +2888,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post(
+    "/api/trips/:id/duplicate",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem duplicar viagens",
+    }),
+    async (req, res) => {
+      try {
+        const original = await storage.getTrip(req.params.id) as any;
+        if (!original) return res.status(404).json({ error: "Trip not found" });
+        const {
+          id: _id, createdAt: _ca, updatedAt: _ua, createdBy: _cb,
+          event: _ev, vehicle: _vh, vehicleType: _vt, driver: _dr, dock: _dk, destinations: _ds,
+          ...rest
+        } = original;
+        const data = insertTripSchema.parse({
+          ...rest,
+          description: rest.description ? `${rest.description} (Cópia)` : "(Cópia)",
+          status: "planned",
+          createdBy: req.user!.id,
+        });
+        const newTrip = await storage.createTrip(data);
+        res.status(201).json(newTrip);
+      } catch (error) {
+        console.error("[DUPLICATE TRIP ERROR]", error);
+        res.status(500).json({ error: "Failed to duplicate trip" });
+      }
+    }
+  );
+
+  app.post(
     "/api/trips/bulk",
     requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
       message: "Apenas administradores ou logística podem importar viagens em massa",

@@ -1,18 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Plus, Truck, CalendarDays, MapPin, X, List,
   ArrowRight, CheckCircle2, Loader2, Clock, ChevronLeft, ChevronRight,
   AlertTriangle, User, Anchor, ChevronsRight, RotateCcw,
   MoreVertical, Pencil, PackageCheck, AlignJustify, AlignLeft,
-  CalendarClock, Circle, CircleCheck, CircleDot,
+  CalendarClock, Circle, CircleCheck, CircleDot, Copy,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip, TooltipContent, TooltipTrigger,
@@ -24,6 +24,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import type { Trip, Event, Vehicle, VehicleType, Driver, Dock } from "@shared/schema";
 import { TripDialog } from "@/components/trip-dialog";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { userCanWriteLogistics } from "@/lib/authz";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { EventFilterCombobox } from "@/components/event-filter-combobox";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -248,11 +250,12 @@ interface TripCardProps {
   trip: FullTrip;
   canWrite: boolean;
   onEdit: (trip: FullTrip) => void;
+  onDuplicate: (trip: FullTrip) => void;
   docks: Dock[];
   density: Density;
 }
 
-function TripCard({ trip, canWrite, onEdit, docks, density }: TripCardProps) {
+function TripCard({ trip, canWrite, onEdit, onDuplicate, docks, density }: TripCardProps) {
   const [showPendencies, setShowPendencies] = useState(false);
   const now = new Date();
   const nextActivity = getNextActivity(trip, now);
@@ -418,6 +421,10 @@ function TripCard({ trip, canWrite, onEdit, docks, density }: TripCardProps) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit(trip)} data-testid={`button-edit-trip-${trip.id}`}>
                     <Pencil className="h-3.5 w-3.5 mr-2" /> Editar plano
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onDuplicate(trip)} data-testid={`button-duplicate-trip-${trip.id}`}>
+                    <Copy className="h-3.5 w-3.5 mr-2" /> Duplicar viagem
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -606,6 +613,7 @@ function TripCard({ trip, canWrite, onEdit, docks, density }: TripCardProps) {
 
 export default function Trips() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const canWrite = userCanWriteLogistics(user);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | undefined>();
@@ -737,6 +745,22 @@ export default function Trips() {
   const handleEdit = (trip: FullTrip) => {
     setSelectedTrip(trip as Trip);
     setShowDialog(true);
+  };
+
+  const duplicateMutation = useMutation({
+    mutationFn: (tripId: string) =>
+      apiRequest("POST", `/api/trips/${tripId}/duplicate`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      toast({ title: "Viagem duplicada", description: "A cópia foi criada com status Planejada." });
+    },
+    onError: () => {
+      toast({ title: "Erro ao duplicar", description: "Não foi possível duplicar a viagem.", variant: "destructive" });
+    },
+  });
+
+  const handleDuplicate = (trip: FullTrip) => {
+    duplicateMutation.mutate(trip.id);
   };
 
   const handleClose = () => { setSelectedTrip(undefined); setShowDialog(false); };
@@ -997,6 +1021,7 @@ export default function Trips() {
                   trip={trip}
                   canWrite={canWrite}
                   onEdit={handleEdit}
+                  onDuplicate={handleDuplicate}
                   docks={docks}
                   density={density}
                 />

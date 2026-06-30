@@ -637,6 +637,20 @@ export default function RequestDetails() {
                                   min="1"
                                   value={editQuantity}
                                   onChange={(e) => setEditQuantity(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      const qty = parseInt(editQuantity);
+                                      if (isNaN(qty) || qty < 1) {
+                                        toast({ variant: "destructive", title: "Erro", description: "Quantidade deve ser maior que zero" });
+                                        return;
+                                      }
+                                      const kitParams = item.kitId && !item.productId && Object.keys(kitEditVariableQtys).length > 0
+                                        ? kitEditVariableQtys
+                                        : undefined;
+                                      updateItemMutation.mutate({ itemId: item.id, quantity: qty, notes: editNotes || undefined, kitParameters: kitParams });
+                                    }
+                                  }}
                                   className="w-20 h-9 px-2 rounded-md bg-background border border-border text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                   data-testid={`input-edit-quantity-${item.id}`}
                                 />

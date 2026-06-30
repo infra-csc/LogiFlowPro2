@@ -363,6 +363,10 @@ export default function ApprovalDetail() {
                   isApproved &&
                   approval?.approvedQuantity !== undefined &&
                   approval.approvedQuantity < item.quantity;
+                const isAbove =
+                  isApproved &&
+                  approval?.approvedQuantity !== undefined &&
+                  approval.approvedQuantity > item.quantity;
                 const productName = item.product?.name || item.kit?.name || "—";
                 const sku = item.product?.sku;
                 const unit = item.product?.unit || "";
@@ -497,8 +501,7 @@ export default function ApprovalDetail() {
                                 {(() => {
                                   const current = approval?.approvedQuantity ?? item.quantity;
                                   const setQty = (v: number) => {
-                                    const clamped = Math.max(0, Math.min(item.quantity, v));
-                                    handleApprovalChange(item.id, "approvedQuantity", clamped);
+                                    handleApprovalChange(item.id, "approvedQuantity", Math.max(0, v));
                                   };
                                   return (
                                     <div className="flex items-center h-8 rounded-md border border-border bg-background overflow-hidden">
@@ -517,14 +520,13 @@ export default function ApprovalDetail() {
                                       <input
                                         type="number"
                                         min="0"
-                                        max={item.quantity}
                                         value={current}
                                         onChange={(e) => {
                                           const val =
                                             e.target.value === "" ? 0 : Number(e.target.value);
                                           setQty(val);
                                         }}
-                                        className="w-12 h-8 bg-transparent text-center text-sm font-semibold text-foreground focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        className="w-14 h-8 bg-transparent text-center text-sm font-semibold text-foreground focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         data-testid={`input-quantity-${item.id}`}
                                         aria-label="Quantidade aprovada"
                                       />
@@ -533,7 +535,6 @@ export default function ApprovalDetail() {
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8 rounded-none no-default-hover-elevate hover-elevate active-elevate-2"
-                                        disabled={current >= item.quantity}
                                         onClick={() => setQty(current + 1)}
                                         data-testid={`button-increase-quantity-${item.id}`}
                                         aria-label="Aumentar quantidade"
@@ -551,7 +552,15 @@ export default function ApprovalDetail() {
                                     variant="outline"
                                     className="text-[10px] border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10"
                                   >
-                                    Aprovação parcial
+                                    Parcial
+                                  </Badge>
+                                )}
+                                {isAbove && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] border-blue-500/30 text-blue-600 dark:text-blue-400 bg-blue-500/10"
+                                  >
+                                    Acima do solicitado
                                   </Badge>
                                 )}
                               </div>
