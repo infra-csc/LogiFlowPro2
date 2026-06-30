@@ -1285,7 +1285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Request count + trip count
       const [reqCount, tripCount] = await Promise.all([
-        db.execute(sql`SELECT COUNT(*)::int AS c FROM requests WHERE event_id = ${eventId}`),
+        db.execute(sql`SELECT COUNT(*)::int AS c FROM material_requests WHERE event_id = ${eventId}`),
         db.execute(sql`SELECT COUNT(*)::int AS c FROM trips WHERE event_id = ${eventId}`),
       ]);
 
@@ -1295,7 +1295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ri.product_id,
           SUM(COALESCE(ri.approved_quantity, ri.quantity))::int AS requested
         FROM request_items ri
-        JOIN requests r ON r.id = ri.request_id
+        JOIN material_requests r ON r.id = ri.request_id
         WHERE r.event_id = ${eventId}
           AND r.status IN ('approved', 'partially_approved', 'completed')
           AND ri.product_id IS NOT NULL
@@ -1340,9 +1340,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // ── Product-level request IDs ─────────────────────────────────────────────
       const productRequestRows = await db.execute(sql`
-        SELECT DISTINCT ri.product_id, r.id AS request_id, r.area, r.requested_by_name, r.status
+        SELECT DISTINCT ri.product_id, r.id AS request_id, r.area, u.username AS requested_by_name, r.status
         FROM request_items ri
-        JOIN requests r ON r.id = ri.request_id
+        JOIN material_requests r ON r.id = ri.request_id
+        LEFT JOIN users u ON u.id = r.requested_by
         WHERE r.event_id = ${eventId}
           AND ri.product_id IS NOT NULL
       `);
@@ -1830,7 +1831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ri.approved_quantity,
             ri.approval_status,
             mr.id          AS request_id,
-            mr.request_code,
+            mr.area        AS request_area,
             mr.status      AS request_status,
             mr.created_at,
             e.name         AS event_name

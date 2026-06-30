@@ -53,7 +53,7 @@ interface RequestRow {
   approved_quantity: number | null;
   approval_status: string;
   request_id: string;
-  request_code: string;
+  request_area: string | null;
   request_status: string;
   created_at: string;
   event_name: string | null;
@@ -350,7 +350,7 @@ export function ProductHistoryModal({ product, onOpenChange }: ProductHistoryMod
                         <ClipboardList className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono text-xs text-muted-foreground">{rq.request_code}</span>
+                            <span className="font-mono text-xs text-muted-foreground">{rq.request_area ?? "Requisição"}</span>
                             <Badge variant="outline" className={`text-[10px] ${rsm.className}`}>{rsm.label}</Badge>
                           </div>
                           {rq.event_name && (
