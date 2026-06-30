@@ -189,7 +189,9 @@ export default function MovementDetails() {
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
   const [loadedSearchQuery, setLoadedSearchQuery] = useState("");
+  const [refSearchQuery, setRefSearchQuery] = useState("");
   const [expectedFilter, setExpectedFilter] = useState<"all" | "pending" | "complete" | "exceeded">("all");
+  const [refFilter, setRefFilter] = useState<"all" | "pending" | "done">("all");
   const [auditFilter, setAuditFilter] = useState<"all" | "items" | "status" | "evidence">("all");
 
   // ── Evidence state ──────────────────────────────────────────────────────────
@@ -553,6 +555,29 @@ export default function MovementDetails() {
       return p?.name.toLowerCase().includes(q) || p?.sku?.toLowerCase().includes(q) || p?.barcode?.toLowerCase().includes(q);
     });
   }, [consolidatedConfirmedItems, consolidatedLoadedItems, isInboundMovement, loadedSearchQuery, products]);
+
+  const filteredRefItems = useMemo(() => {
+    let base = consolidatedRefItems;
+    if (refSearchQuery.trim()) {
+      const q = refSearchQuery.toLowerCase();
+      base = base.filter((item) => {
+        const p = products.find((x) => x.id === item.productId);
+        return p?.name.toLowerCase().includes(q) || p?.sku?.toLowerCase().includes(q) || p?.barcode?.toLowerCase().includes(q);
+      });
+    }
+    if (refFilter === "pending") {
+      base = base.filter((item) => {
+        const confirmed = consolidatedConfirmedItems.find((c) => c.productId === item.productId)?.totalQuantity ?? 0;
+        return confirmed < item.totalQuantity;
+      });
+    } else if (refFilter === "done") {
+      base = base.filter((item) => {
+        const confirmed = consolidatedConfirmedItems.find((c) => c.productId === item.productId)?.totalQuantity ?? 0;
+        return confirmed >= item.totalQuantity;
+      });
+    }
+    return base;
+  }, [consolidatedRefItems, consolidatedConfirmedItems, refSearchQuery, refFilter, products]);
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -1842,33 +1867,149 @@ export default function MovementDetails() {
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Referência (inbound) — produtos pré-carregados da saída */}
-          {isInboundMovement && consolidatedRefItems.length > 0 && (
-            <Card className="border-border/60 bg-muted/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3 font-semibold text-base text-muted-foreground">
-                  <ClipboardList className="h-5 w-5" />
-                  Referência (enviado) — {consolidatedRefItems.length} produto{consolidatedRefItems.length !== 1 ? "s" : ""}
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">Carga de referência desta movimentação. Use o scanner para confirmar o que retornou.</p>
-                <div className="overflow-y-auto max-h-[400px] pr-1 space-y-1.5" style={{ scrollbarWidth: "thin" }}>
-                  {consolidatedRefItems.map((item) => {
-                    const product = products.find((p) => p.id === item.productId);
-                    return (
-                      <div key={item.productId} className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-background/60 border border-border/40">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{product?.name || "Produto desconhecido"}</p>
-                          <p className="text-xs font-mono text-muted-foreground">{product?.sku || "-"}</p>
-                        </div>
-                        <Badge variant="outline" className="text-sm px-2.5 py-0.5 font-bold tabular-nums shrink-0 no-default-hover-elevate no-default-active-elevate">
-                          {item.totalQuantity}x
-                        </Badge>
+          {isInboundMovement && consolidatedRefItems.length > 0 && (() => {
+            const pendingRef = consolidatedRefItems.filter((item) => {
+              const confirmed = consolidatedConfirmedItems.find((c) => c.productId === item.productId)?.totalQuantity ?? 0;
+              return confirmed < item.totalQuantity;
+            }).length;
+            const doneRef = consolidatedRefItems.length - pendingRef;
+            return (
+              <Card className="border-border/60 bg-muted/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 font-semibold text-base text-muted-foreground">
+                      <ClipboardList className="h-5 w-5" />
+                      Referência (enviado) — {consolidatedRefItems.length} produto{consolidatedRefItems.length !== 1 ? "s" : ""}
+                    </div>
+                    {doneRef > 0 && (
+                      <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30 no-default-hover-elevate no-default-active-elevate">
+                        {doneRef}/{consolidatedRefItems.length} confirmados
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {isEditable && userCanManageMovementItems(user)
+                      ? `Clique em + para confirmar 1 unidade ou use "Confirmar tudo" para a quantidade inteira.`
+                      : "Carga de referência desta movimentação."}
+                  </p>
+                  {/* Search + filters */}
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar produto..."
+                      value={refSearchQuery}
+                      onChange={(e) => setRefSearchQuery(e.target.value)}
+                      className="pl-9 h-8 text-sm"
+                      data-testid="input-search-ref-items"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {(["all", "pending", "done"] as const).map((f) => {
+                      const counts = { all: consolidatedRefItems.length, pending: pendingRef, done: doneRef };
+                      const labels = { all: "Todos", pending: "Pendentes", done: "Confirmados" };
+                      return (
+                        <Button key={f} variant={refFilter === f ? "default" : "outline"} size="sm" onClick={() => setRefFilter(f)} className="text-xs h-7">
+                          {labels[f]} ({counts[f]})
+                        </Button>
+                      );
+                    })}
+                    {isEditable && userCanManageMovementItems(user) && pendingRef > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 ml-auto text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/10"
+                        disabled={addItemMutation.isPending}
+                        onClick={() => {
+                          consolidatedRefItems.forEach((item) => {
+                            const confirmed = consolidatedConfirmedItems.find((c) => c.productId === item.productId)?.totalQuantity ?? 0;
+                            const remaining = item.totalQuantity - confirmed;
+                            if (remaining > 0) {
+                              addItemMutation.mutate({ productId: item.productId, quantity: remaining, scanned: true });
+                            }
+                          });
+                        }}
+                        data-testid="button-confirm-all-ref"
+                      >
+                        <CheckCheck className="h-3.5 w-3.5 mr-1" />
+                        Confirmar todos
+                      </Button>
+                    )}
+                  </div>
+                  <div className="overflow-y-auto max-h-[400px] pr-1 space-y-1.5" style={{ scrollbarWidth: "thin" }}>
+                    {filteredRefItems.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-6">
+                        <ClipboardList className="h-6 w-6 mx-auto mb-2 opacity-20" />
+                        <p className="text-sm">{refSearchQuery ? "Nenhum produto encontrado" : "Todos confirmados"}</p>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                    ) : (
+                      filteredRefItems.map((item) => {
+                        const product = products.find((p) => p.id === item.productId);
+                        const confirmed = consolidatedConfirmedItems.find((c) => c.productId === item.productId)?.totalQuantity ?? 0;
+                        const remaining = item.totalQuantity - confirmed;
+                        const isDone = remaining <= 0;
+                        const isExceeded = confirmed > item.totalQuantity;
+                        return (
+                          <div
+                            key={item.productId}
+                            className={`flex items-center justify-between gap-2 px-3 py-2 rounded-md border transition-colors ${
+                              isDone
+                                ? "bg-emerald-500/10 border-emerald-500/30"
+                                : "bg-background/60 border-border/40"
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium truncate ${isDone ? "text-emerald-400" : ""}`}>
+                                {isDone && <CheckCheck className="inline h-3.5 w-3.5 mr-1 mb-0.5" />}
+                                {product?.name || "Produto desconhecido"}
+                              </p>
+                              <p className="text-xs font-mono text-muted-foreground">{product?.sku || "-"}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className={`text-xs font-bold tabular-nums ${isDone ? "text-emerald-400" : isExceeded ? "text-amber-400" : "text-muted-foreground"}`}>
+                                {confirmed}/{item.totalQuantity}x
+                              </span>
+                              {isEditable && userCanManageMovementItems(user) && !isDone && (
+                                <>
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-7 w-7"
+                                    disabled={addItemMutation.isPending}
+                                    onClick={() => addItemMutation.mutate({ productId: item.productId, quantity: 1, scanned: true })}
+                                    data-testid={`button-confirm-one-${item.productId}`}
+                                    title="Confirmar 1 unidade"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/10"
+                                    disabled={addItemMutation.isPending}
+                                    onClick={() => addItemMutation.mutate({ productId: item.productId, quantity: remaining, scanned: true })}
+                                    data-testid={`button-confirm-all-${item.productId}`}
+                                    title={`Confirmar ${remaining} unidade${remaining !== 1 ? "s" : ""}`}
+                                  >
+                                    <CheckCheck className="h-3.5 w-3.5 mr-1" />
+                                    {remaining}x
+                                  </Button>
+                                </>
+                              )}
+                              {isDone && (
+                                <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30 no-default-hover-elevate no-default-active-elevate">
+                                  OK
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
           {/* Itens da Requisição/Ordem (outbound) */}
           {!isInboundMovement && expectedItems.length > 0 && (
             <Card className="border-border/60">
