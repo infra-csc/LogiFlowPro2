@@ -373,7 +373,6 @@ function MovementCard({
 
         {/* ── METADATA GRID ───────────────────────────────────────────── */}
         <div className="px-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mb-3">
-          <MetaRow icon={MapPin} label="Evento" value={eventName} truncate />
           {requestLabel && (
             <MetaRow icon={FileText} label="Requisição" value={requestLabel} truncate />
           )}
@@ -383,7 +382,9 @@ function MovementCard({
           {tripsLabel && (
             <MetaRow icon={Route} label="Plano de viagens" value={tripsLabel} />
           )}
-          <MetaRow icon={Truck} label="Veículo" value={movement.vehiclePlate || "Não informado"} />
+          {movement.vehiclePlate && (
+            <MetaRow icon={Truck} label="Veículo" value={movement.vehiclePlate} />
+          )}
           {movement.dock && (
             <MetaRow icon={Anchor} label="Doca" value={(movement.dock as any).name} truncate />
           )}
