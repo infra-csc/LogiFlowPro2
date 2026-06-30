@@ -205,7 +205,7 @@ function MovementCard({
   if (!resolvedVehicle) chips.push({ label: "Sem veículo", icon: AlertTriangle, variant: "warn" });
   if (stats.evidenceCount === 0) chips.push({ label: "Sem evidências", icon: Camera, variant: "muted" });
   if (stats.evidenceCount > 0) chips.push({ label: `${stats.evidenceCount} evidência${stats.evidenceCount !== 1 ? "s" : ""}`, icon: Camera, variant: "info" });
-  if (progressPct === 100 && unitsExceeded === 0) chips.push({ label: "100% concluída", icon: CheckCircle, variant: "ok" });
+  if ((progressPct === 100 && unitsExceeded === 0) || (movement.status === "completed" && !hasExpected)) chips.push({ label: "100% concluída", icon: CheckCircle, variant: "ok" });
   if (unitsPending !== null && unitsPending > 0 && movement.status !== "created") {
     chips.push({ label: `${unitsPending} un. pendente${unitsPending !== 1 ? "s" : ""}`, icon: AlertTriangle, variant: "warn" });
   }
@@ -329,7 +329,7 @@ function MovementCard({
               {stats.unitsLoaded === 0 && hasExpected ? (
                 <>
                   <span className="text-sm tabular-nums">
-                    <span className="font-bold">{stats.unitsExpected}</span>
+                    <span className="font-bold">{effectiveExpected}</span>
                     <span className="text-muted-foreground ml-1 text-xs">un. planejadas</span>
                   </span>
                   <span className="text-border/70 text-xs">·</span>
@@ -354,7 +354,7 @@ function MovementCard({
                   <span className="text-sm tabular-nums">
                     <span className="font-bold">{stats.unitsLoaded}</span>
                     {hasExpected && (
-                      <span className="text-muted-foreground text-xs"> / {stats.unitsExpected}</span>
+                      <span className="text-muted-foreground text-xs"> / {effectiveExpected}</span>
                     )}
                     <span className="text-muted-foreground ml-1 text-xs">un.</span>
                   </span>
