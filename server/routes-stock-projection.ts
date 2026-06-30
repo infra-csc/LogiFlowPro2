@@ -121,7 +121,7 @@ export function registerStockProjectionRoutes(app: Express) {
       const include = {
         requests: params.include?.requests !== false,
         loadingOrders: params.include?.loadingOrders !== false,
-        movements: params.include?.movements !== false,
+        movements: params.include?.movements === true, // opt-in (avoids double count with trips)
         trips: params.include?.trips === true, // opt-in (avoids double count by default)
       };
       const eventFilter = params.eventIds && params.eventIds.length > 0 ? params.eventIds : null;

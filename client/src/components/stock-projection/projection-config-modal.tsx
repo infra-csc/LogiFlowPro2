@@ -71,7 +71,7 @@ const GRAN_LABELS: Record<ConfigGranularity, string> = {
 const SOURCE_DEFS = [
   { key: "loadingOrders" as const, label: "Ordens de carregamento", desc: "Status: pronta, aprovada ou em andamento", icon: FileText },
   { key: "requests" as const, label: "Requisições aprovadas", desc: "Aprovação total ou parcial — excluindo já consolidadas", icon: FileText },
-  { key: "movements" as const, label: "Movimentações", desc: "Saídas e entradas físicas concluídas ou em andamento", icon: Truck },
+  { key: "movements" as const, label: "Movimentações", desc: "Saídas e entradas físicas (desativado por padrão — pode duplicar com planos de viagem)", icon: Truck },
   { key: "trips" as const, label: "Planos de viagem avulsos", desc: "Viagens sem vínculo a ordem de carregamento", icon: Truck },
 ] as const;
 

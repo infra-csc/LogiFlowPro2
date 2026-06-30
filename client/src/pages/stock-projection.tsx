@@ -65,7 +65,7 @@ type StatusFilter = ProjectionDayStatus | null;
 const DEFAULT_SOURCES: SourceFlags = {
   loadingOrders: true,
   requests: true,
-  movements: true,
+  movements: false,
   trips: false,
 };
 
