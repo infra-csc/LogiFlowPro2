@@ -154,6 +154,23 @@ export default function RequestDetails() {
     };
   }, [event]);
 
+  const itemStats = useMemo(() => {
+    const approved = items.filter(i => i.approvalStatus === "approved");
+    const pending  = items.filter(i => i.approvalStatus === "pending");
+    const rejected = items.filter(i => i.approvalStatus === "rejected");
+    const kitsCount = items.filter(i => i.kitId && !i.productId).length;
+    return {
+      total: items.length,
+      kitsCount,
+      productsCount: items.length - kitsCount,
+      totalRequestedUnits: items.reduce((s, i) => s + i.quantity, 0),
+      totalApprovedUnits:  approved.reduce((s, i) => s + (i.approvedQuantity ?? 0), 0),
+      approvedCount: approved.length,
+      pendingCount:  pending.length,
+      rejectedCount: rejected.length,
+    };
+  }, [items]);
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("DELETE", `/api/requests/${id}`);
@@ -546,6 +563,69 @@ export default function RequestDetails() {
             )}
           </div>
           <div className="pt-3 border-t border-border/40">
+            {itemStats.total > 0 && (
+              <div className={`grid gap-2 mb-4 ${request.status === "draft" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-5"}`}>
+                {/* Itens */}
+                <div className="bg-muted/40 border border-border/40 rounded-lg p-2.5 flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Package className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">Itens</span>
+                  </div>
+                  <div className="text-xl font-bold tabular-nums leading-none pt-1">{itemStats.total}</div>
+                  {itemStats.kitsCount > 0 && (
+                    <div className="text-[10px] text-muted-foreground">
+                      {itemStats.productsCount > 0 ? `${itemStats.productsCount} prod · ` : ""}{itemStats.kitsCount} kit{itemStats.kitsCount !== 1 ? "s" : ""}
+                    </div>
+                  )}
+                </div>
+
+                {/* Unidades solicitadas */}
+                <div className="bg-muted/40 border border-border/40 rounded-lg p-2.5 flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <ClipboardList className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">Solicitadas</span>
+                  </div>
+                  <div className="text-xl font-bold tabular-nums leading-none pt-1">{itemStats.totalRequestedUnits}</div>
+                  <div className="text-[10px] text-muted-foreground">unidades</div>
+                </div>
+
+                {/* Aprovados — only after submission */}
+                {request.status !== "draft" && (
+                  <div className={`border rounded-lg p-2.5 flex flex-col gap-0.5 ${itemStats.approvedCount > 0 ? "bg-chart-4/10 border-chart-4/30" : "bg-muted/40 border-border/40"}`}>
+                    <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Aprovados</span>
+                    </div>
+                    <div className={`text-xl font-bold tabular-nums leading-none pt-1 ${itemStats.approvedCount > 0 ? "text-chart-4" : ""}`}>{itemStats.approvedCount}</div>
+                    {itemStats.totalApprovedUnits > 0 && (
+                      <div className="text-[10px] text-muted-foreground">{itemStats.totalApprovedUnits} unid.</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Pendentes */}
+                {request.status !== "draft" && (
+                  <div className={`border rounded-lg p-2.5 flex flex-col gap-0.5 ${itemStats.pendingCount > 0 ? "bg-amber-500/10 border-amber-500/30" : "bg-muted/40 border-border/40"}`}>
+                    <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${itemStats.pendingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                      <Clock className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Pendentes</span>
+                    </div>
+                    <div className={`text-xl font-bold tabular-nums leading-none pt-1 ${itemStats.pendingCount > 0 ? "text-amber-500" : ""}`}>{itemStats.pendingCount}</div>
+                  </div>
+                )}
+
+                {/* Rejeitados */}
+                {request.status !== "draft" && (
+                  <div className={`border rounded-lg p-2.5 flex flex-col gap-0.5 ${itemStats.rejectedCount > 0 ? "bg-destructive/10 border-destructive/30" : "bg-muted/40 border-border/40"}`}>
+                    <div className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${itemStats.rejectedCount > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                      <XCircle className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Rejeitados</span>
+                    </div>
+                    <div className={`text-xl font-bold tabular-nums leading-none pt-1 ${itemStats.rejectedCount > 0 ? "text-destructive" : ""}`}>{itemStats.rejectedCount}</div>
+                  </div>
+                )}
+              </div>
+            )}
             {items.length === 0 ? (
               <EmptyState
                 icon={Package}
