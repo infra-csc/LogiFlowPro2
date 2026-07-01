@@ -1176,9 +1176,9 @@ export default function MovementDetails() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-4 sm:space-y-6 relative">
       {/* Focus toggle */}
-      <div className="fixed top-20 right-6 z-50">
+      <div className="fixed top-20 right-3 sm:right-6 z-50">
         <Button variant="outline" size="icon" onClick={toggleFocusMode} data-testid="button-toggle-focus" title={focusMode ? "Sair do modo foco" : "Entrar em modo foco"}>
           {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </Button>
@@ -1189,32 +1189,32 @@ export default function MovementDetails() {
         <PageHeader title={movement.name} description={movement.movementNumber}>
           {userCanChangeMovementStatusFreely(user) && (
             <Button variant="outline" onClick={() => setShowEditStatusDialog(true)} data-testid="button-edit-status">
-              <Edit className="h-4 w-4 mr-2" />
-              Editar Status
+              <Edit className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Editar Status</span>
             </Button>
           )}
           {movement.status === "created" && userCanManageMovementItems(user) && (
             <Button onClick={handleStartMovement} disabled={updateStatusMutation.isPending} data-testid="button-start">
-              <PlayCircle className="h-4 w-4 mr-2" />
-              Iniciar
+              <PlayCircle className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Iniciar</span>
             </Button>
           )}
           {movement.status === "in_progress" && userCanManageMovementItems(user) && (
             <>
               <Button variant="outline" onClick={handlePauseMovement} disabled={updateStatusMutation.isPending} data-testid="button-pause">
-                <PauseCircle className="h-4 w-4 mr-2" />
-                Pausar
+                <PauseCircle className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Pausar</span>
               </Button>
               <Button onClick={handleFinishMovement} disabled={updateStatusMutation.isPending} data-testid="button-finish">
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Finalizar
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Finalizar</span>
               </Button>
             </>
           )}
           {movement.status === "paused" && userCanManageMovementItems(user) && (
             <Button onClick={handleContinueMovement} disabled={updateStatusMutation.isPending} data-testid="button-continue">
-              <PlayCircle className="h-4 w-4 mr-2" />
-              Continuar
+              <PlayCircle className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Continuar</span>
             </Button>
           )}
           <Button variant="outline" size="icon" onClick={() => navigate("/movements")} data-testid="button-back" title="Voltar">
@@ -1564,7 +1564,8 @@ export default function MovementDetails() {
                     onClick={() => handleSetOperationalMode("unit")}
                     data-testid="button-mode-unit"
                   >
-                    Leitura unitária
+                    <span className="sm:hidden">Unitária</span>
+                    <span className="hidden sm:inline">Leitura unitária</span>
                   </Button>
                   <Button
                     size="sm"
@@ -1573,12 +1574,13 @@ export default function MovementDetails() {
                     onClick={() => handleSetOperationalMode("batch")}
                     data-testid="button-mode-batch"
                   >
-                    Lançamento em lote
+                    <span className="sm:hidden">Em lote</span>
+                    <span className="hidden sm:inline">Lançamento em lote</span>
                   </Button>
                 </div>
 
                 {/* Search input */}
-                <div className="flex-1 min-w-48 relative">
+                <div className="flex-1 min-w-0 relative">
                   <Scan className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <Input
                     ref={searchInputRef}
@@ -1766,7 +1768,7 @@ export default function MovementDetails() {
                         </Button>
                       )}
 
-                      <div className="flex-1" />
+                      <div className="hidden sm:block flex-1" />
 
                       {/* Main register button */}
                       <Button
@@ -1774,7 +1776,7 @@ export default function MovementDetails() {
                         disabled={addItemMutation.isPending || (selectedProduct.requiresSupplier && !ownerName.trim())}
                         data-testid="button-add-item"
                         variant={willExceedExpected ? "destructive" : "default"}
-                        className="gap-1.5"
+                        className="gap-1.5 w-full sm:w-auto"
                       >
                         <CheckCircle2 className="h-4 w-4" />
                         {getRegisterLabel()}
@@ -1969,7 +1971,7 @@ export default function MovementDetails() {
                       </Button>
                     )}
                   </div>
-                  <div className="overflow-y-auto max-h-[400px] pr-1 space-y-1.5" style={{ scrollbarWidth: "thin" }}>
+                  <div className="overflow-y-auto max-h-[50vh] sm:max-h-[400px] pr-1 space-y-1.5" style={{ scrollbarWidth: "thin" }}>
                     {filteredRefItems.length === 0 ? (
                       <div className="text-center text-muted-foreground py-6">
                         <ClipboardList className="h-6 w-6 mx-auto mb-2 opacity-20" />
@@ -2081,7 +2083,7 @@ export default function MovementDetails() {
                     );
                   })}
                 </div>
-                <div className="overflow-y-auto max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
+                <div className="overflow-y-auto max-h-[50vh] sm:max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
                   <div className="space-y-2">
                     {filteredExpectedItems.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8">
@@ -2212,7 +2214,7 @@ export default function MovementDetails() {
                   data-testid="input-search-loaded-items"
                 />
               </div>
-              <div className="overflow-y-auto max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
+              <div className="overflow-y-auto max-h-[50vh] sm:max-h-[480px] pr-2" style={{ scrollbarWidth: "thin" }}>
                 {filteredLoadedItems.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
                     <PackageCheck className="h-8 w-8 mx-auto mb-2 opacity-20" />

@@ -173,7 +173,7 @@ function AppLayout() {
             </header>
           )}
           <main className="flex-1 overflow-y-auto bg-background">
-            <div className="p-8">
+            <div className="p-4 sm:p-6 md:p-8">
               <Router />
             </div>
           </main>
