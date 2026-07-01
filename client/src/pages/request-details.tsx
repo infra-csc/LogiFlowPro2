@@ -251,6 +251,8 @@ export default function RequestDetails() {
     const pending  = items.filter(i => i.approvalStatus === "pending");
     const rejected = items.filter(i => i.approvalStatus === "rejected");
     const kitsCount = items.filter(i => i.kitId && !i.productId).length;
+    const divergentItems = approved.filter(i => i.approvedQuantity != null && i.approvedQuantity !== i.quantity);
+    const totalDivergence = divergentItems.reduce((s, i) => s + ((i.approvedQuantity ?? 0) - i.quantity), 0);
     return {
       total: items.length,
       kitsCount,
@@ -260,6 +262,8 @@ export default function RequestDetails() {
       approvedCount: approved.length,
       pendingCount:  pending.length,
       rejectedCount: rejected.length,
+      divergentCount: divergentItems.length,
+      totalDivergence,
     };
   }, [items]);
 
@@ -718,6 +722,26 @@ export default function RequestDetails() {
                 )}
               </div>
             )}
+
+            {/* Divergence notice */}
+            {request.status !== "draft" && itemStats.divergentCount > 0 && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2.5">
+                <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div className="text-sm">
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">
+                    {itemStats.divergentCount} item{itemStats.divergentCount !== 1 ? "ns" : ""} com divergência de quantidade
+                  </span>
+                  <span className="text-muted-foreground ml-1.5">
+                    — saldo total:{" "}
+                    <span className={`font-semibold ${itemStats.totalDivergence < 0 ? "text-amber-500 dark:text-amber-400" : "text-primary"}`}>
+                      {itemStats.totalDivergence > 0 ? "+" : ""}{itemStats.totalDivergence} unid.
+                    </span>
+                    {itemStats.totalDivergence < 0 ? " aprovadas a menos" : " aprovadas a mais"} do que solicitado
+                  </span>
+                </div>
+              </div>
+            )}
+
             {items.length === 0 ? (
               <EmptyState
                 icon={Package}
@@ -898,6 +922,13 @@ export default function RequestDetails() {
                                     {isApproved ? item.approvedQuantity : isRejected ? "—" : "—"}
                                     {isApproved && <span className="text-sm font-normal"> {item.product?.unit || "unid"}</span>}
                                   </p>
+                                  {isApproved && item.approvedQuantity != null && item.approvedQuantity !== item.quantity && (
+                                    <p className={`text-[10px] font-semibold mt-0.5 ${item.approvedQuantity < item.quantity ? "text-amber-500 dark:text-amber-400" : "text-primary"}`}>
+                                      {item.approvedQuantity < item.quantity
+                                        ? `−${item.quantity - item.approvedQuantity} do solicitado`
+                                        : `+${item.approvedQuantity - item.quantity} do solicitado`}
+                                    </p>
+                                  )}
                                 </div>
                               )}
                               {request.status !== "draft" && (
