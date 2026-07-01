@@ -150,15 +150,13 @@ function KitBomSummary({
   if (!bomLines.length) return null;
 
   const params = kitParameters ?? {};
-  const lines = bomLines
-    .map((line) => {
-      const product = products.find((p) => p.id === line.productId);
-      const qty = calcFinalQtyLocal(line.quantityFormula, quantity, params, line.productId);
-      return { product, qty, productId: line.productId };
-    })
-    .filter((l) => l.qty > 0);
-
-  if (!lines.length) return null;
+  const lines = bomLines.map((line) => {
+    const product = products.find((p) => p.id === line.productId);
+    const isVariable = line.quantityFormula.trim() === "?";
+    const qty = calcFinalQtyLocal(line.quantityFormula, quantity, params, line.productId);
+    const qtyLabel = isVariable && qty === 0 ? "?" : String(qty);
+    return { product, qty, qtyLabel, productId: line.productId, isVariable };
+  });
 
   return (
     <div className="mt-3 border-t border-border/30 pt-2">
@@ -167,17 +165,24 @@ function KitBomSummary({
         Componentes — {lines.length} produto{lines.length !== 1 ? "s" : ""}
       </div>
       <div className="grid gap-1">
-        {lines.map(({ product, qty, productId }) => (
+        {lines.map(({ product, qtyLabel, productId, isVariable }) => (
           <div
             key={productId}
             className="flex items-center justify-between text-xs py-1 px-2 bg-muted/30 rounded"
             data-testid={`kit-bom-line-${productId}`}
           >
-            <span className="truncate text-foreground/80 min-w-0">
-              {product?.name ?? "Produto desconhecido"}
-            </span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate text-foreground/80">
+                {product?.name ?? "Produto desconhecido"}
+              </span>
+              {isVariable && (
+                <span className="text-[9px] px-1 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold shrink-0">
+                  var
+                </span>
+              )}
+            </div>
             <span className="font-semibold tabular-nums text-foreground shrink-0 ml-3">
-              {qty}× {(product as any)?.unit ?? "unid"}
+              {qtyLabel}× {(product as any)?.unit ?? "unid"}
             </span>
           </div>
         ))}
@@ -1012,7 +1017,7 @@ export default function RequestDetails() {
                       )}
 
                       {/* Kit BOM expansion */}
-                      {item.kitId && !item.productId && editingItemId !== item.id && (
+                      {item.kitId && !item.productId && (
                         <KitBomSummary
                           kitId={item.kitId}
                           quantity={item.quantity}
