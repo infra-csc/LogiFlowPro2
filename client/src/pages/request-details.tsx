@@ -150,10 +150,13 @@ function KitBomSummary({
     queryKey: ["/api/kits", kitId, "bom"],
   });
 
-  const [localVarParams, setLocalVarParams] = useState<Record<string, number>>({});
+  // localVarStrings holds the raw input string to avoid the "can't clear 0" problem
+  const [localVarStrings, setLocalVarStrings] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setLocalVarParams(kitParameters ?? {});
+    const init: Record<string, string> = {};
+    Object.entries(kitParameters ?? {}).forEach(([k, v]) => { init[k] = String(v); });
+    setLocalVarStrings(init);
   }, [kitParameters]);
 
   if (isLoading) {
@@ -167,7 +170,10 @@ function KitBomSummary({
 
   if (!bomLines.length) return null;
 
-  const params = editable ? localVarParams : (kitParameters ?? {});
+  // Parse string state to numbers for BOM calculation
+  const parsedVarParams: Record<string, number> = {};
+  Object.entries(localVarStrings).forEach(([k, v]) => { parsedVarParams[k] = parseInt(v) || 0; });
+  const params = editable ? parsedVarParams : (kitParameters ?? {});
   const lines = bomLines.map((line) => {
     const product = products.find((p) => p.id === line.productId);
     const isVariable = line.quantityFormula.trim() === "?";
@@ -207,22 +213,25 @@ function KitBomSummary({
             {isVariable && editable ? (
               <div className="flex items-center gap-1 shrink-0 ml-3">
                 <input
-                  type="number"
-                  min="0"
-                  value={localVarParams[productId] ?? 0}
-                  onChange={(e) =>
-                    setLocalVarParams((prev) => ({
-                      ...prev,
-                      [productId]: parseInt(e.target.value) || 0,
-                    }))
-                  }
-                  onBlur={() => onSaveParams?.(localVarParams)}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={localVarStrings[productId] ?? "0"}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    setLocalVarStrings((prev) => ({ ...prev, [productId]: raw }));
+                  }}
+                  onBlur={() => {
+                    const parsed: Record<string, number> = {};
+                    Object.entries(localVarStrings).forEach(([k, v]) => { parsed[k] = parseInt(v) || 0; });
+                    onSaveParams?.(parsed);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
-                  className="w-14 h-6 px-1.5 rounded bg-background border border-amber-500/40 text-xs font-semibold text-center text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-14 h-6 px-1.5 rounded bg-background border border-amber-500/40 text-xs font-semibold text-center text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
                   data-testid={`input-var-qty-${productId}`}
                 />
                 <span className="text-muted-foreground text-[11px]">
@@ -367,6 +376,7 @@ export default function RequestDetails() {
   const [editNotes, setEditNotes] = useState<string>("");
   const [kitEditBom, setKitEditBom] = useState<Array<{ productId: string; productName: string; unit: string }>>([]);
   const [kitEditVariableQtys, setKitEditVariableQtys] = useState<Record<string, number>>({});
+  const [kitEditVariableInputs, setKitEditVariableInputs] = useState<Record<string, string>>({});
   const [kitEditLoading, setKitEditLoading] = useState(false);
 
   const deleteItemMutation = useMutation({
@@ -392,6 +402,7 @@ export default function RequestDetails() {
       setEditingItemId(null);
       setKitEditBom([]);
       setKitEditVariableQtys({});
+      setKitEditVariableInputs({});
     },
     onError: () => {
       toast({ variant: "destructive", title: "Erro ao atualizar", description: "Não foi possível atualizar o item" });
@@ -937,7 +948,7 @@ export default function RequestDetails() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => { setEditingItemId(null); setKitEditBom([]); setKitEditVariableQtys({}); }}
+                                    onClick={() => { setEditingItemId(null); setKitEditBom([]); setKitEditVariableQtys({}); setKitEditVariableInputs({}); }}
                                     data-testid={`button-cancel-edit-item-${item.id}`}
                                   >
                                     <X className="h-4 w-4" />
@@ -957,11 +968,16 @@ export default function RequestDetails() {
                                       <div key={bom.productId} className="flex items-center gap-2">
                                         <span className="text-xs flex-1 truncate">{bom.productName}</span>
                                         <input
-                                          type="number"
-                                          min="0"
-                                          value={kitEditVariableQtys[bom.productId] ?? 0}
-                                          onChange={(e) => setKitEditVariableQtys((prev) => ({ ...prev, [bom.productId]: parseInt(e.target.value) || 0 }))}
-                                          className="w-16 h-7 px-2 rounded-md bg-background border border-border text-sm font-semibold text-center focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                          type="text"
+                                          inputMode="numeric"
+                                          pattern="[0-9]*"
+                                          value={kitEditVariableInputs[bom.productId] ?? String(kitEditVariableQtys[bom.productId] ?? 0)}
+                                          onChange={(e) => {
+                                            const raw = e.target.value.replace(/[^0-9]/g, "");
+                                            setKitEditVariableInputs((prev) => ({ ...prev, [bom.productId]: raw }));
+                                            setKitEditVariableQtys((prev) => ({ ...prev, [bom.productId]: parseInt(raw) || 0 }));
+                                          }}
+                                          className="w-16 h-7 px-2 rounded-md bg-background border border-border text-sm font-semibold text-center focus:outline-none focus:ring-1 focus:ring-primary"
                                         />
                                         <span className="text-xs text-muted-foreground w-10 truncate">{bom.unit}</span>
                                       </div>
@@ -1010,6 +1026,7 @@ export default function RequestDetails() {
                                       setEditNotes(item.notes || "");
                                       setKitEditBom([]);
                                       setKitEditVariableQtys({});
+                                      setKitEditVariableInputs({});
                                       if (item.kitId && !item.productId) {
                                         setKitEditLoading(true);
                                         try {
@@ -1023,10 +1040,14 @@ export default function RequestDetails() {
                                               unit: (products as any[]).find((p) => p.id === l.productId)?.unit ?? "unid",
                                             })));
                                             const qtys: Record<string, number> = {};
+                                            const inputs: Record<string, string> = {};
                                             varLines.forEach((l) => {
-                                              qtys[l.productId] = ((item as any).kitParameters)?.[l.productId] ?? 0;
+                                              const v = ((item as any).kitParameters)?.[l.productId] ?? 0;
+                                              qtys[l.productId] = v;
+                                              inputs[l.productId] = String(v);
                                             });
                                             setKitEditVariableQtys(qtys);
+                                            setKitEditVariableInputs(inputs);
                                           }
                                         } finally {
                                           setKitEditLoading(false);
