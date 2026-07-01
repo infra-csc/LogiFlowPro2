@@ -136,15 +136,25 @@ function KitBomSummary({
   quantity,
   kitParameters,
   products,
+  editable,
+  onSaveParams,
 }: {
   kitId: string;
   quantity: number;
   kitParameters?: Record<string, number>;
   products: Array<{ id: string; name: string; sku: string; unit?: string }>;
+  editable?: boolean;
+  onSaveParams?: (params: Record<string, number>) => void;
 }) {
   const { data: bomLines = [], isLoading } = useQuery<BomLineData[]>({
     queryKey: ["/api/kits", kitId, "bom"],
   });
+
+  const [localVarParams, setLocalVarParams] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setLocalVarParams(kitParameters ?? {});
+  }, [kitParameters]);
 
   if (isLoading) {
     return (
@@ -157,7 +167,7 @@ function KitBomSummary({
 
   if (!bomLines.length) return null;
 
-  const params = kitParameters ?? {};
+  const params = editable ? localVarParams : (kitParameters ?? {});
   const lines = bomLines.map((line) => {
     const product = products.find((p) => p.id === line.productId);
     const isVariable = line.quantityFormula.trim() === "?";
@@ -166,11 +176,16 @@ function KitBomSummary({
     return { product, qty, qtyLabel, productId: line.productId, isVariable };
   });
 
+  const hasVariable = lines.some((l) => l.isVariable);
+
   return (
     <div className="mt-3 border-t border-border/30 pt-2">
       <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
         <Layers className="h-3 w-3" />
         Componentes — {lines.length} produto{lines.length !== 1 ? "s" : ""}
+        {editable && hasVariable && (
+          <span className="ml-1 text-amber-600 dark:text-amber-400">(edite as quantidades variáveis)</span>
+        )}
       </div>
       <div className="grid gap-1">
         {lines.map(({ product, qtyLabel, productId, isVariable }) => (
@@ -189,9 +204,36 @@ function KitBomSummary({
                 </span>
               )}
             </div>
-            <span className="font-semibold tabular-nums text-foreground shrink-0 ml-3">
-              {qtyLabel}× {(product as any)?.unit ?? "unid"}
-            </span>
+            {isVariable && editable ? (
+              <div className="flex items-center gap-1 shrink-0 ml-3">
+                <input
+                  type="number"
+                  min="0"
+                  value={localVarParams[productId] ?? 0}
+                  onChange={(e) =>
+                    setLocalVarParams((prev) => ({
+                      ...prev,
+                      [productId]: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  onBlur={() => onSaveParams?.(localVarParams)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="w-14 h-6 px-1.5 rounded bg-background border border-amber-500/40 text-xs font-semibold text-center text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  data-testid={`input-var-qty-${productId}`}
+                />
+                <span className="text-muted-foreground text-[11px]">
+                  {(product as any)?.unit ?? "unid"}
+                </span>
+              </div>
+            ) : (
+              <span className="font-semibold tabular-nums text-foreground shrink-0 ml-3">
+                {qtyLabel}× {(product as any)?.unit ?? "unid"}
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -353,6 +395,15 @@ export default function RequestDetails() {
     },
     onError: () => {
       toast({ variant: "destructive", title: "Erro ao atualizar", description: "Não foi possível atualizar o item" });
+    },
+  });
+
+  const updateKitParamsMutation = useMutation({
+    mutationFn: async ({ itemId, quantity, kitParameters }: { itemId: string; quantity: number; kitParameters: Record<string, number> }) => {
+      return apiRequest("PATCH", `/api/request-items/${itemId}`, { quantity, kitParameters });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests", id, "items"] });
     },
   });
 
@@ -1039,6 +1090,14 @@ export default function RequestDetails() {
                               : ((item as any).kitParameters as Record<string, number> | undefined)
                           }
                           products={products}
+                          editable={!!canEdit && editingItemId !== item.id}
+                          onSaveParams={(params) => {
+                            updateKitParamsMutation.mutate({
+                              itemId: item.id,
+                              quantity: item.quantity,
+                              kitParameters: params,
+                            });
+                          }}
                         />
                       )}
 
