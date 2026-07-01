@@ -1016,12 +1016,20 @@ export default function RequestDetails() {
                         </div>
                       )}
 
-                      {/* Kit BOM expansion */}
+                      {/* Kit BOM expansion — real-time when editing */}
                       {item.kitId && !item.productId && (
                         <KitBomSummary
                           kitId={item.kitId}
-                          quantity={item.quantity}
-                          kitParameters={(item as any).kitParameters as Record<string, number> | undefined}
+                          quantity={
+                            editingItemId === item.id
+                              ? (parseInt(editQuantity) || item.quantity)
+                              : item.quantity
+                          }
+                          kitParameters={
+                            editingItemId === item.id && Object.keys(kitEditVariableQtys).length > 0
+                              ? kitEditVariableQtys
+                              : ((item as any).kitParameters as Record<string, number> | undefined)
+                          }
                           products={products}
                         />
                       )}
