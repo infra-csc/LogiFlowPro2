@@ -104,16 +104,24 @@ function calcFinalQtyLocal(
   parameters: Record<string, number>,
   productId?: string,
 ): number {
-  if (formula.trim() === "?") {
+  const f = formula.trim();
+  if (f === "?") {
     return Math.max(0, Math.round(parameters[productId ?? ""] ?? 0));
   }
+  // Simple integer/decimal — no eval needed
+  const simple = parseFloat(f);
+  if (!isNaN(simple) && String(simple) === f) {
+    return Math.max(0, Math.round(simple * multiplier));
+  }
+  // Expression with variable substitution
   try {
-    let f = formula.trim();
+    let expr = f;
     for (const [name, val] of Object.entries(parameters)) {
-      f = f.replace(new RegExp(`\\b${name}\\b`, "g"), String(val));
+      expr = expr.replace(new RegExp(`\\b${name}\\b`, "g"), String(val));
     }
-    const sanitized = f.replace(/[^0-9+\-*/().\s]/g, "");
-    if (sanitized !== f) return 0;
+    const sanitized = expr.replace(/[^0-9+\-*/().\s]/g, "");
+    if (sanitized !== expr) return 0;
+    // eslint-disable-next-line no-new-func
     const result = Function('"use strict"; return (' + sanitized + ")")() as number;
     return Math.max(0, Math.round(result * multiplier));
   } catch {
