@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X, Boxes, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X, Boxes, Loader2, Layers } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
@@ -95,6 +95,98 @@ type MaterialRequest = {
     username: string;
   };
 };
+
+// ─── Kit BOM helpers ─────────────────────────────────────────────────────────
+
+function calcFinalQtyLocal(
+  formula: string,
+  multiplier: number,
+  parameters: Record<string, number>,
+  productId?: string,
+): number {
+  if (formula.trim() === "?") {
+    return Math.max(0, Math.round(parameters[productId ?? ""] ?? 0));
+  }
+  try {
+    let f = formula.trim();
+    for (const [name, val] of Object.entries(parameters)) {
+      f = f.replace(new RegExp(`\\b${name}\\b`, "g"), String(val));
+    }
+    const sanitized = f.replace(/[^0-9+\-*/().\s]/g, "");
+    if (sanitized !== f) return 0;
+    const result = Function('"use strict"; return (' + sanitized + ")")() as number;
+    return Math.max(0, Math.round(result * multiplier));
+  } catch {
+    return 0;
+  }
+}
+
+type BomLineData = { id: string; productId: string; quantityFormula: string; kitId: string };
+
+function KitBomSummary({
+  kitId,
+  quantity,
+  kitParameters,
+  products,
+}: {
+  kitId: string;
+  quantity: number;
+  kitParameters?: Record<string, number>;
+  products: Array<{ id: string; name: string; sku: string; unit?: string }>;
+}) {
+  const { data: bomLines = [], isLoading } = useQuery<BomLineData[]>({
+    queryKey: ["/api/kits", kitId, "bom"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Carregando componentes...
+      </div>
+    );
+  }
+
+  if (!bomLines.length) return null;
+
+  const params = kitParameters ?? {};
+  const lines = bomLines
+    .map((line) => {
+      const product = products.find((p) => p.id === line.productId);
+      const qty = calcFinalQtyLocal(line.quantityFormula, quantity, params, line.productId);
+      return { product, qty, productId: line.productId };
+    })
+    .filter((l) => l.qty > 0);
+
+  if (!lines.length) return null;
+
+  return (
+    <div className="mt-3 border-t border-border/30 pt-2">
+      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+        <Layers className="h-3 w-3" />
+        Componentes — {lines.length} produto{lines.length !== 1 ? "s" : ""}
+      </div>
+      <div className="grid gap-1">
+        {lines.map(({ product, qty, productId }) => (
+          <div
+            key={productId}
+            className="flex items-center justify-between text-xs py-1 px-2 bg-muted/30 rounded"
+            data-testid={`kit-bom-line-${productId}`}
+          >
+            <span className="truncate text-foreground/80 min-w-0">
+              {product?.name ?? "Produto desconhecido"}
+            </span>
+            <span className="font-semibold tabular-nums text-foreground shrink-0 ml-3">
+              {qty}× {(product as any)?.unit ?? "unid"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function RequestDetails() {
   const { id } = useParams();
@@ -886,6 +978,16 @@ export default function RequestDetails() {
                           <p className="font-medium text-muted-foreground">Observações:</p>
                           <p className="mt-1" data-testid={`text-item-notes-${item.id}`}>{item.notes}</p>
                         </div>
+                      )}
+
+                      {/* Kit BOM expansion */}
+                      {item.kitId && !item.productId && editingItemId !== item.id && (
+                        <KitBomSummary
+                          kitId={item.kitId}
+                          quantity={item.quantity}
+                          kitParameters={(item as any).kitParameters as Record<string, number> | undefined}
+                          products={products}
+                        />
                       )}
 
                     </div>
