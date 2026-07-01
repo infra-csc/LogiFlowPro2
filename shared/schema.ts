@@ -509,6 +509,12 @@ export const trips = pgTable("trips", {
   dockId: varchar("dock_id").references(() => docks.id),
   vehiclePlate: text("vehicle_plate"),
 
+  // 2º Veículo (opcional — mesmo itinerário, duas unidades)
+  vehicle2Id: varchar("vehicle2_id").references(() => vehicles.id),
+  vehicleType2Id: varchar("vehicle_type2_id").references(() => vehicleTypes.id),
+  driver2Id: varchar("driver2_id").references(() => drivers.id),
+  vehiclePlate2: text("vehicle_plate2"),
+
   // Ida — CD → Evento
   loadingLocation: text("loading_location"),
   loadingStartTime: timestamp("loading_start_time"),
@@ -602,7 +608,8 @@ export const loadingOrderRequests = pgTable("loading_order_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   loadingOrderId: varchar("loading_order_id").notNull().references(() => loadingOrders.id, { onDelete: "cascade" }),
   requestId: varchar("request_id").notNull().references(() => materialRequests.id, { onDelete: "cascade" }),
-  addedAt: timestamp("added_at").notNull().default(sql`now()`)
+  addedAt: timestamp("added_at").notNull().default(sql`now()`),
+  vehicleSlot: integer("vehicle_slot").default(1),
 });
 
 // Loading Order Consolidated Items table
@@ -921,15 +928,33 @@ export const tripsRelations = relations(trips, ({ one, many }) => ({
   }),
   vehicle: one(vehicles, {
     fields: [trips.vehicleId],
-    references: [vehicles.id]
+    references: [vehicles.id],
+    relationName: "trip_vehicle1"
   }),
   vehicleType: one(vehicleTypes, {
     fields: [trips.vehicleTypeId],
-    references: [vehicleTypes.id]
+    references: [vehicleTypes.id],
+    relationName: "trip_vehicletype1"
   }),
   driver: one(drivers, {
     fields: [trips.driverId],
-    references: [drivers.id]
+    references: [drivers.id],
+    relationName: "trip_driver1"
+  }),
+  vehicle2: one(vehicles, {
+    fields: [trips.vehicle2Id],
+    references: [vehicles.id],
+    relationName: "trip_vehicle2"
+  }),
+  vehicleType2: one(vehicleTypes, {
+    fields: [trips.vehicleType2Id],
+    references: [vehicleTypes.id],
+    relationName: "trip_vehicletype2"
+  }),
+  driver2: one(drivers, {
+    fields: [trips.driver2Id],
+    references: [drivers.id],
+    relationName: "trip_driver2"
   }),
   dock: one(docks, {
     fields: [trips.dockId],

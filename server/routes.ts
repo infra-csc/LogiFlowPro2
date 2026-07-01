@@ -3144,6 +3144,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Loading Order Request Slots
+  app.get("/api/loading-orders/:id/request-slots", requireAuth, async (req, res) => {
+    try {
+      const slots = await storage.getLoadingOrderRequestSlots(req.params.id);
+      res.json(slots);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch request slots" });
+    }
+  });
+
+  app.patch(
+    "/api/loading-orders/:id/request-slots/:requestId",
+    requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {
+      message: "Apenas administradores ou logística podem alterar a distribuição por veículo",
+    }),
+    async (req, res) => {
+      try {
+        const { vehicleSlot } = req.body;
+        if (typeof vehicleSlot !== "number" || (vehicleSlot !== 1 && vehicleSlot !== 2)) {
+          return res.status(400).json({ error: "vehicleSlot must be 1 or 2" });
+        }
+        await storage.updateLoadingOrderRequestSlot(req.params.id, req.params.requestId, vehicleSlot);
+        res.json({ ok: true });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to update request slot" });
+      }
+    }
+  );
+
   app.post(
     "/api/loading-orders",
     requireAnyRole([ROLES.ADMIN, ROLES.LOGISTICA], {

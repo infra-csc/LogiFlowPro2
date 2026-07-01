@@ -58,6 +58,11 @@ interface TripFormData {
   driverId?: string;
   dockId?: string;
   vehiclePlate?: string;
+  // 2º Veículo (opcional)
+  vehicle2Id?: string;
+  vehicleType2Id?: string;
+  driver2Id?: string;
+  vehiclePlate2?: string;
   // Ida — CD → Evento
   loadingLocation?: string;
   loadingStartTime?: string;
@@ -94,6 +99,10 @@ const EMPTY_FORM: TripFormData = {
   driverId: "",
   dockId: "",
   vehiclePlate: "",
+  vehicle2Id: "",
+  vehicleType2Id: "",
+  driver2Id: "",
+  vehiclePlate2: "",
   sameTransportReturn: true,
   status: "planned",
   notes: "",
@@ -343,6 +352,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   const [formData, setFormData] = useState<TripFormData>(EMPTY_FORM);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [eventOpen, setEventOpen] = useState(false);
+  const [showSecondVehicle, setShowSecondVehicle] = useState(false);
 
   // ── Data queries ──
   const { data: events = [] } = useQuery<Event[]>({ queryKey: ["/api/events"] });
@@ -356,6 +366,8 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     if (trip && open) {
       const ts = (t?: string | Date | null) =>
         t ? format(new Date(t as string), "yyyy-MM-dd'T'HH:mm") : "";
+      const hasV2 = !!(trip as any).vehicle2Id || !!(trip as any).vehicleType2Id;
+      setShowSecondVehicle(hasV2);
       setFormData({
         description: trip.description || "",
         eventId: trip.eventId || "",
@@ -363,6 +375,10 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         driverId: trip.driverId || "",
         dockId: trip.dockId || "",
         vehiclePlate: (trip as any).vehiclePlate || "",
+        vehicle2Id: (trip as any).vehicle2Id || "",
+        vehicleType2Id: (trip as any).vehicleType2Id || "",
+        driver2Id: (trip as any).driver2Id || "",
+        vehiclePlate2: (trip as any).vehiclePlate2 || "",
         loadingLocation: trip.loadingLocation || "",
         loadingStartTime: ts(trip.loadingStartTime),
         loadingEndTime: ts(trip.loadingEndTime),
@@ -403,6 +419,7 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       setFormData(EMPTY_FORM);
       setDestinations([]);
       setStep(1);
+      setShowSecondVehicle(false);
     }
   }, [trip, open]);
 
@@ -418,6 +435,9 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
   const selectedReturnVehicleType = vehicleTypes.find((v) => String(v.id) === formData.returnVehicleTypeId);
   const selectedReturnDriver = drivers.find((d) => d.id === formData.returnDriverId);
   const selectedReturnDock = docks.find((d) => d.id === formData.returnDockId);
+  const selectedVehicle2 = vehicles.find((v) => v.id === formData.vehicle2Id);
+  const selectedVehicleType2 = vehicleTypes.find((v) => String(v.id) === formData.vehicleType2Id);
+  const selectedDriver2 = drivers.find((d) => d.id === formData.driver2Id);
 
   // ── Auto-fill from selected vehicle ──
   useEffect(() => {
@@ -429,6 +449,17 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
     if (veh.vehicleTypeId) patch.vehicleTypeId = String(veh.vehicleTypeId);
     update(patch);
   }, [formData.vehicleId]);
+
+  // ── Auto-fill from selected vehicle 2 ──
+  useEffect(() => {
+    if (!formData.vehicle2Id || formData.vehicle2Id === "__none__") return;
+    const veh = vehicles.find((v) => v.id === formData.vehicle2Id);
+    if (!veh) return;
+    const patch: Partial<TripFormData> = {};
+    if (veh.plate) patch.vehiclePlate2 = veh.plate;
+    if (veh.vehicleTypeId) patch.vehicleType2Id = String(veh.vehicleTypeId);
+    update(patch);
+  }, [formData.vehicle2Id]);
 
   // ── Auto-suggest description ──
   useEffect(() => {
@@ -535,6 +566,10 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
       driverId: formData.driverId || null,
       dockId: formData.dockId || null,
       vehiclePlate: formData.vehiclePlate || null,
+      vehicle2Id: showSecondVehicle ? (formData.vehicle2Id || null) : null,
+      vehicleType2Id: showSecondVehicle ? (formData.vehicleType2Id || null) : null,
+      driver2Id: showSecondVehicle ? (formData.driver2Id || null) : null,
+      vehiclePlate2: showSecondVehicle ? (formData.vehiclePlate2 || null) : null,
       loadingLocation: formData.loadingLocation || null,
       loadingStartTime: dt(formData.loadingStartTime),
       loadingEndTime: dt(formData.loadingEndTime),
@@ -752,6 +787,85 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
           />
         </div>
 
+      </div>
+
+      {/* 2nd vehicle */}
+      <div className="rounded-md border border-border/50 bg-muted/20 px-3 py-2.5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium">2º Veículo</div>
+            <div className="text-xs text-muted-foreground">Adicione um segundo veículo neste roteiro (bitrem, comboio, etc.).</div>
+          </div>
+          <Switch
+            checked={showSecondVehicle}
+            onCheckedChange={(v) => {
+              setShowSecondVehicle(v);
+              if (!v) update({ vehicle2Id: "", vehicleType2Id: "", driver2Id: "", vehiclePlate2: "" });
+            }}
+            data-testid="switch-second-vehicle"
+          />
+        </div>
+        {showSecondVehicle && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-border/40">
+            <div className="space-y-1">
+              <Label className="text-xs">Veículo registrado</Label>
+              <Select
+                value={formData.vehicle2Id || "__none__"}
+                onValueChange={(v) => update({ vehicle2Id: noneVal(v) })}
+              >
+                <SelectTrigger className="h-8 text-sm" data-testid="select-vehicle2">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {renderNoneOption("Não especificado")}
+                  {vehicles.map((vh) => (
+                    <SelectItem key={vh.id} value={vh.id}>{vh.plate || vh.id.slice(0, 6)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Tipo de Veículo</Label>
+              <Select value={formData.vehicleType2Id || ""} onValueChange={(v) => update({ vehicleType2Id: v })}>
+                <SelectTrigger className="h-8 text-sm" data-testid="select-vehicle-type2">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicleTypes.map((vt) => (
+                    <SelectItem key={vt.id} value={String(vt.id)}>{vt.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Motorista 2</Label>
+              <Select
+                value={formData.driver2Id || "__none__"}
+                onValueChange={(v) => update({ driver2Id: noneVal(v) })}
+              >
+                <SelectTrigger className="h-8 text-sm" data-testid="select-driver2">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {renderNoneOption("Sem motorista")}
+                  {drivers.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Placa 2</Label>
+              <Input
+                value={formData.vehiclePlate2 || ""}
+                onChange={(e) => update({ vehiclePlate2: e.target.value.toUpperCase() })}
+                placeholder="ABC-5678"
+                className="h-8 text-sm font-mono"
+                data-testid="input-plate2"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Same-transport toggle */}
@@ -1192,6 +1306,16 @@ export function TripDialog({ open, onOpenChange, trip }: TripDialogProps) {
         <ReviewRow label="Motorista" value={selectedDriver?.name} dim />
         <ReviewRow label="Placa" value={formData.vehiclePlate} dim />
         <ReviewRow label="Doca de carregamento" value={selectedDock?.name} dim />
+        {showSecondVehicle && (
+          <>
+            <div className="border-t border-border/40 pt-1 mt-1">
+              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">2º Veículo</div>
+            </div>
+            <ReviewRow label="Tipo" value={selectedVehicleType2?.name} dim />
+            <ReviewRow label="Motorista 2" value={selectedDriver2?.name} dim />
+            <ReviewRow label="Placa 2" value={formData.vehiclePlate2} dim />
+          </>
+        )}
       </div>
 
       {/* Ida */}

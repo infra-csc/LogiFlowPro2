@@ -253,9 +253,13 @@ export interface IStorage {
   deleteLoadingOrderItems(loadingOrderId: string): Promise<void>;
 
   // Loading Order Trips (junction table)
-  getLoadingOrderTrips(loadingOrderId: string): Promise<{id: string; tripId: string; addedAt: Date}[]>;
+  getLoadingOrderTrips(loadingOrderId: string): Promise<{id: string; tripId: string; addedAt: Date; vehicle2Id?: string | null; vehiclePlate2?: string | null}[]>;
   createLoadingOrderTrip(loadingOrderId: string, tripId: string): Promise<{id: string; tripId: string; addedAt: Date}>;
   deleteLoadingOrderTrips(loadingOrderId: string): Promise<void>;
+
+  // Loading Order Request Slots
+  getLoadingOrderRequestSlots(loadingOrderId: string): Promise<{requestId: string; vehicleSlot: number}[]>;
+  updateLoadingOrderRequestSlot(loadingOrderId: string, requestId: string, vehicleSlot: number): Promise<void>;
 
   // Movements
   getMovements(): Promise<Movement[]>;
@@ -1108,13 +1112,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Loading Order Trips (junction table)
-  async getLoadingOrderTrips(loadingOrderId: string): Promise<{id: string; tripId: string; addedAt: Date}[]> {
-    const results = await db.select().from(loadingOrderTrips).where(eq(loadingOrderTrips.loadingOrderId, loadingOrderId));
+  async getLoadingOrderTrips(loadingOrderId: string): Promise<{id: string; tripId: string; addedAt: Date; vehicle2Id?: string | null; vehiclePlate2?: string | null}[]> {
+    const results = await db
+      .select({
+        id: loadingOrderTrips.id,
+        tripId: loadingOrderTrips.tripId,
+        addedAt: loadingOrderTrips.addedAt,
+        vehicle2Id: trips.vehicle2Id,
+        vehiclePlate2: trips.vehiclePlate2,
+      })
+      .from(loadingOrderTrips)
+      .leftJoin(trips, eq(loadingOrderTrips.tripId, trips.id))
+      .where(eq(loadingOrderTrips.loadingOrderId, loadingOrderId));
     return results.map(r => ({
       id: r.id,
       tripId: r.tripId,
-      addedAt: r.addedAt
+      addedAt: r.addedAt,
+      vehicle2Id: r.vehicle2Id,
+      vehiclePlate2: r.vehiclePlate2,
     }));
+  }
+
+  async getLoadingOrderRequestSlots(loadingOrderId: string): Promise<{requestId: string; vehicleSlot: number}[]> {
+    const results = await db
+      .select({ requestId: loadingOrderRequests.requestId, vehicleSlot: loadingOrderRequests.vehicleSlot })
+      .from(loadingOrderRequests)
+      .where(eq(loadingOrderRequests.loadingOrderId, loadingOrderId));
+    return results.map(r => ({ requestId: r.requestId, vehicleSlot: r.vehicleSlot ?? 1 }));
+  }
+
+  async updateLoadingOrderRequestSlot(loadingOrderId: string, requestId: string, vehicleSlot: number): Promise<void> {
+    await db
+      .update(loadingOrderRequests)
+      .set({ vehicleSlot })
+      .where(
+        and(
+          eq(loadingOrderRequests.loadingOrderId, loadingOrderId),
+          eq(loadingOrderRequests.requestId, requestId)
+        )
+      );
   }
 
   async createLoadingOrderTrip(loadingOrderId: string, tripId: string): Promise<{id: string; tripId: string; addedAt: Date}> {

@@ -57,6 +57,10 @@ interface TripWithRelations extends Trip {
 // Extra new fields (cast via (trip as any) or this interface)
 interface TripExtra {
   vehiclePlate?: string;
+  vehicle2Id?: string | null;
+  vehicleType2Id?: string | null;
+  driver2Id?: string | null;
+  vehiclePlate2?: string | null;
   outboundArrivalDateTime?: string;
   outboundArrivalLocation?: string;
   sameTransportReturn?: boolean;
@@ -266,6 +270,8 @@ function TripCard({ trip, canWrite, onEdit, onDuplicate, docks, density }: TripC
   const plate = trip.vehiclePlate || trip.vehicle?.plate;
   const vehicleLabel = [trip.vehicleType?.name, plate].filter(Boolean).join(" • ");
   const driverLabel = trip.driver?.name;
+  const plate2 = trip.vehiclePlate2;
+  const vehicle2Label = plate2 ? `+ ${plate2}` : null;
   const outboundDock = trip.dock?.name || (trip.dockId ? docks.find((d) => d.id === trip.dockId)?.name : undefined);
   const returnDock = trip.returnDockId ? docks.find((d) => d.id === trip.returnDockId)?.name : undefined;
   const hasReturn = !!(trip.returnLoadingStartTime || trip.returnDepartureDateTime || trip.returnArrivalDateTime);
@@ -319,6 +325,7 @@ function TripCard({ trip, canWrite, onEdit, onDuplicate, docks, density }: TripC
                   <span>{fmtDate(trip.event.eventDate)}</span>
                 )}
                 {vehicleLabel && <><span className="text-border/60">·</span><span>{vehicleLabel}</span></>}
+                {vehicle2Label && <span className="text-xs text-muted-foreground">{vehicle2Label}</span>}
                 {driverLabel && <><span className="text-border/60">·</span><span>{driverLabel}</span></>}
               </div>
               {/* Row 3: next activity */}
@@ -468,6 +475,7 @@ function TripCard({ trip, canWrite, onEdit, onDuplicate, docks, density }: TripC
           <span className="flex items-center gap-1 text-muted-foreground">
             <Truck className="h-3 w-3" />
             <span className="font-medium text-foreground">{vehicleLabel || "Não informado"}</span>
+            {vehicle2Label && <span className="text-muted-foreground">{vehicle2Label}</span>}
           </span>
           <span className="text-border/50">|</span>
           <span className="flex items-center gap-1 text-muted-foreground">

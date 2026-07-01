@@ -123,6 +123,40 @@ export default function LoadingOrderDetails() {
     enabled: !!id,
   });
 
+  type OrderTrip = { id: string; tripId: string; vehicle2Id?: string | null; vehiclePlate2?: string | null };
+  type RequestSlot = { requestId: string; vehicleSlot: number };
+
+  const { data: orderTrips = [] } = useQuery<OrderTrip[]>({
+    queryKey: [`/api/loading-orders/${id}/trips`],
+    enabled: !!id,
+  });
+
+  const { data: requestSlots = [] } = useQuery<RequestSlot[]>({
+    queryKey: [`/api/loading-orders/${id}/request-slots`],
+    enabled: !!id,
+  });
+
+  const hasSecondVehicle = orderTrips.some((t) => t.vehicle2Id);
+
+  const slotMap = useMemo(() => {
+    const map = new Map<string, number>();
+    requestSlots.forEach((s) => map.set(s.requestId, s.vehicleSlot));
+    return map;
+  }, [requestSlots]);
+
+  const updateSlotMutation = useMutation({
+    mutationFn: async ({ requestId, vehicleSlot }: { requestId: string; vehicleSlot: number }) => {
+      const res = await apiRequest("PATCH", `/api/loading-orders/${id}/request-slots/${requestId}`, { vehicleSlot });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/loading-orders/${id}/request-slots`] });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível atualizar o veículo da requisição.", variant: "destructive" });
+    },
+  });
+
   const movementItemsQueries = useQueries({
     queries: movements.map(movement => ({
       queryKey: [`/api/movements/${movement.id}/items`],
@@ -548,6 +582,40 @@ export default function LoadingOrderDetails() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          {hasSecondVehicle && canWrite && (() => {
+                            const reqId = (request as any).requestId ?? request.id;
+                            const slot = slotMap.get(reqId) ?? 1;
+                            return (
+                              <button
+                                type="button"
+                                data-testid={`slot-toggle-${reqId}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateSlotMutation.mutate({ requestId: reqId, vehicleSlot: slot === 1 ? 2 : 1 });
+                                }}
+                                className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 border transition-colors ${
+                                  slot === 1
+                                    ? "bg-primary/10 text-primary border-primary/20"
+                                    : "bg-chart-3/10 text-chart-3 border-chart-3/20"
+                                }`}
+                              >
+                                Veíc.&nbsp;{slot}
+                              </button>
+                            );
+                          })()}
+                          {hasSecondVehicle && !canWrite && (() => {
+                            const reqId = (request as any).requestId ?? request.id;
+                            const slot = slotMap.get(reqId) ?? 1;
+                            return (
+                              <span className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 border ${
+                                slot === 1
+                                  ? "bg-primary/10 text-primary border-primary/20"
+                                  : "bg-chart-3/10 text-chart-3 border-chart-3/20"
+                              }`}>
+                                Veíc.&nbsp;{slot}
+                              </span>
+                            );
+                          })()}
                           <StatusBadge status={request.status} />
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         </div>
