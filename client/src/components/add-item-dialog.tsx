@@ -707,12 +707,6 @@ export function AddItemDialog({
                             </div>
                           </div>
 
-                          {/* Stock (if available) */}
-                          {product.currentStock !== undefined && (
-                            <span className="text-xs text-muted-foreground flex-shrink-0">
-                              Estoque: {product.currentStock}
-                            </span>
-                          )}
                         </div>
                       );
                     })}
