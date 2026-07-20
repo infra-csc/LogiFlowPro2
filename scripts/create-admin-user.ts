@@ -5,9 +5,14 @@ import { eq } from "drizzle-orm";
 
 async function createAdminUser() {
   const username = "admin";
-  const password = "admin123";
+  const password = process.env.ADMIN_PASSWORD;
   const name = "Administrador";
   const email = "admin@sistema.com";
+
+  if (!password) {
+    console.error("Defina ADMIN_PASSWORD no ambiente antes de rodar este script.");
+    process.exit(1);
+  }
 
   // Check if user already exists
   const existingUser = await db.select()
@@ -38,12 +43,7 @@ async function createAdminUser() {
     console.log("Usuário criado com sucesso!");
   }
 
-  console.log("\n=================================");
-  console.log("CREDENCIAIS DE ACESSO:");
-  console.log("=================================");
-  console.log("Usuário: admin");
-  console.log("Senha: admin123");
-  console.log("=================================\n");
+  console.log("\nUsuário 'admin' pronto, com a senha definida em ADMIN_PASSWORD.");
   console.log("IMPORTANTE: Altere esta senha após o primeiro acesso!");
   
   process.exit(0);
