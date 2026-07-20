@@ -54,6 +54,7 @@ import {
 import { ObjectPermission } from "./objectAcl";
 import { checkOwnership, canEditResource, isAdmin, requireAuth } from "./ownership";
 import { requireAdmin, requireAnyRole } from "./authz";
+import { resolveUploadPath, isInlineSafe } from "./uploadPath";
 import { ROLES } from "@shared/roles";
 
 // Legacy function - now replaced by POST /api/permissions/populate endpoint
@@ -4527,13 +4528,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fs = await import('fs/promises');
       const path = await import('path');
 
-      // `filename` is URL-decoded by Express, so it can still contain "../"
-      // even though the route pattern matches a single segment. Resolve first,
-      // then confirm the result stayed inside uploads/ — path.join alone
-      // normalizes the traversal away and would let it through.
-      const uploadsDir = path.resolve(process.cwd(), 'uploads');
-      const filePath = path.resolve(uploadsDir, req.params.filename);
-      if (filePath !== uploadsDir && !filePath.startsWith(uploadsDir + path.sep)) {
+      // See server/uploadPath.ts — the containment check must run on the
+      // resolved path, and is unit-tested there.
+      const filePath = resolveUploadPath(path.join(process.cwd(), 'uploads'), req.params.filename);
+      if (!filePath) {
         return res.status(400).json({ error: "Caminho de arquivo inválido" });
       }
 
@@ -4544,12 +4542,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "File not found" });
       }
 
-      // Uploaded content is user-supplied. Only formats that cannot execute
+      // Uploaded content is user-supplied: only formats that cannot execute
       // script are served inline (so <img> previews keep working); everything
-      // else — including .html and .svg — is forced to download, otherwise it
-      // would run in the app's own origin as stored XSS.
-      const INLINE_SAFE = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf']);
-      if (!INLINE_SAFE.has(path.extname(filePath).toLowerCase())) {
+      // else is forced to download rather than run as stored XSS.
+      if (!isInlineSafe(filePath)) {
         res.setHeader('Content-Disposition', 'attachment');
       }
       res.setHeader('X-Content-Type-Options', 'nosniff');
