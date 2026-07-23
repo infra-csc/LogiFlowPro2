@@ -189,8 +189,8 @@ export default function UsersPage() {
       setSelectedUser(null);
       toast({ title: "Senha redefinida", description: "A nova senha foi salva com sucesso." });
     },
-    onError: () => {
-      toast({ title: "Erro", description: "Falha ao redefinir a senha.", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Erro ao redefinir senha", description: error.message, variant: "destructive" });
     },
   });
 
