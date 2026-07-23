@@ -2011,10 +2011,22 @@ export class DatabaseStorage implements IStorage {
 
   // User Roles
   async getUserRoles(userId: string): Promise<UserRole[]> {
-    return await db.select().from(userRoles).where(eq(userRoles.userId, userId));
+    const rows = await db.select().from(userRoles).where(eq(userRoles.userId, userId));
+    // Collapse duplicate (userId, roleId) rows — the table has no unique
+    // constraint, so historically the seed accumulated repeats.
+    const seen = new Set<string>();
+    return rows.filter((r) => (seen.has(r.roleId) ? false : (seen.add(r.roleId), true)));
   }
 
   async assignUserRole(userRole: InsertUserRole): Promise<UserRole> {
+    // Don't create a second row for a role the user already has.
+    const [existing] = await db
+      .select()
+      .from(userRoles)
+      .where(and(eq(userRoles.userId, userRole.userId), eq(userRoles.roleId, userRole.roleId)))
+      .limit(1);
+    if (existing) return existing;
+
     const [created] = await db.insert(userRoles).values(userRole).returning();
     return created;
   }

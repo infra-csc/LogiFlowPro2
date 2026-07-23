@@ -105,7 +105,10 @@ export default function UsersPage() {
     users.forEach((user, idx) => {
       const result = userRoleResults[idx];
       if (result.data && Array.isArray(result.data)) {
-        map.set(user.id, (result.data as { roleId: string }[]).map((ur) => ur.roleId));
+        // Dedupe: user_roles can contain duplicate (userId, roleId) rows, so a
+        // role would otherwise render as many badges as there are rows.
+        const uniqueRoleIds = Array.from(new Set((result.data as { roleId: string }[]).map((ur) => ur.roleId)));
+        map.set(user.id, uniqueRoleIds);
       } else {
         map.set(user.id, []);
       }

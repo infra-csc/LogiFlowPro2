@@ -9,7 +9,8 @@ import {
   jsonb,
   pgEnum,
   boolean,
-  index
+  index,
+  unique
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -228,7 +229,13 @@ export const userRoles = pgTable("user_roles", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   roleId: varchar("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
   assignedAt: timestamp("assigned_at").notNull().default(sql`now()`)
-});
+}, (table) => ({
+  // Prevent duplicate (user, role) assignments at the database level. Without
+  // this, onConflictDoNothing() had no target and the seed accumulated repeats.
+  // NOTE: apply requires removing existing duplicates first — run
+  // scripts/dedupe-user-roles.ts before `npm run db:push`.
+  userRoleUnique: unique("user_roles_user_id_role_id_unique").on(table.userId, table.roleId),
+}));
 
 // Role-Permission relationship (many-to-many)
 export const rolePermissions = pgTable("role_permissions", {

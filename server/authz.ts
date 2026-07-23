@@ -38,9 +38,13 @@ export async function getUserRoleNames(
       .where(eq(userRoles.userId, user.id))
       .execute();
 
-    const names = records
-      .map((r) => r.roleName)
-      .filter((n): n is string => typeof n === "string");
+    const names = Array.from(
+      new Set(
+        records
+          .map((r) => r.roleName)
+          .filter((n): n is string => typeof n === "string")
+      )
+    );
 
     if (req) req.__roleNames = names;
     return names;

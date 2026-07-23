@@ -232,7 +232,8 @@ export function setupAuth(app: Express): void {
         .where(eq(userRoles.userId, req.user!.id))
         .execute();
       
-      const roleNames = userRoleRecords.map(r => r.roleName);
+      // Dedupe — user_roles may hold duplicate rows for the same role.
+      const roleNames = Array.from(new Set(userRoleRecords.map(r => r.roleName)));
       // Single source of truth — see server/ownership.ts:isAdminRoleName().
       const { isAdminRoleName } = await import("./ownership");
       const roleIsAdmin = roleNames.some(isAdminRoleName);
