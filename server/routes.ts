@@ -55,6 +55,7 @@ import { ObjectPermission } from "./objectAcl";
 import { checkOwnership, canEditResource, isAdmin, requireAuth } from "./ownership";
 import { requireAdmin, requireAnyRole } from "./authz";
 import { ROLES } from "@shared/roles";
+import { deriveRequestProgress } from "@shared/request-progress";
 
 // Legacy function - now replaced by POST /api/permissions/populate endpoint
 // Keeping minimal initialization for backward compatibility
@@ -2272,6 +2273,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error duplicating request:", error);
       res.status(500).json({ error: "Failed to duplicate request" });
+    }
+  });
+
+  // Derived physical progress of a request (read-only). Distinct from the
+  // stored request status: it summarizes how far the request's material has
+  // moved, computed from the linked loading orders and trips. See
+  // shared/request-progress.ts.
+  app.get("/api/requests/:id/progress", requireAuth, async (req, res) => {
+    try {
+      const request = await storage.getMaterialRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+      const downstream = await storage.getRequestDownstream(req.params.id);
+      const progress = deriveRequestProgress(request.status, downstream);
+      res.json({ progress, ...downstream });
+    } catch (error) {
+      console.error("Error computing request progress:", error);
+      res.status(500).json({ error: "Failed to compute request progress" });
     }
   });
 

@@ -28,6 +28,7 @@ import { PageLoading } from "@/components/page-loading";
 import { EmptyState } from "@/components/empty-state";
 import { ActionBar } from "@/components/action-bar";
 import { StatusBadge } from "@/components/status-badge";
+import { REQUEST_PROGRESS_LABELS, type RequestProgress } from "@shared/request-progress";
 
 const itemStatusIcon: Record<string, typeof CheckCircle2> = {
   approved: CheckCircle2,
@@ -274,6 +275,17 @@ export default function RequestDetails() {
 
   const { data: items = [] } = useQuery<RequestItem[]>({
     queryKey: ["/api/requests", id, "items"],
+  });
+
+  // Derived physical progress (loading orders + trips). Only meaningful once a
+  // request is approved; the endpoint returns progress: null otherwise.
+  const { data: progressData } = useQuery<{
+    progress: RequestProgress | null;
+    loadingOrderStatuses: string[];
+    tripStatuses: string[];
+  }>({
+    queryKey: ["/api/requests", id, "progress"],
+    enabled: request?.status === "approved",
   });
 
   const { data: event } = useQuery<Event>({
@@ -618,6 +630,19 @@ export default function RequestDetails() {
             <StatusBadge status={request.status} />
           </CardContent>
         </Card>
+        {progressData?.progress && (
+          <Card className="border-border/60" data-testid="card-request-progress">
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground font-medium mb-1">Progresso físico</p>
+              <p className="font-semibold text-base text-foreground">
+                {REQUEST_PROGRESS_LABELS[progressData.progress]}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {progressData.loadingOrderStatuses.length} ordem(ns) · {progressData.tripStatuses.length} viagem(ns)
+              </p>
+            </CardContent>
+          </Card>
+        )}
         <Card className="border-border/60">
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground font-medium mb-1">Criação</p>

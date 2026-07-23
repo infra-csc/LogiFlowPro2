@@ -175,6 +175,7 @@ export interface IStorage {
   // Request Items
   getRequestItems(requestId: string): Promise<RequestItem[]>;
   getRequestItemsByRequestIds(requestIds: string[]): Promise<RequestItem[]>;
+  getRequestDownstream(requestId: string): Promise<{ loadingOrderStatuses: string[]; tripStatuses: string[] }>;
   getRequestItem(id: string): Promise<RequestItem | undefined>;
   createRequestItem(item: InsertRequestItem): Promise<RequestItem>;
   updateRequestItem(id: string, item: Partial<InsertRequestItem>): Promise<RequestItem>;
@@ -648,6 +649,34 @@ export class DatabaseStorage implements IStorage {
       .where(eq(requestItems.requestId, requestId));
     
     return items as any;
+  }
+
+  // Reverse lookup for the derived physical-progress feature: given a request,
+  // collect the statuses of the loading orders it belongs to and of the trips
+  // those orders are assigned to. Trips are reached through loading orders
+  // (request -> loading_order_requests -> loading_order_trips -> trips).
+  async getRequestDownstream(
+    requestId: string
+  ): Promise<{ loadingOrderStatuses: string[]; tripStatuses: string[] }> {
+    const orders = await db
+      .select({ id: loadingOrders.id, status: loadingOrders.status })
+      .from(loadingOrderRequests)
+      .innerJoin(loadingOrders, eq(loadingOrderRequests.loadingOrderId, loadingOrders.id))
+      .where(eq(loadingOrderRequests.requestId, requestId));
+
+    const orderIds = orders.map((o) => o.id);
+    const tripRows = orderIds.length
+      ? await db
+          .select({ status: trips.status })
+          .from(loadingOrderTrips)
+          .innerJoin(trips, eq(loadingOrderTrips.tripId, trips.id))
+          .where(inArray(loadingOrderTrips.loadingOrderId, orderIds))
+      : [];
+
+    return {
+      loadingOrderStatuses: orders.map((o) => o.status),
+      tripStatuses: tripRows.map((t) => t.status),
+    };
   }
 
   async getRequestItemsByRequestIds(requestIds: string[]): Promise<RequestItem[]> {
