@@ -170,6 +170,7 @@ export interface IStorage {
   getMaterialRequestsByUser(userId: string): Promise<MaterialRequest[]>;
   getMaterialRequest(id: string): Promise<MaterialRequest | undefined>;
   createMaterialRequest(request: InsertMaterialRequest): Promise<MaterialRequest>;
+  createRequestWithItems(request: InsertMaterialRequest, items: InsertRequestItem[]): Promise<MaterialRequest>;
   updateMaterialRequest(id: string, request: Partial<InsertMaterialRequest>): Promise<MaterialRequest>;
 
   // Request Items
@@ -619,6 +620,25 @@ export class DatabaseStorage implements IStorage {
   async createMaterialRequest(request: InsertMaterialRequest): Promise<MaterialRequest> {
     const [created] = await db.insert(materialRequests).values(request).returning();
     return created;
+  }
+
+  // Create a request together with its items atomically. Used by the duplicate
+  // flow, which previously inserted the request and then looped item inserts on
+  // the bare db handle — a failure partway left a request with only some (or
+  // none) of the items copied.
+  async createRequestWithItems(
+    request: InsertMaterialRequest,
+    items: InsertRequestItem[]
+  ): Promise<MaterialRequest> {
+    return await db.transaction(async (tx) => {
+      const [created] = await tx.insert(materialRequests).values(request).returning();
+      if (items.length > 0) {
+        await tx
+          .insert(requestItems)
+          .values(items.map((item) => ({ ...item, requestId: created.id })));
+      }
+      return created;
+    });
   }
 
   async updateMaterialRequest(id: string, request: Partial<InsertMaterialRequest>): Promise<MaterialRequest> {

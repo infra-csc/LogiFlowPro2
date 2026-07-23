@@ -2247,30 +2247,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create new request
-      const newRequest = await storage.createMaterialRequest({
-        eventId,
-        area,
-        notes,
-        status: "draft",
-        requestedBy: req.user?.id || "sistema",
-      });
-
-      // Fetch original items
+      // Copy the original items (without approval data). The request and its
+      // items are created atomically, so a mid-copy failure can't leave a
+      // half-populated duplicate. requestId is filled in inside the transaction
+      // from the newly created request.
       const originalItems = await storage.getRequestItems(req.params.id);
-
-      // Copy items without approval data
-      for (const item of originalItems) {
-        await storage.createRequestItem({
-          requestId: newRequest.id,
+      const newRequest = await storage.createRequestWithItems(
+        {
+          eventId,
+          area,
+          notes,
+          status: "draft",
+          requestedBy: req.user?.id || "sistema",
+        },
+        originalItems.map((item) => ({
+          requestId: "",
           productId: item.productId || undefined,
           kitId: item.kitId || undefined,
           quantity: item.quantity,
           notes: item.notes || undefined,
-          approvalStatus: "pending",
+          approvalStatus: "pending" as const,
           kitParameters: item.kitParameters as any,
-        });
-      }
+        }))
+      );
 
       res.status(201).json(newRequest);
     } catch (error) {
