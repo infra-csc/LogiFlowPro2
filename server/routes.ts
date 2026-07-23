@@ -2153,6 +2153,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reopen a rejected request back to draft so the owner can fix and resubmit
+  // it. Without this, rejection is a dead end and the requester has to recreate
+  // the whole request. Owner or admin only, and only from the rejected state.
+  app.post("/api/requests/:id/reopen", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+
+      const currentRequest = await storage.getMaterialRequest(req.params.id);
+      if (!currentRequest) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      if (!(await canEditResource(req.user, currentRequest.requestedBy))) {
+        return res.status(403).json({
+          error: "Acesso negado",
+          message: "Apenas o criador ou um administrador pode reabrir esta requisição",
+        });
+      }
+
+      if (currentRequest.status !== "rejected") {
+        return res.status(400).json({
+          error: "Transição inválida",
+          message: "Apenas requisições rejeitadas podem ser reabertas.",
+        });
+      }
+
+      await storage.reopenRequest(req.params.id);
+      const updated = await storage.getMaterialRequest(req.params.id);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error reopening request:", error);
+      res.status(500).json({ error: "Erro ao reabrir a requisição" });
+    }
+  });
+
   app.delete("/api/requests/:id", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
@@ -4187,7 +4224,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
-      res.status(400).json({ error: "Invalid user data" });
+      // A validation failure (bad input) is a 400; anything else is a real
+      // server error. The old code returned "Invalid user data" for both,
+      // which made a failed admin password reset impossible to diagnose.
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
+      }
+      console.error("Error updating user:", error);
+      res.status(500).json({ error: "Erro ao atualizar usuário" });
     }
   });
 

@@ -187,6 +187,7 @@ export interface IStorage {
   approveRequestAll(requestId: string, approverName: string, comments?: string): Promise<void>;
   approveRequestPartial(requestId: string, approverName: string, itemApprovals: Array<{itemId: string, status: string, approvedQuantity?: number, rejectionReason?: string}>, comments?: string): Promise<void>;
   rejectRequestAll(requestId: string, approverName: string, reason: string): Promise<void>;
+  reopenRequest(requestId: string): Promise<void>;
 
   // Vehicle Types
   getVehicleTypes(): Promise<VehicleType[]>;
@@ -847,6 +848,34 @@ export class DatabaseStorage implements IStorage {
           approvedBy: approverName,
           approvedAt: new Date(),
           rejectionReason: reason,
+        })
+        .where(eq(materialRequests.id, requestId));
+    });
+  }
+
+  // Send a rejected request back to draft so its owner can fix and resubmit it,
+  // instead of the rejection being a dead end that forces recreating from
+  // scratch. Clears the approval verdict on both the request and its items
+  // (back to pending) atomically.
+  async reopenRequest(requestId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(requestItems)
+        .set({
+          approvalStatus: "pending",
+          approvedQuantity: null,
+          rejectionReason: null,
+        })
+        .where(eq(requestItems.requestId, requestId));
+
+      await tx
+        .update(materialRequests)
+        .set({
+          status: "draft",
+          approvedBy: null,
+          approvedAt: null,
+          rejectionReason: null,
+          submittedAt: null,
         })
         .where(eq(materialRequests.id, requestId));
     });

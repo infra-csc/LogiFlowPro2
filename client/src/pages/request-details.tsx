@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X, Boxes, Loader2, Layers } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, AlertCircle, Copy, Save, ClipboardList, Package, CheckCircle2, XCircle, Clock, Pencil, Check, X, Boxes, Loader2, Layers, RotateCcw } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
@@ -383,6 +383,19 @@ export default function RequestDetails() {
     },
   });
 
+  const reopenMutation = useMutation({
+    mutationFn: async () => apiRequest("POST", `/api/requests/${id}/reopen`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/requests", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/requests", id, "items"] });
+      toast({ title: "Requisição reaberta", description: "A requisição voltou para rascunho. Ajuste e envie novamente." });
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Erro ao reabrir", description: error.message });
+    },
+  });
+
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<string>("");
   const [editNotes, setEditNotes] = useState<string>("");
@@ -475,6 +488,9 @@ export default function RequestDetails() {
   const canDelete = isAdmin
     ? request.status !== "approved"
     : request.status === "draft" && !!isOwner;
+  // A rejected request is no longer a dead end: owner or admin can send it back
+  // to draft to fix and resubmit.
+  const canReopen = request.status === "rejected" && (isOwner || isAdmin);
 
   const handleDelete = () => {
     deleteMutation.mutate();
@@ -576,6 +592,12 @@ export default function RequestDetails() {
               Excluir
             </Button>
           )}
+          {canReopen && (
+            <Button size="sm" onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} data-testid="button-reopen-request">
+              <RotateCcw className="h-4 w-4 mr-2" />
+              {reopenMutation.isPending ? "Reabrindo..." : "Reabrir"}
+            </Button>
+          )}
           {canEdit && (
             <Button size="sm" onClick={handleSubmit} disabled={items.length === 0} data-testid="button-submit-approval">
               <Send className="h-4 w-4 mr-2" />
@@ -590,6 +612,20 @@ export default function RequestDetails() {
         <StatusBadge status={request.status} />
         <span className="text-xs text-muted-foreground font-mono tracking-widest">#{request.id.slice(0, 8).toUpperCase()}</span>
       </div>
+
+      {/* Rejection reason — shown at the request level so the owner sees why
+          before reopening to fix it. */}
+      {request.status === "rejected" && request.rejectionReason && (
+        <Alert variant="destructive" data-testid="alert-request-rejected">
+          <div className="flex items-start gap-2">
+            <XCircle className="h-4 w-4 mt-0.5" />
+            <AlertDescription className="text-sm">
+              <strong>Requisição rejeitada.</strong> {request.rejectionReason}
+              {canReopen && <span className="block text-xs mt-1">Use “Reabrir” para ajustar e enviar novamente.</span>}
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
 
       {/* Request window alert */}
       {canEdit && requestWindowInfo && !requestWindowInfo.isWithinWindow && (
