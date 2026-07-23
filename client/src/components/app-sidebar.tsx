@@ -375,8 +375,13 @@ export function AppSidebar() {
       <SidebarFooter>
         {user && (
           <div className="p-3 border-t border-sidebar-border bg-sidebar/50 shrink-0">
-            <div className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-sidebar-accent/40 transition-colors group cursor-pointer">
-              <div className="flex items-center gap-3 overflow-hidden min-w-0">
+            <div className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-sidebar-accent/40 transition-colors group">
+              {/* Clicking the account opens /config, where "Minha Senha" lives */}
+              <Link
+                href="/config"
+                className="flex items-center gap-3 overflow-hidden min-w-0 flex-1"
+                data-testid="link-account"
+              >
                 <div className="h-9 w-9 rounded-lg bg-sidebar-accent flex items-center justify-center shrink-0">
                   <User className="h-4 w-4 text-sidebar-foreground/50" />
                 </div>
@@ -388,7 +393,7 @@ export function AppSidebar() {
                     {user.email}
                   </p>
                 </div>
-              </div>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-sidebar-foreground/40 hover:text-destructive transition-colors shrink-0"

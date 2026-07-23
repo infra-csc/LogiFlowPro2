@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { Settings, Truck, User, Warehouse as WarehouseIcon, Save, Bell, Clock, Calendar, Lock } from "lucide-react";
+import { Settings, Truck, User, Warehouse as WarehouseIcon, Save, Bell, Clock, Calendar, Lock, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -11,6 +11,7 @@ import { Plus } from "lucide-react";
 import type { Vehicle, Driver, Dock } from "@shared/schema";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Config() {
   const { toast } = useToast();
@@ -228,6 +229,9 @@ export default function Config() {
         </CardContent>
       </Card>
 
+      {/* Change own password — available to every logged-in user */}
+      <ChangePasswordCard />
+
       {/* Save button */}
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={isSaving} data-testid="button-save-config">
@@ -236,5 +240,98 @@ export default function Config() {
         </Button>
       </div>
     </div>
+  );
+}
+
+// Self-service password change. Unlike the surrounding mock settings, this one
+// really persists — it calls POST /api/change-password, which verifies the
+// current password before updating.
+function ChangePasswordCard() {
+  const { toast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("POST", "/api/change-password", { currentPassword, newPassword }),
+    onSuccess: () => {
+      toast({ title: "Senha alterada", description: "Sua senha foi atualizada com sucesso." });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Não foi possível alterar a senha", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
+  const tooShort = newPassword.length > 0 && newPassword.length < 6;
+  const canSubmit =
+    !!currentPassword && newPassword.length >= 6 && newPassword === confirmPassword && !mutation.isPending;
+
+  return (
+    <Card className="border-border/60">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <KeyRound className="h-4 w-4 text-primary/70" />
+          </div>
+          <div>
+            <p className="font-semibold text-base">Minha Senha</p>
+            <p className="text-xs text-muted-foreground">Altere a senha da sua própria conta</p>
+          </div>
+        </div>
+
+        <form
+          className="grid gap-4 sm:grid-cols-2"
+          onSubmit={(e) => { e.preventDefault(); if (canSubmit) mutation.mutate(); }}
+        >
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="current-password">Senha atual</Label>
+            <Input
+              id="current-password"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              data-testid="input-current-password"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-password">Nova senha</Label>
+            <Input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="Mínimo 6 caracteres"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              data-testid="input-config-new-password"
+            />
+            {tooShort && <p className="text-xs text-destructive">A senha deve ter no mínimo 6 caracteres.</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              data-testid="input-config-confirm-password"
+            />
+            {mismatch && <p className="text-xs text-destructive">As senhas não coincidem.</p>}
+          </div>
+          <div className="sm:col-span-2 flex justify-end">
+            <Button type="submit" disabled={!canSubmit} data-testid="button-change-password">
+              <KeyRound className="mr-2 h-4 w-4" />
+              {mutation.isPending ? "Salvando..." : "Alterar Senha"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

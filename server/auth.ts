@@ -171,6 +171,48 @@ export function setupAuth(app: Express): void {
     });
   });
 
+  // Self-service password change for the logged-in user.
+  //
+  // Before this, a regular user had no working way to change their password:
+  // admins can reset it from the users screen, but the "forgot password" flow
+  // depends on an email that is never sent (the reset link is only logged to
+  // the server console). This closes that gap without touching email infra —
+  // the user proves they know their current password, then sets a new one.
+  app.post("/api/change-password", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Não autenticado" });
+    }
+
+    const { currentPassword, newPassword } = req.body ?? {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Informe a senha atual e a nova senha." });
+    }
+    if (typeof newPassword !== "string" || newPassword.length < 6) {
+      return res.status(400).json({ error: "A nova senha deve ter no mínimo 6 caracteres." });
+    }
+
+    try {
+      // Need the full record (with the hash); req.user is stripped of it.
+      const user = await storage.getUser(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      const ok = await comparePasswords(currentPassword, user.password);
+      if (!ok) {
+        return res.status(400).json({ error: "Senha atual incorreta." });
+      }
+
+      const hashed = await hashPassword(newPassword);
+      await storage.updateUser(user.id, { password: hashed });
+
+      res.json({ message: "Senha alterada com sucesso." });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ error: "Erro ao alterar a senha." });
+    }
+  });
+
   // Get current user
   app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) {
