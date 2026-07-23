@@ -54,6 +54,7 @@ import {
 import { ObjectPermission } from "./objectAcl";
 import { checkOwnership, canEditResource, isAdmin, requireAuth } from "./ownership";
 import { requireAdmin, requireAnyRole } from "./authz";
+import { resolveUploadPath, isInlineSafe } from "./uploadPath";
 import { ROLES } from "@shared/roles";
 import { deriveRequestProgress } from "@shared/request-progress";
 
@@ -1522,7 +1523,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/events/bulk", requireAuth, async (req, res) => {
+  // Same admin restriction as POST /api/events — the bulk variant must not be
+  // a way around it.
+  app.post("/api/events/bulk", requireAuth, requireAdmin({ message: "Apenas administradores podem criar eventos" }), async (req, res) => {
     try {
       const { events: eventsData } = req.body;
       
@@ -2481,11 +2484,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Request Approvals
-  app.post("/api/requests/:id/approve-all", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  // Approval routes mirror the movement approval rules: only Admin/Supervisor
+  // may decide. Previously these required nothing beyond being logged in, so a
+  // requester could approve their own material request.
+  const requestApproval = requireAnyRole([ROLES.ADMIN, ROLES.SUPERVISOR], {
+    message: "Apenas administradores e supervisores podem aprovar ou rejeitar requisições",
+  });
 
+  app.post("/api/requests/:id/approve-all", requestApproval, async (req, res) => {
     try {
       const { comments } = req.body;
       const userName = req.user?.name || "Unknown";
@@ -2498,11 +2504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/requests/:id/approve-partial", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.post("/api/requests/:id/approve-partial", requestApproval, async (req, res) => {
     try {
       const { itemApprovals, comments } = req.body;
       const userName = req.user?.name || "Unknown";
@@ -2515,11 +2517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/requests/:id/reject-all", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.post("/api/requests/:id/reject-all", requestApproval, async (req, res) => {
     try {
       const { reason } = req.body;
       const userName = req.user?.name || "Unknown";
@@ -4152,9 +4150,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", async (req, res) => {
+  // Admin-only. The approval fields are stripped from the payload so a caller
+  // can never self-provision an already-approved account; approval goes
+  // through the dedicated approve/reject routes.
+  app.post("/api/users", requireAdmin({ message: "Apenas administradores podem criar usuários" }), async (req, res) => {
     try {
-      const data = insertUserSchema.parse(req.body);
+      const data = insertUserSchema.omit({
+        approvalStatus: true,
+        approvedBy: true,
+        approvedAt: true,
+        rejectedBy: true,
+        rejectedAt: true,
+        rejectionReason: true,
+      }).parse(req.body);
       // Hash password before storing
       const { hashPassword } = await import("./auth");
       const hashedPassword = await hashPassword(data.password);
@@ -4542,21 +4550,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve uploaded objects from local filesystem
   app.get("/objects/uploads/:filename", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     try {
       const fs = await import('fs/promises');
       const path = await import('path');
-      
-      const filename = req.params.filename;
-      const filePath = path.join(process.cwd(), 'uploads', filename);
-      
+
+      // See server/uploadPath.ts — the containment check must run on the
+      // resolved path, and is unit-tested there.
+      const filePath = resolveUploadPath(path.join(process.cwd(), 'uploads'), req.params.filename);
+      if (!filePath) {
+        return res.status(400).json({ error: "Caminho de arquivo inválido" });
+      }
+
       // Check if file exists
       try {
         await fs.access(filePath);
       } catch {
         return res.status(404).json({ error: "File not found" });
       }
-      
-      // Send file
+
+      // Uploaded content is user-supplied: only formats that cannot execute
+      // script are served inline (so <img> previews keep working); everything
+      // else is forced to download rather than run as stored XSS.
+      if (!isInlineSafe(filePath)) {
+        res.setHeader('Content-Disposition', 'attachment');
+      }
+      res.setHeader('X-Content-Type-Options', 'nosniff');
       res.sendFile(filePath);
     } catch (error) {
       console.error("Error serving file:", error);

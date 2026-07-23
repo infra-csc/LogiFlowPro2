@@ -10,30 +10,17 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Request logging. Deliberately records only metadata — serializing the
+// response body here wrote user records and other sensitive payloads into the
+// application log.
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
-    const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      const duration = Date.now() - start;
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
 
@@ -88,11 +75,29 @@ async function seedUser(
 }
 
 async function seedStartupUsers() {
+  // Roles are safe to seed anywhere — they carry no credentials.
   try {
     await seedRoles();
-    await seedUser("admin",         "Administrador", "admin@sistema.local",                 "Admin@2025",     "Adm");
-    await seedUser("omar.souza",    "Omar Souza",    "omar.souza@cscdoesporte.com.br",      "Logistica@2025", "Gestor Logistica");
-    await seedUser("eduardo.meira", "Eduardo Meira", "eduardo.meira@cscdoesporte.com.br",   "Logistica@2025", "Gestor Logistica");
+  } catch (err) {
+    log(`Startup role seed error: ${err}`);
+    return;
+  }
+
+  // User seeding is development-only and requires an explicit password from
+  // the environment. Hardcoding credentials here put a working admin login in
+  // the source tree and re-applied it on every production boot.
+  if (process.env.NODE_ENV === "production") return;
+
+  const seedPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!seedPassword) {
+    log("Skipping user seed: SEED_ADMIN_PASSWORD is not set");
+    return;
+  }
+
+  try {
+    await seedUser("admin",         "Administrador", "admin@sistema.local",               seedPassword, "Adm");
+    await seedUser("omar.souza",    "Omar Souza",    "omar.souza@cscdoesporte.com.br",    seedPassword, "Gestor Logistica");
+    await seedUser("eduardo.meira", "Eduardo Meira", "eduardo.meira@cscdoesporte.com.br", seedPassword, "Gestor Logistica");
   } catch (err) {
     log(`Startup seed error: ${err}`);
   }
@@ -107,7 +112,9 @@ async function seedStartupUsers() {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    // Do not rethrow: this handler runs synchronously, so a throw here becomes
+    // an uncaught exception that kills the process on every 500.
+    console.error("[error]", err);
   });
 
   // importantly only setup vite in development and after

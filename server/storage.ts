@@ -727,32 +727,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Request Approvals
+  // The approval writes below run in a transaction: approving the items and
+  // flipping the request status must land together, otherwise a failure
+  // halfway leaves a request whose items disagree with its own status.
   async approveRequestAll(requestId: string, approverName: string, comments?: string): Promise<void> {
-    // Get all items for this request
-    const items = await db.select().from(requestItems).where(eq(requestItems.requestId, requestId));
-    
-    // Approve all items
-    for (const item of items) {
-      await db
+    await db.transaction(async (tx) => {
+      // Approve every item in one statement — approvedQuantity is copied from
+      // each row's own quantity, so no per-item round trip is needed.
+      await tx
         .update(requestItems)
         .set({
           approvalStatus: "approved",
-          approvedQuantity: item.quantity,
+          approvedQuantity: sql`${requestItems.quantity}`,
           rejectionReason: null,
         })
-        .where(eq(requestItems.id, item.id));
-    }
-    
-    // Update the request itself
-    await db
-      .update(materialRequests)
-      .set({
-        status: "approved",
-        approvedBy: approverName,
-        approvedAt: new Date(),
-        notes: comments ? `${comments}\n---\nAprovação completa` : "Aprovação completa",
-      })
-      .where(eq(materialRequests.id, requestId));
+        .where(eq(requestItems.requestId, requestId));
+
+      await tx
+        .update(materialRequests)
+        .set({
+          status: "approved",
+          approvedBy: approverName,
+          approvedAt: new Date(),
+          notes: comments ? `${comments}\n---\nAprovação completa` : "Aprovação completa",
+        })
+        .where(eq(materialRequests.id, requestId));
+    });
   }
 
   async approveRequestPartial(
@@ -761,70 +761,75 @@ export class DatabaseStorage implements IStorage {
     itemApprovals: Array<{itemId: string, status: string, approvedQuantity?: number, rejectionReason?: string}>,
     comments?: string
   ): Promise<void> {
-    // Update each item based on approvals
-    for (const approval of itemApprovals) {
-      await db
-        .update(requestItems)
+    await db.transaction(async (tx) => {
+      // Item decisions differ per row, so these stay individual statements —
+      // but they must not be visible without the matching request status.
+      for (const approval of itemApprovals) {
+        await tx
+          .update(requestItems)
+          .set({
+            approvalStatus: approval.status as any,
+            approvedQuantity: approval.approvedQuantity,
+            rejectionReason: approval.rejectionReason || null,
+          })
+          .where(
+            and(
+              eq(requestItems.id, approval.itemId),
+              // Scope to the request being approved so a caller cannot decide
+              // items belonging to someone else's request by passing their ids.
+              eq(requestItems.requestId, requestId)
+            )
+          );
+      }
+
+      // Re-read inside the transaction so the derived status reflects the
+      // writes above rather than a pre-update snapshot.
+      const items = await tx.select().from(requestItems).where(eq(requestItems.requestId, requestId));
+      const hasApproved = items.some(i => i.approvalStatus === "approved");
+      const allRejected = items.every(i => i.approvalStatus === "rejected");
+
+      let requestStatus: string;
+      if (allRejected) {
+        requestStatus = "rejected";
+      } else if (hasApproved) {
+        requestStatus = "approved";
+      } else {
+        requestStatus = "pending_approval";
+      }
+
+      await tx
+        .update(materialRequests)
         .set({
-          approvalStatus: approval.status as any,
-          approvedQuantity: approval.approvedQuantity,
-          rejectionReason: approval.rejectionReason || null,
+          status: requestStatus as any,
+          approvedBy: approverName,
+          approvedAt: new Date(),
+          notes: comments ? `${comments}\n---\nAprovação parcial` : "Aprovação parcial",
         })
-        .where(eq(requestItems.id, approval.itemId));
-    }
-    
-    // Check if all items are approved or rejected
-    const items = await db.select().from(requestItems).where(eq(requestItems.requestId, requestId));
-    const hasApproved = items.some(i => i.approvalStatus === "approved");
-    const allRejected = items.every(i => i.approvalStatus === "rejected");
-    
-    let requestStatus: string;
-    if (allRejected) {
-      requestStatus = "rejected";
-    } else if (hasApproved) {
-      requestStatus = "approved";
-    } else {
-      requestStatus = "pending_approval";
-    }
-    
-    // Update the request
-    await db
-      .update(materialRequests)
-      .set({
-        status: requestStatus as any,
-        approvedBy: approverName,
-        approvedAt: new Date(),
-        notes: comments ? `${comments}\n---\nAprovação parcial` : "Aprovação parcial",
-      })
-      .where(eq(materialRequests.id, requestId));
+        .where(eq(materialRequests.id, requestId));
+    });
   }
 
   async rejectRequestAll(requestId: string, approverName: string, reason: string): Promise<void> {
-    // Get all items for this request
-    const items = await db.select().from(requestItems).where(eq(requestItems.requestId, requestId));
-    
-    // Reject all items
-    for (const item of items) {
-      await db
+    await db.transaction(async (tx) => {
+      await tx
         .update(requestItems)
         .set({
           approvalStatus: "rejected",
           approvedQuantity: 0,
           rejectionReason: reason,
         })
-        .where(eq(requestItems.id, item.id));
-    }
-    
-    // Update the request itself
-    await db
-      .update(materialRequests)
-      .set({
-        status: "rejected",
-        approvedBy: approverName,
-        approvedAt: new Date(),
-        rejectionReason: reason,
-      })
-      .where(eq(materialRequests.id, requestId));
+        .where(eq(requestItems.requestId, requestId));
+
+      await tx
+        .update(materialRequests)
+        .set({
+          status: "rejected",
+          approvedBy: approverName,
+          approvedAt: new Date(),
+          rejectionReason: reason,
+        })
+        .where(eq(materialRequests.id, requestId));
+    });
   }
 
   // Vehicle Types
@@ -1130,10 +1135,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLoadingOrder(id: string): Promise<void> {
-    await db.delete(loadingOrderRequests).where(eq(loadingOrderRequests.loadingOrderId, id));
-    await db.delete(loadingOrderItems).where(eq(loadingOrderItems.loadingOrderId, id));
-    await db.delete(loadingOrderTrips).where(eq(loadingOrderTrips.loadingOrderId, id));
-    await db.delete(loadingOrders).where(eq(loadingOrders.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(loadingOrderRequests).where(eq(loadingOrderRequests.loadingOrderId, id));
+      await tx.delete(loadingOrderItems).where(eq(loadingOrderItems.loadingOrderId, id));
+      await tx.delete(loadingOrderTrips).where(eq(loadingOrderTrips.loadingOrderId, id));
+      await tx.delete(loadingOrders).where(eq(loadingOrders.id, id));
+    });
   }
 
   async deleteLoadingOrderItems(loadingOrderId: string): Promise<void> {
@@ -1586,52 +1593,60 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Create the movement with the determined status
-    const [created] = await db.insert(movements).values({
-      ...movementInsert,
-      status: finalStatus
-    } as any).returning();
-    
-    // Create the junction records for events
-    if (eventIds && eventIds.length > 0) {
-      await db.insert(movementEvents).values(
-        eventIds.map((eventId: string) => ({
-          movementId: created.id,
-          eventId
-        }))
-      );
-    }
-    
-    // Create the junction records for trips
-    if (tripIds && tripIds.length > 0) {
-      await db.insert(movementTrips).values(
-        tripIds.map((tripId: string) => ({
-          movementId: created.id,
-          tripId
-        }))
-      );
-    }
+    // The movement and its junction rows are one unit: a failure partway
+    // through used to leave a movement with no events/trips/requests attached,
+    // which reads as a valid but silently incomplete record.
+    return await db.transaction(async (tx) => {
+      const [created] = await tx.insert(movements).values({
+        ...movementInsert,
+        status: finalStatus
+      } as any).returning();
 
-    // Create the junction records for requests (multi-request support)
-    if (requestIds && requestIds.length > 0) {
-      await db.insert(movementRequests).values(
-        requestIds.map((requestId: string) => ({
-          movementId: created.id,
-          requestId
-        }))
-      );
-    }
-    
-    return created;
+      // Create the junction records for events
+      if (eventIds && eventIds.length > 0) {
+        await tx.insert(movementEvents).values(
+          eventIds.map((eventId: string) => ({
+            movementId: created.id,
+            eventId
+          }))
+        );
+      }
+
+      // Create the junction records for trips
+      if (tripIds && tripIds.length > 0) {
+        await tx.insert(movementTrips).values(
+          tripIds.map((tripId: string) => ({
+            movementId: created.id,
+            tripId
+          }))
+        );
+      }
+
+      // Create the junction records for requests (multi-request support)
+      if (requestIds && requestIds.length > 0) {
+        await tx.insert(movementRequests).values(
+          requestIds.map((requestId: string) => ({
+            movementId: created.id,
+            requestId
+          }))
+        );
+      }
+
+      return created;
+    });
   }
 
   async updateMovementRequests(movementId: string, requestIds: string[]): Promise<void> {
-    await db.delete(movementRequests).where(eq(movementRequests.movementId, movementId));
-    if (requestIds.length > 0) {
-      await db.insert(movementRequests).values(
-        requestIds.map((requestId) => ({ movementId, requestId }))
-      );
-    }
+    // Delete-then-insert: without a transaction a failing insert would leave
+    // the movement with its request links wiped and nothing put back.
+    await db.transaction(async (tx) => {
+      await tx.delete(movementRequests).where(eq(movementRequests.movementId, movementId));
+      if (requestIds.length > 0) {
+        await tx.insert(movementRequests).values(
+          requestIds.map((requestId) => ({ movementId, requestId }))
+        );
+      }
+    });
   }
 
   async updateMovement(id: string, movement: Partial<InsertMovement>): Promise<Movement> {
@@ -1720,12 +1735,16 @@ export class DatabaseStorage implements IStorage {
     await db.delete(movementItems).where(eq(movementItems.id, id));
   }
 
+  // Manual cascade: if one of these fails midway the children are gone but the
+  // parent survives (or the reverse), leaving orphan rows behind.
   async deleteMovement(id: string): Promise<void> {
-    await db.delete(movementAuditLogs).where(eq(movementAuditLogs.movementId, id));
-    await db.delete(movementItems).where(eq(movementItems.movementId, id));
-    await db.delete(movementEvents).where(eq(movementEvents.movementId, id));
-    await db.delete(movementTrips).where(eq(movementTrips.movementId, id));
-    await db.delete(movements).where(eq(movements.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(movementAuditLogs).where(eq(movementAuditLogs.movementId, id));
+      await tx.delete(movementItems).where(eq(movementItems.movementId, id));
+      await tx.delete(movementEvents).where(eq(movementEvents.movementId, id));
+      await tx.delete(movementTrips).where(eq(movementTrips.movementId, id));
+      await tx.delete(movements).where(eq(movements.id, id));
+    });
   }
 
   async getRecentSuppliers(limit: number = 10): Promise<string[]> {
