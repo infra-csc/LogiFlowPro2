@@ -23,14 +23,6 @@ import { EmptyState } from "@/components/empty-state";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 
-const statusLabel: Record<string, string> = {
-  draft: "Rascunho",
-  pending_approval: "Pendente",
-  approved: "Aprovado",
-  rejected: "Rejeitado",
-  cutoff_locked: "Bloqueado",
-};
-
 const statusFilterIcon: Record<string, React.ElementType> = {
   draft: Clock,
   pending_approval: Clock,
