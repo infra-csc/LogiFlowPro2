@@ -2100,12 +2100,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If status is being changed to pending_approval, validate request window and set submittedAt
       const updateData: any = { ...data };
       if (data.status === "pending_approval") {
+        // An empty request must not reach approval: approve-all would then run
+        // over zero items and mark it "approved" without anything to fulfill.
+        const items = await storage.getRequestItems(req.params.id);
+        if (items.length === 0) {
+          return res.status(400).json({
+            error: "Requisição sem itens",
+            message: "Adicione ao menos um item antes de enviar para aprovação.",
+          });
+        }
+
         // Validate request window if event has it configured
         const event = await storage.getEvent(currentRequest.eventId);
         if (!event) {
           return res.status(404).json({ error: "Event not found" });
         }
-        
+
         // Check if event has request window configured
         if (event.requestWindowStart && event.requestWindowEnd) {
           const now = new Date();
