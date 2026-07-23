@@ -1313,7 +1313,21 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                                   <FormControl>
                                     <SearchableSelect
                                       value={field.value || ""}
-                                      onChange={(val) => field.onChange(val || undefined)}
+                                      onChange={(val) => {
+                                        field.onChange(val || undefined);
+                                        // Infer the event from the chosen order so the user
+                                        // doesn't have to select it separately first. A loading
+                                        // order belongs to one event; add it if not already there.
+                                        if (val) {
+                                          const order = approvedOrders.find((o) => o.id === val);
+                                          if (order?.eventId) {
+                                            const current = form.getValues("eventIds") || [];
+                                            if (!current.includes(order.eventId)) {
+                                              form.setValue("eventIds", [...current, order.eventId], { shouldDirty: true });
+                                            }
+                                          }
+                                        }
+                                      }}
                                       options={orderOptions}
                                       placeholder="Selecionar ordem (opcional)"
                                       searchPlaceholder="Buscar por número ou evento..."
@@ -1354,7 +1368,7 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                                   {selectedEvents.length === 0 && (
                                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                                       <Info className="h-3 w-3" />
-                                      Selecione um evento para filtrar as ordens disponíveis.
+                                      Escolha a ordem — o evento é preenchido automaticamente. (Selecionar um evento antes apenas filtra a lista.)
                                     </p>
                                   )}
                                   <FormMessage />
@@ -1430,7 +1444,19 @@ export function MovementDialog({ children, movement, prefill, open: controlledOp
                                       <FormControl>
                                         <SearchableSelect
                                           value=""
-                                          onChange={(val) => { if (val) field.onChange([...currentIds, val]); }}
+                                          onChange={(val) => {
+                                            if (!val) return;
+                                            field.onChange([...currentIds, val]);
+                                            // Infer the event from the added request so it doesn't
+                                            // have to be picked separately first.
+                                            const req = linkableRequests.find((r) => r.id === val);
+                                            if (req?.eventId) {
+                                              const current = form.getValues("eventIds") || [];
+                                              if (!current.includes(req.eventId)) {
+                                                form.setValue("eventIds", [...current, req.eventId], { shouldDirty: true });
+                                              }
+                                            }
+                                          }}
                                           options={requestOptions}
                                           placeholder="Adicionar requisição..."
                                           searchPlaceholder="Buscar requisição por nome ou evento..."
