@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useCrudMutations } from "@/hooks/use-crud-mutations";
 import { Plus, Edit, MapPin } from "lucide-react";
 import {
   Form,
@@ -73,7 +72,6 @@ const typeLabels = {
 };
 
 export default function LocationsPage() {
-  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,32 +93,26 @@ export default function LocationsPage() {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      const url = editingLocation ? `/api/locations/${editingLocation.id}` : "/api/locations";
-      const method = editingLocation ? "PATCH" : "POST";
-      const res = await apiRequest(method, url, data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Erro ao salvar localização");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
-      toast({ title: editingLocation ? "Localização atualizada" : "Localização criada com sucesso" });
-      setDialogOpen(false);
-      setEditingLocation(null);
-      form.reset();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingLocation(null);
+    form.reset();
+  };
+
+  const { create, update } = useCrudMutations<FormData>(
+    "/api/locations",
+    { entity: "Localização", created: "Localização criada com sucesso", updated: "Localização atualizada" },
+    { onCreated: closeDialog, onUpdated: closeDialog }
+  );
+  const isSaving = create.isPending || update.isPending;
+
+  const onSubmit = (data: FormData) => {
+    if (editingLocation) {
+      update.mutate({ id: editingLocation.id, data });
+    } else {
+      create.mutate(data);
+    }
+  };
 
   const handleEdit = (location: Location) => {
     setEditingLocation(location);
@@ -171,7 +163,7 @@ export default function LocationsPage() {
                   <DialogTitle>{editingLocation ? "Editar Localização" : "Nova Localização"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -334,8 +326,8 @@ export default function LocationsPage() {
                       >
                         Cancelar
                       </Button>
-                      <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
-                        {createMutation.isPending ? "Salvando..." : editingLocation ? "Salvar Localização" : "Criar Localização"}
+                      <Button type="submit" disabled={isSaving} data-testid="button-submit">
+                        {isSaving ? "Salvando..." : editingLocation ? "Salvar Localização" : "Criar Localização"}
                       </Button>
                     </div>
                   </form>

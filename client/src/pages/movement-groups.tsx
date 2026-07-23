@@ -1,5 +1,5 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { useCrudMutations } from "@/hooks/use-crud-mutations";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertMovementGroupSchema, type MovementGroup, type InsertMovementGroup, type MovementTypeConfig } from "@shared/schema";
@@ -28,7 +27,6 @@ const formSchema = insertMovementGroupSchema.extend({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function MovementGroupsPage() {
-  const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<MovementGroup | null>(null);
 
@@ -58,73 +56,15 @@ export default function MovementGroupsPage() {
     groups.map((g) => [g.id, allTypes.filter((t) => t.groupId === g.id).length])
   );
 
-  const createMutation = useMutation({
-    mutationFn: async (data: InsertMovementGroup) => {
-      const res = await apiRequest("POST", "/api/movement-groups", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movement-groups"] });
-      setIsDialogOpen(false);
-      form.reset();
-      toast({
-        title: "Grupo criado",
-        description: "Grupo de movimentação criado com sucesso.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao criar grupo de movimentação.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertMovementGroup> }) => {
-      const res = await apiRequest("PATCH", `/api/movement-groups/${id}`, data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movement-groups"] });
-      setIsDialogOpen(false);
-      setEditingGroup(null);
-      form.reset();
-      toast({
-        title: "Grupo atualizado",
-        description: "Grupo de movimentação atualizado com sucesso.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar grupo de movimentação.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest("DELETE", `/api/movement-groups/${id}`);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movement-groups"] });
-      toast({
-        title: "Grupo excluído",
-        description: "Grupo de movimentação excluído com sucesso.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir grupo de movimentação.",
-        variant: "destructive",
-      });
-    },
-  });
+  const { create: createMutation, update: updateMutation, remove: deleteMutation } =
+    useCrudMutations<InsertMovementGroup>(
+      "/api/movement-groups",
+      { entity: "Grupo", created: "Grupo criado", updated: "Grupo atualizado", deleted: "Grupo excluído" },
+      {
+        onCreated: () => { setIsDialogOpen(false); form.reset(); },
+        onUpdated: () => { setIsDialogOpen(false); setEditingGroup(null); form.reset(); },
+      }
+    );
 
   function handleCreate() {
     setEditingGroup(null);

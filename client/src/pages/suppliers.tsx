@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertSupplierSchema, type Supplier } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useCrudMutations } from "@/hooks/use-crud-mutations";
 import { Plus, Pencil, Trash2, UserCircle, Phone, Mail, Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/page-loading";
@@ -49,7 +48,6 @@ import { userIsAdmin } from "@/lib/authz";
 const formSchema = insertSupplierSchema;
 
 export default function SuppliersPage() {
-  const { toast } = useToast();
   const { user } = useAuth();
   const canWrite = userIsAdmin(user);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -75,56 +73,21 @@ export default function SuppliersPage() {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const res = await apiRequest("POST", "/api/suppliers", data);
-      if (!res.ok) throw new Error("Failed to create supplier");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
-      toast({ title: "Fornecedor criado com sucesso" });
-      setDialogOpen(false);
-      form.reset();
-    },
-    onError: () => {
-      toast({ title: "Erro ao criar fornecedor", variant: "destructive" });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; updates: Partial<z.infer<typeof formSchema>> }) => {
-      const res = await apiRequest("PATCH", `/api/suppliers/${data.id}`, data.updates);
-      if (!res.ok) throw new Error("Failed to update supplier");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
-      toast({ title: "Fornecedor atualizado com sucesso" });
-      setDialogOpen(false);
-      setEditingSupplier(null);
-      form.reset();
-    },
-    onError: () => {
-      toast({ title: "Erro ao atualizar fornecedor", variant: "destructive" });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest("DELETE", `/api/suppliers/${id}`, {});
-      if (!res.ok) throw new Error("Failed to delete supplier");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
-      toast({ title: "Fornecedor excluído com sucesso" });
-      setDeleteDialogOpen(false);
-      setSupplierToDelete(null);
-    },
-    onError: () => {
-      toast({ title: "Erro ao excluir fornecedor", variant: "destructive" });
-    },
-  });
+  const { create: createMutation, update: updateMutation, remove: deleteMutation } =
+    useCrudMutations<z.infer<typeof formSchema>>(
+      "/api/suppliers",
+      {
+        entity: "Fornecedor",
+        created: "Fornecedor criado com sucesso",
+        updated: "Fornecedor atualizado com sucesso",
+        deleted: "Fornecedor excluído com sucesso",
+      },
+      {
+        onCreated: () => { setDialogOpen(false); form.reset(); },
+        onUpdated: () => { setDialogOpen(false); setEditingSupplier(null); form.reset(); },
+        onDeleted: () => { setDeleteDialogOpen(false); setSupplierToDelete(null); },
+      }
+    );
 
   if (isLoading) {
     return <PageLoading message="Carregando fornecedores..." />;
@@ -132,7 +95,7 @@ export default function SuppliersPage() {
 
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
     if (editingSupplier) {
-      updateMutation.mutate({ id: editingSupplier.id, updates: data });
+      updateMutation.mutate({ id: editingSupplier.id, data });
     } else {
       createMutation.mutate(data);
     }
