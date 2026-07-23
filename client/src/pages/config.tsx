@@ -1,245 +1,135 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Settings, Truck, User, Warehouse as WarehouseIcon, Save, Bell, Clock, Calendar, Lock, KeyRound } from "lucide-react";
+import { Truck, User, Warehouse as WarehouseIcon, Bell, Calendar, Lock, KeyRound, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { Vehicle, Driver, Dock } from "@shared/schema";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Config() {
-  const { toast } = useToast();
   const { data: vehicles } = useQuery<Vehicle[]>({ queryKey: ["/api/vehicles"] });
   const { data: drivers } = useQuery<Driver[]>({ queryKey: ["/api/drivers"] });
   const { data: docks } = useQuery<Dock[]>({ queryKey: ["/api/docks"] });
 
-  // Local state for system settings form
-  const [cutoffDays, setCutoffDays] = useState("3");
-  const [cutoffTime, setCutoffTime] = useState("17:00");
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [inAppNotifications, setInAppNotifications] = useState(true);
-  const [autoApproveSmall, setAutoApproveSmall] = useState(false);
-  const [maxItemsPerRequest, setMaxItemsPerRequest] = useState("50");
-  const [sessionTimeout, setSessionTimeout] = useState("480");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsSaving(false);
-    toast({
-      title: "Configurações salvas",
-      description: "As preferências do sistema foram atualizadas com sucesso.",
-    });
-  };
-
+  // Each resource card links to the page that actually manages it, instead of
+  // a dead "+" that did nothing.
   const sections = [
-    {
-      title: "Veículos",
-      icon: Truck,
-      count: vehicles?.length || 0,
-      description: "Gerencie a frota de veículos",
-      testId: "vehicles-section",
-    },
-    {
-      title: "Motoristas",
-      icon: User,
-      count: drivers?.length || 0,
-      description: "Gerencie o cadastro de motoristas",
-      testId: "drivers-section",
-    },
-    {
-      title: "Docas",
-      icon: WarehouseIcon,
-      count: docks?.length || 0,
-      description: "Configure docas de carregamento",
-      testId: "docks-section",
-    },
+    { title: "Veículos", icon: Truck, count: vehicles?.length ?? 0, description: "Gerencie a frota de veículos", url: "/config/vehicles", testId: "vehicles-section" },
+    { title: "Motoristas", icon: User, count: drivers?.length ?? 0, description: "Gerencie o cadastro de motoristas", url: "/config/drivers", testId: "drivers-section" },
+    { title: "Docas", icon: WarehouseIcon, count: docks?.length ?? 0, description: "Configure docas de carregamento", url: "/config/docks", testId: "docks-section" },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Configurações do Sistema"
-        description="Gerencie configurações e recursos do sistema"
+        description="Gerencie recursos, sua conta e as preferências do sistema"
       />
 
-      {/* Resource summary cards */}
+      {/* Resource summary cards — now real links to their management pages */}
       <div className="grid gap-4 md:grid-cols-3">
         {sections.map((section) => (
-          <Card key={section.title} className="hover-elevate border-border/60 overflow-hidden" data-testid={section.testId}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-base text-foreground flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <section.icon className="h-4 w-4 text-primary/70" />
+          <Link key={section.title} href={section.url} data-testid={section.testId}>
+            <Card className="hover-elevate border-border/60 overflow-hidden cursor-pointer">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold text-base text-foreground flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <section.icon className="h-4 w-4 text-primary/70" />
+                    </div>
+                    {section.title}
                   </div>
-                  {section.title}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <Button variant="ghost" size="icon" data-testid={`button-add-${section.title.toLowerCase()}`}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="text-2xl font-bold tracking-tight mb-1">{section.count}</div>
-              <p className="text-sm text-muted-foreground">{section.description}</p>
-            </CardContent>
-          </Card>
+                <div className="text-2xl font-bold tracking-tight mb-1">{section.count}</div>
+                <p className="text-sm text-muted-foreground">{section.description}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
-      {/* Requisition settings */}
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Calendar className="h-4 w-4 text-primary/70" />
-            </div>
-            <div>
-              <p className="font-semibold text-base">Configurações de Requisição</p>
-              <p className="text-xs text-muted-foreground">Prazos e limites para criação de requisições</p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="cutoff-days">Prazo de corte padrão (dias antes do evento)</Label>
-              <Input
-                id="cutoff-days"
-                type="number"
-                min="1"
-                max="30"
-                value={cutoffDays}
-                onChange={(e) => setCutoffDays(e.target.value)}
-                data-testid="input-cutoff-days"
-              />
-              <p className="text-xs text-muted-foreground">Número de dias antes do evento em que as requisições são bloqueadas</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cutoff-time">Horário de corte</Label>
-              <Input
-                id="cutoff-time"
-                type="time"
-                value={cutoffTime}
-                onChange={(e) => setCutoffTime(e.target.value)}
-                data-testid="input-cutoff-time"
-              />
-              <p className="text-xs text-muted-foreground">Horário limite para envio de requisições no dia do prazo</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max-items">Máximo de itens por requisição</Label>
-              <Input
-                id="max-items"
-                type="number"
-                min="1"
-                max="500"
-                value={maxItemsPerRequest}
-                onChange={(e) => setMaxItemsPerRequest(e.target.value)}
-                data-testid="input-max-items"
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
-              <div>
-                <p className="text-sm font-medium">Aprovação automática (pequenas quantidades)</p>
-                <p className="text-xs text-muted-foreground">Aprovar automaticamente requisições com quantidade total abaixo de 10</p>
-              </div>
-              <Switch
-                checked={autoApproveSmall}
-                onCheckedChange={setAutoApproveSmall}
-                data-testid="switch-auto-approve"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Notification settings */}
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Bell className="h-4 w-4 text-primary/70" />
-            </div>
-            <div>
-              <p className="font-semibold text-base">Configurações de Notificação</p>
-              <p className="text-xs text-muted-foreground">Canais e preferências de envio de notificações</p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
-              <div>
-                <p className="text-sm font-medium">Notificações por e-mail</p>
-                <p className="text-xs text-muted-foreground">Enviar e-mail para eventos importantes (aprovações, rejeições, mentions)</p>
-              </div>
-              <Switch
-                checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
-                data-testid="switch-email-notifications"
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
-              <div>
-                <p className="text-sm font-medium">Notificações no sistema</p>
-                <p className="text-xs text-muted-foreground">Exibir notificações em tempo real no painel</p>
-              </div>
-              <Switch
-                checked={inAppNotifications}
-                onCheckedChange={setInAppNotifications}
-                data-testid="switch-inapp-notifications"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Security settings */}
-      <Card className="border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Lock className="h-4 w-4 text-primary/70" />
-            </div>
-            <div>
-              <p className="font-semibold text-base">Segurança e Sessão</p>
-              <p className="text-xs text-muted-foreground">Tempo de expiração de sessão e configurações de segurança</p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="session-timeout">Tempo limite de sessão (minutos)</Label>
-              <Input
-                id="session-timeout"
-                type="number"
-                min="30"
-                max="1440"
-                value={sessionTimeout}
-                onChange={(e) => setSessionTimeout(e.target.value)}
-                data-testid="input-session-timeout"
-              />
-              <p className="text-xs text-muted-foreground">Sessões inativas serão encerradas após este período</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Change own password — available to every logged-in user */}
+      {/* Change own password — the one settings block on this page that actually
+          persists, so it comes first. Available to every logged-in user. */}
       <ChangePasswordCard />
 
-      {/* Save button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving} data-testid="button-save-config">
-          <Save className="mr-2 h-4 w-4" />
-          {isSaving ? "Salvando..." : "Salvar Configurações"}
-        </Button>
-      </div>
+      {/* Notifications live on their own page, which really persists. Link there
+          instead of duplicating the controls here with fake toggles. */}
+      <Link href="/notification-settings" data-testid="link-notification-settings">
+        <Card className="border-border/60 hover-elevate cursor-pointer">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Bell className="h-4 w-4 text-primary/70" />
+              </div>
+              <div>
+                <p className="font-semibold text-base">Notificações</p>
+                <p className="text-xs text-muted-foreground">Canais e preferências de envio de notificações</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      {/* Planned system settings. These are not wired to any backend yet, so
+          they are shown disabled and clearly labelled instead of pretending to
+          save — the old page faked a success toast without persisting anything. */}
+      <PlannedSettingsPreview />
     </div>
+  );
+}
+
+// Read-only preview of settings that are designed but not yet functional. Kept
+// visible so the intent is clear, but disabled and badged so the app never
+// claims to save something it doesn't.
+function PlannedSettingsPreview() {
+  return (
+    <Card className="border-border/60 border-dashed">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="font-semibold text-base">Preferências do Sistema</p>
+          </div>
+          <Badge variant="outline" data-testid="badge-planned-settings">Em breve</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Prazos de corte, aprovação automática e expiração de sessão ainda não são aplicados pelo sistema. Os campos abaixo são uma prévia do que está planejado.
+        </p>
+
+        <fieldset disabled className="grid gap-4 sm:grid-cols-2 opacity-60">
+          <div className="space-y-2">
+            <Label htmlFor="cutoff-days">Prazo de corte padrão (dias antes do evento)</Label>
+            <Input id="cutoff-days" type="number" defaultValue="3" data-testid="input-cutoff-days" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="max-items">Máximo de itens por requisição</Label>
+            <Input id="max-items" type="number" defaultValue="50" data-testid="input-max-items" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="session-timeout">Tempo limite de sessão (minutos)</Label>
+            <Input id="session-timeout" type="number" defaultValue="480" data-testid="input-session-timeout" />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
+            <div>
+              <p className="text-sm font-medium flex items-center gap-2"><Lock className="h-3.5 w-3.5" /> Aprovação automática</p>
+              <p className="text-xs text-muted-foreground">Aprovar requisições com quantidade total abaixo de 10</p>
+            </div>
+            <Switch checked={false} data-testid="switch-auto-approve" />
+          </div>
+        </fieldset>
+      </CardContent>
+    </Card>
   );
 }
 
