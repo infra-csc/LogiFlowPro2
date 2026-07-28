@@ -113,6 +113,9 @@ export default function Events() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [windowFilter, setWindowFilter] = useState("all");
+  // Date range over the event date (eventDate). Empty string = open-ended.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const { data: events, isLoading } = useQuery<Event[]>({
     queryKey: ["/api/events"],
@@ -146,10 +149,12 @@ export default function Events() {
     return Array.from(s);
   }, [events]);
 
-  const activeFilters = [statusFilter !== "all", windowFilter !== "all"].filter(Boolean).length;
+  const activeFilters = [statusFilter !== "all", windowFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
   const clearFilters = () => {
     setStatusFilter("all");
     setWindowFilter("all");
+    setDateFrom("");
+    setDateTo("");
   };
 
   const filtered = useMemo(() => {
@@ -171,9 +176,24 @@ export default function Events() {
         if (windowFilter === "future" && ws !== "future") return false;
         if (windowFilter === "closed" && ws !== "closed") return false;
       }
+      // Date-range filter over the event date. Compare on the calendar day so a
+      // "from" of the event's own day still matches regardless of time.
+      if (dateFrom || dateTo) {
+        if (!e.eventDate) return false;
+        const eventDay = new Date(e.eventDate);
+        eventDay.setHours(0, 0, 0, 0);
+        if (dateFrom) {
+          const from = new Date(dateFrom + "T00:00:00");
+          if (eventDay < from) return false;
+        }
+        if (dateTo) {
+          const to = new Date(dateTo + "T00:00:00");
+          if (eventDay > to) return false;
+        }
+      }
       return true;
     });
-  }, [events, search, statusFilter, windowFilter]);
+  }, [events, search, statusFilter, windowFilter, dateFrom, dateTo]);
 
   // Stats
   const totalEvents = events?.length || 0;
@@ -300,6 +320,28 @@ export default function Events() {
                 <SelectItem value="closed">Período encerrado</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Data do evento — de</Label>
+            <Input
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => setDateFrom(e.target.value)}
+              data-testid="filter-date-from"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Data do evento — até</Label>
+            <Input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              data-testid="filter-date-to"
+            />
           </div>
         </FilterBar>
       )}
