@@ -4011,7 +4011,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Update Movement Status
-  app.patch("/api/movements/:id/status", requireAdmin(), async (req, res) => {
+  // Same operators who run a movement (start/pause/finish) may change its
+  // status. This was admin-only, so the 'Finalizar' button — shown to
+  // Almoxarifado too — got a 403 and the status silently stayed in_progress,
+  // leaving the scanner open. Matches the create/items routes' roles.
+  app.patch("/api/movements/:id/status", requireAnyRole([ROLES.ADMIN, ROLES.ALMOXARIFADO]), async (req, res) => {
     try {
       const movement = await storage.getMovement(req.params.id);
       if (!movement) {
