@@ -745,11 +745,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = await storage.getEvent(eventId);
       if (!event) return res.status(404).json({ error: "Event not found" });
 
+      // Scoped to this event in SQL (fast). The JS filters below are kept as a
+      // defensive no-op so the result is correct even if a scoped query ever
+      // returns extra rows.
       const [allRequests, allLoadingOrders, allTrips, allMovements] = await Promise.all([
-        storage.getMaterialRequests(),
-        storage.getLoadingOrders(),
-        storage.getTrips(),
-        storage.getMovements(),
+        storage.getMaterialRequests(eventId),
+        storage.getLoadingOrders(eventId),
+        storage.getTrips(eventId),
+        storage.getMovements(eventId),
       ]);
 
       const requests = (allRequests as any[]).filter((r) => r.eventId === eventId);

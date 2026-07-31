@@ -166,7 +166,7 @@ export interface IStorage {
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
 
   // Material Requests
-  getMaterialRequests(): Promise<MaterialRequest[]>;
+  getMaterialRequests(eventId?: string): Promise<MaterialRequest[]>;
   getMaterialRequestsByUser(userId: string): Promise<MaterialRequest[]>;
   getMaterialRequest(id: string): Promise<MaterialRequest | undefined>;
   createMaterialRequest(request: InsertMaterialRequest): Promise<MaterialRequest>;
@@ -217,7 +217,7 @@ export interface IStorage {
   deleteDock(id: string): Promise<void>;
 
   // Trips
-  getTrips(): Promise<Trip[]>;
+  getTrips(eventId?: string): Promise<Trip[]>;
   getTrip(id: string): Promise<Trip | undefined>;
   createTrip(trip: InsertTrip): Promise<Trip>;
   updateTrip(id: string, trip: Partial<InsertTrip>): Promise<Trip>;
@@ -237,7 +237,7 @@ export interface IStorage {
   deleteTripDestinations(tripId: string): Promise<void>;
 
   // Loading Orders
-  getLoadingOrders(): Promise<LoadingOrder[]>;
+  getLoadingOrders(eventId?: string): Promise<LoadingOrder[]>;
   getLoadingOrder(id: string): Promise<LoadingOrder | undefined>;
   createLoadingOrder(order: InsertLoadingOrder): Promise<LoadingOrder>;
   updateLoadingOrder(id: string, order: Partial<InsertLoadingOrder>): Promise<LoadingOrder>;
@@ -265,7 +265,7 @@ export interface IStorage {
   updateLoadingOrderRequestSlot(loadingOrderId: string, requestId: string, vehicleSlot: number): Promise<void>;
 
   // Movements
-  getMovements(): Promise<Movement[]>;
+  getMovements(eventId?: string): Promise<Movement[]>;
   getMovement(id: string): Promise<Movement | undefined>;
   getMovementsByLoadingOrder(loadingOrderId: string): Promise<Movement[]>;
   createMovement(movement: InsertMovement): Promise<Movement>;
@@ -530,7 +530,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Material Requests
-  async getMaterialRequests(): Promise<MaterialRequest[]> {
+  // eventId (optional) scopes the query to one event in SQL — used by the
+  // event overview so it no longer loads every request just to filter in JS.
+  async getMaterialRequests(eventId?: string): Promise<MaterialRequest[]> {
     const requests = await db
       .select({
         id: materialRequests.id,
@@ -554,6 +556,7 @@ export class DatabaseStorage implements IStorage {
       .from(materialRequests)
       .leftJoin(events, eq(materialRequests.eventId, events.id))
       .leftJoin(users, eq(materialRequests.requestedBy, users.id))
+      .where(eventId ? eq(materialRequests.eventId, eventId) : undefined)
       .orderBy(desc(materialRequests.createdAt));
 
     return requests as any;
@@ -974,8 +977,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Trips
-  async getTrips(): Promise<Trip[]> {
+  async getTrips(eventId?: string): Promise<Trip[]> {
     return await db.query.trips.findMany({
+      where: eventId ? eq(trips.eventId, eventId) : undefined,
       with: {
         event: true,
         vehicle: true,
@@ -1051,7 +1055,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Loading Orders
-  async getLoadingOrders(): Promise<any[]> {
+  async getLoadingOrders(eventId?: string): Promise<any[]> {
     const itemsAgg = db
       .select({
         loadingOrderId: loadingOrderItems.loadingOrderId,
@@ -1085,6 +1089,7 @@ export class DatabaseStorage implements IStorage {
       .from(loadingOrders)
       .leftJoin(events, eq(loadingOrders.eventId, events.id))
       .leftJoin(itemsAgg, eq(loadingOrders.id, itemsAgg.loadingOrderId))
+      .where(eventId ? eq(loadingOrders.eventId, eventId) : undefined)
       .orderBy(desc(loadingOrders.createdAt));
 
     // Resolve user names for createdBy
@@ -1495,12 +1500,29 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getMovements(): Promise<Movement[]> {
-    // Get all movements, then batch-load their relations (3 queries total)
-    const movementsData = await db
-      .select()
-      .from(movements)
-      .orderBy(desc(movements.createdAt));
+  async getMovements(eventId?: string): Promise<Movement[]> {
+    // When scoped to an event, first resolve the movement ids linked to it via
+    // the movement_events junction (same semantics as the JS `m.events` filter),
+    // then load only those instead of every movement in the system.
+    let movementsData;
+    if (eventId) {
+      const linked = await db
+        .select({ movementId: movementEvents.movementId })
+        .from(movementEvents)
+        .where(eq(movementEvents.eventId, eventId));
+      const ids = linked.map((l) => l.movementId);
+      if (ids.length === 0) return [];
+      movementsData = await db
+        .select()
+        .from(movements)
+        .where(inArray(movements.id, ids))
+        .orderBy(desc(movements.createdAt));
+    } else {
+      movementsData = await db
+        .select()
+        .from(movements)
+        .orderBy(desc(movements.createdAt));
+    }
 
     return (await this.attachMovementRelations(movementsData)) as any;
   }
