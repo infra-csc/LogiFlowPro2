@@ -76,6 +76,20 @@ export default function Requests() {
     return [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [requests, statusFilter, eventFilter]);
 
+  // Group requisitions under their event — one event, its requisitions listed
+  // inside — and render as a list rather than a grid of cards.
+  const groupedByEvent = useMemo(() => {
+    const groups = new Map<string, { eventName: string; requests: typeof filteredRequests }>();
+    for (const r of filteredRequests) {
+      const key = r.eventId || "__none__";
+      if (!groups.has(key)) {
+        groups.set(key, { eventName: r.event?.name || "Evento não vinculado", requests: [] });
+      }
+      groups.get(key)!.requests.push(r);
+    }
+    return Array.from(groups.values());
+  }, [filteredRequests]);
+
   const stats = useMemo(() => {
     if (!requests) return { draft: 0, pending: 0, approved: 0, rejected: 0, total: 0 };
     return {
@@ -276,72 +290,58 @@ export default function Requests() {
           action={{ label: "Limpar Filtros", onClick: clearFilters }}
         />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredRequests.map((request) => {
-            return (
-              <Card
-                key={request.id}
-                className="hover-elevate border-border/60"
-                data-testid={`card-request-${request.id}`}
-              >
-                <CardContent className="p-4">
-                  {/* Header: ID + Area + Status */}
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-[10px] font-medium text-primary font-mono mb-0.5">
+        <div className="space-y-6">
+          {groupedByEvent.map((group) => (
+            <div key={group.eventName} data-testid={`event-group-${group.eventName}`}>
+              {/* Event header — the requisitions of this event are listed below */}
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <CalendarDays className="h-4 w-4 text-primary shrink-0" />
+                <h3 className="font-semibold text-sm text-foreground truncate">{group.eventName}</h3>
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {group.requests.length} {group.requests.length === 1 ? "requisição" : "requisições"}
+                </span>
+              </div>
+
+              <Card className="border-border/60 overflow-hidden">
+                <div className="divide-y divide-border/40">
+                  {group.requests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="flex items-center gap-3 px-4 py-3 hover-elevate"
+                      data-testid={`row-request-${request.id}`}
+                    >
+                      <span className="text-[10px] font-medium text-primary font-mono w-16 shrink-0">
                         REQ-{numericIdMap.get(request.id) || request.id.slice(0, 8).toUpperCase()}
                       </span>
-                      <h3 className="font-semibold text-base text-foreground leading-tight">
+                      <span className="font-medium text-sm text-foreground truncate flex-1 min-w-0">
                         {request.area}
-                      </h3>
-                    </div>
-                    <div className="shrink-0">
-                      <StatusBadge status={request.status} />
-                    </div>
-                  </div>
-
-                  {/* Event subtitle */}
-                  <p className="text-xs text-muted-foreground truncate mb-3">
-                    {request.event?.name || "Evento não vinculado"}
-                  </p>
-
-                  {/* Compact metadata */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-muted-foreground">{request.requestedByUser?.name || "Usuário"}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-muted-foreground">{getDateLabel(request.status)}:</span>
-                      <span className="text-foreground">{formatDate(getDateValue(request))}</span>
-                    </div>
-                  </div>
-
-                  {/* Divider + Actions */}
-                  <div className="flex items-center justify-between pt-3 border-t border-border/40">
-                    <div className="flex items-center gap-2">
-                      <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                        {request.requestedByUser?.name?.charAt(0) || "U"}
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {request.event?.client || request.requestedByUser?.name || "—"}
                       </span>
+                      <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                        <User className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate max-w-[8rem]">{request.requestedByUser?.name || "Usuário"}</span>
+                      </div>
+                      <span className="hidden md:inline text-xs text-muted-foreground shrink-0 w-28 text-right">
+                        {formatDate(getDateValue(request))}
+                      </span>
+                      <div className="shrink-0">
+                        <StatusBadge status={request.status} />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(request)}
+                        data-testid={`button-view-request-${request.id}`}
+                        className="shrink-0"
+                      >
+                        <Eye className="h-3.5 w-3.5 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Detalhes</span>
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(request)}
-                      data-testid={`button-view-request-${request.id}`}
-                    >
-                      <Eye className="h-3.5 w-3.5 mr-1.5" />
-                      Detalhes
-                    </Button>
-                  </div>
-                </CardContent>
+                  ))}
+                </div>
               </Card>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 
