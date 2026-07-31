@@ -178,6 +178,8 @@ export default function Vehicles() {
     const q = search.toLowerCase();
     return (
       (v.plate ?? "").toLowerCase().includes(q) ||
+      (v.truckPlate ?? "").toLowerCase().includes(q) ||
+      (v.trailerPlate ?? "").toLowerCase().includes(q) ||
       (v.type && v.type.toLowerCase().includes(q)) ||
       (v.model && v.model.toLowerCase().includes(q)) ||
       getVehicleTypeName(v.vehicleTypeId).toLowerCase().includes(q)
@@ -314,8 +316,11 @@ export default function Vehicles() {
                   ))}
                 </div>
 
-                {/* Placas */}
-                <SectionDivider icon={Tag} label="Placas adicionais" />
+                {/* Placas — cavalo e carreta (conjuntos com duas placas) */}
+                <SectionDivider icon={Tag} label="Placa do Cavalo e da Carreta" />
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Para conjuntos (cavalo + carreta), informe as duas placas. Veículos de unidade única podem usar apenas a “Placa” acima.
+                </p>
 
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
@@ -323,14 +328,14 @@ export default function Vehicles() {
                     name="truckPlate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Chapa Cavalo</FormLabel>
+                        <FormLabel>Placa do Cavalo</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="ABC-1234"
                             data-testid="input-truck-plate"
                             {...field}
                             value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.value || undefined)}
+                            onChange={(e) => field.onChange(e.target.value.toUpperCase() || undefined)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -342,14 +347,14 @@ export default function Vehicles() {
                     name="trailerPlate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Chapa Carreta</FormLabel>
+                        <FormLabel>Placa da Carreta</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="XYZ-5678"
                             data-testid="input-trailer-plate"
                             {...field}
                             value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.value || undefined)}
+                            onChange={(e) => field.onChange(e.target.value.toUpperCase() || undefined)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -473,7 +478,7 @@ export default function Vehicles() {
                     <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
                       <Truck className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span data-testid={`text-vehicle-plate-${vehicle.id}`} className="truncate">
-                        {vehicle.plate || "Sem placa"}
+                        {vehicle.plate || vehicle.truckPlate || vehicle.trailerPlate || "Sem placa"}
                       </span>
                     </h3>
                   </div>
@@ -508,6 +513,27 @@ export default function Vehicles() {
                       </div>
                     )}
                   </div>
+
+                  {(vehicle.truckPlate || vehicle.trailerPlate) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {vehicle.truckPlate && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Placa do Cavalo</p>
+                          <p className="font-medium font-mono truncate" data-testid={`text-vehicle-truck-plate-${vehicle.id}`}>
+                            {vehicle.truckPlate}
+                          </p>
+                        </div>
+                      )}
+                      {vehicle.trailerPlate && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Placa da Carreta</p>
+                          <p className="font-medium font-mono truncate" data-testid={`text-vehicle-trailer-plate-${vehicle.id}`}>
+                            {vehicle.trailerPlate}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {(vehicle.cargoLength || vehicle.cargoWidth || vehicle.cargoHeight) && (
                     <div>
