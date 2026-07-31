@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -11,50 +11,56 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { NotificationBell } from "@/components/notification-bell";
-import NotFound from "@/pages/not-found";
-import Dashboard from "@/pages/dashboard";
-import Events from "@/pages/events";
-import EventDetails from "@/pages/event-details";
-import EventMaterials from "@/pages/event-materials";
-import EventMovements from "@/pages/event-movements";
-import Requests from "@/pages/requests";
-import RequestDetails from "@/pages/request-details";
-import Inventory from "@/pages/inventory";
-import Trips from "@/pages/trips";
-import LoadingOrders from "@/pages/loading-orders";
-import LoadingOrderDetails from "@/pages/loading-order-details";
-import Movements from "@/pages/movements";
-import MovementDetails from "@/pages/movement-details";
-import Returns from "@/pages/returns";
-import Products from "@/pages/products";
-import ProductUpload from "@/pages/product-upload";
-import ProductVariants from "@/pages/product-variants";
-import ProductStatuses from "@/pages/product-statuses";
-import Locations from "@/pages/locations";
-import Suppliers from "@/pages/suppliers";
-import EventUpload from "@/pages/event-upload";
-import TripUpload from "@/pages/trip-upload";
-import Kits from "@/pages/kits";
-import Config from "@/pages/config";
-import AuthPage from "@/pages/auth-page";
-import ForgotPasswordPage from "@/pages/forgot-password";
-import ResetPasswordPage from "@/pages/reset-password";
-import UsersPage from "@/pages/users";
-import RolesPage from "@/pages/roles";
-import Approvals from "@/pages/approvals";
-import ApprovalDetail from "@/pages/approval-detail";
-import Docks from "@/pages/docks";
-import Drivers from "@/pages/drivers";
-import Vehicles from "@/pages/vehicles";
-import VehicleTypes from "@/pages/vehicle-types";
-import NotificationSettingsPage from "@/pages/notification-settings";
-import StockProjection from "@/pages/stock-projection";
-import MovementGroups from "@/pages/movement-groups";
-import MovementTypesConfig from "@/pages/movement-types-config";
-import MovementApprovals from "@/pages/movement-approvals";
-import InventoryViews from "@/pages/inventory-views";
-import OperationalCalendar from "@/pages/calendar";
-import RequestTemplates from "@/pages/request-templates";
+import { PageLoading } from "@/components/page-loading";
+
+// Pages are lazy-loaded so each route is its own chunk. Previously all 44
+// pages (and heavy libs they pull in — xlsx, recharts, uppy, framer-motion)
+// were bundled into a single ~2MB file that had to download before anything
+// rendered. Now the browser only fetches the page being visited.
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Events = lazy(() => import("@/pages/events"));
+const EventDetails = lazy(() => import("@/pages/event-details"));
+const EventMaterials = lazy(() => import("@/pages/event-materials"));
+const EventMovements = lazy(() => import("@/pages/event-movements"));
+const Requests = lazy(() => import("@/pages/requests"));
+const RequestDetails = lazy(() => import("@/pages/request-details"));
+const Inventory = lazy(() => import("@/pages/inventory"));
+const Trips = lazy(() => import("@/pages/trips"));
+const LoadingOrders = lazy(() => import("@/pages/loading-orders"));
+const LoadingOrderDetails = lazy(() => import("@/pages/loading-order-details"));
+const Movements = lazy(() => import("@/pages/movements"));
+const MovementDetails = lazy(() => import("@/pages/movement-details"));
+const Returns = lazy(() => import("@/pages/returns"));
+const Products = lazy(() => import("@/pages/products"));
+const ProductUpload = lazy(() => import("@/pages/product-upload"));
+const ProductVariants = lazy(() => import("@/pages/product-variants"));
+const ProductStatuses = lazy(() => import("@/pages/product-statuses"));
+const Locations = lazy(() => import("@/pages/locations"));
+const Suppliers = lazy(() => import("@/pages/suppliers"));
+const EventUpload = lazy(() => import("@/pages/event-upload"));
+const TripUpload = lazy(() => import("@/pages/trip-upload"));
+const Kits = lazy(() => import("@/pages/kits"));
+const Config = lazy(() => import("@/pages/config"));
+const AuthPage = lazy(() => import("@/pages/auth-page"));
+const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
+const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const UsersPage = lazy(() => import("@/pages/users"));
+const RolesPage = lazy(() => import("@/pages/roles"));
+const Approvals = lazy(() => import("@/pages/approvals"));
+const ApprovalDetail = lazy(() => import("@/pages/approval-detail"));
+const Docks = lazy(() => import("@/pages/docks"));
+const Drivers = lazy(() => import("@/pages/drivers"));
+const Vehicles = lazy(() => import("@/pages/vehicles"));
+const VehicleTypes = lazy(() => import("@/pages/vehicle-types"));
+const NotificationSettingsPage = lazy(() => import("@/pages/notification-settings"));
+const StockProjection = lazy(() => import("@/pages/stock-projection"));
+const MovementGroups = lazy(() => import("@/pages/movement-groups"));
+const MovementTypesConfig = lazy(() => import("@/pages/movement-types-config"));
+const MovementApprovals = lazy(() => import("@/pages/movement-approvals"));
+const InventoryViews = lazy(() => import("@/pages/inventory-views"));
+const OperationalCalendar = lazy(() => import("@/pages/calendar"));
+const RequestTemplates = lazy(() => import("@/pages/request-templates"));
 
 const PUBLIC_ROUTES = ["/auth", "/forgot-password", "/reset-password"];
 
@@ -174,7 +180,9 @@ function AppLayout() {
           )}
           <main className="flex-1 overflow-y-auto bg-background">
             <div className="p-4 sm:p-6 md:p-8">
-              <Router />
+              <Suspense fallback={<PageLoading message="Carregando..." />}>
+                <Router />
+              </Suspense>
             </div>
           </main>
         </div>

@@ -10,7 +10,8 @@ export function ProtectedRoute({
   requireAdmin = false,
 }: {
   path: string;
-  component: () => React.JSX.Element;
+  // Accept lazy-loaded pages (React.lazy) as well as plain components.
+  component: React.ComponentType<any>;
   requireAdmin?: boolean;
 }) {
   const { user, isLoading } = useAuth();
