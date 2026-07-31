@@ -3,8 +3,45 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
 import { users, roles, userRoles } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { hashPassword } from "./auth";
+
+/**
+ * Self-healing schema patches applied on every boot.
+ *
+ * These are additive, idempotent DDL statements (ADD COLUMN / CREATE INDEX IF
+ * NOT EXISTS) so a deploy carrying a new column no longer needs a manual
+ * migration — the app brings the database up to date itself. Deliberately
+ * NOT `drizzle-kit push`, which on this database proposes destructive changes
+ * (dropping the session table, dropping populated columns). Each statement is
+ * wrapped so one failure can't stop the boot.
+ */
+async function ensureSchemaPatches() {
+  const statements = [
+    // Secondary vehicles list — added by the "+ Incluir Veículo" feature.
+    `ALTER TABLE trips ADD COLUMN IF NOT EXISTS additional_vehicles jsonb`,
+    // Performance indexes on foreign keys / event filters.
+    `CREATE INDEX IF NOT EXISTS idx_material_requests_event_id ON material_requests (event_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_trips_event_id ON trips (event_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_loading_orders_event_id ON loading_orders (event_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_movements_event_id ON movements (event_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_movement_events_event_id ON movement_events (event_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_movement_events_movement_id ON movement_events (movement_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_movement_requests_request_id ON movement_requests (request_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_movement_requests_movement_id ON movement_requests (movement_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_loading_order_requests_request_id ON loading_order_requests (request_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_request_items_request_id ON request_items (request_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_movement_items_movement_id ON movement_items (movement_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles (user_id)`,
+  ];
+  for (const stmt of statements) {
+    try {
+      await db.execute(sql.raw(stmt));
+    } catch (err) {
+      log(`schema patch skipped: ${(err as Error).message}`);
+    }
+  }
+}
 
 const app = express();
 app.use(express.json());
@@ -104,6 +141,7 @@ async function seedStartupUsers() {
 }
 
 (async () => {
+  await ensureSchemaPatches();
   await seedStartupUsers();
   const server = await registerRoutes(app);
 
