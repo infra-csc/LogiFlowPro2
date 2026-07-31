@@ -293,7 +293,7 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
           <DialogTitle>{event ? "Editar Evento" : "Novo Evento"}</DialogTitle>
           <DialogDescription>
-            Configure datas, cliente, local e janela de requisição de materiais.
+            Configure datas, endereço e janela de requisição de materiais.
           </DialogDescription>
         </DialogHeader>
 
@@ -331,25 +331,9 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="client"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Cliente <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Ex: Tatica Mkt"
-                          data-testid="input-client"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Item 1: 'Cliente' removed from the event form. The column is
+                    kept (submitted empty for new events, preserved on edit via
+                    reset) so no migration is needed. */}
 
                 <FormField
                   control={form.control}

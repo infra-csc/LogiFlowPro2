@@ -413,12 +413,14 @@ export default function Events() {
                     {event.name}
                   </h3>
 
-                  {/* Client + Location */}
+                  {/* Client (only if present) + Location */}
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{event.client}</span>
-                    </div>
+                    {event.client && (
+                      <div className="flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{event.client}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{event.location}</span>
