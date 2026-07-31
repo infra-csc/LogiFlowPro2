@@ -517,10 +517,20 @@ export const trips = pgTable("trips", {
   vehiclePlate: text("vehicle_plate"),
 
   // 2º Veículo (opcional — mesmo itinerário, duas unidades)
+  // Kept for backwards compatibility: consumers (loading orders, trip list)
+  // still read vehicle2*. It mirrors additionalVehicles[0].
   vehicle2Id: varchar("vehicle2_id").references(() => vehicles.id),
   vehicleType2Id: varchar("vehicle_type2_id").references(() => vehicleTypes.id),
   driver2Id: varchar("driver2_id").references(() => drivers.id),
   vehiclePlate2: text("vehicle_plate2"),
+  // Secondary vehicles (2nd onward) as a dynamic list — the source of truth
+  // behind the "+ Incluir Veículo" button. Lets a trip carry more than two.
+  additionalVehicles: jsonb("additional_vehicles").$type<Array<{
+    vehicleId?: string | null;
+    vehicleTypeId?: string | null;
+    driverId?: string | null;
+    plate?: string | null;
+  }>>(),
 
   // Ida — CD → Evento
   loadingLocation: text("loading_location"),
@@ -1318,6 +1328,13 @@ export const insertTripSchema = createInsertSchema(trips, {
   departureDateTime: z.coerce.date().optional(),
   unloadingStartTime: z.coerce.date().optional(),
   unloadingEndTime: z.coerce.date().optional(),
+  // Match the jsonb column's $type so InsertTrip infers the right shape.
+  additionalVehicles: z.array(z.object({
+    vehicleId: z.string().nullable().optional(),
+    vehicleTypeId: z.string().nullable().optional(),
+    driverId: z.string().nullable().optional(),
+    plate: z.string().nullable().optional(),
+  })).nullable().optional(),
 }).omit({
   id: true,
   createdAt: true,
