@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -24,6 +25,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import type { MaterialRequest, InsertMaterialRequest, Event, RequestAreaTemplate } from "@shared/schema";
 import { cn } from "@/lib/utils";
+
+// Requisition areas are limited to these three. Kept as a constant so both the
+// create and edit selects use the same list.
+const REQUEST_AREAS = ["Cenografia", "Ativação", "Produção"] as const;
 
 // ── types ───────────────────────────────────────────────────────────────────
 
@@ -402,20 +407,26 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
                 </Popover>
               )}
 
-              {/* Nome da área (editável mesmo quando template selecionado) */}
-              <Input
-                value={formData.area}
-                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                placeholder="Nome da área / requisição"
-                data-testid="input-area"
-                className="h-10"
-              />
+              {/* Área — restrita a Cenografia / Ativação / Produção */}
+              <Select
+                value={REQUEST_AREAS.includes(formData.area as any) ? formData.area : ""}
+                onValueChange={(v) => setFormData({ ...formData, area: v })}
+              >
+                <SelectTrigger className="h-10" data-testid="select-area">
+                  <SelectValue placeholder="Selecione a área" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REQUEST_AREAS.map((a) => (
+                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                  ))}
+                  {/* Preserve a legacy/template area that isn't one of the three */}
+                  {formData.area && !REQUEST_AREAS.includes(formData.area as any) && (
+                    <SelectItem value={formData.area}>{formData.area} (atual)</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
-                {templateId
-                  ? "Nome pré-preenchido pelo template. Edite se necessário."
-                  : templates && templates.length > 0
-                  ? "Selecione um template acima ou escreva um nome personalizado."
-                  : "Use um nome que identifique o setor ou uso dos materiais."}
+                As requisições usam três áreas: Cenografia, Ativação e Produção.
               </p>
 
               {/* Preview dos itens do template */}
@@ -472,15 +483,23 @@ export function RequestDialog({ open, onOpenChange, request }: RequestDialogProp
           {/* Área simples para edição */}
           {request && (
             <div className="space-y-3">
-              <Label htmlFor="area" className="text-sm font-medium">Área / Nome da requisição *</Label>
-              <Input
-                id="area"
-                value={formData.area}
-                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                placeholder="Ex: Cenografia — Palco Principal"
-                data-testid="input-area"
-                className="h-10"
-              />
+              <Label htmlFor="area" className="text-sm font-medium">Área *</Label>
+              <Select
+                value={REQUEST_AREAS.includes(formData.area as any) ? formData.area : ""}
+                onValueChange={(v) => setFormData({ ...formData, area: v })}
+              >
+                <SelectTrigger id="area" className="h-10" data-testid="select-area">
+                  <SelectValue placeholder="Selecione a área" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REQUEST_AREAS.map((a) => (
+                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                  ))}
+                  {formData.area && !REQUEST_AREAS.includes(formData.area as any) && (
+                    <SelectItem value={formData.area}>{formData.area} (atual)</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

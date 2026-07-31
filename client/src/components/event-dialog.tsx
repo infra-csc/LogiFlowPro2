@@ -279,7 +279,12 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
-  const hasBlockingError = !!setupAfterEvent || !!teardownBeforeEvent || !!windowStartAfterEnd;
+  // The setup/teardown ordering relative to the event date is a warning, not a
+  // block — real schedules sometimes need dates the strict order would reject,
+  // and blocking the save was preventing free date editing. Only a request
+  // window whose start is after its end stays blocking, since that window would
+  // never open.
+  const hasBlockingError = !!windowStartAfterEnd;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -352,12 +357,12 @@ export function EventDialog({ open, onOpenChange, event }: EventDialogProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Local <span className="text-destructive">*</span>
+                        Endereço <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder="Ex: Praça Nova da Pampulha"
+                          placeholder="Ex: Av. Otacílio Negrão de Lima, 1000 — Pampulha, Belo Horizonte/MG"
                           data-testid="input-location"
                         />
                       </FormControl>
